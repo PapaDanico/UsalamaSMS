@@ -28,9 +28,11 @@ matrix calls `tolerability()` and its deadline table reads
 `MOR_OBLIGATIONS`, so neither can drift from the documents describing
 them.
 
-**Not yet built:** there is no hosted deployment of the API — the
-integration suite runs Postgres locally and in CI, but nothing is
-running anywhere a design partner could reach. The triage queue reads
+**Not yet built:** the hosted database exists (Supabase, eu-north-1,
+schema applied, RLS deny-by-default) but **no API is deployed against
+it** — nothing is running anywhere a design partner could reach. See
+[`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md), which also carries the
+one-time Prisma baseline the hosted schema needs. The triage queue reads
 this device rather than the organisation, and there is no investigation,
 CAPA or SPI workflow. See `docs/02-STRATEGY.md`.
 
@@ -93,6 +95,7 @@ See [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) for the evidence and
 | [`docs/02-STRATEGY.md`](docs/02-STRATEGY.md) | Positioning, the aggregate-data fork, module suite by tier, sequencing, commercial model, architecture verdicts, risks |
 | [`docs/04-BRAND.md`](docs/04-BRAND.md) | How the six-colour identity is encoded, the two artwork combinations that are not reproduced and the measurements that condemned them, why the risk-scale green is almost black, and the one dropdown component every operational field goes through |
 | [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Nine claims with an expiry date — which flag controls each, and the test that stops it rotting |
+| [`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md) | The hosted database, the one-time Prisma baseline it needs, why RLS has no policies, and which environment variables go where. No secrets, by rule |
 
 ---
 

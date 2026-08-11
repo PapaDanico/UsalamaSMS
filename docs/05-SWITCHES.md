@@ -226,37 +226,45 @@ rather than discovered to be a forty-file one.
 
 ---
 
-## 8. There is no hosted database, and the Supabase org is at its limit
+## 8. The database exists; nothing serves it
 
-**The claim:** the sync and auth routes are verified against a real
-Postgres — `npm run test:integration`, 26 checks, run locally and in CI
-against a Postgres service container.
+**The claim:** UsalamaSMS has a hosted Postgres — Supabase project
+`UsalamaSMS` (`wbixxhpaswstaphfsowz`, eu-north-1, Postgres 17), schema
+applied, RLS deny-by-default on all nine tables.
 
-**What that does NOT mean:** nothing is deployed. There is no hosted API
-and no hosted database, so no design partner can reach this. The
-integration suite proves the code is correct against Postgres; it says
-nothing about a running system.
+**What that does NOT mean:** there is no deployed API. The database is
+real and empty and nothing talks to it. A design partner still cannot
+reach anything. The integration suite proves the code is correct against
+Postgres; it says nothing about a running system.
 
-**Why it is stuck here:** the Supabase organisation
-(`tffuplfbfxkklrnkzetm`) is at its free-project limit with `jiranione`
-and `Ratiba Crew Management System` already active. Creating a third
-requires pausing, deleting or upgrading one of those — each of which
-affects a different live product, and none of which is a decision this
-repository should make on its own.
+**Why it expires:** two ways, and the first is live now.
 
-**What must happen:** one of —
-1. upgrade the Supabase organisation, and create a `UsalamaSMS` project;
-2. pause whichever of the two existing projects is genuinely dormant;
-3. host Postgres somewhere else entirely.
+*Prisma does not know the hosted schema exists.* The migrations were
+applied through the Supabase management API, because this environment
+holds the project's API credentials and not its database password. The
+DDL ran; Prisma's `_prisma_migrations` bookkeeping did not. The next
+`prisma migrate deploy` will find a non-empty database with no history
+and refuse — and `migrate dev` would offer to reset it. The baseline
+commands are in `docs/06-DEPLOYMENT.md` and take about a minute with the
+connection string to hand.
 
-Until then the CI service container is the only database this project
-has ever run against, and that is enough to keep the code honest and
-not enough to demonstrate anything to a customer.
+*RLS has no policies, on purpose.* The linter reports
+`rls_enabled_no_policy` at INFO on every table forever. That is the
+intended state and not a finding to clear. Someone will eventually
+"fix" it by adding permissive policies, which would re-open exactly the
+hole this closed — PostgREST reaching safety narratives with a key
+designed to be public.
 
-**The test:** `tests/integration/guard.test.ts` — CI sets `REQUIRE_DB=1`
-and the guard FAILS if `DATABASE_URL` is unset, so the day the service
-container is dropped the suite goes red rather than silently skipping
-every assertion and reporting green.
+**What must happen:** baseline the migration history before the first
+deploy; deploy the API somewhere with the four environment variables
+set; and leave the RLS advisory alone.
+
+**The test:** none that runs in CI, and that is stated rather than
+hidden — the repository cannot reach the hosted project, and it should
+not hold credentials that would let it. `docs/06-DEPLOYMENT.md` carries
+the checklist instead, and switch 3's honesty applies here too: a
+doc-level claim about infrastructure cannot be asserted in a unit test
+without inventing a fact for the test to read.
 
 ---
 
