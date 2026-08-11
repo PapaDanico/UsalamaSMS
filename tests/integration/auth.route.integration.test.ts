@@ -25,6 +25,22 @@ const PASSWORD = "a-sufficiently-long-test-password";
 let app: FastifyInstance;
 let orgId: string;
 
+/**
+ * A fresh source address per test.
+ *
+ * The login limiter is 10 attempts per IP per 15 minutes and its counter
+ * is in-memory for the life of the app, which `beforeAll` builds once.
+ * Without this the suite's own logins would exhaust the bucket partway
+ * through and later tests would fail with 429 for reasons that have
+ * nothing to do with what they assert — the classic way a real limiter
+ * gets weakened to make a test suite pass.
+ *
+ * Per-IP is also what production does, so giving each test its own
+ * address is the accurate simulation rather than a workaround.
+ */
+let clientIp = "";
+let testIndex = 0;
+
 describe.skipIf(!hasDatabase)("auth routes against Postgres", () => {
   beforeAll(async () => {
     migrate();
@@ -40,6 +56,7 @@ describe.skipIf(!hasDatabase)("auth routes against Postgres", () => {
 
   beforeEach(async () => {
     await reset();
+    clientIp = `10.0.0.${++testIndex}`;
     const org = await prisma().org.create({ data: { name: "Design Partner AOC" } });
     orgId = org.id;
     await prisma().user.create({
@@ -53,10 +70,13 @@ describe.skipIf(!hasDatabase)("auth routes against Postgres", () => {
     });
   });
 
-  const login = (email: string, password: string) =>
+  const login = (email: string, password: string, ip: string = clientIp) =>
     app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
+      // trustProxy is on, so this is what the limiter keys on — the same
+      // header Netlify's edge sets in front of the deployed function.
+      headers: { "x-forwarded-for": ip },
       payload: { email, password },
     });
 
@@ -186,6 +206,38 @@ describe.skipIf(!hasDatabase)("auth routes against Postgres", () => {
     expect(rows[0]?.tokenHash).not.toBe(refreshToken);
     expect(rows[0]?.tokenHash).toHaveLength(64); // hex sha256 of an HMAC
     expect(JSON.stringify(rows)).not.toContain(refreshToken);
+  });
+
+  it("THROTTLES LOGIN — the eleventh attempt from one address is refused", async () => {
+    // routes.auth.ts has declared `rateLimit: { max: 10 }` on this route
+    // since it was written, with a correct comment above it explaining
+    // that login is the one endpoint worth brute-forcing. The plugin
+    // that makes route-level `config.rateLimit` mean anything was never
+    // registered, and Fastify ignores unknown config keys in silence, so
+    // the limit was decoration. Every gate passed. Login was unbounded.
+    //
+    // This test is what makes the limit a fact rather than a claim.
+    const attacker = "203.0.113.7";
+    for (let i = 0; i < 10; i++) {
+      const res = await login("safety@example.test", `wrong-password-${i}`, attacker);
+      expect(res.statusCode, `attempt ${i + 1} should still be allowed through`).toBe(401);
+    }
+
+    const blocked = await login("safety@example.test", "wrong-password-10", attacker);
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.json()).toEqual({ error: "too_many_requests" });
+
+    // Refused WITHOUT reaching argon2 or the users table, which is the
+    // point — a limiter that still does the expensive work is a denial
+    // of service with extra steps.
+    expect(JSON.stringify(blocked.json())).not.toMatch(/user|exist|found|password/i);
+
+    // COUNTER-TEST. The above passes just as well if the limiter is a
+    // single global counter, which would let one attacker lock out an
+    // entire operator's staff — a worse failure than the one being
+    // fixed. A different address must be unaffected.
+    const bystander = await login("safety@example.test", PASSWORD, "198.51.100.4");
+    expect(bystander.statusCode, "a second address was caught by another's limit").toBe(200);
   });
 
   it("rejects a token signed with the wrong secret", async () => {

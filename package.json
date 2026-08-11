@@ -39,6 +39,7 @@
     "vitest": "^2.1.4"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^11.2.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.0.0",
     "argon2": "^0.41.1",

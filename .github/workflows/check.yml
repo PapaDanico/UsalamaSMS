@@ -110,5 +110,17 @@ jobs:
           fi
           cp /tmp/style.bak apps/web/src/style.css
 
-      - name: And the restored stylesheet must pass
-        run: node scripts/check-brand.mjs
+      - name: A rate limit with no plugin behind it must be rejected
+        run: |
+          cp apps/api/src/server.ts /tmp/server.bak
+          sed -i 's|^import rateLimit from "@fastify/rate-limit";||' apps/api/src/server.ts
+          if node scripts/check-claims.mjs > /dev/null 2>&1; then
+            echo "::error::The claims gate PASSED with routes declaring config.rateLimit and no plugin registered. That is the exact state login shipped in: unbounded."
+            exit 1
+          fi
+          cp /tmp/server.bak apps/api/src/server.ts
+
+      - name: And the restored sources must pass
+        run: |
+          node scripts/check-brand.mjs
+          node scripts/check-claims.mjs

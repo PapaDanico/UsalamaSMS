@@ -18,32 +18,56 @@ import { createHash } from "node:crypto";
 import { prisma, reset, seedOrg, migrate, disconnect, hasDatabase } from "./db.setup";
 import { auditMaterial } from "../../apps/api/src/audit-material";
 
+// core.ts validates these at import time and exits without them.
+process.env["JWT_SECRET"] ??= "integration-test-secret-not-a-real-one";
+process.env["DEIDENT_SALT"] ??= "integration-test-salt";
+process.env["LOG_LEVEL"] ??= "silent";
+
 const GENESIS = "0".repeat(64);
 const sha256 = (s: string): string => createHash("sha256").update(s, "utf8").digest("hex");
 
-/* The append and verify implementations are re-created here rather than
-   imported from core.ts, which cannot be loaded without JWT_SECRET and a
-   Prisma singleton. They call the SAME auditMaterial() the production
-   code does — which is the whole reason that function was split into its
-   own module. If the two ever diverge, the divergence is in the
-   transaction plumbing, and that is exactly what these tests exercise. */
+/* ---------------------------------------------------------------------
+   THESE TESTS DRIVE THE SHIPPED FUNCTIONS.
 
-const LOCK_NAMESPACE = 0x5341;
-const lockKeyFor = (orgId: string): number => parseInt(sha256(orgId).slice(0, 8), 16) | 0;
+   They used to drive local re-creations of appendAudit and
+   verifyAuditChain, on the reasoning that core.ts could not be imported
+   without JWT_SECRET and a Prisma singleton. Both obstacles are three
+   lines of environment, as the auth and function suites next door
+   already demonstrated.
 
-async function appendAudit(params: {
-  orgId: string; userId?: string; action: string;
-  entityType: string; entityId: string; detail?: unknown;
-  withLock?: boolean;
+   The consequence was worse than the inconvenience it avoided. All eight
+   tests below would have passed unchanged if core.ts's verifier
+   regressed to the link-only version — the exact defect this file exists
+   to prevent — because the thing they exercised was a copy that could
+   not regress with it. A test that verifies a reimplementation of the
+   code under test verifies nothing about the code under test.
+
+   Splitting auditMaterial() into its own module was the same fix applied
+   one level down: writer, verifier and tests read ONE definition. That
+   argument does not stop at the material function.
+   --------------------------------------------------------------------- */
+let appendAudit: typeof import("../../apps/api/src/core").appendAudit;
+let verifyAuditChain: typeof import("../../apps/api/src/core").verifyAuditChain;
+
+/**
+ * An append with the advisory lock deliberately omitted.
+ *
+ * This is the ONE thing that still has to be re-created, because the
+ * shipped appendAudit has no switch for it and must not grow one: an
+ * option to disable the lock is an option somebody eventually passes in
+ * production. It exists solely for the counter-test at the bottom, which
+ * proves the lock is what protects the chain rather than assuming it.
+ *
+ * It is intentionally the same shape as core's append minus the lock, so
+ * a divergence in the rest of the plumbing shows up as the counter-test
+ * failing to fork — which reads as "the lock stopped mattering" and
+ * sends someone to look. That is the safe direction for this copy to be
+ * wrong in.
+ */
+async function appendWithoutLock(params: {
+  orgId: string; action: string; entityType: string; entityId: string; detail?: unknown;
 }): Promise<void> {
   await prisma().$transaction(async (tx) => {
-    if (params.withLock !== false) {
-      await tx.$executeRawUnsafe(
-        `SELECT pg_advisory_xact_lock($1::int, $2::int)`,
-        LOCK_NAMESPACE,
-        lockKeyFor(params.orgId),
-      );
-    }
     const last = await tx.auditLog.findFirst({
       where: { orgId: params.orgId },
       orderBy: { seq: "desc" },
@@ -54,7 +78,6 @@ async function appendAudit(params: {
     await tx.auditLog.create({
       data: {
         orgId: params.orgId,
-        userId: params.userId,
         action: params.action,
         entityType: params.entityType,
         entityId: params.entityId,
@@ -67,33 +90,24 @@ async function appendAudit(params: {
   });
 }
 
-async function verifyAuditChain(orgId: string): Promise<{
-  ok: boolean; rowsChecked: number; brokenLinkAtSeq?: bigint; contentAlteredAtSeq?: bigint;
-}> {
-  const rows = await prisma().auditLog.findMany({ where: { orgId }, orderBy: { seq: "asc" } });
-  let prev = GENESIS;
-  let checked = 0;
-  for (const r of rows) {
-    if (r.prevHash !== prev) return { ok: false, rowsChecked: checked, brokenLinkAtSeq: r.seq };
-    const expected = sha256(
-      auditMaterial({
-        orgId: r.orgId, userId: r.userId, action: r.action,
-        entityType: r.entityType, entityId: r.entityId,
-        detail: r.detail as unknown, prevHash: r.prevHash, createdAt: r.createdAt,
-      }),
-    );
-    if (expected !== r.hash) return { ok: false, rowsChecked: checked, contentAlteredAtSeq: r.seq };
-    prev = r.hash;
-    checked++;
-  }
-  if (rows.length === 0) return { ok: false, rowsChecked: 0 };
-  return { ok: true, rowsChecked: checked };
-}
-
 describe.skipIf(!hasDatabase)("audit chain against Postgres", () => {
   let orgId: string;
 
-  beforeAll(() => migrate());
+  beforeAll(async () => {
+    migrate();
+    // Imported here rather than at the top so migrate() has run and the
+    // environment above is in place before core.ts evaluates it.
+    const core = await import("../../apps/api/src/core");
+    appendAudit = core.appendAudit;
+    verifyAuditChain = core.verifyAuditChain;
+
+    // Rule 11 applied to the import itself: a typo in the module path or
+    // a rename would leave these undefined, and every test below would
+    // fail with a message about `appendAudit is not a function` rather
+    // than with one about the chain. Say which it is.
+    expect(typeof appendAudit, "core.appendAudit was not importable").toBe("function");
+    expect(typeof verifyAuditChain, "core.verifyAuditChain was not importable").toBe("function");
+  });
   afterAll(() => disconnect());
 
   beforeEach(async () => {
@@ -195,9 +209,7 @@ describe.skipIf(!hasDatabase)("audit chain against Postgres", () => {
     // before trusting it.
     const results = await Promise.allSettled(
       Array.from({ length: 24 }, (_, i) =>
-        appendAudit({
-          orgId, action: "unlocked", entityType: "T", entityId: `u-${i}`, withLock: false,
-        }),
+        appendWithoutLock({ orgId, action: "unlocked", entityType: "T", entityId: `u-${i}` }),
       ),
     );
 

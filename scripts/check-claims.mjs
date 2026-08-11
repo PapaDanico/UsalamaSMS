@@ -317,6 +317,60 @@ const claimsStated = statedCount(/(\d+) assertions that the registries/, 'claims
 
 for (const p of passes) console.log(`  ok   ${p}`);
 
+/* ============================================================
+   DECLARED CONTROLS MUST BE WIRED CONTROLS.
+
+   routes.auth.ts and routes.sync.ts carried `config.rateLimit` from the
+   day they were written, with a correct comment above the login one
+   explaining that login is the endpoint worth brute-forcing. The plugin
+   that gives route-level `config.rateLimit` any meaning was never
+   registered, and Fastify ignores unknown keys inside `config` in
+   silence. The limits were decoration. Login was unbounded.
+
+   Nothing could have caught it. Typecheck passes — `config` is
+   `Record<string, unknown>`. Unit tests pass — they read source and the
+   source says `rateLimit`. The audit found it by grepping the
+   dependency list, which is not a repeatable process.
+
+   This is the repeatable one: if any route declares a limit, the server
+   must register the plugin, and the package must actually depend on it.
+   A future route that declares a limit after someone removes the plugin
+   fails the build.
+
+   The general shape — a control named in one file and enabled in
+   another — is the most expensive class of defect in this repository so
+   far. It has now produced three: routes with no server, health
+   endpoints unreachable at the deployed path, and this.
+   ============================================================ */
+const routeSources = ['apps/api/src/routes.auth.ts', 'apps/api/src/routes.sync.ts']
+  .map((p) => read(p))
+  .join('\n');
+const declaredLimits = (routeSources.match(/rateLimit\s*:/g) ?? []).length;
+
+assert(
+  'routes still declare the rate limits this gate is about',
+  declaredLimits > 0,
+  'no route declares config.rateLimit — either the limits were removed, or ' +
+    'this assertion has stopped checking anything (charter rule 11)'
+);
+
+const serverSource = read('apps/api/src/server.ts');
+assert(
+  'declared rate limits are backed by a registered plugin',
+  /@fastify\/rate-limit/.test(serverSource) && /register\(\s*rateLimit/.test(serverSource),
+  `${declaredLimits} route(s) declare config.rateLimit and server.ts does not ` +
+    `register @fastify/rate-limit. Fastify ignores unknown config keys silently, ` +
+    `so those limits do nothing and login accepts unlimited attempts.`
+);
+
+const pkg = JSON.parse(read('package.json'));
+assert(
+  'the rate-limit plugin is a real dependency',
+  Boolean(pkg.dependencies?.['@fastify/rate-limit']),
+  '@fastify/rate-limit is imported by server.ts but is not in dependencies — ' +
+    'the deploy would fail to boot, or worse, resolve a hoisted transitive copy'
+);
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);

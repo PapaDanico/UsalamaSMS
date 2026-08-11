@@ -10,6 +10,7 @@
 // passes its unit tests.
 // =====================================================================
 import Fastify, { type FastifyInstance, type FastifyError } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import { ENV, prisma, verifyAuditChain, authenticate, requirePermission } from "./core";
 import { syncRoutes } from "./routes.sync";
 import { authRoutes } from "./routes.auth";
@@ -72,12 +73,68 @@ export async function build(): Promise<FastifyInstance> {
     },
   );
 
+  // =====================================================================
+  // RATE LIMITING — the plugin that makes three route configs real.
+  //
+  // routes.auth.ts and routes.sync.ts have carried `config.rateLimit`
+  // since they were written, with a comment above the login one saying
+  // that login is the one endpoint worth brute-forcing. All three were
+  // INERT: Fastify ignores unknown keys in a route's `config` object, so
+  // a limit declared without this plugin registered is a comment with
+  // punctuation. Login accepted unlimited attempts.
+  //
+  // Nothing could have caught it. The declaration reads exactly like an
+  // enforced limit, the reasoning above it is correct, and every gate
+  // passed. That is charter rule 11 from an angle it did not anticipate:
+  // not a check that stopped checking, a check that never started.
+  // scripts/check-claims.mjs now fails if a route declares a limit this
+  // file does not enable.
+  //
+  // GLOBAL FALSE, deliberately. Only the routes that opt in are limited,
+  // so /health stays free for orchestrator probes and a future read
+  // endpoint does not inherit a login-shaped limit by accident.
+  // =====================================================================
+  await app.register(rateLimit, {
+    global: false,
+    // Per-IP. `trustProxy` above means this is the client address from
+    // X-Forwarded-For rather than the edge's — behind Netlify the header
+    // is set by the platform, so a caller cannot forge their way into a
+    // fresh bucket by sending their own.
+    keyGenerator: (req) => req.ip,
+    // In-memory, which means PER INSTANCE. On a container host that is
+    // the whole limit. On Lambda each warm instance keeps its own
+    // counter, so the effective limit is the configured one times the
+    // concurrency — a real weakening, and the honest fix is a shared
+    // store (Redis) rather than a larger number here. Stated because a
+    // limit whose true value is unknown to its reader is barely a limit.
+    // Even so: 10-per-instance beats unbounded by the entire distance
+    // between a control and no control.
+    // `statusCode` is carried on the object deliberately. The plugin
+    // hands whatever this returns to setErrorHandler below, which decides
+    // the status from `err.statusCode` — without it the throttle arrived
+    // as a 500, telling a client to retry a request the server had in
+    // fact refused on purpose. Found by asserting 429 and getting 500.
+    errorResponseBuilder: () => ({ statusCode: 429, error: "too_many_requests" }),
+  });
+
   app.setErrorHandler((err: FastifyError, req, reply) => {
     // Log the detail, return none of it. An error message is the single
     // most reliable source of schema and infrastructure information an
     // attacker gets for free, and here it can also contain narrative
     // fragments from a failed insert.
     req.log.error({ err: { message: err.message, code: err.code } }, "request failed");
+
+    // A throttled request is not a failure of this service and must not
+    // be logged or answered as one. It also must not be reshaped: the
+    // limiter already built the body, and rewriting it here to
+    // `err.message` produced "Rate limit exceeded, retry in 15 minutes"
+    // — a sentence that tells a brute-forcer exactly how long to wait.
+    const thrown = err as FastifyError & { error?: string };
+    if (err.statusCode === 429) {
+      reply.code(429).send({ error: thrown.error ?? "too_many_requests" });
+      return;
+    }
+
     const status = err.statusCode && err.statusCode < 500 ? err.statusCode : 500;
     reply.code(status).send({ error: status === 500 ? "internal_error" : err.message });
   });

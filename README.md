@@ -47,11 +47,11 @@ CAPA or SPI workflow. See `docs/02-STRATEGY.md`.
 npm install
 npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 49 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 46 assertions that the registries match the docs
+npm run check:claims   # 49 assertions that the registries match the docs
 npm test               # 100 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
-npm run test:integration   # 40 checks against a real Postgres
+npm run test:integration   # 41 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 ```
 
