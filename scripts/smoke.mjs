@@ -15,6 +15,18 @@
    THE CENTRAL TEST is `files a report with the network cut`. If that
    one fails, the product does not do the thing its strategy document
    says it exists to do.
+
+   ONE RULE LEARNED THE EXPENSIVE WAY: never assert on something whose
+   layout depends on browser behaviour rather than on this project's
+   CSS. CI installs its own Chromium and this environment provides one
+   at PLAYWRIGHT_BROWSERS_PATH; the two are not guaranteed to be the
+   same build. A check that measured a child of a collapsed <details>
+   therefore passed locally and failed in CI on the same commit — a
+   guard whose verdict depends on which browser ran it is worse than no
+   guard, because it teaches everyone to hit re-run.
+
+   Set state explicitly (`el.open = true`) rather than toggling it, and
+   assert visibility before trusting a measurement.
    ============================================================ */
 
 import { chromium } from 'playwright';

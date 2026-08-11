@@ -365,6 +365,13 @@ function describeError(err) {
     // exists to stop reaching a person standing on a ramp.
     type: 'Please choose what kind of report this is — the type decides whether a reporting deadline applies.',
     title: 'The one-line summary needs at least 3 characters.',
+    // Added with the server-side taxonomy check. Someone who picks
+    // "Somewhere else…" and types "HKRE" — a plausible typo of HKJK —
+    // is now rejected, and without these entries they got a generic
+    // "something is not right with the location field", which tells
+    // them nothing about what to do instead.
+    location: 'That does not look like an aerodrome we know. Pick one from the list, or describe the place in words rather than as a code.',
+    aircraftType: 'That does not look like a type we know. Pick one from the list, or write the type out in full rather than as a designator.',
     narrative: 'Please write at least 10 characters describing what happened.',
     occurredAt: 'An occurrence report needs the time it happened, so the reporting deadline can be worked out.',
     awareAt: 'The time you became aware cannot be before the event itself.'
