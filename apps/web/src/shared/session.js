@@ -133,6 +133,16 @@ export async function signOut(fetcher = fetch) {
     /* offline; local clear below is what matters */
   }
   clearSession();
+
+  /* And tell the worker to drop cached API reads. Those responses are
+     safety data and they outlive the session otherwise — the cache is
+     keyed on the build version, not on who is signed in. */
+  try {
+    navigator.serviceWorker?.controller?.postMessage({ type: 'usalamasms:clear-data' });
+  } catch {
+    /* no worker, or no controller yet on a first load — nothing cached
+       to clear in either case */
+  }
 }
 
 /**

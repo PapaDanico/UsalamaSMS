@@ -870,6 +870,125 @@ body {
   color: var(--us-text-tertiary);
 }
 
+/* ============================================================
+   THE INK BAND — the presence the app had nowhere.
+
+   Kanda is the benchmark and this is the thing it has that this did
+   not: a dark ground with a radial wash, display type on it, and a
+   clear promise. Every screen here was light-on-light, which reads as
+   careful and never as confident.
+
+   WHERE IT GOES, AND WHERE IT DOES NOT. Kanda puts its band on the
+   marketing page and keeps the tools clean, and that discipline holds
+   here for a sharper reason: the report form is a thirty-second task
+   next to a running turboprop. A band above it costs a scroll before
+   the first field, which is exactly the friction the whole strategy is
+   built to remove. So the form stays light and fast, and the band goes
+   on the account screen — the one surface that is about who this is
+   rather than about filing.
+
+   The washes are Aviation Teal and Deep Terracotta over Dusty
+   Charcoal, at low alpha. Ochre Red is absent on purpose: it is the
+   intolerable-risk colour, and a brand surface that glows with it
+   teaches people the wrong thing about what red means here.
+   ============================================================ */
+.band-ink {
+  position: relative;
+  overflow: hidden;
+  padding-block: clamp(2.25rem, 6vw, 3.5rem);
+  background:
+    radial-gradient(760px 460px at 6% 8%, rgb(var(--us-teal-rgb) / 0.38) 0%, transparent 62%),
+    radial-gradient(640px 420px at 92% 0%, rgb(198 93 59 / 0.3) 0%, transparent 58%),
+    var(--us-charcoal);
+  color: var(--us-sand);
+}
+
+/* A band that spans the full width needs the page's own padding
+   removed, or it renders as a card with a dark fill. */
+.page:has(> .band-ink),
+#main:has(> .band-ink) {
+  padding-inline: 0;
+  padding-top: 0;
+}
+
+.band-ink h1 {
+  margin: var(--us-space-2) 0 0;
+  font-size: var(--us-text-2xl);
+  font-weight: var(--us-weight-bold);
+  line-height: var(--us-leading-tight);
+  letter-spacing: var(--us-tracking-tight);
+}
+
+.band-ink .lede {
+  margin: var(--us-space-4) 0 0;
+  max-width: 46ch;
+  font-size: var(--us-text-md);
+  line-height: var(--us-leading-snug);
+}
+
+.lede--tight {
+  margin-top: 0;
+}
+
+.band-ink h1,
+.band-ink h2 {
+  color: var(--us-sand);
+}
+
+.band-ink .lede {
+  color: rgb(var(--us-sand-rgb) / 0.86);
+}
+
+/* On ink the gold sibling is the wrong direction — it was darkened to
+   clear 4.5:1 on WHITE. Flat Savannah Gold is 7.4:1 on Dusty Charcoal
+   and is the reading colour here, which is the same tension .eyebrow
+   resolves on light grounds and resolves the other way. */
+.band-ink .eyebrow {
+  color: var(--us-gold);
+}
+
+/* The mark is pinned to its ink treatment inside the band. Left to the
+   light-ground rule it draws a charcoal shield on a charcoal field and
+   disappears, leaving a floating crest. */
+.band-ink .us-lockup {
+  color: var(--us-sand);
+}
+
+.band-ink .us-lockup__descriptor {
+  color: var(--us-gold);
+}
+
+/* ---- Trust strip -------------------------------------------
+   Kanda's, and the four claims are this product's rather than a copy
+   of its neighbour's. Each one is something the code actually does and
+   a test actually holds, which is the only reason any of them may be
+   printed on a surface a customer reads. */
+.trust {
+  display: grid;
+  gap: var(--us-space-3);
+  margin-top: var(--us-space-6);
+  padding-top: var(--us-space-5);
+  border-top: 1px solid rgb(var(--us-sand-rgb) / 0.18);
+}
+
+.trust__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--us-space-3);
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+  color: rgb(var(--us-sand-rgb) / 0.9);
+}
+
+.trust__item svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--us-gold);
+  stroke-width: 1.9;
+}
+
 /* ---- Card ------------------------------------------------- */
 
 .card {

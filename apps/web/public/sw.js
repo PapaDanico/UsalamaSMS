@@ -104,10 +104,25 @@ async function cacheFirst(request) {
     }
     return response;
   } catch {
-    // A navigation with no network and nothing cached is the one case
-    // where the user must be told something rather than shown a browser
-    // error they will read as "the app is broken".
+    // ==========================================================
+    // A NAVIGATION FALLS BACK TO THE APP, NOT TO THE OFFLINE PAGE.
+    //
+    // This is a single-page app: only '/' is precached, so a reload on
+    // /triage or /account offline found nothing cached for that URL and
+    // went straight to offline.html. The app was sitting in the cache
+    // the whole time, one entry along, and the person was shown "you
+    // are offline" by a product whose entire claim is that it works
+    // offline. The router resolves the path once the shell boots — the
+    // shell is the right answer for EVERY in-scope navigation.
+    //
+    // offline.html stays as the last resort, for the genuine cold case:
+    // no network and no shell cached yet, which is a first visit that
+    // never completed.
+    // ==========================================================
     if (request.mode === 'navigate') {
+      const shell = await caches.match('/');
+      if (shell) return shell;
+
       const offline = await caches.match('/offline.html');
       if (offline) return offline;
     }
@@ -172,4 +187,32 @@ async function askPagesToFlush() {
    reload — used by the update prompt in the app shell. */
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'usalamasms:skip-waiting') self.skipWaiting();
+
+  /* ============================================================
+     SIGNING OUT CLEARS THE CACHED API READS.
+
+     networkFirst stores every successful API GET in DATA_CACHE, and
+     those responses are safety data. The cache outlived the session:
+     it is keyed on the build version, not on who is signed in, so on a
+     shared crew-room handset the next person could be served the
+     previous person's cached reads by a worker doing exactly what it
+     was told.
+
+     Nothing served today returns a narrative over GET — triage reads
+     the local database — so this is a latent hole rather than a live
+     one. It is the kind that gets discovered by the first endpoint
+     somebody adds, which is too late for a product whose promise is
+     that a report reaches the safety office and nobody else.
+
+     The SHELL cache is deliberately untouched: it holds the app, not
+     anybody's data, and clearing it would make signing out cost a full
+     re-download on the next cold start.
+     ============================================================ */
+  if (event.data?.type === 'usalamasms:clear-data') {
+    event.waitUntil(
+      caches.keys().then((keys) =>
+        Promise.all(keys.filter((k) => k.startsWith('usalamasms-data-')).map((k) => caches.delete(k)))
+      )
+    );
+  }
 });

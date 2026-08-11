@@ -722,6 +722,50 @@ try {
     assert(await page.locator('.queue').isVisible(), '/triage did not render on a cold load');
   });
 
+  await check('A DEEP LINK RELOADS OFFLINE — the offline claim, at the URL a person is on', async () => {
+    // The worker precaches '/' and the hashed assets. It does NOT cache
+    // /triage or /account, because those URLs are the router's business
+    // and never exist as documents — they are reached by tapping the tab
+    // bar, which is client-side and issues no navigation request.
+    //
+    // So a reload on one of them with no network matched nothing, fell
+    // through to offline.html, and told the person "you are offline"
+    // while the entire app sat in the cache one entry along. A product
+    // whose central claim is that it works without signal must not show
+    // an offline page to someone whose app is already on the device.
+    //
+    // THE URL MATTERS HERE. An earlier version of this check navigated
+    // to /triage online first and then reloaded — which passed against
+    // the broken worker, because that online visit had cached /triage
+    // as a document. The defect only appears for a route reached the way
+    // people actually reach it. This uses /account, which the suite only
+    // ever opens by tapping.
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.waitForTimeout(400);
+
+    await page.context().setOffline(true);
+    await page.goto(`${BASE}/account`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(700);
+
+    const state = await page.evaluate(() => ({
+      isOfflinePage: /you are offline|no connection|reports you file are saved/i.test(
+        document.querySelector('.offline-page, #offline')?.textContent ?? ''
+      ),
+      hasShell: Boolean(document.querySelector('#tabbar')),
+      heading: document.querySelector('h1')?.textContent?.trim() ?? '',
+    }));
+    await page.context().setOffline(false);
+
+    assert(
+      state.hasShell,
+      `an offline reload of /account did not render the app shell — it served ` +
+        `"${state.heading}", which is the offline page for an app already on the device`
+    );
+    assert(!state.isOfflinePage, 'the offline page was served instead of the cached app');
+    assert(/sign in|signed in/i.test(state.heading), `offline /account rendered "${state.heading}"`);
+  });
+
   await check('no uncaught page errors across the whole run', async () => {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
   });
