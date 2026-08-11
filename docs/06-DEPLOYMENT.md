@@ -174,6 +174,14 @@ transaction pooling. A session-scoped lock would not be; that is why
    see above.
 2. Confirm `/api/health` (liveness) and `/api/ready` (which queries
    Postgres) both answer.
+
+   Both are registered at `/health` and `/api/health` — the first is
+   what an orchestrator probes on a container host, the second is what
+   is reachable behind a function mounted at `/api/*`. Until
+   `tests/integration/function.integration.test.ts` existed, only the
+   first was registered, so **both health endpoints were unreachable in
+   the deployment shape this repository ships**, and this document
+   confidently told you to curl one of them.
 3. Seed the first accounts:
 
    ```bash

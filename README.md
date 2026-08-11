@@ -48,7 +48,7 @@ npm run check:claims   # 46 assertions that the registries match the docs
 npm test               # 100 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
-npm run test:integration   # 34 checks against a real Postgres
+npm run test:integration   # 39 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 ```
 

@@ -86,16 +86,31 @@ export async function build(): Promise<FastifyInstance> {
   // Unauthenticated and deliberately uninformative: liveness only. A
   // health endpoint that reports database status, versions or migration
   // state is a reconnaissance endpoint with a friendly name.
-  app.get("/health", async () => ({ ok: true }));
+  //
+  // REGISTERED AT BOTH PATHS, because the app is served two ways and
+  // each convention is right for one of them. On a container host the
+  // process owns the origin and /health is what every orchestrator
+  // probes. Behind the Netlify Function the app is mounted at /api/*,
+  // so a request to /health never reaches Fastify at all — and until
+  // tests/integration/function.integration caught it, both health
+  // endpoints were unreachable in the deployment shape this repository
+  // actually ships, while docs/06-DEPLOYMENT.md confidently told the
+  // reader to curl /api/health.
+  //
+  // Two routes, one handler each, no ambiguity about which is canonical:
+  // whichever one your deployment can reach.
+  for (const prefix of ["", "/api"]) {
+    app.get(`${prefix}/health`, async () => ({ ok: true }));
 
-  app.get("/ready", async (_req, reply) => {
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      return { ok: true };
-    } catch {
-      return reply.code(503).send({ ok: false });
-    }
-  });
+    app.get(`${prefix}/ready`, async (_req, reply) => {
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+        return { ok: true };
+      } catch {
+        return reply.code(503).send({ ok: false });
+      }
+    });
+  }
 
   // ------------------------------ Routes ------------------------------
   await app.register(authRoutes);

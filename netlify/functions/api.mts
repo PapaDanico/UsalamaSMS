@@ -116,7 +116,7 @@ export default async (req: Request, _context: Context): Promise<Response> => {
     const res = await app.inject({
       method: req.method,
       url: url.pathname + url.search,
-      headers: Object.fromEntries(req.headers),
+      headers: headersToObject(req.headers),
       ...(body === undefined ? {} : { payload: body }),
     });
 
@@ -136,6 +136,24 @@ export default async (req: Request, _context: Context): Promise<Response> => {
     return Response.json({ error: "internal_error" }, { status: 500 });
   }
 };
+
+/**
+ * Headers as a plain object.
+ *
+ * `Object.fromEntries(req.headers)` reads correctly and does not
+ * typecheck: Headers is only iterable when the DOM.Iterable lib is
+ * loaded, and this project's tsconfig deliberately loads ES2022 + DOM.
+ * forEach is on Headers unconditionally, so this needs no lib change
+ * and no assertion — and it stayed invisible until a test imported this
+ * module and pulled it into the typecheck graph.
+ */
+function headersToObject(headers: Headers): Record<string, string> {
+  const out: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    out[key] = value;
+  });
+  return out;
+}
 
 export const config: Config = {
   path: "/api/*",
