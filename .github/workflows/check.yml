@@ -8,9 +8,20 @@
 name: check
 
 on:
+  # `push: ["**"]` plus `pull_request` fires BOTH on any branch with an
+  # open PR, so the first run of this workflow executed every job twice
+  # against the same commit. Scoping push to the default branch means a
+  # PR is checked once by `pull_request` and a merge is checked once by
+  # `push`, with no commit checked twice.
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
+
+# And if a branch is pushed again while its checks are still running,
+# the older run is checking a commit nobody is waiting on any more.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
