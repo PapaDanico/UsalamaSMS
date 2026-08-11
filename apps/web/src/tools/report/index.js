@@ -34,7 +34,7 @@ import { Select, wireSelects } from '../../components/Select.js';
 import {
   AERODROMES, AIRCRAFT_TYPES, REPORT_TYPES, HRC_CATEGORIES,
   FLIGHT_PHASES, JURISDICTION_OPTIONS, toOptions, OTHER
-} from '../../data/taxonomy.js';
+} from '../../../../../packages/shared/src/taxonomy.ts';
 import { submitReportOffline } from '../../shared/offline.ts';
 import {
   MOR_OBLIGATIONS,

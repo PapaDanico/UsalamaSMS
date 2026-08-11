@@ -18,6 +18,19 @@
    vocabulary reads from one, and the UI renders them as dropdowns
    through ONE component so they look and behave identically everywhere.
 
+   THIS LIVES IN THE SHARED PACKAGE, NOT IN THE WEB APP, and the reason
+   is the difference between offering a vocabulary and enforcing one. A
+   dropdown constrains the person using the form. It does not constrain
+   the request: a future integration, a partner's own client, a replayed
+   payload or a curl command can put "Nairobi" in the location column
+   and the UI will never know. Standardisation that lives only in the
+   presentation layer is a convention, and conventions decay silently in
+   exactly the column that has to be clean for aggregation to work.
+
+   The server validates against these lists (see LocationSchema and
+   friends below), so the guarantee holds regardless of what produced
+   the request.
+
    EVERY LIST CARRIES AN ESCAPE. A vocabulary with no "not listed"
    option does not eliminate free text — it makes people put the real
    answer in the narrative, where nothing can count it, and pick the
@@ -26,7 +39,7 @@
    ============================================================ */
 
 /** Sentinel for "not in this list" — handled explicitly at every call site. */
-export const OTHER = '__OTHER__';
+export const OTHER = "__OTHER__";
 
 /**
  * Aerodromes, by ICAO code.
@@ -153,12 +166,54 @@ export const SYNC_STATES = [
   { code: 'error', label: 'Rejected' }
 ];
 
+/* --------------------- Server-side enforcement ---------------------
+   The escape hatch means these cannot be plain enums: a vocabulary with
+   no way out puts the real answer in the narrative and a wrong code in
+   the column. So the rule is "a known code, OR free text that is
+   clearly not pretending to be a code" — and the sentinel itself is
+   rejected outright, because `__OTHER__` in a location column is a
+   value that looks like a place and groups with nothing. */
+
+const AERODROME_CODES = new Set(AERODROMES.map((a) => a.code));
+const AIRCRAFT_CODES = new Set(AIRCRAFT_TYPES.map((a) => a.code));
+
+/** True when a value is a code from the list, or acceptable free text. */
+function isKnownOrFreeText(value: string, known: ReadonlySet<string>): boolean {
+  if (value === OTHER) return false; // the sentinel must never be stored
+  if (known.has(value)) return true;
+  // Free text from the escape hatch. Bounded, and not a lookalike code:
+  // a four-letter uppercase string that is NOT in the list is almost
+  // always a typo of one that is, and letting it through creates the
+  // second aerodrome the taxonomy exists to prevent.
+  if (/^[A-Z0-9]{3,4}$/.test(value)) return false;
+  return value.length > 0 && value.length <= 120;
+}
+
+export function isValidLocation(value: string): boolean {
+  return isKnownOrFreeText(value, AERODROME_CODES);
+}
+
+export function isValidAircraftType(value: string): boolean {
+  return isKnownOrFreeText(value, AIRCRAFT_CODES);
+}
+
 /** Turn a taxonomy row into the shape Select expects. */
-export function toOptions(list, { valueKey = 'code', labelKey = 'label' } = {}) {
-  return list.map((row) => ({ value: row[valueKey], label: row[labelKey], group: row.category }));
+export function toOptions(
+  list: ReadonlyArray<Record<string, string | undefined>>,
+  { valueKey = "code", labelKey = "label" }: { valueKey?: string; labelKey?: string } = {},
+): Array<{ value: string; label: string; group?: string }> {
+  return list.map((row) => ({
+    value: row[valueKey] ?? "",
+    label: row[labelKey] ?? "",
+    group: row["category"],
+  }));
 }
 
 /** Resolve a stored code back to its label, for display. */
-export function labelFor(list, code, fallback = '—') {
+export function labelFor(
+  list: ReadonlyArray<{ code: string; label: string }>,
+  code: string | null | undefined,
+  fallback = "—",
+): string {
   return list.find((row) => row.code === code)?.label ?? (code || fallback);
 }

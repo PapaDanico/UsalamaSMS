@@ -30,7 +30,7 @@ import { Select, wireSelects } from '../../components/Select.js';
 import {
   REPORT_TYPES, SYNC_STATES, AERODROMES, FLIGHT_PHASES,
   toOptions, labelFor
-} from '../../data/taxonomy.js';
+} from '../../../../../packages/shared/src/taxonomy.ts';
 import { db } from '../../shared/offline.ts';
 import {
   reportingDeadline,

@@ -4,7 +4,7 @@
    STANDARDISATION IS THE POINT, and it works on two levels.
 
    The DATA level: every operational field with a bounded vocabulary
-   reads from src/data/taxonomy.js, so "HKJK", "JKIA" and "Nairobi" stop
+   reads from packages/shared/src/taxonomy.ts, so "HKJK", "JKIA" and "Nairobi" stop
    being three aerodromes. Without that, every safety-intelligence
    question is a GROUP BY over a column free text has already ruined.
 

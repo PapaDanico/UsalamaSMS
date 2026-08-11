@@ -149,16 +149,37 @@ try {
   });
 
   await check('tap targets are at least 44px', async () => {
+    // OPEN THE OPTIONAL SECTION FIRST. The HRC chips live inside a
+    // collapsed <details>, and a collapsed element's children measure
+    // either null or 0px depending on the Chromium version — so this
+    // check passed locally and failed in CI on the same commit, which
+    // is the worst thing a guard can do. Measuring only what is
+    // actually laid out makes the result depend on the CSS rather than
+    // on which browser build ran it.
+    await page.locator('details.report__more').evaluate((el) => { el.open = true; });
+
     // The SUBJECT is the tap target, not the control. A 24px checkbox
     // inside a full-width label is a 24px checkbox with a large target,
     // because clicking the label toggles it — asserting on the input
     // would have failed a control that is genuinely easy to hit and
     // taught the next person to inflate the checkbox instead.
     for (const sel of ['.btn--primary', '.chip', '.report__anon', '.select__control']) {
-      const box = await page.locator(sel).first().boundingBox();
-      assert(box, `${sel} not found`);
+      const locator = page.locator(sel).first();
+      assert(await locator.count(), `${sel} not found on the page at all`);
+      assert(await locator.isVisible(), `${sel} is not visible, so its size means nothing`);
+      const box = await locator.boundingBox();
+      assert(box, `${sel} has no layout box`);
       assert(box.height >= 44, `${sel} is ${Math.round(box.height)}px high; gloved thumbs need 44`);
     }
+
+    // Every chip, not just the first — one narrow chip in a wrapped row
+    // is exactly the one that gets missed.
+    for (const chip of await page.locator('.chip').all()) {
+      const box = await chip.boundingBox();
+      assert(box && box.height >= 44, `a chip is ${Math.round(box?.height ?? 0)}px high`);
+    }
+
+    await page.locator('details.report__more').evaluate((el) => { el.open = false; });
 
     // And the label must actually toggle the control, or the target is
     // decorative.
@@ -217,7 +238,9 @@ try {
     // the real answer in the narrative, where nothing can count it, and
     // a wrong entry in the column.
     const other = page.locator('input[name="locationOther"]');
-    await page.locator('details.report__more').click();
+    // Set the state rather than clicking it. A click TOGGLES, so this
+    // check's behaviour depended on what a previous check left behind.
+    await page.locator('details.report__more').evaluate((el) => { el.open = true; });
     assert(!(await other.isVisible()), 'the escape field is visible before it is chosen');
     await page.selectOption('select[name="location"]', '__OTHER__');
     assert(await other.isVisible(), 'choosing "not listed" did not reveal the free-text field');

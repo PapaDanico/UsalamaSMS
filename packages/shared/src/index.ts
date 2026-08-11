@@ -5,6 +5,8 @@
 import { z } from "zod";
 
 export * from "./regulations";
+export * from "./taxonomy";
+import { isValidLocation, isValidAircraftType } from "./taxonomy";
 import { JURISDICTIONS, type Jurisdiction } from "./regulations";
 
 // ------------------------- Enums (mirror Prisma) ---------------------
@@ -155,8 +157,15 @@ export const CreateReportSchema = z.object({
    */
   awareAt: z.coerce.date().optional(),
   jurisdiction: z.enum(JURISDICTIONS).default("KE"),
-  location: z.string().max(200).optional(),
-  aircraftType: z.string().max(50).optional(),
+  // Validated against the taxonomy, not merely length-checked. The
+  // dropdown constrains the form; this constrains the REQUEST, which is
+  // what a future integration or a replayed payload actually sends.
+  location: z.string().max(120).refine(isValidLocation, {
+    message: "location must be an aerodrome code from the taxonomy, or a description",
+  }).optional(),
+  aircraftType: z.string().max(120).refine(isValidAircraftType, {
+    message: "aircraftType must be a type code from the taxonomy, or a description",
+  }).optional(),
   phase: FlightPhaseEnum.optional(),
   hrcTags: z.array(HrcEnum).max(6).default([]),
   isAnonymous: z.boolean().default(false),

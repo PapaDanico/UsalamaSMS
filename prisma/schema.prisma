@@ -167,7 +167,7 @@ model SafetyReport {
   awareAt      DateTime?
   jurisdiction Jurisdiction @default(KE)
 
-  // Both now hold a code from apps/web/src/data/taxonomy.js rather than
+  // Both now hold a code from packages/shared/src/taxonomy.ts rather than
   // whatever someone typed. "HKJK", "JKIA" and "Nairobi" were three
   // aerodromes to a GROUP BY, which made every safety-intelligence
   // question unanswerable. The dropdowns keep a free-text escape, so
