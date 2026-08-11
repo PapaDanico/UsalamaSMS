@@ -1,0 +1,455 @@
+/* ============================================================
+   UsalamaSMS — design tokens
+
+   Ported from the Kanda stylesheet's discipline, not its palette:
+   component rules reference tokens, never raw values. If you find
+   yourself typing a pixel or a hex below the token block, the token is
+   missing — add it rather than inlining it.
+
+   ONE DELIBERATE DIVERGENCE FROM KANDA: there is no dark scheme. Kanda
+   resolves every brand colour through a light/dark pair because it is
+   read on a phone at a border post at night. UsalamaSMS is read in a
+   cockpit, a hangar office and a regulator's meeting room, and a safety
+   report that renders differently depending on an OS setting is a
+   safety report two people can describe differently. One scheme, one
+   rendering, one printed output. See docs/04-BRAND.md.
+   ============================================================ */
+
+:root {
+  /* ---- Type ------------------------------------------------ */
+  /* Inter is the stand-in for the brand's geometric sans, chosen for
+     the same reason Kanda chose DM Sans: open licence, the documented
+     weights, and self-hosted so the CSP can forbid every off-origin
+     request. No call site names a family directly — when the licensed
+     face arrives, replace the @font-face sources and nothing else. */
+  --us-font: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --us-font-display: var(--us-font);
+  /* Tabular figures matter here in a way they do not on a marketing
+     site: risk indices, SPI values and report references are read in
+     columns and compared down the column. */
+  --us-font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  --us-text-2xs: 11px;
+  --us-text-xs: 12px;
+  --us-text-sm: 13.5px;
+  --us-text-base: 15px;
+  --us-text-md: 17px;
+  --us-text-lg: clamp(20px, 2.2vw, 24px);
+  --us-text-xl: clamp(24px, 3vw, 32px);
+  --us-text-2xl: clamp(30px, 4.2vw, 46px);
+  --us-text-3xl: clamp(38px, 6vw, 68px);
+
+  --us-weight-normal: 400;
+  --us-weight-medium: 500;
+  --us-weight-semi: 600;
+  --us-weight-bold: 700;
+
+  --us-leading-tight: 1.22;
+  --us-leading-snug: 1.4;
+  --us-leading-normal: 1.6;
+
+  --us-tracking-tight: -0.028em;
+  --us-tracking-snug: -0.011em;
+  --us-tracking-wide: 0.06em;
+
+  /* ---- Space (4px base) ------------------------------------ */
+  --us-space-1: 4px;
+  --us-space-2: 8px;
+  --us-space-3: 12px;
+  --us-space-4: 16px;
+  --us-space-5: 20px;
+  --us-space-6: 24px;
+  --us-space-8: 32px;
+  --us-space-10: 40px;
+  --us-space-12: 48px;
+  --us-space-16: 64px;
+
+  /* ---- Radius ---------------------------------------------- */
+  --us-radius-sm: 8px;
+  --us-radius-md: 12px;
+  --us-radius-lg: 18px;
+  --us-radius-xl: 26px;
+  --us-radius-pill: 999px;
+
+  /* ---- Elevation ------------------------------------------- */
+  /* Tinted toward Dusty Charcoal rather than neutral black, so a card
+     on Warm Sand does not sit under a grey halo. */
+  --us-shadow-sm: 0 1px 2px rgba(44, 44, 44, 0.05);
+  --us-shadow-md: 0 6px 24px rgba(44, 44, 44, 0.08);
+  --us-shadow-hover: 0 14px 36px rgba(44, 44, 44, 0.14);
+  --us-shadow-lg: 0 18px 48px rgba(44, 44, 44, 0.18);
+
+  /* ---- Motion ---------------------------------------------- */
+  --us-ease: cubic-bezier(0.2, 0, 0, 1);
+  --us-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --us-dur-fast: 120ms;
+  --us-dur: 180ms;
+  --us-dur-slow: 320ms;
+
+  /* ============================================================
+     BRAND — the six official colours
+
+     Taken from the brand guidelines page, not sampled from a render.
+     These are FILLS. They are chosen to be seen, not to be read; the
+     text siblings below exist for the one job these were never
+     specified for. Nothing here alters a brand colour — every fill,
+     border, badge ring and chart mark still takes the exact value.
+     ============================================================ */
+  --us-terracotta: #c65d3b; /* Deep Terracotta  — identity, warm surfaces */
+  --us-gold: #d4ab43;       /* Savannah Gold    — the mark, highlights    */
+  --us-teal: #2a7a7b;       /* Aviation Teal    — action, links, sync     */
+  --us-charcoal: #2c2c2c;   /* Dusty Charcoal   — ink, primary text       */
+  --us-sand: #f5f0e8;       /* Warm Sand        — ground, sunk surfaces   */
+  --us-ochre: #bb321a;      /* Ochre Red        — alert, intolerable risk */
+
+  /* Channel triplets, for brand colour at partial alpha. Kanda learned
+     this the expensive way: a hardcoded rgba() is invisible to a token
+     sweep, so ten hairlines carried a stale cream through a repaint. */
+  --us-sand-rgb: 245 240 232;
+  --us-charcoal-rgb: 44 44 44;
+  --us-teal-rgb: 42 122 123;
+  --us-gold-rgb: 212 171 67;
+
+  /* ---- Brand colour when it has to be a WORD ----------------
+     Measured on #ffffff and on Warm Sand. The flat values, as words:
+
+       Savannah Gold    2.16:1 on white — a gold caption is not a
+                        caption, it is a rumour of one
+       Deep Terracotta  4.17:1 — under the 4.5:1 floor for body text
+       Aviation Teal    5.04:1 — passes, but only just, and fails the
+                        moment it lands on Warm Sand at 4.44:1
+       Ochre Red        5.86:1 — passes
+
+     These four are darkened siblings used ONLY where the colour becomes
+     type. Every one clears 5.3:1 on both grounds, so a token cannot be
+     moved from white to sand and quietly drop under the floor. */
+  --us-terracotta-text: #a8431f; /* 6.02 on white, 5.31 on sand */
+  --us-gold-text: #7a5c12;       /* 6.24 on white, 5.50 on sand */
+  --us-teal-text: #20605f;       /* 7.24 on white, 6.38 on sand */
+  --us-ochre-text: #a32a14;      /* 7.24 on white, 6.39 on sand */
+
+  /* ---- Colour: raw ----------------------------------------- */
+  --us-ink-900: var(--us-charcoal);
+  --us-ink-800: #3d3d3d;
+  --us-ink-600: #5c5852;
+  --us-ink-400: #8a847b;
+  --us-paper: #ffffff;
+  --us-paper-warm: #fdfbf7;
+  --us-paper-sunk: var(--us-sand);
+  --us-line: #e6dfd2;
+  --us-line-strong: #d3c9b6;
+
+  /* ---- Colour: semantic ------------------------------------ */
+  --us-surface: var(--us-paper);
+  --us-surface-muted: var(--us-paper-warm);
+  --us-surface-sunk: var(--us-paper-sunk);
+  --us-border: var(--us-line);
+  --us-border-strong: var(--us-line-strong);
+
+  --us-text-primary: var(--us-ink-900);
+  --us-text-secondary: var(--us-ink-800);
+  --us-text-tertiary: var(--us-ink-600);
+
+  --us-accent: var(--us-teal);
+  --us-accent-text: var(--us-teal-text);
+  --us-focus: var(--us-teal);
+
+  /* ============================================================
+     RISK — the tolerability scale
+
+     THIS IS NOT A BRAND PALETTE AND MUST NOT BE DECORATED WITH ONE.
+
+     Deep Terracotta and Ochre Red are 1.40:1 against each other. Two
+     adjacent cells of a Doc 9859 matrix painted in those two colours
+     are, to a reader, the same cell — and to a reader with a red-green
+     deficiency they were never different in the first place. Terracotta
+     is therefore FORBIDDEN anywhere on the risk scale. It is an
+     identity colour; it does not get to mean "nearly intolerable".
+
+     The scale is three steps, separated in LIGHTNESS and not merely in
+     hue, so it survives greyscale printing, a monochrome fax to a
+     regulator, and a reader with a colour vision deficiency:
+
+       INTOLERABLE  Ochre Red       #BB321A — brand, unaltered
+       TOLERABLE    Savannah Gold   #D4AB43 — brand, unaltered
+       ACCEPTABLE   Assurance Green #08301C — DELIBERATELY NOT A BRAND
+                    COLOUR. The six-colour system contains no green.
+                    Inventing a seventh brand colour to fill the gap
+                    would have been the wrong repair: this colour means
+                    one thing, it means it in every product, and it must
+                    never drift toward whatever the brand does next.
+
+     WHY THE GREEN IS ALMOST BLACK, which looks like a mistake until you
+     try the alternatives. The first draft used a mid green, #1F7A4D.
+     The brand gate rejected it at 1.10:1 against Ochre Red — the two
+     sit at nearly identical luminance, so in greyscale and to a protan
+     reader ACCEPTABLE and INTOLERABLE were the same cell. That is the
+     single worst confusion this product could ship.
+
+     The obvious repair is a monotonic light ramp, severity as darkness:
+     pale green, gold, deep red. It fails for a different reason. A pale
+     green that clears Savannah Gold by a useful margin lands at 1.06:1
+     against Warm Sand — the ACCEPTABLE cells stop being cells and
+     become page. Measured, not guessed: #DCEFE0 is 1.20:1 on white and
+     1.06:1 on the sand ground.
+
+     So the ramp runs the other way and the green goes dark. Ten dark
+     cells make for a heavier matrix than the convention leads you to
+     expect; that is the price of the three states being tellable apart
+     by someone who cannot see hue. Savannah Gold ends up the lightest
+     of the three, which inverts the usual severity-as-weight reading —
+     TOLERABLE gets a darker border to claw back some of that, and the
+     letter code below does the rest.
+
+     FLOORS, and why they are not 3.0. Three fills cannot all clear 3:1
+     against each other inside a light palette; the available luminance
+     range will not carry two 3:1 steps. Asserting 3.0 here would mean
+     asserting something no palette can satisfy, and a floor that can
+     only be met by deleting the check is not a floor. The gate asserts
+     2.4:1 between fills and 1.7:1 between fills after protanopia,
+     deuteranopia and tritanopia simulation. Both are met with margin
+     (worst real pair 2.47, worst simulated pair 1.78) and both are
+     real: they are what rejected the first two drafts.
+
+     Foreground is specified per step because it differs. White on
+     Savannah Gold is 2.16:1 — the CAUTION badge in the identity artwork
+     is unreadable, and this token block is where that gets fixed rather
+     than reproduced. Gold carries charcoal.
+     ============================================================ */
+  --us-risk-intolerable: var(--us-ochre);
+  --us-risk-intolerable-on: #ffffff; /* 5.86:1 */
+  --us-risk-tolerable: var(--us-gold);
+  --us-risk-tolerable-on: var(--us-charcoal); /* 6.45:1 — NOT white */
+  --us-risk-acceptable: #08301c;
+  --us-risk-acceptable-on: #ffffff; /* 14.48:1 */
+
+  /* The same three as words on a light ground. */
+  --us-risk-intolerable-text: var(--us-ochre-text);
+  --us-risk-tolerable-text: var(--us-gold-text);
+  --us-risk-acceptable-text: #186b43; /* 6.52 on white, 5.74 on sand */
+
+  /* ---- Operational state ------------------------------------
+     Distinct from risk. A report that failed to sync is not a hazard,
+     and the two scales must never be confused by sharing a colour. */
+  /* Aviation Teal itself is 4.44:1 on Warm Sand — under the floor, and
+     the sync strip's ground IS Warm Sand. The word takes the sibling. */
+  --us-state-synced: var(--us-teal-text);
+  --us-state-pending: var(--us-gold-text);
+  --us-state-offline: var(--us-ink-600);
+  --us-state-error: var(--us-ochre-text);
+
+  /* ---- Categorical -------------------------------------------
+     For distinguishing series in a chart — HRC categories, report types,
+     departments. Carries NO semantic meaning and must never signal good
+     or bad. Kanda shipped that exact defect: the worst finding rendered
+     green because its category happened to be green. Here the rule is
+     enforced by name — anything reading --us-cat-* to express severity
+     is wrong by construction. */
+  --us-cat-1: #2a7a7b;
+  --us-cat-2: #c65d3b;
+  --us-cat-3: #6b5ca5;
+  --us-cat-4: #7a5c12;
+  --us-cat-5: #2f6f9e;
+  --us-cat-6: #8a4a6b;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--us-font);
+  font-size: var(--us-text-base);
+  line-height: var(--us-leading-normal);
+  color: var(--us-text-primary);
+  background: var(--us-surface);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus is Aviation Teal at full strength and never removed. A safety
+   report is filled in by people wearing gloves on a ramp and by people
+   who navigate entirely by keyboard; both need to see where they are. */
+:focus-visible {
+  outline: 3px solid var(--us-focus);
+  outline-offset: 2px;
+  border-radius: var(--us-radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   Risk chip — colour is never the only channel
+
+   WCAG 1.4.1: information must not be conveyed by colour alone. Every
+   risk chip therefore carries the tolerability WORD and the numeric
+   index alongside its fill. Printed in greyscale, faxed, or read by
+   someone with a colour deficiency, it still says what it is.
+   ============================================================ */
+.risk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--us-space-2);
+  padding: var(--us-space-1) var(--us-space-3);
+  border-radius: var(--us-radius-pill);
+  font-size: var(--us-text-xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.risk-chip[data-tolerability='INTOLERABLE'] {
+  background: var(--us-risk-intolerable);
+  color: var(--us-risk-intolerable-on);
+}
+
+.risk-chip[data-tolerability='TOLERABLE'] {
+  background: var(--us-risk-tolerable);
+  color: var(--us-risk-tolerable-on);
+}
+
+.risk-chip[data-tolerability='ACCEPTABLE'] {
+  background: var(--us-risk-acceptable);
+  color: var(--us-risk-acceptable-on);
+}
+
+.risk-chip__index {
+  font-family: var(--us-font-mono);
+  font-size: var(--us-text-2xs);
+  opacity: 0.85;
+}
+
+/* ============================================================
+   Risk matrix — 5 x 5, Doc 9859 4th Ed.
+   ============================================================ */
+.risk-matrix {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.risk-matrix th {
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+  padding: var(--us-space-2);
+  text-align: left;
+}
+
+.risk-matrix td {
+  padding: 0;
+  border: 2px solid var(--us-surface);
+}
+
+.risk-matrix__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  font-family: var(--us-font-mono);
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-bold);
+}
+
+.risk-matrix__cell[data-tolerability='INTOLERABLE'] {
+  background: var(--us-risk-intolerable);
+  color: var(--us-risk-intolerable-on);
+}
+
+.risk-matrix__cell[data-tolerability='TOLERABLE'] {
+  background: var(--us-risk-tolerable);
+  color: var(--us-risk-tolerable-on);
+}
+
+.risk-matrix__cell[data-tolerability='ACCEPTABLE'] {
+  background: var(--us-risk-acceptable);
+  color: var(--us-risk-acceptable-on);
+}
+
+/* The one-letter tolerability code, so the cell is legible without its
+   fill. I/T/A rather than a colour swatch. */
+.risk-matrix__code {
+  font-size: var(--us-text-2xs);
+  letter-spacing: var(--us-tracking-wide);
+  opacity: 0.9;
+}
+
+/* ============================================================
+   Sync state — the strip that tells the truth about connectivity
+
+   Kanda's charter rule 8: a refused storage write is reported to the
+   user. UsalamaSMS extends it — an unsynced report is reported too,
+   with a count, because the person who filed it needs to know it has
+   not reached anyone yet.
+   ============================================================ */
+.sync-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--us-space-2);
+  padding: var(--us-space-2) var(--us-space-4);
+  font-size: var(--us-text-sm);
+  background: var(--us-surface-sunk);
+  border-bottom: 1px solid var(--us-border);
+}
+
+.sync-strip[data-state='offline'] {
+  color: var(--us-state-offline);
+}
+
+.sync-strip[data-state='pending'] {
+  color: var(--us-state-pending);
+}
+
+.sync-strip[data-state='error'] {
+  color: var(--us-state-error);
+}
+
+.sync-strip[data-state='synced'] {
+  color: var(--us-teal-text);
+}
+
+/* ============================================================
+   Print — the regulator's copy
+
+   An SMS export is evidence. It prints without chrome, without link
+   colour, and with the risk scale intact: the fills are set to
+   print-colour-adjust: exact so an intolerable risk does not arrive on
+   the Director General's desk as a pale grey box.
+   ============================================================ */
+@media print {
+  .sync-strip,
+  .no-print {
+    display: none !important;
+  }
+
+  .risk-chip,
+  .risk-matrix__cell {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    background: #ffffff;
+  }
+}

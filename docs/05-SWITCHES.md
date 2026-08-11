@@ -1,0 +1,163 @@
+# Claims with an expiry date
+
+*Companion to `docs/DIAGNOSTIC-CHARTER.md`. Ported from Kanda's
+`05-SWITCHES.md`, which exists because a product's most dangerous
+statements are the true ones that quietly stop being true.*
+
+Every claim below is accurate on **11 August 2026** and will not stay
+accurate on its own. Each has a flag that controls it, an owner, and a
+test that fails when the claim rots. A claim without all three is a
+comment.
+
+---
+
+## 1. The provisional jurisdictions
+
+**The claim:** UsalamaSMS computes the mandatory occurrence reporting
+deadline for Kenya, Uganda, Tanzania, Rwanda and the EU.
+
+**Why it expires:** only two of those five have been read against the
+primary instrument. Kenya's row comes from KCAA Advisory Circular
+CAA-AC-SMS004A (January 2023) — 24 hours, from awareness. The EU row
+comes from Regulation (EU) No 376/2014 Article 4(6) — 72 hours, from
+awareness. **Uganda, Tanzania and Rwanda are carried at the ICAO-common
+72 hours as a placeholder and have not been verified.**
+
+This is the most dangerous entry in this file, because a wrong reporting
+deadline is worse than no deadline: an operator without the tool knows
+it does not know.
+
+**The flag:** `MOR_OBLIGATIONS[j].note` beginning `PROVISIONAL` in
+`packages/shared/src/regulations.ts`, surfaced by `isProvisional(j)`.
+
+**What must happen:** obtain the current UCAA, TCAA and RCAA safety
+management regulations; set `hours`, `clockStart`, `instrument` and
+`verifiedOn` from the text; delete the `PROVISIONAL` prefix.
+
+**The test that stops it rotting:** `tests/safetycritical.test.ts` —
+*"marks unverified jurisdictions as provisional rather than as fact"*
+asserts `isProvisional` is **true for exactly UG, TZ and RW** and false
+for KE and EU. Verifying a row without deleting the prefix fails the
+build; deleting the prefix without verifying fails it too, until the
+test's expectation is updated deliberately.
+
+**Owner:** whoever ships the first non-Kenyan customer. Before, not
+after.
+
+---
+
+## 2. The staleness of every regulatory row
+
+**The claim:** each obligation carries `verifiedOn` and a
+`reviewCycleMonths`, and `isStale()` reports when a row has outlived its
+publisher's own revision cycle.
+
+**Why it expires:** it is designed to. That is the point — this is the
+one switch that is supposed to trip.
+
+**The flag:** `isStale(obligation, new Date())`.
+
+**What must happen when it trips:** re-read the instrument, update
+`verifiedOn` whether or not anything changed. A row re-confirmed
+unchanged is still newly verified, and recording that is the difference
+between "checked last month" and "written three years ago and never
+looked at".
+
+**The test:** `tests/safetycritical.test.ts` — *"measures staleness
+against the publisher's own cycle"*. Charter rule 5.
+
+---
+
+## 3. Annex 19 Amendment 2 is described in the future tense
+
+**The claim:** `docs/01-RESEARCH.md` and `docs/02-STRATEGY.md` both
+describe Amendment 2 as forthcoming, with applicability on **26 November
+2026**, and treat "born after the amendment" as a differentiator.
+
+**Why it expires:** on 26 November 2026. After that date the positioning
+sentence *"every incumbent is retrofitting this"* weakens every quarter,
+and by roughly 2028 it is false — the incumbents will have shipped it.
+
+**The flag:** the date itself. There is nothing to compute; the calendar
+does it.
+
+**What must happen:** by Q1 2027 the strategy's headline claim moves
+from *"native to the new standard"* to whatever is then true — most
+likely accumulated operator-years of safety intelligence, which is a
+data-moat claim rather than a compliance one.
+
+**The test:** none, and that is a gap this file records rather than
+hides. A doc-level claim about market timing cannot be asserted in a
+unit test without inventing a fact for the test to read. The mitigation
+is that it is written down here with its expiry date on the face of it.
+
+---
+
+## 4. The de-identification promise
+
+**The claim:** `deIdentify()` removes registrations, flight numbers,
+dates, times, phone numbers, emails, URLs, coordinates, licence and
+staff numbers, and titled names across eleven East African and adjacent
+registration prefixes.
+
+**Why it expires:** two ways. New prefixes and formats appear. And more
+importantly, the claim is routinely *over-read* — "the system
+de-identifies reports" is how it will be described in a sales meeting,
+and that sentence is false in a way that can identify a reporter.
+
+**The flag:** `DeIdentResult.cleanByPattern`, and the
+`ResidualIdentifiersError` that `deIdentifyVcr()` throws when the
+scrubber found something it could not confidently remove.
+
+**What must not happen:** the mandatory-review step must never become
+skippable, and `reviewerAcceptedResidual` must never default to `true`.
+It is friction on purpose. The alternative is distributing whatever the
+regexes happened to leave.
+
+**The test:** `tests/confidentiality.test.ts` — *"REPORTS the surname it
+cannot remove instead of pretending it did"* and *"flags
+self-identification by uniqueness of role"*. Both assert the module
+declares failure on inputs it genuinely cannot handle. If someone
+"improves" the scrubber until those tests pass by actually removing the
+text, the tests should be re-examined rather than deleted: the second
+one asserts a limit no regex removes.
+
+---
+
+## 5. The stand-in typeface
+
+**The claim:** `docs/04-BRAND.md` states the licensed geometric sans is
+not in this repository and Inter is a documented stand-in.
+
+**Why it expires:** when the licensed family arrives.
+
+**The flag:** the `@font-face` sources in `apps/web/src/fonts.css`.
+
+**What must happen:** replace the sources. Nothing else — no call site
+names a family directly; every rule reads `--us-font`.
+
+**The test:** `scripts/check-brand.mjs` asserts tokens, not faces, so
+this one is guarded by the token indirection rather than by an
+assertion. Named here so the swap is known to be a one-file change
+rather than discovered to be a forty-file one.
+
+---
+
+## 6. The unwritten counts
+
+**The claim:** charter rule 10 — counts about the product are computed,
+not typed.
+
+**Why it expires:** it has not been earned yet. This repository currently
+has no marketing surface making numeric claims, so there is nothing to
+compute and `scripts/check-claims.mjs` has little to do. The first
+landing page that says "eleven registration prefixes" or "five
+jurisdictions" is where the rule starts to bite.
+
+**What must happen:** before any such page ships, the number must derive
+from `MOR_OBLIGATIONS` / `REGISTRATION_PREFIXES` and the build must fail
+if it is written by hand.
+
+**The test:** `scripts/check-claims.mjs`, which today asserts the
+registries are non-empty and internally consistent, and which must grow
+an assertion per public claim as claims appear.
