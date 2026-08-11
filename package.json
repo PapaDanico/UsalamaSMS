@@ -4,7 +4,7 @@
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
-  "description": "UsalamaSMS — aviation safety management for operators the incumbents priced out. Offline-first, Annex 19 Amendment 2 native.",
+  "description": "UsalamaSMS \u2014 aviation safety management for operators the incumbents priced out. Offline-first, Annex 19 Amendment 2 native.",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -13,12 +13,13 @@
     "dev": "vite --config apps/web/vite.config.js",
     "check:brand": "node scripts/check-brand.mjs",
     "check:claims": "node scripts/check-claims.mjs",
-    "check": "npm run check:brand && npm run check:claims && npm run test",
+    "check": "npm run prisma:generate && npm run typecheck && npm run check:brand && npm run check:claims && npm run test",
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "npm run check && vite build --config apps/web/vite.config.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.7",

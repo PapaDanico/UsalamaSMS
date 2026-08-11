@@ -22,10 +22,11 @@ neither can drift from the modules they describe.
 
 ```bash
 npm install
-npm run check          # brand gate, claims gate, then the test suite
+npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 49 contrast assertions, incl. dichromacy simulation
 npm run check:claims   # 40 assertions that the registries match the docs
-npm test               # 40 unit tests
+npm test               # 42 unit tests
+npm run typecheck      # tsc --noEmit, strict
 ```
 
 `npm run build` runs `check` first. A failing gate builds nothing.
@@ -66,7 +67,7 @@ See [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) for the evidence and
 | [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) | The regulatory clock, the AFI safety case, competitor pricing, why SMS implementations fail, and the confidentiality findings |
 | [`docs/02-STRATEGY.md`](docs/02-STRATEGY.md) | Positioning, the aggregate-data fork, module suite by tier, sequencing, commercial model, architecture verdicts, risks |
 | [`docs/04-BRAND.md`](docs/04-BRAND.md) | How the six-colour identity is encoded, the two artwork combinations that are not reproduced and the measurements that condemned them, and why the risk-scale green is almost black |
-| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Six claims with an expiry date — which flag controls each, and the test that stops it rotting |
+| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Seven claims with an expiry date — which flag controls each, and the test that stops it rotting |
 
 ---
 

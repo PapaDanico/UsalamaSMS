@@ -201,7 +201,14 @@ function findResidual(text: string): Array<{ text: string; reason: string }> {
   // Two or more consecutive capitalised words that are not known terms —
   // the shape of a full name the CREW/NAME patterns did not introduce.
   for (const m of text.matchAll(/\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b/g)) {
-    if (COMMON_CAPITALISED.has(m[1]) || COMMON_CAPITALISED.has(m[2])) continue;
+    // Groups are narrowed rather than asserted with `!`. Under
+    // noUncheckedIndexedAccess these are `string | undefined`, and a
+    // non-null assertion here would silence the compiler on the exact
+    // code path that decides whether a reporter's name is flagged.
+    const first = m[1];
+    const second = m[2];
+    if (!first || !second) continue;
+    if (COMMON_CAPITALISED.has(first) || COMMON_CAPITALISED.has(second)) continue;
     push(m[0], "looks like a personal name");
   }
 
@@ -222,9 +229,11 @@ function findResidual(text: string): Array<{ text: string; reason: string }> {
   // spends one click dismissing it, and no name gets through because of
   // where it happened to sit.
   for (const m of text.matchAll(/\b([A-Z][a-z]{3,})\b/g)) {
-    if (COMMON_CAPITALISED.has(m[1])) continue;
-    if (found.some((f) => f.text.includes(m[1]))) continue;
-    push(m[1], "unrecognised capitalised word — may be a surname or place");
+    const word = m[1];
+    if (!word) continue;
+    if (COMMON_CAPITALISED.has(word)) continue;
+    if (found.some((f) => f.text.includes(word))) continue;
+    push(word, "unrecognised capitalised word — may be a surname or place");
   }
 
   // Long digit runs the specific patterns did not claim.

@@ -124,7 +124,46 @@ one asserts a limit no regex removes.
 
 ---
 
-## 5. The stand-in typeface
+## 5. Anonymous reporters authenticate, and the server discards it
+
+**The claim:** a report filed anonymously cannot be traced to the person
+who filed it.
+
+**How it actually works, stated plainly because the difference matters:**
+the reporter authenticates normally. The server verifies they belong to
+the organisation, and then *deliberately does not write* their identity —
+`reporterId` is null, the sync receipt stores neither `userId` nor
+`deviceId`, and the audit entry records the action without the actor.
+
+**Why it expires:** the anonymity rests on **server code continuing to
+behave**, not on the identity being absent. Every new write path that
+touches a report is a new opportunity to persist the token holder by
+accident, exactly as the sync receipt did. The guarantee is one
+`prisma.create` away from being false, forever.
+
+The considered alternative was an unauthenticated endpoint with a
+per-org submission secret, where the identity genuinely never reaches
+the server. It was not chosen: it forfeits rate limiting and abuse
+control on the one endpoint that must stay open, and a shared secret
+distributed to every employee leaks. The trade is real and it was made
+with open eyes.
+
+**The flag:** `isAnonymous` on the report, and the ternaries that read it
+in `apps/api/src/routes.sync.ts`.
+
+**What must happen:** every new write path that touches a `SafetyReport`
+gets a test in `tests/confidentiality.test.ts` asserting it writes no
+identifier when `isAnonymous` is true — added in the same change, not
+afterwards. And when a design partner is live, revisit whether the
+operator trusts server behaviour enough for this to remain the answer.
+
+**The test:** `tests/confidentiality.test.ts` — the source-level guards
+under *"anonymous reporting cannot be reversed by a join"*. They are
+narrow by construction and they only cover the paths that exist today.
+
+---
+
+## 6. The stand-in typeface
 
 **The claim:** `docs/04-BRAND.md` states the licensed geometric sans is
 not in this repository and Inter is a documented stand-in.
@@ -143,7 +182,7 @@ rather than discovered to be a forty-file one.
 
 ---
 
-## 6. The unwritten counts
+## 7. The unwritten counts
 
 **The claim:** charter rule 10 — counts about the product are computed,
 not typed.

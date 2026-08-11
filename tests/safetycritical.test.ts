@@ -126,17 +126,57 @@ describe("regulatory reporting deadlines", () => {
     expect(isProvisional("RW")).toBe(true);
   });
 
-  it("computes status from an injected clock, never a stored value", () => {
+  it("NEVER reports MET for an obligation nobody has discharged", () => {
+    // This test previously asserted MET here, and the implementation
+    // obliged. An unsubmitted Kenyan MOR therefore read "met" for
+    // eighteen of its twenty-four hours — the same class of confident
+    // wrong compliance signal as the 72-hour constant this module
+    // replaced, reintroduced by a missing enum member.
+    const { due, obligation } = reportingDeadline("KE", { occurredAt, awareAt: occurredAt });
+    const opts = { obligation };
+
+    expect(deadlineStatus(due, new Date("2026-08-11T12:00:00Z"), opts)).toBe("PENDING");
+    expect(deadlineStatus(due, new Date("2026-08-12T06:00:00Z"), opts)).toBe("DUE_SOON");
+    expect(deadlineStatus(due, new Date("2026-08-12T11:00:00Z"), opts)).toBe("OVERDUE");
+
+    // The invariant, stated directly: without a submission there is no
+    // hour of the window at which this function may say MET.
+    for (let h = 0; h <= 30; h++) {
+      const now = new Date(occurredAt.getTime() + h * 3_600_000);
+      expect(deadlineStatus(due, now, opts), `hour ${h} reported MET unsubmitted`).not.toBe("MET");
+    }
+  });
+
+  it("scales DUE_SOON to the jurisdiction's own window", () => {
+    // Six flat hours is a nudge inside the EU's 72 and a quarter of
+    // Kenya's 24. Proportional puts the warning at the same point in the
+    // obligation wherever it was filed.
+    const ke = reportingDeadline("KE", { occurredAt, awareAt: occurredAt });
+    const eu = reportingDeadline("EU", { occurredAt, awareAt: occurredAt });
+
+    // Kenya: 24h window, due 12 Aug 10:00Z, so it warns from 04:00Z.
+    expect(deadlineStatus(ke.due, new Date("2026-08-12T03:00:00Z"), { obligation: ke.obligation })).toBe("PENDING");
+    expect(deadlineStatus(ke.due, new Date("2026-08-12T05:00:00Z"), { obligation: ke.obligation })).toBe("DUE_SOON");
+
+    // EU: 72h window, warns with 18h left — not 6.
+    expect(deadlineStatus(eu.due, new Date("2026-08-13T20:00:00Z"), { obligation: eu.obligation })).toBe("DUE_SOON");
+    expect(deadlineStatus(eu.due, new Date("2026-08-13T14:00:00Z"), { obligation: eu.obligation })).toBe("PENDING");
+  });
+
+  it("treats a late submission as OVERDUE, not retroactively met", () => {
     const { due } = reportingDeadline("KE", { occurredAt, awareAt: occurredAt });
-    expect(deadlineStatus(due, new Date("2026-08-11T12:00:00Z"))).toBe("MET");
-    expect(deadlineStatus(due, new Date("2026-08-12T06:00:00Z"))).toBe("DUE_SOON");
-    expect(deadlineStatus(due, new Date("2026-08-12T11:00:00Z"))).toBe("OVERDUE");
     // Submitted in time stays MET even when read long afterwards.
     expect(
       deadlineStatus(due, new Date("2027-01-01T00:00:00Z"), {
         submittedAt: new Date("2026-08-12T09:00:00Z"),
       }),
     ).toBe("MET");
+    // Submitted an hour late does not become compliant by being filed.
+    expect(
+      deadlineStatus(due, new Date("2027-01-01T00:00:00Z"), {
+        submittedAt: new Date("2026-08-12T11:00:00Z"),
+      }),
+    ).toBe("OVERDUE");
   });
 
   it("measures staleness against the publisher's own cycle", () => {

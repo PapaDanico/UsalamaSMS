@@ -178,8 +178,21 @@ export function reportingDeadline(
   };
 }
 
-/** How a deadline stands right now. Computed, never stored. */
-export type DeadlineStatus = "MET" | "DUE_SOON" | "OVERDUE";
+/**
+ * How a deadline stands right now. Computed, never stored.
+ *
+ * PENDING exists because the first version of this type did not have it,
+ * and the omission recreated the bug this whole module was written to
+ * remove. With three states, an unsubmitted report that was not yet due
+ * fell through to `MET` — so a Kenyan MOR read "met" for eighteen of its
+ * twenty-four hours, flipped to `DUE_SOON` for six, and only became
+ * `OVERDUE` once the operator was already non-compliant.
+ *
+ * `MET` is a claim that the obligation has been DISCHARGED. Only a
+ * submission can discharge it. Nothing else in this file is allowed to
+ * return it.
+ */
+export type DeadlineStatus = "MET" | "PENDING" | "DUE_SOON" | "OVERDUE";
 
 /**
  * Status of an outstanding obligation as of `now`.
@@ -193,14 +206,49 @@ export type DeadlineStatus = "MET" | "DUE_SOON" | "OVERDUE";
 export function deadlineStatus(
   due: Date,
   now: Date,
-  options: { submittedAt?: Date; dueSoonHours?: number } = {},
+  options: {
+    submittedAt?: Date;
+    /** The obligation this deadline came from, so DUE_SOON can scale to its window. */
+    obligation?: ReportingObligation;
+    /** Explicit override, in hours. Wins over `obligation`. */
+    dueSoonHours?: number;
+  } = {},
 ): DeadlineStatus {
-  const { submittedAt, dueSoonHours = 6 } = options;
-  if (submittedAt && submittedAt.getTime() <= due.getTime()) return "MET";
+  const { submittedAt, obligation, dueSoonHours } = options;
+
+  // Discharged, and on time. The ONLY path to MET.
+  if (submittedAt) {
+    return submittedAt.getTime() <= due.getTime() ? "MET" : "OVERDUE";
+  }
+
+  // Not submitted, and the window has closed.
   if (now.getTime() > due.getTime()) return "OVERDUE";
-  if (due.getTime() - now.getTime() <= dueSoonHours * 3_600_000) return "DUE_SOON";
-  return "MET";
+
+  // Outstanding. The warning threshold is a QUARTER OF THE OBLIGATION'S
+  // OWN WINDOW rather than a flat number of hours, because the windows
+  // differ by jurisdiction: six hours of the EU's 72 is a gentle nudge,
+  // and six hours of Kenya's 24 is a quarter of the total already gone
+  // before anyone is told. Proportional means the warning lands at the
+  // same point in the obligation wherever it was filed.
+  //
+  // The window length cannot be derived from `due` and `now` — that was
+  // the first attempt and it silently reduced to nonsense — so the
+  // obligation is passed in, and a caller who supplies neither gets a
+  // documented flat default rather than a guess.
+  const windowMs = dueSoonHours !== undefined
+    ? dueSoonHours * 3_600_000
+    : obligation
+      ? obligation.hours * DUE_SOON_FRACTION * 3_600_000
+      : DEFAULT_DUE_SOON_HOURS * 3_600_000;
+
+  return due.getTime() - now.getTime() <= windowMs ? "DUE_SOON" : "PENDING";
 }
+
+/** Fraction of an obligation's window at which it starts warning. */
+const DUE_SOON_FRACTION = 0.25;
+
+/** Flat fallback when the caller supplies neither an obligation nor hours. */
+const DEFAULT_DUE_SOON_HOURS = 6;
 
 /**
  * Whether a row has outlived its publisher's own revision cycle.

@@ -13,9 +13,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Prisma 7 no longer accepts `url` here — the connection lives in
+// prisma.config.ts, and the client takes an adapter. The schema had both,
+// which is not a style disagreement: `prisma generate` refuses to run,
+// so the client was never generated, so `tsc` could not resolve
+// PrismaClient, so twelve of the thirteen type errors in this repository
+// were one line in this file.
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
