@@ -21,6 +21,10 @@ import { router } from './shared/router.js';
 import { registerServiceWorker, listenForFlushRequests } from './shared/register-sw.js';
 import { syncStatus, flushOutbox } from './shared/offline.ts';
 import { resumeSession } from './shared/session.js';
+import {
+  MOR_OBLIGATIONS,
+  isProvisional
+} from '../../../packages/shared/src/regulations.ts';
 import { watchForInstall, offerUpdate } from './shared/prompts.js';
 import { render as renderReport } from './tools/report/index.js';
 import { render as renderTriage } from './tools/triage/index.js';
@@ -36,45 +40,107 @@ document.getElementById('footer-logo-slot').innerHTML = Lockup({ height: 30 }).t
    inline in the top bar. Two lists would drift, and the one that
    drifted would be the one nobody was looking at. */
 const DESTINATIONS = [
-  {
-    href: '/',
-    label: 'Report',
-    // 24px stroke icons, drawn inline so the shell has no icon-font and
-    // no sprite request on a cold start over a bad link.
-    icon: '<path d="M15 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M15 3v4h4"/><path d="M12 11v6M9 14h6"/>'
-  },
-  {
-    href: '/triage',
-    label: 'Triage',
-    icon: '<path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="17" r="3"/>'
-  },
-  {
-    href: '/account',
-    label: 'Account',
-    icon: '<circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>'
-  }
+  { href: '/', label: 'File a report', hint: 'Two fields, thirty seconds, works with no signal' },
+  { href: '/triage', label: 'Triage', hint: 'Everything filed on this device, sent or not' },
+  { href: '/account', label: 'Account', hint: 'Sign in so queued reports can send' },
+  { href: '/design', label: 'Design system', hint: 'The brand rendered against the real modules' }
 ];
 
-document.getElementById('nav').innerHTML = html`
-  ${DESTINATIONS.map((d) => html`<a href="${d.href}">${d.label}</a>`)}
-  <a href="/design">Design</a>
-`.toString();
+/* Inline on a wide screen. Short labels here — the header has room for
+   four words, not for four sentences. */
+document.getElementById('nav').innerHTML = DESTINATIONS.map(
+  (d) => html`<a href="${d.href}">${d.label.replace('File a report', 'Report')}</a>`
+).join('');
 
-document.getElementById('tabbar').innerHTML = DESTINATIONS.map(
-  (d) => html`<a href="${d.href}">
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        ${raw(d.icon)}
-      </svg>
-      <span>${d.label}</span>
+/* ============================================================
+   THE MENU IS THE NAVIGATION, and it lives in the header.
+
+   This shipped with a bottom tab bar, on the argument that a thumb
+   cannot reach the top of a 6.7-inch screen. That argument is real and
+   it lost to a plainer one: the header is where a person looks for the
+   way around, the footer was repeating the same four links as a second
+   menu, and neither was telling them anything. Kanda puts Menu in the
+   header; so does this now, and the footer becomes information.
+
+   The panel carries a HINT per destination, which the tab bar could
+   never have shown. "Triage" means nothing to somebody on their first
+   shift; "everything filed on this device, sent or not" does.
+   ============================================================ */
+const menuPanel = document.getElementById('menu-panel');
+const menuToggle = document.getElementById('menu-toggle');
+
+menuPanel.innerHTML = DESTINATIONS.map(
+  (d) => html`<a class="nav-item" href="${d.href}">
+      <span class="nav-item-title">${d.label}</span>
+      <span class="nav-item-summary">${d.hint}</span>
     </a>`
 ).join('');
+
+function setMenu(open) {
+  menuPanel.hidden = !open;
+  menuToggle.setAttribute('aria-expanded', String(open));
+}
+
+menuToggle.addEventListener('click', () => setMenu(menuPanel.hidden));
+
+/* Close on anything that means "I am done here": a destination chosen,
+   a click outside, or Escape. A panel that only closes by pressing the
+   same button again is one people leave open and then tap through. */
+menuPanel.addEventListener('click', (event) => {
+  if (event.target.closest('a')) setMenu(false);
+});
+
+document.addEventListener('click', (event) => {
+  if (menuPanel.hidden) return;
+  if (event.target.closest('#menu-panel, #menu-toggle')) return;
+  setMenu(false);
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !menuPanel.hidden) {
+    setMenu(false);
+    menuToggle.focus();
+  }
+});
+
+/* ============================================================
+   THE FOOTER'S REGULATORY ROWS, COMPUTED.
+
+   Charter rule 10: counts and claims about the product are derived, not
+   typed. A footer that stated "Kenya: 24 hours" as prose would be a
+   fifth place the number lives, and the one nobody would think to
+   update — which is precisely how the original 72-hour error survived.
+   These rows read MOR_OBLIGATIONS, the same registry the countdown on
+   the report form reads.
+   ============================================================ */
+const regList = document.getElementById('footer-regulations');
+const jurisdictions = Object.keys(MOR_OBLIGATIONS);
+
+regList.innerHTML = jurisdictions
+  .map((code) => {
+    const o = MOR_OBLIGATIONS[code];
+    return html`<div class="reg-list__row">
+        <dt>
+          ${o.authority}
+          ${isProvisional(code) ? html`<span class="tag tag--provisional">Provisional</span>` : ''}
+        </dt>
+        <dd>
+          <strong>${o.hours} hours</strong> from
+          ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·
+          <span class="reg-list__source">${o.instrument}</span>
+        </dd>
+      </div>`;
+  })
+  .join('');
+
+/* Named rather than left for someone to notice. A provisional row is
+   the highest-risk claim in the product — switch 1 — and the footer is
+   where a safety manager checking a deadline would look for the caveat. */
+const provisional = jurisdictions.filter(isProvisional);
+document.getElementById('footer-provisional').textContent = provisional.length
+  ? `${provisional.join(', ')} carry the ICAO-common figure pending a read of the ` +
+    `primary instrument, and are marked provisional wherever they appear.`
+  : 'Every row above has been read against its primary instrument.';
 
 /* Reveal the shell and retire the boot screen. Done here rather than in
    CSS so the swap happens when the app can actually render, not when
@@ -133,7 +199,7 @@ router
 /* Mark the current route in the nav after every navigation. */
 function markCurrentNav() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
-  for (const link of document.querySelectorAll('#nav a, #tabbar a, .site-footer__links a')) {
+  for (const link of document.querySelectorAll('#nav a, #menu-panel a')) {
     const active = link.getAttribute('href') === path;
     link.toggleAttribute('data-current', active);
     // aria-current is what a screen reader announces; the attribute
@@ -174,7 +240,10 @@ const MESSAGES = {
    needs to know something is waiting, and the tab they would go to is
    the one that should say so. */
 function renderTabBadge(pending) {
-  const tab = document.querySelector('.tabbar a[href="/triage"]');
+  // On the MENU BUTTON now, not on a tab. It is the only navigation
+  // affordance on a handset, so it is the only place a count can be
+  // seen without opening something.
+  const tab = document.getElementById('menu-toggle');
   if (!tab) return;
   tab.querySelector('.tabbar__badge')?.remove();
   if (pending <= 0) return;

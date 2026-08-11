@@ -102,16 +102,34 @@
     <a class="skip-link" href="#main">Skip to content</a>
 
     <div class="app-shell" id="app-shell" hidden>
-      <header class="topbar" id="topbar">
+      <header class="nav-bar" id="topbar">
         <!-- The Logo component renders its own <a href="/">, so this is
              a plain wrapper. Nesting anchors is invalid and Chromium
              silently un-nests them, which moves the click target. -->
-        <div class="topbar__brand" id="logo-slot"></div>
+        <div class="nav-logo" id="logo-slot"></div>
 
-        <!-- Inline on a wide screen only. On a handset the destinations
-             live in the bottom bar, where a thumb is. -->
-        <nav class="topnav" id="nav" aria-label="Main"></nav>
+        <div class="nav-right">
+          <!-- Inline on a wide screen; behind Menu on a handset. -->
+          <nav class="nav-links" id="nav" aria-label="Main"></nav>
+
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm nav-menu-toggle"
+            id="menu-toggle"
+            aria-expanded="false"
+            aria-controls="menu-panel"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+            <span>Menu</span>
+          </button>
+        </div>
       </header>
+
+      <!-- Written by the shell, closed until asked for. -->
+      <nav class="nav-panel" id="menu-panel" aria-label="Primary" hidden></nav>
 
       <!-- Charter rule 8, extended: the sync state is chrome, not a
            notification. A report that has not reached anyone has not been
@@ -134,35 +152,57 @@
       <!-- The router writes here. -->
       <main id="main" class="page" tabindex="-1"></main>
 
-      <footer class="site-footer">
+      <!-- ============================================================
+           THE FOOTER IS INFORMATION, NOT A SECOND NAVIGATION.
+
+           It used to repeat the four destinations that are already in
+           the header, which is a menu drawn twice and told nobody
+           anything. What belongs at the bottom of a compliance tool is
+           the basis of its numbers: which instrument each deadline comes
+           from, when that instrument was last read, and which rows are
+           still provisional.
+
+           The regulatory rows are RENDERED FROM MOR_OBLIGATIONS by the
+           shell rather than written here — charter rule 10, and the only
+           way a footer citing a 24-hour obligation cannot drift from the
+           engine that computes it.
+           ============================================================ -->
+      <footer class="footer">
         <div class="container">
-          <div class="site-footer__brand">
+          <div class="footer-brand">
             <span id="footer-logo-slot"></span>
-            <p class="site-footer__line">
+            <p class="footer-line">
               Aviation safety management for the operators the incumbents
-              priced out. Built against ICAO Annex 19 Amendment 2, applicable
-              <time datetime="2026-11-26">26 November 2026</time>.
+              priced out. Reports are held on the device that files them and
+              reach the safety office of that operator and nobody else.
             </p>
           </div>
 
-          <nav class="site-footer__links" aria-label="Secondary">
-            <a href="/">File a report</a>
-            <a href="/triage">Triage</a>
-            <a href="/account">Account</a>
-            <a href="/design">Design system</a>
-          </nav>
+          <section class="footer-block">
+            <h2 class="section-title">Reporting deadlines in force</h2>
+            <!-- Filled from the regulatory registry at runtime. -->
+            <dl class="reg-list" id="footer-regulations"></dl>
+            <p class="footer-note" id="footer-provisional"></p>
+          </section>
 
-          <p class="site-footer__legal">
-            UsalamaSMS · Regulatory figures dated
+          <section class="footer-block">
+            <h2 class="section-title">Standard</h2>
+            <p class="footer-line">
+              Built against <strong>ICAO Annex 19 Amendment 2</strong>, applicable
+              <time datetime="2026-11-26">26 November 2026</time>, with Doc 10159
+              on safety intelligence and the Doc 9859 risk classification behind
+              the matrix.
+            </p>
+          </section>
+
+          <p class="footer-legal">
+            UsalamaSMS · Safety intelligence for African skies ·
+            Regulatory figures verified
             <time datetime="2026-08-11">11 August 2026</time>
           </p>
         </div>
       </footer>
 
-      <!-- Bottom tab bar: handsets only. A ramp agent is holding the
-           phone one-handed with gloves on, and the top of a 6.7&Prime;
-           screen is not reachable with a thumb. -->
-      <nav class="tabbar" id="tabbar" aria-label="Primary"></nav>
     </div>
 
     <div class="boot" id="boot">

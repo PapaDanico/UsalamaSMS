@@ -300,14 +300,14 @@ function row(r) {
         ? html`<div class="queue__actions">
             <button
               type="button"
-              class="btn btn--secondary btn--sm"
+              class="btn btn-secondary btn-sm"
               data-retry="${r.clientId}"
             >
               Try again
             </button>
             <button
               type="button"
-              class="btn btn--ghost btn--sm"
+              class="btn btn-ghost btn-sm"
               data-copy="${r.clientId}"
             >
               Copy text

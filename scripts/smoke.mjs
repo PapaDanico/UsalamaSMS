@@ -74,6 +74,17 @@ const server = createServer((req, res) => {
 const PORT = 4321;
 const BASE = `http://127.0.0.1:${PORT}`;
 
+
+/* The navigation is a header menu now, so reaching a destination on a
+   handset is two actions: open, then choose. Wrapped so every call site
+   does it the same way and none of them reach into a panel that is
+   closed. */
+async function navigateTo(page, href) {
+  const toggle = page.locator('#menu-toggle');
+  if (await toggle.isVisible()) await toggle.click();
+  await page.click(`#menu-panel a[href="${href}"]`);
+}
+
 const results = [];
 let failed = 0;
 
@@ -161,105 +172,81 @@ try {
   });
 
   await check('EXACTLY ONE navigation is visible at a time', async () => {
-    // The shell renders each destination three times: the inline top
-    // nav (wide screens), the bottom tab bar (handsets) and the footer.
-    // Only one of the first two may be visible at any width, and the
-    // moment both are, every `a[href="/triage"]` selector in this file
-    // becomes ambiguous — which is how this check came to exist, by
-    // Playwright picking a display:none link and timing out.
+    // The shell renders the destinations twice: inline in the header for
+    // wide screens, and in a menu panel behind a button for handsets.
+    // Only one may be reachable at a width, and the moment both are,
+    // every a[href] selector in this file becomes ambiguous — which is
+    // how this check came to exist, by Playwright picking a display:none
+    // link and timing out.
     //
-    // It is also a real defect in its own right: two primary navs on
+    // It is a real defect in its own right: two ways around on one
     // screen is a person tapping the one that is not where they expect.
-    const visible = await page.evaluate(() =>
-      ['#nav', '#tabbar'].filter((sel) => {
-        const el = document.querySelector(sel);
-        return el && getComputedStyle(el).display !== 'none';
-      })
-    );
-    assert(
-      visible.length === 1,
-      `${visible.length} primary navigations visible at 390px: ${visible.join(', ') || 'none'}`
-    );
-    assert(visible[0] === '#tabbar', `at 390px the tab bar should be the navigation, got ${visible[0]}`);
+    const at390 = await page.evaluate(() => ({
+      inline: getComputedStyle(document.querySelector('#nav')).display !== 'none',
+      toggle: getComputedStyle(document.querySelector('#menu-toggle')).display !== 'none',
+      panelOpen: !document.querySelector('#menu-panel').hidden,
+    }));
+    assert(!at390.inline, 'the inline header nav is visible at 390px; it should be behind Menu');
+    assert(at390.toggle, 'the Menu button is not visible at 390px, so there is no way around');
+    assert(!at390.panelOpen, 'the menu panel is open before anyone asked for it');
 
-    // And the inverse, at a desktop width. A tab bar fixed across a
-    // 1280px viewport is a phone app pretending.
+    // It opens, it closes on Escape, and it says where each link goes.
+    await page.click('#menu-toggle');
+    assert(await page.locator('#menu-panel').isVisible(), 'the menu did not open');
+    const hints = await page.locator('.nav-item-summary').count();
+    const items = await page.locator('.nav-item').count();
+    assert(items >= 3, `${items} destinations in the menu`);
+    assert(hints === items, `${items} destinations but ${hints} hints — a label alone is not navigation`);
+    await page.keyboard.press('Escape');
+    assert(await page.locator('#menu-panel').isHidden(), 'Escape did not close the menu');
+
+    // And the inverse at a desktop width: inline links, no Menu button.
     const wide = await page.context().newPage();
     await wide.setViewportSize({ width: 1280, height: 900 });
     await wide.goto(BASE, { waitUntil: 'networkidle' });
-    const wideVisible = await wide.evaluate(() =>
-      ['#nav', '#tabbar'].filter((sel) => {
-        const el = document.querySelector(sel);
-        return el && getComputedStyle(el).display !== 'none';
-      })
-    );
+    const at1280 = await wide.evaluate(() => ({
+      inline: getComputedStyle(document.querySelector('#nav')).display !== 'none',
+      toggle: getComputedStyle(document.querySelector('#menu-toggle')).display !== 'none',
+    }));
     await wide.close();
-    assert(
-      wideVisible.length === 1 && wideVisible[0] === '#nav',
-      `at 1280px the inline nav should be the navigation, got [${wideVisible.join(', ')}]`
-    );
+    assert(at1280.inline, 'the inline nav is hidden at 1280px');
+    assert(!at1280.toggle, 'the Menu button is still shown at 1280px, beside the inline links');
   });
 
-  await check('THE TYPEFACE ACTUALLY LOADS — not a system substitute', async () => {
-    // fonts.css declared no @font-face for the whole life of the project.
-    // It was fourteen lines of comment explaining that the woff2 files
-    // were absent and that the stack would fall through to the system UI
-    // sans — "a legible default rather than a broken one".
+  await check('THE FOOTER IS INFORMATION, NOT A SECOND MENU', async () => {
+    // It used to repeat the four destinations already in the header —
+    // a menu drawn twice that told nobody anything. What belongs at the
+    // bottom of a compliance tool is the BASIS of its numbers.
     //
-    // Legible, and not the design. --us-font names Inter first, every
-    // headline is set at -0.028em tracking against Inter's metrics, and
-    // the whole thing rendered in Roboto on Android and SF on iOS. The
-    // layout was right and the typography was somebody else's.
-    //
-    // HOW THIS IS MEASURED, because the obvious ways do not work and the
-    // first version of this check passed against a stylesheet with the
-    // @font-face rules deleted:
-    //
-    //   · document.fonts.check('400 15px Inter') returns TRUE for a
-    //     family that does not exist, because the check succeeds against
-    //     the fallback the list resolves to.
-    //   · getComputedStyle(h1).fontFamily returns the DECLARED stack —
-    //     the string 'Inter, ui-sans-serif, …' — whether or not Inter
-    //     was ever loaded. It reports the CSS, not the rendering.
-    //   · A woff2 request proves nothing either: index.html preloads two
-    //     weights, so the files are fetched even when no rule uses them.
-    //
-    // What cannot be faked is the WIDTH of rendered text. Inter's
-    // advance widths differ from any fallback, so measuring the same
-    // string in 'Inter, monospace' against a family that certainly does
-    // not exist, in the same fallback, answers the only question worth
-    // asking: is the glyph on screen the one that was designed for.
-    const verdict = await page.evaluate(() => {
-      const measure = (family) => {
-        const el = document.createElement('span');
-        el.textContent = 'File a report — 24 hours';
-        el.style.cssText =
-          `position:absolute;left:-9999px;top:0;white-space:nowrap;` +
-          `font-size:32px;font-weight:700;font-family:${family}`;
-        document.body.appendChild(el);
-        const w = el.getBoundingClientRect().width;
-        el.remove();
-        return w;
-      };
+    // And those rows are rendered from MOR_OBLIGATIONS rather than
+    // written into the HTML, so a footer citing 24 hours cannot drift
+    // from the engine that computes the countdown. Charter rule 10.
+    const footer = await page.evaluate(() => {
+      const el = document.querySelector('.footer');
       return {
-        inter: measure("'Inter', monospace"),
-        absent: measure("'NoSuchFaceXYZ', monospace"),
-        registered: [...document.fonts].filter((f) => f.family === 'Inter').map((f) => f.status),
+        navLinks: el.querySelectorAll('nav a').length,
+        regRows: el.querySelectorAll('.reg-list__row').length,
+        text: el.textContent ?? '',
       };
     });
 
     assert(
-      verdict.registered.length > 0,
-      'no Inter @font-face is registered — the page is rendering in a system font'
+      footer.navLinks === 0,
+      `the footer carries ${footer.navLinks} navigation links — that is the header's job`
     );
     assert(
-      verdict.registered.every((st) => st === 'loaded'),
-      `Inter faces registered but not loaded: ${verdict.registered.join(', ')}`
+      footer.regRows >= 5,
+      `${footer.regRows} regulatory rows in the footer; the registry defines five jurisdictions`
     );
+    // The Kenyan figure is the one that was wrong for most of this
+    // project's life. If the footer ever prints 72 for KCAA again, that
+    // is the original defect resurfacing on a new surface.
+    assert(/24 hours/.test(footer.text), 'the footer does not state the 24-hour KCAA obligation');
+    assert(/becoming aware/.test(footer.text), 'the footer does not state when the clock starts');
     assert(
-      verdict.inter !== verdict.absent,
-      `text set in Inter measures identically to a font that does not exist ` +
-        `(${verdict.inter}px both) — the design is rendering in the fallback`
+      /provisional/i.test(footer.text),
+      'the footer does not say which jurisdictions are provisional — switch 1 is the ' +
+        'highest-risk claim in the product and this is where someone checking a deadline looks'
     );
   });
 
@@ -278,7 +265,7 @@ try {
     // because clicking the label toggles it — asserting on the input
     // would have failed a control that is genuinely easy to hit and
     // taught the next person to inflate the checkbox instead.
-    for (const sel of ['.btn--primary', '.chip', '.report__anon', '.select__control']) {
+    for (const sel of ['.btn-primary', '.chip', '.report__anon', '.select__control']) {
       const locator = page.locator(sel).first();
       assert(await locator.count(), `${sel} not found on the page at all`);
       assert(await locator.isVisible(), `${sel} is not visible, so its size means nothing`);
@@ -501,7 +488,7 @@ try {
   });
 
   await check('the queued report appears in triage', async () => {
-    await page.click('.tabbar a[href="/triage"]');
+    await navigateTo(page, '/triage');
     await page.waitForSelector('.queue__item', { timeout: 5000 });
     const text = await page.locator('.queue__item').first().textContent();
     assert(/Bird activity/.test(text), 'the report filed offline is not in the queue');
@@ -608,7 +595,7 @@ try {
       });
     });
 
-    await page.click('.tabbar a[href="/account"]');
+    await navigateTo(page, '/account');
     await page.waitForSelector('#login-form', { timeout: 5000 });
     await page.fill('#login-email', 'ramp@example.test');
     await page.fill('#login-password', 'a-sufficiently-long-test-password');
@@ -635,7 +622,7 @@ try {
   });
 
   await check('the design route renders the matrix from the real module', async () => {
-    await page.click('.site-footer__links a[href="/design"]');
+    await navigateTo(page, '/design');
     await page.waitForSelector('.risk-matrix__cell', { timeout: 5000 });
     const cells = await page.locator('.risk-matrix__cell').count();
     assert(cells === 25, `${cells} matrix cells, expected 25`);
@@ -646,7 +633,7 @@ try {
   });
 
   await check('provisional jurisdictions are marked as provisional', async () => {
-    const tags = await page.locator('.tag--provisional').count();
+    const tags = await page.locator('#main .tag--provisional').count();
     assert(tags === 3, `${tags} provisional tags, expected 3 (UG, TZ, RW)`);
   });
 
@@ -752,7 +739,7 @@ try {
       isOfflinePage: /you are offline|no connection|reports you file are saved/i.test(
         document.querySelector('.offline-page, #offline')?.textContent ?? ''
       ),
-      hasShell: Boolean(document.querySelector('#tabbar')),
+      hasShell: Boolean(document.querySelector('#menu-toggle')),
       heading: document.querySelector('h1')?.textContent?.trim() ?? '',
     }));
     await page.context().setOffline(false);

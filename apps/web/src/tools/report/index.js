@@ -84,7 +84,7 @@ export function render(outlet) {
       })}
 
       <label class="field">
-        <span class="field__label">In one line, what happened?</span>
+        <span class="field-label">In one line, what happened?</span>
         <input
           name="title"
           maxlength="200"
@@ -92,19 +92,19 @@ export function render(outlet) {
           autocomplete="off"
           value="${draft.title ?? ''}"
           placeholder="Bird activity on short final, runway 06"
-        />
+        class="input-field"/>
       </label>
 
       <label class="field">
-        <span class="field__label">Tell us more</span>
+        <span class="field-label">Tell us more</span>
         <textarea
           name="narrative"
           rows="6"
           maxlength="20000"
           required
           placeholder="What you saw, when, and anything that made it more or less likely."
-        >${draft.narrative ?? ''}</textarea>
-        <span class="field__hint" id="narrative-count"></span>
+        class="input-field">${draft.narrative ?? ''}</textarea>
+        <span class="field-hint" id="narrative-count"></span>
       </label>
 
       <!-- FROM THE OPERATOR'S OWN HAZARD REPORT FORM, where "Reporter's
@@ -115,13 +115,13 @@ export function render(outlet) {
            Above the optional block rather than inside it: it is the last
            thing the reporter has to say, not an extra detail. -->
       <label class="field">
-        <span class="field__label">What do you think should be done?</span>
+        <span class="field-label">What do you think should be done?</span>
         <textarea
           name="reporterRecommendation"
           rows="3"
           maxlength="2000"
           placeholder="Optional. Even a rough idea is useful — you were there."
-        >${draft.reporterRecommendation ?? ''}</textarea>
+        class="input-field">${draft.reporterRecommendation ?? ''}</textarea>
       </label>
 
       <!-- Everything below the fold is optional and is marked as such,
@@ -131,9 +131,9 @@ export function render(outlet) {
         <summary>Add detail (optional)</summary>
 
         <label class="field">
-          <span class="field__label">When did it happen?</span>
-          <input type="datetime-local" name="occurredAt" value="${draft.occurredAt ?? ''}" />
-          <span class="field__hint" id="deadline-hint"></span>
+          <span class="field-label">When did it happen?</span>
+          <input type="datetime-local" name="occurredAt" value="${draft.occurredAt ?? ''}" class="input-field"/>
+          <span class="field-hint" id="deadline-hint"></span>
         </label>
 
         ${Select({
@@ -195,7 +195,7 @@ export function render(outlet) {
                     name="hrcTags"
                     value="${c.code}"
                     ${(draft.hrcTags ?? []).includes(c.code) ? raw('checked') : ''}
-                  />
+                  class="input-field"/>
                   <span>${c.label}</span>
                 </label>
               `
@@ -213,7 +213,7 @@ export function render(outlet) {
       </div>
 
       <label class="report__anon">
-        <input type="checkbox" name="isAnonymous" ${draft.isAnonymous ? raw('checked') : ''} />
+        <input type="checkbox" name="isAnonymous" ${draft.isAnonymous ? raw('checked') : ''} class="input-field"/>
         <span>
           <strong>File this anonymously</strong>
           <small>
@@ -226,7 +226,7 @@ export function render(outlet) {
       </label>
 
       <div class="report__actions">
-        <button type="submit" class="btn btn--primary btn--block">Send report</button>
+        <button type="submit" class="btn btn-primary btn-block">Send report</button>
         <p class="report__status" id="report-status" role="status" aria-live="polite"></p>
       </div>
     </form>

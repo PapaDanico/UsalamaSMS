@@ -58,7 +58,7 @@ const TRUST = [
 
 function Banner(headline, lede) {
   return html`
-    <section class="band-ink">
+    <section class="band band-ink">
       <div class="container">
         <!-- No lockup here. Kanda's hero carries one because its nav
              lockup is small and a hundred pixels of scroll away; ours is
@@ -68,9 +68,9 @@ function Banner(headline, lede) {
         <h1>${headline}</h1>
         <p class="lede">${lede}</p>
 
-        <ul class="trust">
+        <ul class="trust-strip">
           ${TRUST.map(
-            (t) => html`<li class="trust__item">
+            (t) => html`<li class="trust-item">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 ${raw(t.icon)}
@@ -99,7 +99,7 @@ function renderSignedIn(outlet) {
         : ''}`
     )}
     <section class="panel container" id="login-panel">
-      <button type="button" class="btn btn--secondary" id="sign-out">Sign out</button>
+      <button type="button" class="btn btn-secondary" id="sign-out">Sign out</button>
       <p class="hint">
         Signing out does not delete anything you have filed. Reports still
         on this device stay here until someone signs in and they send.
@@ -130,24 +130,24 @@ function renderForm(outlet) {
 
       <form id="login-form" class="card" novalidate>
         <label class="field">
-          <span class="field__label">Email</span>
+          <span class="field-label">Email</span>
           <input
             type="email" name="email" id="login-email"
             autocomplete="username" inputmode="email"
             autocapitalize="off" spellcheck="false" required
-          />
+          class="input-field"/>
         </label>
 
         <label class="field">
-          <span class="field__label">Password</span>
+          <span class="field-label">Password</span>
           <input
             type="password" name="password" id="login-password"
             autocomplete="current-password" required
-          />
+          class="input-field"/>
         </label>
 
-        <button type="submit" class="btn btn--primary btn--block">Sign in</button>
-        <p class="field__error" id="login-status" role="status" aria-live="polite"></p>
+        <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+        <p class="field-error" id="login-status" role="status" aria-live="polite"></p>
       </form>
     </section>
   `.toString();
