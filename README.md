@@ -57,7 +57,7 @@ npm install
 npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:claims   # 49 assertions that the registries match the docs
-npm test               # 102 unit tests
+npm test               # 104 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run test:integration   # 52 checks against a real Postgres

@@ -152,6 +152,29 @@ describe("the residual detector stays readable", () => {
       });
     }
 
+    it("DOES NOT redact ordinary English that looks like a weekday", () => {
+      // The regression this exists for. A weekday pattern accepting the
+      // three-letter abbreviations case-insensitively redacted "sat",
+      // "sun" and "wed" — and "sun glare on short final" is one of the
+      // most common sentences in an approach report.
+      for (const sentence of [
+        "The aircraft sat on stand 4 for two hours.",
+        "The sun was low and glare affected the approach.",
+        "Sun glare on short final made the PAPI hard to read.",
+        "The tug was wed to the nose gear.",
+      ]) {
+        expect(deIdentify(sentence).text, `over-scrubbed: ${sentence}`).toBe(sentence);
+      }
+    });
+
+    it("still redacts a written weekday", () => {
+      // And the counter-test, so narrowing the pattern cannot quietly
+      // become deleting it.
+      const result = deIdentify("It happened on Tuesday during the night shift.");
+      expect(result.text).not.toContain("Tuesday");
+      expect(result.text).toContain("[DAY]");
+    });
+
     it("still redacts a REAL flight number beside a glossary term", () => {
       // The counter-test. A safe-list that swallowed every capitalised
       // token would pass all of the above and remove nothing at all,

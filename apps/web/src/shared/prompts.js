@@ -128,14 +128,12 @@ export function watchForInstall() {
  */
 export function offerUpdate(registration) {
   if (isComposing()) {
-    // Try again when they are not typing. `input` rather than a timer:
-    // the moment that matters is when the form empties, which happens
-    // on submit.
-    document.addEventListener(
-      'usalamasms:report-filed',
-      () => offerUpdate(registration),
-      { once: true }
-    );
+    /* Try again when the form empties, which happens on submit.
+       ON WINDOW ONLY. This registered the same listener on `document`
+       as well, and report/index.js dispatches on `window` — so the
+       document listener could never fire and, being {once:true}, was
+       never removed either. A listener that cannot fire is not a
+       fallback; it is a leak that reads like caution. */
     window.addEventListener('usalamasms:report-filed', () => offerUpdate(registration), {
       once: true,
     });

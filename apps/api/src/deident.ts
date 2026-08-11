@@ -206,10 +206,30 @@ const DEIDENT_PATTERNS: ReadonlyArray<Pattern> = [
   },
   /* A BARE WEEKDAY. "on Tuesday", "the Friday night shift".
      Weaker than a date and still a roster narrower on an operation with
-     one aircraft and a six-person crew list. */
+     one aircraft and a six-person crew list.
+
+     FULL NAMES ONLY, and this is the whole point of the rule. The first
+     version accepted the three-letter abbreviations case-insensitively,
+     which is how it managed to redact these:
+
+       "The aircraft SAT on stand 4 for two hours."
+       "The SUN was low and glare affected the approach."
+       "SUN glare on short final made the PAPI hard to read."
+       "The tug was WED to the nose gear."
+
+     Sat, Sun, Wed and Mar are ordinary English words, and "sun glare on
+     short final" is one of the most common sentences in an approach
+     report. This module's own header says over-scrubbing does not fail
+     safe — it destroys the only reason the report was shared, while
+     looking like caution — and the abbreviation list did exactly that
+     within an hour of being written.
+
+     "Monday" is never another word. "Mon" is. So: full names, and a
+     reporter who writes "Tue" keeps their Tuesday, which is the safe
+     direction to be wrong in. */
   {
     category: "DATE",
-    pattern: /\b(?:Mon|Tues?|Wed(?:nes)?|Thur?s?|Fri|Sat(?:ur)?|Sun)(?:day)?\b/gi,
+    pattern: /\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/gi,
     replacement: "[DAY]",
   },
   // Zulu / local times, which narrow a shift roster to one crew.

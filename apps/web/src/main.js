@@ -168,11 +168,33 @@ const MESSAGES = {
     `${n} report${n === 1 ? '' : 's'} on this device cannot be sent until someone signs in`
 };
 
+/* The unsent count, on the Triage tab.
+   `.tabbar__badge` was styled and rendered by nothing — dead CSS for a
+   job worth doing. A person who has navigated away from the strip still
+   needs to know something is waiting, and the tab they would go to is
+   the one that should say so. */
+function renderTabBadge(pending) {
+  const tab = document.querySelector('.tabbar a[href="/triage"]');
+  if (!tab) return;
+  tab.querySelector('.tabbar__badge')?.remove();
+  if (pending <= 0) return;
+
+  const badge = document.createElement('span');
+  badge.className = 'tabbar__badge';
+  // 9+ rather than a three-digit number that overflows its own pill.
+  badge.textContent = pending > 9 ? '9+' : String(pending);
+  // The number alone is not an accessible label — "3" beside "Triage"
+  // announces as "Triage 3", which is not what it means.
+  badge.setAttribute('aria-label', `${pending} report${pending === 1 ? '' : 's'} waiting to send`);
+  tab.appendChild(badge);
+}
+
 export async function renderSyncState() {
   try {
     const { state, pending, errored } = await syncStatus();
     strip.dataset.state = state;
     stripText.textContent = MESSAGES[state](pending, errored);
+    renderTabBadge(pending);
   } catch {
     // A failed status read must not blank the strip: silence here looks
     // identical to "everything is sent", which is the one thing it must
