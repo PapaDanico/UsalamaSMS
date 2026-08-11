@@ -66,16 +66,19 @@ npm run seed               # first org + users; prints passwords once
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 26 checks, including filing a report with the network cut and
+— 27 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 
-Bundle: **165 KB JS + 8.7 KB CSS** (51 KB + 2.4 KB gzipped), against a
-200 KB budget the build enforces. Two runtime dependencies earn their
-weight: Dexie holds the outbox, and zod validates on the device with the
-*same schema the server uses* — a report rejected server-side after
-three days offline is unfixable, because the person who wrote it has
-forgotten the detail.
+Bundle: **202 KB entry JS + 30 KB CSS**, which is **65 KB over the wire**
+gzipped, against budgets the build enforces and refuses to raise
+silently. Plus 96 KB of self-hosted Inter — four weights, latin subset,
+precached by the service worker so the second load is offline too.
+
+Two runtime dependencies earn their weight: Dexie holds the outbox, and
+zod validates on the device with the *same schema the server uses* — a
+report rejected server-side after three days offline is unfixable,
+because the person who wrote it has forgotten the detail.
 
 The risk matrix and the regulatory engine are still pure, zod-free
 modules, so anything that needs only the matrix can import it without

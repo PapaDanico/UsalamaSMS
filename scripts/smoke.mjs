@@ -200,6 +200,69 @@ try {
     );
   });
 
+  await check('THE TYPEFACE ACTUALLY LOADS — not a system substitute', async () => {
+    // fonts.css declared no @font-face for the whole life of the project.
+    // It was fourteen lines of comment explaining that the woff2 files
+    // were absent and that the stack would fall through to the system UI
+    // sans — "a legible default rather than a broken one".
+    //
+    // Legible, and not the design. --us-font names Inter first, every
+    // headline is set at -0.028em tracking against Inter's metrics, and
+    // the whole thing rendered in Roboto on Android and SF on iOS. The
+    // layout was right and the typography was somebody else's.
+    //
+    // HOW THIS IS MEASURED, because the obvious ways do not work and the
+    // first version of this check passed against a stylesheet with the
+    // @font-face rules deleted:
+    //
+    //   · document.fonts.check('400 15px Inter') returns TRUE for a
+    //     family that does not exist, because the check succeeds against
+    //     the fallback the list resolves to.
+    //   · getComputedStyle(h1).fontFamily returns the DECLARED stack —
+    //     the string 'Inter, ui-sans-serif, …' — whether or not Inter
+    //     was ever loaded. It reports the CSS, not the rendering.
+    //   · A woff2 request proves nothing either: index.html preloads two
+    //     weights, so the files are fetched even when no rule uses them.
+    //
+    // What cannot be faked is the WIDTH of rendered text. Inter's
+    // advance widths differ from any fallback, so measuring the same
+    // string in 'Inter, monospace' against a family that certainly does
+    // not exist, in the same fallback, answers the only question worth
+    // asking: is the glyph on screen the one that was designed for.
+    const verdict = await page.evaluate(() => {
+      const measure = (family) => {
+        const el = document.createElement('span');
+        el.textContent = 'File a report — 24 hours';
+        el.style.cssText =
+          `position:absolute;left:-9999px;top:0;white-space:nowrap;` +
+          `font-size:32px;font-weight:700;font-family:${family}`;
+        document.body.appendChild(el);
+        const w = el.getBoundingClientRect().width;
+        el.remove();
+        return w;
+      };
+      return {
+        inter: measure("'Inter', monospace"),
+        absent: measure("'NoSuchFaceXYZ', monospace"),
+        registered: [...document.fonts].filter((f) => f.family === 'Inter').map((f) => f.status),
+      };
+    });
+
+    assert(
+      verdict.registered.length > 0,
+      'no Inter @font-face is registered — the page is rendering in a system font'
+    );
+    assert(
+      verdict.registered.every((st) => st === 'loaded'),
+      `Inter faces registered but not loaded: ${verdict.registered.join(', ')}`
+    );
+    assert(
+      verdict.inter !== verdict.absent,
+      `text set in Inter measures identically to a font that does not exist ` +
+        `(${verdict.inter}px both) — the design is rendering in the fallback`
+    );
+  });
+
   await check('tap targets are at least 44px', async () => {
     // OPEN THE OPTIONAL SECTION FIRST. The HRC chips live inside a
     // collapsed <details>, and a collapsed element's children measure

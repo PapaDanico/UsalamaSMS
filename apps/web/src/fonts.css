@@ -1,14 +1,76 @@
 /* ============================================================
    Typefaces.
 
-   Inter is a STAND-IN for the brand's geometric sans, which is not in
-   this repository. Recorded in docs/05-SWITCHES.md. When the licensed
-   family arrives, replace the sources below and nothing else changes —
-   no call site names a family directly; every rule reads --us-font.
+   THIS FILE DECLARED NOTHING FOR THE WHOLE LIFE OF THE PROJECT. It was
+   fourteen lines of comment explaining that the woff2 files were not in
+   the repository and that the stack would "fall through to the system UI
+   sans, which is a legible default rather than a broken one".
 
-   Self-hosted and same-origin on purpose. The CSP in netlify.toml
-   forbids off-origin font requests, which is the mechanism, not an
-   oversight. Until the woff2 subsets are committed the stack falls
-   through to the system UI sans, which is a legible default rather than
-   a broken one.
+   That was true and it was the wrong call. --us-font names 'Inter'
+   first, every heading is set in it at tight tracking, and the whole
+   type hierarchy — the -0.028em on headlines, the 0.17em on the
+   descriptor, the tabular figures in the queue — was designed against
+   Inter's metrics and rendered in Roboto or SF. The layout was right and
+   the typography was somebody else's. On a phone it reads as a competent
+   web page rather than as a product, and no amount of spacing work
+   fixes a substituted face.
+
+   Every screenshot taken during design was headless Chromium's default
+   sans, so the substitution was invisible to me and obvious on a
+   handset.
+
+   Inter remains a STAND-IN for the brand's geometric sans, which is not
+   in this repository — recorded in docs/05-SWITCHES.md. What changed is
+   that the stand-in is now actually loaded. When the licensed family
+   arrives, replace the four sources below and nothing else: no call site
+   names a family directly; every rule reads --us-font.
+
+   SELF-HOSTED AND SAME-ORIGIN, which is the mechanism rather than a
+   preference. netlify.toml's CSP sets `font-src 'self'` with no CDN
+   exception, so a font served from anywhere else fails to load rather
+   than quietly working — the same discipline Kanda applies, for the same
+   reason: this product promises a safety narrative reaches the safety
+   office and nobody else, and a font request is a request.
+
+   FOUR WEIGHTS, latin subset, 24 KB each. Not the variable font, which
+   is 340 KB for the axes this design uses at four fixed stops, and not
+   the full unicode range. --us-weight-normal/medium/semi/bold are the
+   only weights any rule names, so a fifth file would be one nobody asks
+   for.
    ============================================================ */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  /* `swap`, deliberately. `block` hides text for up to three seconds on
+     a cold load over a bad link, and this app's first screen is a form
+     somebody is trying to fill in beside an aircraft. Text they can read
+     in the fallback beats no text in the right face. */
+  font-display: swap;
+  src: url('/fonts/inter-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/inter-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/inter-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/inter-700.woff2') format('woff2');
+}

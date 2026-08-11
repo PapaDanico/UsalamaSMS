@@ -30,6 +30,13 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- The two weights in the first paint: body text and the headline.
+         Preloaded so a cold start does not render the fallback and then
+         reflow into Inter, which is the flash that makes a page look
+         like it is still arriving. 500 and 600 load normally — they
+         appear below the fold on every screen. -->
+    <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/inter-700.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
     <style>

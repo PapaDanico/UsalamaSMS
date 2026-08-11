@@ -1758,6 +1758,23 @@ code {
   color: var(--us-text-tertiary);
 }
 
+/* The actions on a failed report. Right-aligned and quiet: they are
+   the exception on this screen, not its purpose. */
+.queue__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+  margin-top: var(--us-space-4);
+  padding-top: var(--us-space-4);
+  border-top: 1px solid var(--us-border);
+}
+
+.btn--sm {
+  min-height: 40px;
+  padding: 0 var(--us-space-4);
+  font-size: var(--us-text-sm);
+}
+
 .queue__error {
   margin: var(--us-space-2) 0 0;
   font-size: var(--us-text-sm);

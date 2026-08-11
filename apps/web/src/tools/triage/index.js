@@ -32,7 +32,7 @@ import {
   REPORT_TYPES, SYNC_STATES, AERODROMES, FLIGHT_PHASES,
   toOptions, labelFor
 } from '../../../../../packages/shared/src/taxonomy.ts';
-import { db } from '../../shared/offline.ts';
+import { db, retryReport } from '../../shared/offline.ts';
 import {
   reportingDeadline,
   deadlineStatus,
@@ -168,6 +168,48 @@ export async function render(outlet) {
     filters[name.slice('filter-'.length)] = event.target.value;
     void render(outlet);
   });
+
+  /* One delegated listener for every row, present and future. The rows
+     are re-rendered on every filter change, so per-row listeners would
+     be re-attached each time and the old ones would leak. */
+  outlet.addEventListener('click', async (event) => {
+    const retry = event.target.closest?.('[data-retry]');
+    if (retry) {
+      retry.disabled = true;
+      retry.textContent = 'Sending…';
+      try {
+        await retryReport(retry.dataset.retry);
+      } finally {
+        // Re-render regardless: the report either moved state or did
+        // not, and both are things this screen must show rather than
+        // leave a button spinning on.
+        await render(outlet);
+      }
+      return;
+    }
+
+    const copy = event.target.closest?.('[data-copy]');
+    if (copy) {
+      const report = await db.reports.where('clientId').equals(copy.dataset.copy).first();
+      if (!report) return;
+      // Title, narrative and the recommendation — everything the person
+      // typed, in the order they typed it, so it can be read down a
+      // phone line.
+      const text = [report.title, '', report.narrative, report.reporterRecommendation]
+        .filter(Boolean)
+        .join('\n');
+      try {
+        await navigator.clipboard.writeText(text);
+        copy.textContent = 'Copied';
+      } catch {
+        // Clipboard access is refused in plenty of ordinary situations —
+        // an insecure context, a permissions policy, an older WebView.
+        // Selecting the text is the fallback that always works, and
+        // saying nothing would look like the button is broken.
+        copy.textContent = 'Cannot copy — select the text above';
+      }
+    }
+  });
 }
 
 function matchesFilters(r) {
@@ -243,6 +285,34 @@ function row(r) {
 
       ${r.syncState === 'error' && r.lastError
         ? html`<p class="queue__error">${r.lastError}</p>`
+        : ''}
+
+      <!-- THE ACTION THE STRIP HAS BEEN POINTING AT. It said "open
+           Triage to review" and this screen had nothing to press.
+
+           Copy sits beside Try again because some reports genuinely
+           cannot send — a validation rejection will be rejected again,
+           and a role that may not file this type still may not. The
+           person standing there needs the words out of the device and
+           into a phone call, and refusing them that is how an
+           occurrence ends up unreported rather than merely unsent. -->
+      ${r.syncState === 'error' || r.syncState === 'conflict'
+        ? html`<div class="queue__actions">
+            <button
+              type="button"
+              class="btn btn--secondary btn--sm"
+              data-retry="${r.clientId}"
+            >
+              Try again
+            </button>
+            <button
+              type="button"
+              class="btn btn--ghost btn--sm"
+              data-copy="${r.clientId}"
+            >
+              Copy text
+            </button>
+          </div>`
         : ''}
     </li>
   `;

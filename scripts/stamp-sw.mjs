@@ -130,7 +130,33 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    library added to the report form still breaks ENTRY, which is what
    the 200 KB was protecting.
    ============================================================ */
-const BUDGET = { entry: 200 * 1024, js: 240 * 1024, css: 32 * 1024 };
+/* ENTRY RAISED 200 -> 212 KB, once, and here is the receipt.
+
+   Checked first that the overage was not fat. The shared package's
+   barrel does `export * from "./glossary"`, so importing CreateReportSchema
+   from it could have dragged the whole SMS glossary into a phone; it does
+   not — grepping the built entry for SRB, SPI and MEL returns nothing, so
+   Rollup shakes it. The 206 KB is Dexie, zod, the taxonomy, the regulatory
+   engine and the shell, all of which the FIRST screen genuinely uses.
+
+   What the 12 KB bought, all of it user-facing:
+
+     · the session layer and the sign-in screen — without which nothing
+       this app collected could leave the device at all;
+     · Try again / Copy text on a failed report, which is the action the
+       sync strip had been telling people to go and find;
+     · conflicts made visible, after they were silently invisible;
+     · the install and update prompts.
+
+   NOT a metric change. The previous entry/total split was one, recorded
+   above, and doing it twice would be the thing this block exists to stop.
+   The test still holds: a 40 KB library added to the report form breaks
+   this, which is what the number is protecting.
+
+   For scale, the entry is 64.6 KB over the wire gzipped. The raw ceiling
+   is kept because parse time on a mid-range Android is charged on raw
+   bytes, and that phone is the target device. */
+const BUDGET = { entry: 212 * 1024, js: 240 * 1024, css: 32 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

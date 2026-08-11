@@ -122,7 +122,31 @@ export interface FlushOutcome {
  * the 401 branch below returned silently, and a device could queue
  * reports forever while reporting them as merely pending.
  */
-export async function flushOutbox(fetcher: typeof fetch = authFetch): Promise<FlushOutcome> {
+/**
+ * The single in-flight flush.
+ *
+ * Five things trigger a flush: the online event here, the one in the app
+ * shell, the service worker's message, resumeSession at startup, and
+ * signing in. Several of those fire together — regaining signal while
+ * the app boots is the ordinary case — and two concurrent flushes read
+ * the SAME due rows and post them twice. The server deduplicates by
+ * clientId so no report is doubled, but both callers then apply backoff
+ * to the same items, so one dropped batch is charged twice and the
+ * queue's retry schedule is not what the code says it is.
+ *
+ * Coalesced, so concurrent callers await one flush and get one answer.
+ */
+let flushInFlight: Promise<FlushOutcome> | null = null;
+
+export function flushOutbox(fetcher: typeof fetch = authFetch): Promise<FlushOutcome> {
+  if (flushInFlight) return flushInFlight;
+  flushInFlight = runFlush(fetcher).finally(() => {
+    flushInFlight = null;
+  });
+  return flushInFlight;
+}
+
+async function runFlush(fetcher: typeof fetch): Promise<FlushOutcome> {
   const empty: FlushOutcome = { sent: 0, conflicts: 0, rejected: 0, unanswered: 0 };
   if (!navigator.onLine) return empty;
 
@@ -276,11 +300,24 @@ export async function syncStatus(): Promise<{
   pending: number;
   errored: number;
 }> {
-  const [pending, errored] = await Promise.all([
+  // CONFLICTS COUNT AS ERRORED, and this is a defect fix rather than a
+  // definition. A conflict deletes the outbox item and flags the report
+  // — so the queue is empty, nothing is errored by the old count, and
+  // the strip said "Up to date, nothing waiting to send" for a device
+  // holding an edit the server refused.
+  //
+  // The comment in the conflict branch above promises the client copy is
+  // "preserved locally and flagged for the user to review". It was
+  // preserved and flagged, and then nothing ever showed the flag. A
+  // silent conflict is a lost edit that reports itself as success, which
+  // is the exact failure the sync strip exists to prevent.
+  const [pending, errored, conflicted] = await Promise.all([
     db.outbox.count(),
     db.reports.where("syncState").equals("error").count(),
+    db.reports.where("syncState").equals("conflict").count(),
   ]);
-  if (errored > 0) return { state: "error", pending, errored };
+  const needsAttention = errored + conflicted;
+  if (needsAttention > 0) return { state: "error", pending, errored: needsAttention };
 
   // BEFORE `offline` and before `pending`, because it outranks both.
   // A signed-out device with reports queued is not waiting on signal —
@@ -307,7 +344,70 @@ export async function requestBackgroundSync(): Promise<void> {
 }
 
 if (typeof window !== "undefined") {
-  window.addEventListener("online", () => void flushOutbox());
+  // AFTER the flush, not merely alongside it. The app shell listens for
+  // the same `online` event to repaint the strip, and it wins the race —
+  // so the strip repainted from the pre-flush queue and then never heard
+  // again, leaving "waiting to send" on screen for reports that had just
+  // arrived. Same defect as the one the sign-in screen had.
+  window.addEventListener("online", () => {
+    void flushOutbox().then(() =>
+      window.dispatchEvent(new CustomEvent("usalamasms:sync-changed")),
+    );
+  });
+}
+
+/**
+ * Put a failed report back in the queue.
+ *
+ * THE MISSING ACTION. The sync strip told people to "open Triage to
+ * review" and Triage had nothing to press — a referral to a room with no
+ * door. An errored report stayed errored forever, and because the strip
+ * reports any errored report, the warning became permanent furniture
+ * that everybody learns to read past.
+ *
+ * A conflict is retried the same way, deliberately: the server's copy
+ * won, and re-sending the client's is how the reporter says the thing
+ * they typed still matters. Server-wins is a rule about which row is
+ * authoritative, not permission to discard what somebody wrote.
+ */
+export async function retryReport(clientId: string): Promise<void> {
+  await db.transaction("rw", db.reports, db.outbox, async () => {
+    const report = await db.reports.where("clientId").equals(clientId).first();
+    if (!report) return;
+
+    // clientId is unique on the outbox, so an existing row must be
+    // reused rather than added beside — `add` would throw a constraint
+    // error into a UI handler and look like the retry did nothing.
+    const queued = await db.outbox.where("clientId").equals(clientId).first();
+    if (queued?.localId) {
+      await db.outbox.update(queued.localId, { attempts: 0, nextAttemptAt: Date.now() });
+    } else {
+      await db.outbox.add({
+        clientId,
+        entityType: "safetyReport",
+        op: "CREATE",
+        payload: stripReport(report),
+        clientUpdatedAt: new Date().toISOString(),
+        attempts: 0,
+        nextAttemptAt: Date.now(),
+      });
+    }
+
+    await db.reports.where("clientId").equals(clientId)
+      .modify({ syncState: "pending", lastError: undefined });
+  });
+
+  await flushOutbox();
+  window.dispatchEvent(new CustomEvent("usalamasms:sync-changed"));
+}
+
+/** The report as the server's schema expects it — local bookkeeping out. */
+function stripReport(r: LocalReport): CreateReportInput {
+  const {
+    localId: _l, syncState: _s, serverUpdatedAt: _v, lastError: _e,
+    createdAtLocal: _c, ...rest
+  } = r;
+  return rest as CreateReportInput;
 }
 
 // ---------------------------- Device id ------------------------------
