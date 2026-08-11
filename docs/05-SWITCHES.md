@@ -261,10 +261,19 @@ intended state and not a finding to clear. Someone will eventually
 hole this closed — PostgREST reaching safety narratives with a key
 designed to be public.
 
+*A credential that bypasses RLS is sitting unmasked.* The Netlify
+Supabase extension set `SUPABASE_SERVICE_ROLE_KEY` and
+`SUPABASE_JWT_SECRET` with `is_secret: false`, so both are readable
+through the management API — and both were in fact read that way during
+setup. The service-role key bypasses RLS entirely, which is to say it
+bypasses the whole confidentiality posture the previous point
+established. Nothing in this codebase uses either.
+
 **What must happen:** set `DATABASE_URL` to Supabase's transaction
 pooler URI, set `JWT_SECRET` and `DEIDENT_SALT`, all three as secret
-environment variables on the Netlify project, and leave the RLS advisory
-alone.
+environment variables on the Netlify project, rotate Supabase's JWT
+secret and drop the extension's four unused variables, and leave the RLS
+advisory alone.
 
 **The test:** none that runs in CI, and that is stated rather than
 hidden — the repository cannot reach the hosted project, and it should

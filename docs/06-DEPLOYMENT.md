@@ -102,6 +102,26 @@ the Supabase client SDK or PostgREST: the API talks to Postgres directly
 through Prisma, and the browser talks only to the API. Adding the key
 would create a second, unaudited path to the same rows.
 
+The Netlify Supabase extension injects four variables — `SUPABASE_URL`,
+`SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` and
+`SUPABASE_JWT_SECRET` (plus the misnamed `SUPABASE_DATABASE_URL` above).
+**This codebase reads none of them.** A grep for those names finds one
+hit, in a comment in `core.ts` explaining why they are not used.
+
+Two of them are credentials of real consequence and are stored
+**unmasked** — `is_secret: false` — which means anyone with read access
+to the Netlify project, or to a token scoped to it, can retrieve their
+values:
+
+- `SUPABASE_SERVICE_ROLE_KEY` **bypasses RLS entirely.** The deny-by-
+  default posture described above stops the anon key and does nothing
+  to this one.
+- `SUPABASE_JWT_SECRET` is worse, because it signs the other two: with
+  it you mint your own `service_role` token and rotating the keys does
+  not help.
+
+Neither is needed here. See **Rotation** below.
+
 ### Connection pooling
 
 The API is a long-lived process, so the **direct connection** is right.
@@ -234,3 +254,33 @@ transaction pooling. A session-scoped lock would not be; that is why
 - **Database password** — rotate in the Supabase dashboard, then update
   `DATABASE_URL` on the host. Nothing in the repo changes.
 - **Anon key** — not used; rotating it affects nothing here.
+
+### Outstanding: the service-role key should be rotated
+
+Not a hypothetical. `SUPABASE_SERVICE_ROLE_KEY` and
+`SUPABASE_JWT_SECRET` are on the Netlify project with `is_secret:
+false`, they are readable through the management API, and during this
+project's setup **their values were returned into an agent transcript**
+by exactly that route. A credential that has been read by anything other
+than the process that needs it should be treated as disclosed, and these
+are not read by any process here at all.
+
+The service-role key bypasses RLS. On this database that is read and
+write over `SafetyReport.narrative`, `reporterId` and the `AuditLog` —
+the three things the confidentiality promise rests on.
+
+Recommended, in order:
+
+1. **Supabase → Settings → API → JWT Settings → generate a new secret.**
+   This rotates the JWT secret and, with it, both the anon and
+   service-role keys. It invalidates anything holding the old ones —
+   nothing in this codebase does.
+2. **Disconnect the Netlify Supabase extension**, or delete the four
+   variables it set. They are unused, and an unused credential is
+   liability without benefit. `DATABASE_URL` is set by hand regardless.
+3. Keep `DATABASE_URL`, `JWT_SECRET` and `DEIDENT_SALT` as **secret**
+   variables so they are write-only in the UI and are not returned by
+   the management API.
+
+This is recorded rather than done: rotating a live project's JWT secret
+is the operator's call, and an agent should not make it.
