@@ -6,6 +6,7 @@ import { z } from "zod";
 
 export * from "./regulations";
 export * from "./taxonomy";
+export * from "./glossary";
 import { isValidLocation, isValidAircraftType } from "./taxonomy";
 import { JURISDICTIONS, type Jurisdiction } from "./regulations";
 
@@ -168,6 +169,23 @@ export const CreateReportSchema = z.object({
   }).optional(),
   phase: FlightPhaseEnum.optional(),
   hrcTags: z.array(HrcEnum).max(6).default([]),
+  /**
+   * WHAT THE REPORTER THINKS SHOULD BE DONE.
+   *
+   * Taken from the operator hazard report form the design partner uses:
+   * "Reporter's Recommendations" is a first-class section there, above
+   * the safety office's own analysis, and this product did not have it.
+   *
+   * It is the cheapest safety intelligence in the system. The person who
+   * saw the hazard is usually the person who knows the fix, and asking
+   * costs one optional field. Leaving it out means the fix arrives, if
+   * at all, from someone who was not there.
+   *
+   * Optional and always will be: making it required would put a second
+   * writing task between a ramp agent and filing, which is how report
+   * volume dies.
+   */
+  reporterRecommendation: z.string().max(2000).optional(),
   isAnonymous: z.boolean().default(false),
 }).refine(
   (r) => r.type !== "MOR" || r.occurredAt !== undefined,

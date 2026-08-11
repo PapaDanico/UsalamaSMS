@@ -59,6 +59,25 @@ export const AERODROMES = [
   { code: 'HKLO', label: 'Lodwar (HKLO)', country: 'KE' },
   { code: 'HKUK', label: 'Ukunda / Diani (HKUK)', country: 'KE' },
   { code: 'HKNI', label: 'Nyeri (HKNI)', country: 'KE' },
+  /* THE NORTHERN NETWORK.
+     Added after reading a real operator's Safety Risk Analysis for
+     Wajir — the document names "Wajir International Airport (ICAO:
+     HKWJ)" and this list did not contain it. An operator whose own SRA
+     concerns an aerodrome the taxonomy cannot express is an operator
+     whose reports all land in the free-text escape hatch, which is
+     precisely the GROUP BY problem the dropdowns exist to prevent.
+
+     HKWJ is evidenced by that document. The rest are the northern and
+     northeastern fields the same network serves; verify each against
+     the current AIP before a customer's compliance depends on it. */
+  { code: 'HKWJ', label: 'Wajir (HKWJ)', country: 'KE' },
+  { code: 'HKGA', label: 'Garissa (HKGA)', country: 'KE' },
+  { code: 'HKMA', label: 'Mandera (HKMA)', country: 'KE' },
+  { code: 'HKMB', label: 'Marsabit (HKMB)', country: 'KE' },
+  { code: 'HKLK', label: 'Lokichogio (HKLK)', country: 'KE' },
+  { code: 'HKKT', label: 'Kitale (HKKT)', country: 'KE' },
+  { code: 'HKNY', label: 'Nanyuki (HKNY)', country: 'KE' },
+  { code: 'HKAM', label: 'Amboseli (HKAM)', country: 'KE' },
   { code: 'HUEN', label: 'Entebbe (HUEN)', country: 'UG' },
   { code: 'HTDA', label: 'Dar es Salaam / Julius Nyerere (HTDA)', country: 'TZ' },
   { code: 'HTKJ', label: 'Kilimanjaro (HTKJ)', country: 'TZ' },
@@ -95,6 +114,10 @@ export const AIRCRAFT_TYPES = [
   { code: 'B788', label: 'Boeing 787-8', category: 'Jet' },
   { code: 'E190', label: 'Embraer E190', category: 'Jet' },
   { code: 'CRJ9', label: 'Bombardier CRJ900', category: 'Jet' },
+  /* Same source as HKWJ above: the SRA is written for an F70 fleet and
+     this list could not name the aircraft it is about. */
+  { code: 'F70', label: 'Fokker 70', category: 'Jet' },
+  { code: 'F100', label: 'Fokker 100', category: 'Jet' },
   { code: 'A320', label: 'Airbus A320', category: 'Jet' },
   { code: 'C172', label: 'Cessna 172', category: 'Piston' },
   { code: 'C206', label: 'Cessna 206', category: 'Piston' },

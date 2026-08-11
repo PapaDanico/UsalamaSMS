@@ -104,6 +104,7 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
               type: d.type,
               title: d.title,
               narrative: d.narrative,
+              reporterRecommendation: d.reporterRecommendation,
               occurredAt: d.occurredAt,
               // When the obligation started running. Defaulted to receipt
               // time — the earliest moment the server can actually prove

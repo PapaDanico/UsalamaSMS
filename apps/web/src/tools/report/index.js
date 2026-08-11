@@ -107,6 +107,23 @@ export function render(outlet) {
         <span class="field__hint" id="narrative-count"></span>
       </label>
 
+      <!-- FROM THE OPERATOR'S OWN HAZARD REPORT FORM, where "Reporter's
+           Recommendations" is a section in its own right, above the
+           safety office's analysis. The person who saw it usually knows
+           the fix, and asking costs one optional field.
+
+           Above the optional block rather than inside it: it is the last
+           thing the reporter has to say, not an extra detail. -->
+      <label class="field">
+        <span class="field__label">What do you think should be done?</span>
+        <textarea
+          name="reporterRecommendation"
+          rows="3"
+          maxlength="2000"
+          placeholder="Optional. Even a rough idea is useful — you were there."
+        >${draft.reporterRecommendation ?? ''}</textarea>
+      </label>
+
       <!-- Everything below the fold is optional and is marked as such,
            because an unmarked optional field reads as required and adds
            the hesitation this form exists to remove. -->
@@ -323,6 +340,11 @@ function collect(form) {
     type: data.get('type') ?? 'HAZARD',
     title: String(data.get('title') ?? '').trim(),
     narrative: String(data.get('narrative') ?? '').trim(),
+    // Empty string rather than undefined would fail the max(2000)
+    // check on a field nobody filled in, so it is omitted when blank.
+    ...(String(data.get('reporterRecommendation') ?? '').trim()
+      ? { reporterRecommendation: String(data.get('reporterRecommendation')).trim() }
+      : {}),
     ...(occurred ? { occurredAt: new Date(String(occurred)) } : {}),
     // awareAt is NOT set from occurredAt. The reporter is aware now;
     // that is the only thing this device can honestly assert, and
@@ -440,6 +462,7 @@ function saveDraft(form) {
         type: data.get('type'),
         title: data.get('title'),
         narrative: data.get('narrative'),
+        reporterRecommendation: data.get('reporterRecommendation'),
         occurredAt: data.get('occurredAt'),
         location: data.get('location'),
         locationOther: data.get('locationOther'),

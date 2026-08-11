@@ -25,6 +25,8 @@
 //      optional and the pipeline will not skip it.
 // =====================================================================
 
+import { SMS_ACRONYMS } from "@usalamasms/shared";
+
 export type DeIdentCategory =
   | "REG" | "FLT" | "DATE" | "TIME" | "PHONE" | "EMAIL"
   | "CREW" | "NAME" | "ID" | "URL" | "COORD";
@@ -69,6 +71,20 @@ interface Pattern {
  * caution.
  */
 const NOT_AN_IDENTIFIER = new Set([
+  /* THE SAFETY-MANAGEMENT VOCABULARY, from the KCAA glossary.
+     Read from packages/shared/src/glossary.ts rather than retyped, so
+     the redactor and the interface cannot disagree about what a word is.
+
+     These matter more than they look. "AOC", "SMS", "SPI", "FDA",
+     "ERP", "CVR" and "FDR" are all two-to-three capital letters, which
+     is exactly the shape of a flight-number prefix — so without this,
+     "the AOC holder was notified" redacts to "the [FLT] holder was
+     notified", and the sentence a safety office needs is gone. The
+     de-identifier is supposed to remove who wrote it, not what it says.
+
+     Spread FIRST so a duplicate below is harmless. */
+  ...Object.keys(SMS_ACRONYMS),
+
   // Aerodrome and approach
   "RWY", "TWY", "SID", "STAR", "ILS", "LOC", "GS", "VOR", "NDB", "DME",
   "GP", "PAPI", "VASI", "ALS", "RCC", "PCN", "ACN", "TORA", "TODA", "ASDA", "LDA",
@@ -166,6 +182,35 @@ const DEIDENT_PATTERNS: ReadonlyArray<Pattern> = [
     pattern:
       /\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{2,4}\b/gi,
     replacement: "[DATE]",
+  },
+  /* A WRITTEN DATE WITH NO YEAR. "on 14 March", "March 14".
+     The pattern above required a year, so "I raised it with the Chief
+     Pilot on 14 March" kept its date — and a date is one of the
+     sharpest identifiers in a small operator, because it narrows a
+     shift roster to the two or three people who were on it. Found by a
+     test asserting a reporter's recommendation had been scrubbed and
+     watching the name go while the date stayed.
+
+     Both orders, because reporters write both. */
+  {
+    category: "DATE",
+    pattern:
+      /\b\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?(?!\s+\d)/gi,
+    replacement: "[DATE]",
+  },
+  {
+    category: "DATE",
+    pattern:
+      /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b(?!\s*[:.]\d)/gi,
+    replacement: "[DATE]",
+  },
+  /* A BARE WEEKDAY. "on Tuesday", "the Friday night shift".
+     Weaker than a date and still a roster narrower on an operation with
+     one aircraft and a six-person crew list. */
+  {
+    category: "DATE",
+    pattern: /\b(?:Mon|Tues?|Wed(?:nes)?|Thur?s?|Fri|Sat(?:ur)?|Sun)(?:day)?\b/gi,
+    replacement: "[DAY]",
   },
   // Zulu / local times, which narrow a shift roster to one crew.
   { category: "TIME", pattern: /\b(?:[01]\d|2[0-3])[:.]?[0-5]\d\s?(?:Z|UTC|hrs?|L)\b/gi, replacement: "[TIME]" },

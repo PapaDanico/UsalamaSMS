@@ -443,17 +443,41 @@ export async function deIdentifyVcr(
     if (report.type !== "VCR") throw new Error("de-identification pipeline is VCR-only");
     if (report.isDeIdentified) throw new Error("report is already de-identified");
 
-    const scrubbed = deIdentify(report.narrative);
+    /* THE RECOMMENDATION IS SCRUBBED WITH THE NARRATIVE.
+       "What do you think should be done?" is free text written by the
+       same person in the same sitting — "I raised it with Captain
+       Mwangi on Tuesday" identifies its author exactly as readily as
+       the account does. Scrubbing one field and distributing the other
+       is the sync-receipt defect again, one column over.
+
+       Both are passed through as ONE document so a name that appears in
+       both is counted once and the residual review sees the whole
+       thing, rather than a reviewer accepting a residual in the
+       narrative and never being shown the same name below it. */
+    const SEPARATOR = "\n\n\u0000RECOMMENDATION\u0000\n\n";
+    const combined = report.reporterRecommendation
+      ? `${report.narrative}${SEPARATOR}${report.reporterRecommendation}`
+      : report.narrative;
+
+    const scrubbed = deIdentify(combined);
 
     if (scrubbed.residual.length > 0 && !options.reviewerAcceptedResidual) {
       throw new ResidualIdentifiersError(scrubbed.residual);
     }
 
+    const [scrubbedNarrative, scrubbedRecommendation] = scrubbed.text.split(SEPARATOR);
+
     await tx.safetyReport.update({
       where: { id: reportId },
       data: {
-        deIdentifiedNarrative: scrubbed.text,
+        deIdentifiedNarrative: scrubbedNarrative ?? scrubbed.text,
         narrative: "[REDACTED — de-identified copy distributed]",
+        // Replaced rather than nulled: a missing recommendation and a
+        // redacted one are different facts, and the second is the one
+        // a reader of the bulletin should be told.
+        ...(report.reporterRecommendation
+          ? { reporterRecommendation: scrubbedRecommendation ?? "[REDACTED]" }
+          : {}),
         reporterId: null,          // hard removal, not encryption
         isDeIdentified: true,
         deIdentifiedAt: new Date(),

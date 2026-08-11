@@ -159,6 +159,17 @@ model SafetyReport {
   title     String
   narrative String      @db.Text
 
+  /// What the reporter thinks should be done about it.
+  ///
+  /// From the operator's own hazard report form, where "Reporter's
+  /// Recommendations" sits above the safety office's analysis. The
+  /// person who saw the hazard usually knows the fix, and this is the
+  /// cheapest safety intelligence in the system.
+  ///
+  /// De-identified with the narrative, never separately: a recommendation
+  /// can identify its author as readily as the account can.
+  reporterRecommendation String? @db.Text
+
   occurredAt DateTime?
   // When the reporting obligation began running for this organisation.
   // NOT the same as occurredAt, and the distinction is the difference

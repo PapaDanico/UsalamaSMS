@@ -55,9 +55,14 @@ async function login(email: string): Promise<string> {
   return res.json().accessToken;
 }
 
-async function createVcr(narrative: string, org = orgId): Promise<string> {
+async function createVcr(
+  narrative: string,
+  org = orgId,
+  reporterRecommendation?: string,
+): Promise<string> {
   const report = await prisma().safetyReport.create({
     data: {
+      ...(reporterRecommendation ? { reporterRecommendation } : {}),
       orgId: org,
       clientId: `vcr-${Math.random().toString(36).slice(2)}`,
       type: "VCR",
@@ -192,6 +197,35 @@ describe.skipIf(!hasDatabase)("the de-identification route", () => {
     // scrub the already-scrubbed copy into something else.
     const after = await prisma().safetyReport.findUniqueOrThrow({ where: { id } });
     expect(after.deIdentifiedNarrative).toBeTruthy();
+  });
+
+  it("SCRUBS THE RECOMMENDATION TOO, not only the narrative", async () => {
+    // "What do you think should be done?" is free text written by the
+    // same person in the same sitting. "I raised it with Captain Mwangi
+    // on Tuesday" identifies its author exactly as readily as the
+    // account does, and scrubbing one field while distributing the other
+    // is the sync-receipt defect again, one column over.
+    const id = await createVcr(
+      CLEAN,
+      orgId,
+      "Stop deferring this defect. I raised it with Captain Mwangi on 14 March.",
+    );
+
+    // It contains a titled name, so the reviewer gate fires first —
+    // which is itself the assertion that the recommendation is being
+    // read at all. A pipeline ignoring the field would sail through.
+    const blocked = await deidentify(id, managerToken);
+    expect(blocked.statusCode, "the recommendation was not examined for identifiers").toBe(409);
+
+    const res = await deidentify(id, managerToken, { acceptResidual: true });
+    expect(res.statusCode).toBe(200);
+
+    const after = await prisma().safetyReport.findUniqueOrThrow({ where: { id } });
+    expect(after.reporterRecommendation).toBeTruthy();
+    expect(after.reporterRecommendation, "the date survived redaction").not.toContain("14 March");
+    // And the useful part of the recommendation is still there — the
+    // point is to distribute the fix without the author.
+    expect(after.reporterRecommendation).toContain("defect");
   });
 
   it("requires authentication", async () => {

@@ -118,4 +118,48 @@ describe("the residual detector stays readable", () => {
     expect(cleanByPattern).toBe(false);
     expect(residual.some((r) => r.text.includes("Otieno"))).toBe(true);
   });
+
+  describe("the safety-management vocabulary survives", () => {
+    // Added when the KCAA glossary arrived — and the FIRST version of
+    // this block tested the wrong shape. Bare "AOC" was never at risk:
+    // the flight-number pattern is two-to-three capitals FOLLOWED BY
+    // DIGITS, so it never matched an acronym on its own, and the tests
+    // passed with the glossary removed. A guard that passes with the
+    // thing it guards deleted is not a guard.
+    //
+    // This is the shape that was actually breaking. Without the
+    // glossary wired in, "SPI 12 was exceeded and SRB 4 reviewed it"
+    // redacts to "[FLT] was exceeded and [FLT] reviewed it" — the
+    // reporter is protected and the finding is gone.
+    const SENTENCES = [
+      "SPI 12 was exceeded and SRB 4 reviewed it.",
+      "The ERP 2 checklist was used during the drill.",
+      "The SAG 2 meeting accepted the mitigation.",
+      "SMS 3 training was completed by the whole section.",
+      "The AOC holder was notified and the SRM process was followed.",
+      "FDA data showed the same exceedance on three sectors.",
+      "KCAA were told within 24 hours as the SSP requires.",
+    ];
+
+    for (const sentence of SENTENCES) {
+      it(`keeps every term in: "${sentence.slice(0, 40)}…"`, () => {
+        const result = deIdentify(sentence);
+        expect(result.text).toBe(sentence);
+        // `removed` is a per-category COUNT MAP, not a list — an empty
+        // object is the assertion, and toHaveLength(0) passes on
+        // neither an object nor a mistake.
+        expect(result.removed, `claimed a removal in: ${sentence}`).toEqual({});
+      });
+    }
+
+    it("still redacts a REAL flight number beside a glossary term", () => {
+      // The counter-test. A safe-list that swallowed every capitalised
+      // token would pass all of the above and remove nothing at all,
+      // which is the failure mode a growing exception list really has.
+      const result = deIdentify("The AOC holder was notified after KQ 310 diverted.");
+      expect(result.text).toContain("AOC");
+      expect(result.text).not.toContain("KQ 310");
+      expect(Object.keys(result.removed).length).toBeGreaterThan(0);
+    });
+  });
 });
