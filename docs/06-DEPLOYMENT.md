@@ -245,6 +245,42 @@ transaction pooling. A session-scoped lock would not be; that is why
 
 ---
 
+## The Supabase MCP server
+
+`.mcp.json` at the repository root points an agent at this project:
+
+```
+https://mcp.supabase.com/mcp?project_ref=wbixxhpaswstaphfsowz&features=…
+```
+
+**It carries no credential.** The project reference is already in this
+document, and access is OAuth — `claude /mcp`, then *Authenticate*, in a
+real terminal rather than an IDE extension. A contributor without
+Supabase access gets nothing from the file.
+
+Committed rather than left to each person's own config, because the work
+it enables is not optional: the schema was applied through this server,
+and the `_prisma_migrations` baseline above was written through it. A
+future session that cannot reach the project cannot repeat either.
+
+**It is nonetheless a second path to the same rows**, and this document
+argues against exactly that a few sections up. Two things keep the
+argument consistent:
+
+- The objection to the anon key is that it is *shipped to browsers* and
+  is therefore held by everyone. This is held by whoever passes an OAuth
+  flow as a Supabase member of the project.
+- It is an operator's tool and not an application path. Nothing the API
+  serves goes through it, and no code imports it.
+
+**Schema changes still go through `prisma migrate`.** Applying DDL
+through the MCP server is what left the hosted schema correct and
+Prisma's history empty, and required the baseline repair recorded above.
+Use it to inspect, to read logs and advisors, and to repair — not to
+migrate.
+
+---
+
 ## Rotation
 
 - **`JWT_SECRET`** — logs everyone out and changes every
