@@ -16,46 +16,40 @@ environment and in a password manager. `.env` is gitignored and
 | Supabase project | `UsalamaSMS` — ref `wbixxhpaswstaphfsowz` |
 | Region | `eu-north-1` |
 | Postgres | 17 |
-| Schema | Applied — 9 tables, 3 migrations |
+| Schema | Applied — 9 tables, 3 migrations, history baselined |
 | RLS | Enabled, deny-by-default, on all 9 tables |
-| API | **Not deployed anywhere.** The database exists; nothing serves it |
+| API | Ships as a Netlify Function on `/api/*`. Answers `503 not_configured` until the environment is set |
 | Web | Netlify, preview per PR |
 
 ---
 
-## The Prisma migration history is NOT recorded on Supabase
+## The migration history was applied out-of-band, and has been baselined
 
-Read this before running any Prisma command against the hosted database.
+Recorded because it explains an oddity someone will otherwise trip over,
+not because anything is outstanding.
 
-The three migrations were applied through the Supabase management API
-(the MCP `apply_migration` tool), because this environment has the
-project's API credentials and does **not** have its database password.
-That applied the DDL correctly and did **not** write Prisma's
-`_prisma_migrations` bookkeeping table.
+The three migrations were applied through the Supabase **management
+API**, since the environment that applied them holds this project's API
+credentials and not its database password. That ran the DDL correctly
+and did not write Prisma's `_prisma_migrations` bookkeeping — so the
+hosted schema was right and Prisma did not know it. `migrate deploy`
+would have refused on a non-empty database with no history, and
+`migrate dev` would have offered to **reset** it.
 
-So the hosted schema is correct and Prisma does not know it. The next
-`prisma migrate deploy` will find a non-empty database with no migration
-history and refuse — or, worse, if someone reaches for
-`migrate dev`, offer to reset it.
+**This has been fixed.** The `_prisma_migrations` table was created and
+the three rows inserted with Prisma's own checksums, read from a local
+database where `migrate deploy` ran normally rather than recomputed from
+an assumption. `prisma migrate status` now reports the database up to
+date, and every later change goes through `prisma migrate` as usual.
 
-**Baseline it once, before the first deploy**, with the connection
-string to hand:
+If the same situation recurs — schema applied by some route Prisma did
+not drive — the supported repair is:
 
 ```bash
-export DATABASE_URL='postgresql://postgres:<password>@db.wbixxhpaswstaphfsowz.supabase.co:5432/postgres'
-
-prisma migrate resolve --applied 20260811173454_initial_schema
-prisma migrate resolve --applied 20260811174611_flight_phase_and_taxonomy
-prisma migrate resolve --applied 20260811180500_enable_rls_deny_by_default
-
-prisma migrate status   # should report the database is up to date
+prisma migrate resolve --applied <migration_name>
 ```
 
-`resolve --applied` records a migration as done without running it,
-which is exactly right here: the SQL has already executed.
-
-After that, every later change goes through `prisma migrate` normally
-and this section stops mattering.
+which records a migration as done without running it.
 
 ---
 
@@ -118,19 +112,78 @@ timeouts rather than like a configuration mistake.
 
 ---
 
-## Deploying the API — not done yet
+## Deploying the API
 
-Nothing serves the database. When it happens, the checklist is:
+The API ships as a Netlify Function at `netlify/functions/api.mts`,
+serving `/api/*` on the same origin as the web app — which is why the
+CSP's `connect-src 'self'` needs no exception.
 
-1. Baseline the migration history (above).
-2. Set the four environment variables on the host.
-3. Confirm `/health` (liveness, no dependencies) and `/ready` (which
-   actually queries Postgres) both answer.
-4. Point the web app's `connect-src` at the API origin — the CSP in
-   `netlify.toml` currently allows `'self'` only, so a cross-origin API
-   will be blocked until that line is updated. This is intentional: it
-   fails loudly rather than letting an unnoticed third-party endpoint in.
-5. Seed one org and one user. There is no seed script yet.
+**Read the header comment in that file before relying on it.** Fastify
+expects a long-lived process; Lambda is neither long-lived nor single.
+The mismatch is manageable and is not free, and the file says exactly
+where it bites.
+
+### The one step that cannot be automated
+
+The function needs a database connection string, and Supabase does not
+expose the database password through its management API — deliberately.
+So this cannot be scripted from a CI job or an agent, and it should not
+be: a password that travels through a chat log, a ticket or a shell
+history has already leaked.
+
+**Connect the extension instead.** Netlify → the `usalamasms` project →
+Project configuration → Supabase → Connect, then pick the `UsalamaSMS`
+project. That injects `SUPABASE_DATABASE_URL`, which `core.ts` accepts,
+and nobody ever handles the password.
+
+Then set the two secrets that are ours rather than Supabase's:
+
+```
+JWT_SECRET     # openssl rand -base64 48
+DEIDENT_SALT   # openssl rand -base64 48
+```
+
+Set them as **secret** environment variables so they are write-only in
+the Netlify UI afterwards.
+
+Until all three exist the function answers `503 not_configured` and
+names what is missing — deliberately, because a Lambda that crashes on
+a missing variable produces a platform error that says nothing about
+which one.
+
+### Direct connection versus the pooler
+
+The extension supplies the **direct** connection (port 5432), which is
+correct for a long-lived process and wrong for a serverless one: each
+warm Lambda holds its own pool, and enough concurrency exhausts
+Supabase's connection limit. The symptom is random timeouts that look
+like a network fault.
+
+`DATABASE_URL` takes precedence over `SUPABASE_DATABASE_URL`, so the fix
+is to set `DATABASE_URL` explicitly to the transaction pooler (port
+6543) with `?pgbouncer=true&connection_limit=1`, leaving the extension
+connected. Do this before any real traffic.
+
+`pg_advisory_xact_lock` is transaction-scoped and therefore safe under
+transaction pooling. A session-scoped lock would not be; that is why
+`appendAudit` uses the xact variant.
+
+### Then
+
+1. Baseline the migration history — **already done** for this project;
+   see above.
+2. Confirm `/api/health` (liveness) and `/api/ready` (which queries
+   Postgres) both answer.
+3. Seed the first accounts:
+
+   ```bash
+   DATABASE_URL='...' npm run seed
+   ```
+
+   It creates one org and three users, prints their passwords **once**,
+   and stores only argon2id hashes. Idempotent by email — running it
+   twice creates nothing and resets nobody's password. Change those
+   passwords before anyone real uses the deployment.
 
 ---
 

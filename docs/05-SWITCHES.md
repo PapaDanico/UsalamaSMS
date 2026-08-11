@@ -239,14 +239,14 @@ Postgres; it says nothing about a running system.
 
 **Why it expires:** two ways, and the first is live now.
 
-*Prisma does not know the hosted schema exists.* The migrations were
-applied through the Supabase management API, because this environment
-holds the project's API credentials and not its database password. The
-DDL ran; Prisma's `_prisma_migrations` bookkeeping did not. The next
-`prisma migrate deploy` will find a non-empty database with no history
-and refuse — and `migrate dev` would offer to reset it. The baseline
-commands are in `docs/06-DEPLOYMENT.md` and take about a minute with the
-connection string to hand.
+*The API is deployed but not configured.* It ships as a Netlify
+Function and answers `503 not_configured` until a connection string and
+two secrets exist. That step cannot be scripted: Supabase does not
+expose the database password through its management API, deliberately,
+and a password routed through an agent, a chat log or a ticket has
+already leaked. Connecting the Supabase extension to the Netlify project
+is the intended path — it injects `SUPABASE_DATABASE_URL` and nobody
+handles the password at all.
 
 *RLS has no policies, on purpose.* The linter reports
 `rls_enabled_no_policy` at INFO on every table forever. That is the
@@ -255,9 +255,10 @@ intended state and not a finding to clear. Someone will eventually
 hole this closed — PostgREST reaching safety narratives with a key
 designed to be public.
 
-**What must happen:** baseline the migration history before the first
-deploy; deploy the API somewhere with the four environment variables
-set; and leave the RLS advisory alone.
+**What must happen:** connect the Supabase extension to the Netlify
+project, set `JWT_SECRET` and `DEIDENT_SALT` as secret environment
+variables, point `DATABASE_URL` at the transaction pooler before any
+real traffic, and leave the RLS advisory alone.
 
 **The test:** none that runs in CI, and that is stated rather than
 hidden — the repository cannot reach the hosted project, and it should

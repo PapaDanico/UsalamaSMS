@@ -28,9 +28,13 @@ matrix calls `tolerability()` and its deadline table reads
 `MOR_OBLIGATIONS`, so neither can drift from the documents describing
 them.
 
-**Not yet built:** the hosted database exists (Supabase, eu-north-1,
-schema applied, RLS deny-by-default) but **no API is deployed against
-it** — nothing is running anywhere a design partner could reach. See
+**Nearly deployable.** The hosted database exists (Supabase, eu-north-1,
+schema applied and baselined, RLS deny-by-default) and the API ships as
+a Netlify Function on `/api/*`. It answers `503 not_configured` until
+the Supabase extension is connected to the Netlify project and two
+secrets are set — the one step that cannot be scripted, because Supabase
+does not expose the database password through its API and a password
+that travels through a chat log has already leaked. See
 [`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md), which also carries the
 one-time Prisma baseline the hosted schema needs. The triage queue reads
 this device rather than the organisation, and there is no investigation,
@@ -44,7 +48,8 @@ npm run check:claims   # 46 assertions that the registries match the docs
 npm test               # 100 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
-npm run test:integration   # 26 checks against a real Postgres
+npm run test:integration   # 34 checks against a real Postgres
+npm run seed               # first org + users; prints passwords once
 ```
 
 `npm run build` runs `check` first. A failing gate builds nothing.

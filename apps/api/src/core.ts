@@ -20,6 +20,34 @@ function requireEnv(name: string): string {
   return v;
 }
 
+/**
+ * The database connection string, under either name.
+ *
+ * The Netlify Supabase extension injects `SUPABASE_DATABASE_URL` when a
+ * project is connected to a site. Accepting it means the connection is
+ * configured by connecting the two services — nobody copies a password
+ * out of one dashboard and pastes it into another, and it never passes
+ * through a chat log, a ticket or a shell history.
+ *
+ * `DATABASE_URL` still wins when both are present. That is deliberate:
+ * the extension supplies the DIRECT connection (port 5432), which is
+ * right for a long-lived process and wrong for a serverless one. An
+ * explicit DATABASE_URL is how you point at the transaction pooler
+ * without disconnecting the extension. See docs/06-DEPLOYMENT.md.
+ */
+function databaseUrl(): string {
+  const url = process.env["DATABASE_URL"] ?? process.env["SUPABASE_DATABASE_URL"];
+  if (!url) {
+    console.error(
+      "FATAL: no database connection string.\n" +
+        "  Set DATABASE_URL, or connect the Supabase extension to this\n" +
+        "  Netlify project so it provides SUPABASE_DATABASE_URL."
+    );
+    process.exit(1);
+  }
+  return url;
+}
+
 export const ENV = {
   JWT_SECRET: requireEnv("JWT_SECRET"),
   // Read HERE, at startup, not lazily inside reporterDupToken(). The old
@@ -45,7 +73,7 @@ export const ENV = {
  * which is the argument for tests/integration in one line.
  */
 export const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: requireEnv("DATABASE_URL") }),
+  adapter: new PrismaPg({ connectionString: databaseUrl() }),
 });
 
 // ------------------------------ Auth ---------------------------------
