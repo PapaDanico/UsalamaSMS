@@ -23,49 +23,19 @@ export type Hrc = z.infer<typeof HrcEnum>;
 export const SeverityEnum = z.enum([
   "A_CATASTROPHIC", "B_HAZARDOUS", "C_MAJOR", "D_MINOR", "E_NEGLIGIBLE",
 ]);
-export type Severity = z.infer<typeof SeverityEnum>;
 
 export const LikelihoodEnum = z.enum([
   "FREQUENT", "OCCASIONAL", "REMOTE", "IMPROBABLE", "EXTREMELY_IMPROBABLE",
 ]);
-export type Likelihood = z.infer<typeof LikelihoodEnum>;
 
 export const TolerabilityEnum = z.enum(["INTOLERABLE", "TOLERABLE", "ACCEPTABLE"]);
-export type Tolerability = z.infer<typeof TolerabilityEnum>;
 
 // ------------------- Safety-critical risk calculation ----------------
-// ICAO Doc 9859 (4th Ed.) 5x5 matrix. Deterministic, auditable.
-export const SEVERITY_VALUE: Record<Severity, 1 | 2 | 3 | 4 | 5> = {
-  A_CATASTROPHIC: 5, B_HAZARDOUS: 4, C_MAJOR: 3, D_MINOR: 2, E_NEGLIGIBLE: 1,
-};
-export const LIKELIHOOD_VALUE: Record<Likelihood, 1 | 2 | 3 | 4 | 5> = {
-  FREQUENT: 5, OCCASIONAL: 4, REMOTE: 3, IMPROBABLE: 2, EXTREMELY_IMPROBABLE: 1,
-};
-
-/** Risk index score = severity × likelihood (1..25). */
-export function riskScore(sev: Severity, lik: Likelihood): number {
-  return SEVERITY_VALUE[sev] * LIKELIHOOD_VALUE[lik];
-}
-
-/**
- * Tolerability per the Doc 9859 index matrix.
- *
- * The canonical red set is 5A, 5B, 5C, 4A, 4B, 3A in the manual's own
- * notation, where the digit is likelihood and the letter is severity.
- * Encoded explicitly, cell by cell, rather than as a threshold on the
- * product: the score alone cannot separate these cases (5x3 and 3x5 are
- * both 15, and only one of them is red), so any threshold rule is wrong
- * for at least one cell. An explicit set is also auditable against the
- * manual by someone holding the manual, which a threshold is not.
- */
-const RED = new Set(["5x5", "5x4", "5x3", "4x5", "4x4", "3x5"]);
-const AMBER = new Set(["5x2", "5x1", "4x3", "4x2", "3x4", "3x3", "2x5", "2x4", "1x5"]);
-export function tolerability(sev: Severity, lik: Likelihood): Tolerability {
-  const key = `${SEVERITY_VALUE[sev]}x${LIKELIHOOD_VALUE[lik]}`;
-  if (RED.has(key)) return "INTOLERABLE";
-  if (AMBER.has(key)) return "TOLERABLE";
-  return "ACCEPTABLE";
-}
+// Lives in ./risk — pure and zod-free so a client can import the matrix
+// without the validation library. Re-exported here so existing call
+// sites are unaffected.
+export * from "./risk";
+import { tolerability, type Tolerability } from "./risk";
 
 /**
  * Who may accept a given risk. Derived from tolerability rather than

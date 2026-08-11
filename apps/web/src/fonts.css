@@ -1,0 +1,14 @@
+/* ============================================================
+   Typefaces.
+
+   Inter is a STAND-IN for the brand's geometric sans, which is not in
+   this repository. Recorded in docs/05-SWITCHES.md. When the licensed
+   family arrives, replace the sources below and nothing else changes —
+   no call site names a family directly; every rule reads --us-font.
+
+   Self-hosted and same-origin on purpose. The CSP in netlify.toml
+   forbids off-origin font requests, which is the mechanism, not an
+   oversight. Until the woff2 subsets are committed the stack falls
+   through to the system UI sans, which is a legible default rather than
+   a broken one.
+   ============================================================ */

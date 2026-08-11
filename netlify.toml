@@ -1,0 +1,22 @@
+# The gates run before the bundle. A deploy that skipped them would
+# publish a page whose contrast claims nobody checked, which is the
+# failure mode scripts/check-brand.mjs exists to prevent — so `build`
+# depends on `check` and there is no fast path around it.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# The CSP is the mechanism behind this product's half of charter rule 7.
+# Nothing off-origin: no font CDN, no analytics, no tag manager. The
+# connect-src allowance is the API and nothing else, so a dependency that
+# starts phoning home fails visibly rather than quietly.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"

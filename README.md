@@ -12,8 +12,13 @@ Amendment 2 rather than retrofitted to it.
 
 **Phase 0.** Foundations, not features. What exists is the brand system,
 the shared safety-critical core, the regulatory engine, the corrected
-API layer, and the gates that keep every claim above checkable. No user
-interface yet beyond the design tokens and the mark.
+API layer, and the gates that keep every claim above checkable.
+
+The one page that ships is not the product — it is the brand system
+rendering itself, so the claims in `docs/04-BRAND.md` can be checked by
+looking rather than only by reading. Its risk matrix calls
+`tolerability()` and its deadline table reads `MOR_OBLIGATIONS`, so
+neither can drift from the modules they describe.
 
 ```bash
 npm install
@@ -24,6 +29,12 @@ npm test               # 40 unit tests
 ```
 
 `npm run build` runs `check` first. A failing gate builds nothing.
+
+Bundle: **8.8 KB JS + 8.7 KB CSS** (3.8 KB + 2.4 KB gzipped), no runtime
+dependencies on the page. The risk matrix and the regulatory engine are
+pure, zod-free modules precisely so a client can import them without
+47 KB of schema machinery — the design target is a mid-range Android at
+a remote strip, where that is not a rounding error.
 
 ---
 

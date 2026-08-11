@@ -453,3 +453,203 @@ body {
     background: #ffffff;
   }
 }
+
+/* ============================================================
+   Phase 0 page layer
+
+   Kept deliberately small. These are the rules the shell needs to
+   demonstrate the tokens; they are not a design system for the product,
+   which does not exist yet.
+   ============================================================ */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  padding: var(--us-space-3) var(--us-space-4);
+  background: var(--us-charcoal);
+  color: #ffffff;
+  z-index: 10;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-4);
+  padding: var(--us-space-6) var(--us-space-5);
+  border-bottom: 1px solid var(--us-border);
+}
+
+.us-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--us-space-3);
+  text-decoration: none;
+  color: var(--us-text-primary);
+}
+
+.us-logo__word {
+  font-size: var(--us-text-lg);
+  font-weight: var(--us-weight-bold);
+  letter-spacing: var(--us-tracking-tight);
+}
+
+/* The "SMS" half sits in a keyline box, as the identity sets it. */
+.us-logo__word-sms {
+  border: 2px solid currentColor;
+  border-radius: var(--us-radius-sm);
+  padding: 0 var(--us-space-1);
+  margin-left: 2px;
+}
+
+.slogan {
+  margin: 0;
+  font-size: var(--us-text-xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  /* The sibling, not the flat gold: 2.16:1 would make the slogan a
+     rumour of a slogan. */
+  color: var(--us-gold-text);
+}
+
+#main {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: var(--us-space-6) var(--us-space-5) var(--us-space-16);
+}
+
+.panel {
+  margin-bottom: var(--us-space-12);
+}
+
+.panel h1,
+.panel h2 {
+  letter-spacing: var(--us-tracking-tight);
+  line-height: var(--us-leading-tight);
+}
+
+.panel h1 {
+  font-size: var(--us-text-2xl);
+}
+.panel h2 {
+  font-size: var(--us-text-xl);
+}
+
+.lede {
+  font-size: var(--us-text-md);
+  color: var(--us-text-secondary);
+  max-width: 48ch;
+}
+
+.panel p {
+  max-width: 62ch;
+}
+
+.footnote {
+  font-size: var(--us-text-sm);
+  color: var(--us-text-tertiary);
+}
+
+code {
+  font-family: var(--us-font-mono);
+  font-size: 0.9em;
+  background: var(--us-surface-sunk);
+  padding: 0 var(--us-space-1);
+  border-radius: 4px;
+}
+
+/* Wide content scrolls inside its own container. The page body must
+   never scroll horizontally — Kanda tests this at 320px, and a safety
+   report filled in on a phone is the reason it matters. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* TOLERABLE is the lightest of the three fills, which inverts the usual
+   severity-as-weight reading. A darker gold border claws some of that
+   back without touching the brand value. */
+.risk-matrix__cell[data-tolerability='TOLERABLE'] {
+  box-shadow: inset 0 0 0 2px var(--us-gold-text);
+}
+
+.oblig-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--us-text-sm);
+}
+
+.oblig-table th,
+.oblig-table td {
+  text-align: left;
+  padding: var(--us-space-3);
+  border-bottom: 1px solid var(--us-border);
+  vertical-align: top;
+}
+
+.oblig-table thead th {
+  font-size: var(--us-text-2xs);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+}
+
+.oblig-table .num {
+  font-family: var(--us-font-mono);
+  white-space: nowrap;
+}
+
+.cite {
+  color: var(--us-text-tertiary);
+  max-width: 34ch;
+}
+
+/* Charter rule 4 — every figure carries its date, on the surface rather
+   than in a footnote. */
+.verified {
+  display: block;
+  font-size: var(--us-text-2xs);
+  color: var(--us-text-tertiary);
+  margin-top: var(--us-space-1);
+}
+
+/* A provisional row must never look like a citation. */
+.tag {
+  display: inline-block;
+  margin-left: var(--us-space-2);
+  padding: 0 var(--us-space-2);
+  border-radius: var(--us-radius-pill);
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+}
+
+.tag--provisional {
+  background: var(--us-surface-sunk);
+  color: var(--us-ochre-text);
+  border: 1px dashed var(--us-ochre-text);
+}
+
+.site-footer {
+  padding: var(--us-space-6) var(--us-space-5);
+  border-top: 1px solid var(--us-border);
+  font-size: var(--us-text-sm);
+  color: var(--us-text-tertiary);
+}
