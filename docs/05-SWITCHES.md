@@ -226,7 +226,41 @@ rather than discovered to be a forty-file one.
 
 ---
 
-## 8. The unwritten counts
+## 8. There is no hosted database, and the Supabase org is at its limit
+
+**The claim:** the sync and auth routes are verified against a real
+Postgres — `npm run test:integration`, 26 checks, run locally and in CI
+against a Postgres service container.
+
+**What that does NOT mean:** nothing is deployed. There is no hosted API
+and no hosted database, so no design partner can reach this. The
+integration suite proves the code is correct against Postgres; it says
+nothing about a running system.
+
+**Why it is stuck here:** the Supabase organisation
+(`tffuplfbfxkklrnkzetm`) is at its free-project limit with `jiranione`
+and `Ratiba Crew Management System` already active. Creating a third
+requires pausing, deleting or upgrading one of those — each of which
+affects a different live product, and none of which is a decision this
+repository should make on its own.
+
+**What must happen:** one of —
+1. upgrade the Supabase organisation, and create a `UsalamaSMS` project;
+2. pause whichever of the two existing projects is genuinely dormant;
+3. host Postgres somewhere else entirely.
+
+Until then the CI service container is the only database this project
+has ever run against, and that is enough to keep the code honest and
+not enough to demonstrate anything to a customer.
+
+**The test:** `tests/integration/guard.test.ts` — CI sets `REQUIRE_DB=1`
+and the guard FAILS if `DATABASE_URL` is unset, so the day the service
+container is dropped the suite goes red rather than silently skipping
+every assertion and reporting green.
+
+---
+
+## 9. The unwritten counts
 
 **The claim:** charter rule 10 — counts about the product are computed,
 not typed.

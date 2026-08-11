@@ -23,7 +23,9 @@
     "icons": "node scripts/build-icons.mjs",
     "stamp-sw": "node scripts/stamp-sw.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "verify": "npm run build && npm run smoke"
+    "verify": "npm run build && npm run smoke",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "db:up": "bash scripts/local-db.sh"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.7",
@@ -35,11 +37,13 @@
     "vitest": "^2.1.4"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.0.0",
     "argon2": "^0.41.1",
     "dexie": "^4.0.10",
     "fastify": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "pg": "^8.23.0",
     "zod": "^3.23.8"
   }
 }

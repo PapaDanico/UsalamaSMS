@@ -7,11 +7,10 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import jwt from "jsonwebtoken";
 import argon2 from "argon2";
 import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { can, type Role, type Permission } from "@usalamasms/shared";
 import { deIdentify } from "./deident";
 import { auditMaterial } from "./audit-material";
-
-export const prisma = new PrismaClient();
 
 // ------------------------------ Env ----------------------------------
 // Validated at startup — fail fast (envalid pattern).
@@ -32,6 +31,22 @@ export const ENV = {
   ACCESS_TTL: "15m",
   REFRESH_TTL_MS: 30 * 24 * 3600 * 1000,
 } as const;
+
+/**
+ * The client.
+ *
+ * Prisma 7 removed the `datasources` constructor option: a direct
+ * database connection goes through a driver adapter, and a bare
+ * `new PrismaClient()` throws the moment it is asked to connect.
+ *
+ * This was written as `new PrismaClient()` and typechecked, linted and
+ * unit-tested clean for the entire life of the project, because nothing
+ * ever asked it to open a connection. It took a real Postgres to find —
+ * which is the argument for tests/integration in one line.
+ */
+export const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: requireEnv("DATABASE_URL") }),
+});
 
 // ------------------------------ Auth ---------------------------------
 export interface AccessClaims {

@@ -10,17 +10,17 @@ Amendment 2 rather than retrofitted to it.
 
 ## Status
 
-**Phase 1, first half.** A frontline user can file a report with the
-radio off, see that it has not been sent, and find it in the triage
-queue — verified in a real browser by `npm run smoke`, which cuts the
-network, submits, and reads the record back out of IndexedDB.
+**Phase 1 gate met.** `docs/02-STRATEGY.md` sets it as *"a frontline
+user files a report offline **and it arrives**"*, and both halves are
+now verified rather than asserted:
 
-The Phase 1 gate in `docs/02-STRATEGY.md` is *"a frontline user files a
-report offline **and it arrives**"*. The second half is not met and is
-not close: the API has never run against a live database, because no
-migration has ever been applied. The device side is done and the arrival
-side is untested — saying otherwise would be the same category of
-confident overstatement this repository keeps catching in itself.
+- **Files offline** — `npm run smoke` drives the built bundle in
+  headless Chromium, cuts the network, submits a report, and reads the
+  record back out of IndexedDB.
+- **And arrives** — `npm run test:integration` posts a queued batch
+  through the real Fastify instance, the real route, real JWT auth and a
+  real Postgres, then asserts the row, the audit entry and the
+  idempotency behaviour.
 
 Three routes ship: the report form, the triage queue, and a design route
 where the brand system renders itself against the real modules — its
@@ -28,19 +28,21 @@ matrix calls `tolerability()` and its deadline table reads
 `MOR_OBLIGATIONS`, so neither can drift from the documents describing
 them.
 
-**Not yet built:** no database migration has been applied, so the sync
-and auth routes are unexercised outside their source-level guards; the
-triage queue reads this device rather than the organisation; and there
-is no investigation, CAPA or SPI workflow. See `docs/02-STRATEGY.md`.
+**Not yet built:** there is no hosted deployment of the API — the
+integration suite runs Postgres locally and in CI, but nothing is
+running anywhere a design partner could reach. The triage queue reads
+this device rather than the organisation, and there is no investigation,
+CAPA or SPI workflow. See `docs/02-STRATEGY.md`.
 
 ```bash
 npm install
 npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 49 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 43 assertions that the registries match the docs
+npm run check:claims   # 46 assertions that the registries match the docs
 npm test               # 94 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
+npm run test:integration   # 26 checks against a real Postgres
 ```
 
 `npm run build` runs `check` first. A failing gate builds nothing.
@@ -90,7 +92,7 @@ See [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) for the evidence and
 | [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) | The regulatory clock, the AFI safety case, competitor pricing, why SMS implementations fail, and the confidentiality findings |
 | [`docs/02-STRATEGY.md`](docs/02-STRATEGY.md) | Positioning, the aggregate-data fork, module suite by tier, sequencing, commercial model, architecture verdicts, risks |
 | [`docs/04-BRAND.md`](docs/04-BRAND.md) | How the six-colour identity is encoded, the two artwork combinations that are not reproduced and the measurements that condemned them, and why the risk-scale green is almost black |
-| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Eight claims with an expiry date — which flag controls each, and the test that stops it rotting |
+| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Nine claims with an expiry date — which flag controls each, and the test that stops it rotting |
 
 ---
 
@@ -124,7 +126,10 @@ say — left every link intact and returned `ok: true`. It also forked
 under concurrency: two appends for one org at Postgres' default Read
 Committed both read the same predecessor. Both fixed; the material
 definition now lives in one place that the writer, the verifier and the
-tests all read.
+tests all read — and `tests/integration/audit.integration.test.ts` now
+edits a row in Postgres and requires the verifier to notice, plus a
+counter-test that removes the advisory lock and requires the chain to
+break. A guard nobody has watched fail is a guard nobody has tested.
 
 ---
 

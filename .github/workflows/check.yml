@@ -26,6 +26,30 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    # A real Postgres, because three of the four defects this project
+    # fixed were behavioural — a chain that forked under concurrency, a
+    # verifier that accepted edited rows, a join that re-identified
+    # reporters. Not one of those is visible to a source-level guard.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: usalamasms
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/usalamasms
+      # Makes the skip guard fail rather than pass if the service above
+      # is ever removed — see tests/integration/guard.test.ts.
+      REQUIRE_DB: "1"
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,6 +59,9 @@ jobs:
       - run: npm ci
       # typecheck, brand gate, claims gate, tests — see package.json.
       - run: npm run check
+
+      # And the same code against a real database.
+      - run: npm run test:integration
 
       # And then the built bundle, driven in a real browser. The unit
       # tests cannot tell you the router resolves or that a report filed

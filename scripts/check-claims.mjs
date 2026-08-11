@@ -285,6 +285,30 @@ assert(
   `README says ${smokeStated}, the suite defines ${smokeCount}`
 );
 
+/* Integration checks, counted from the suite. These are the strongest
+   assertions in the project — a chain that forks, a verifier that
+   accepts an edited row, a join that re-identifies a reporter are all
+   invisible to the source-level guards — so the number on the front
+   page is derived like every other. */
+const integrationDir = resolve(ROOT, 'tests/integration');
+const integrationFiles = readdirSync(integrationDir).filter((f) => f.endsWith('.test.ts'));
+assert(
+  'integration suites were discovered',
+  integrationFiles.length >= 3,
+  `${integrationFiles.length} integration suites found; the README claims a count over them`
+);
+
+const integrationCount = integrationFiles
+  .map((f) => (read(`tests/integration/${f}`).match(/^\s*it(?:\.only)?\(/gm) ?? []).length)
+  .reduce((a, b) => a + b, 0);
+
+const integrationStated = statedCount(/(\d+) checks against a real Postgres/, 'integration check count');
+assert(
+  'README integration count matches the suites',
+  integrationStated === integrationCount,
+  `README says ${integrationStated}, the suites define ${integrationCount}`
+);
+
 /* This gate's own total is only known once every assertion has run, so
    it is checked at the very end, below. */
 const claimsStated = statedCount(/(\d+) assertions that the registries/, 'claims assertion count');
