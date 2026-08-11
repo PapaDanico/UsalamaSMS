@@ -448,6 +448,26 @@ try {
     assert(/Approach/.test(text), 'the flight phase is not shown');
   });
 
+  await check('every status badge carries a WORD and a glyph, not just a colour', async () => {
+    // The identity's six medallions are colour-coded, and colour is the
+    // one channel this product may never rely on alone: the risk scale
+    // follows that rule and the status badges are held to it too.
+    // A greyscale print, a regulator's fax and a reader with a red-green
+    // deficiency all have to get the same six states.
+    const badges = await page.$$eval('.badge', (els) =>
+      els.map((el) => ({
+        status: el.dataset.status,
+        text: (el.querySelector('.badge__label')?.textContent ?? '').trim(),
+        glyphPaths: el.querySelectorAll('.badge__glyph path').length,
+      }))
+    );
+    assert(badges.length > 0, 'no status badge rendered on a queue with reports in it');
+    for (const b of badges) {
+      assert(b.text.length > 1, `badge ${b.status} has no readable label`);
+      assert(b.glyphPaths > 0, `badge ${b.status} has no glyph — colour would be its only channel`);
+    }
+  });
+
   await check('the triage filters use the same dropdown component', async () => {
     const total = await page.locator('.filters select').count();
     const standard = await page.locator('.filters select.select__control').count();
@@ -456,6 +476,12 @@ try {
   });
 
   await check('filtering the queue actually filters it', async () => {
+    // The controls are collapsed by default — three stacked dropdowns
+    // were a full handset screen and pushed every report below the fold.
+    // Opened explicitly rather than toggled, for the same reason the tap
+    // target check sets `.open` directly: a collapsed element's children
+    // measure differently across Chromium builds.
+    await page.locator('details.filters-shell').evaluate((el) => { el.open = true; });
     assert(await page.locator('.queue__item').count() === 1, 'expected one report to start');
     // A type the report is not.
     await page.selectOption('select[name="filter-type"]', 'MOR');

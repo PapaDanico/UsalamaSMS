@@ -1596,38 +1596,60 @@ code {
   gap: var(--us-space-3);
 }
 
+/* A report is a CARD, not a row. A queue of rows is a spreadsheet, and
+   the thing being scanned here is "which of these needs me now" rather
+   than "what is in column three". */
 .queue__item {
-  padding: var(--us-space-4);
-  border: 1px solid var(--us-border);
-  border-left: 4px solid var(--us-border-strong);
-  border-radius: var(--us-radius-md);
+  position: relative;
+  padding: var(--us-space-4) var(--us-space-5);
   background: var(--us-surface);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-lg);
+  box-shadow: var(--us-shadow-sm);
+  overflow: hidden;
 }
 
-/* Unsent is the state the reader can do something about, so it is the
-   state that gets the edge. */
-.queue__item[data-sync='pending'],
-.queue__item[data-sync='syncing'] {
-  border-left-color: var(--us-gold);
+/* The state rail. Colour on the leading edge is readable at a glance
+   down a scrolling list in a way a badge in the corner is not — and the
+   badge stays, because the rail alone would be colour as the only
+   channel. */
+.queue__item::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--us-border-strong);
 }
 
-.queue__item[data-sync='error'],
-.queue__item[data-sync='conflict'] {
-  border-left-color: var(--us-ochre);
+.queue__item[data-sync='pending']::before,
+.queue__item[data-sync='syncing']::before {
+  background: var(--us-gold);
 }
 
-.queue__item[data-sync='synced'] {
-  border-left-color: var(--us-teal);
+.queue__item[data-sync='error']::before,
+.queue__item[data-sync='conflict']::before {
+  background: var(--us-ochre);
+}
+
+.queue__item[data-sync='synced']::before {
+  background: var(--us-teal);
 }
 
 .queue__head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--us-space-2);
-  margin-bottom: var(--us-space-2);
+  justify-content: space-between;
+  gap: var(--us-space-3);
+  margin-bottom: var(--us-space-3);
 }
 
+.queue__meta {
+  margin: var(--us-space-3) 0 0;
+}
+
+/* The report type, as a quiet label rather than a competing badge. The
+   badges carry state; this carries kind, and two loud things beside
+   each other means neither is read. */
 .queue__type {
   font-size: var(--us-text-2xs);
   font-weight: var(--us-weight-bold);
@@ -1636,22 +1658,77 @@ code {
   color: var(--us-text-tertiary);
 }
 
-.queue__state {
-  margin-left: auto;
+/* ============================================================
+   Status badges — the identity's six, at queue size
+
+   The brand sheet renders them as gold-rimmed coins. At 390px in a list
+   of thirty, a decorated ring is a smudge around a word and the word is
+   the part that has to survive sunlight. The colour assignments and the
+   glyphs are kept exactly; the emboss is not.
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--us-space-2);
+  padding: 3px var(--us-space-3) 3px var(--us-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--us-radius-pill);
   font-size: var(--us-text-xs);
   font-weight: var(--us-weight-semi);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
-.queue__state[data-state='pending'],
-.queue__state[data-state='syncing'] {
-  color: var(--us-state-pending);
+.badge__glyph {
+  width: 14px;
+  height: 14px;
+  flex: none;
 }
-.queue__state[data-state='synced'] {
-  color: var(--us-state-synced);
+
+.badge[data-status='SAFE'] {
+  background: rgb(8 48 28 / 0.09);
+  border-color: rgb(8 48 28 / 0.18);
+  color: var(--us-risk-acceptable);
 }
-.queue__state[data-state='error'],
-.queue__state[data-state='conflict'] {
-  color: var(--us-state-error);
+
+.badge[data-status='CAUTION'] {
+  background: rgb(var(--us-gold-rgb) / 0.2);
+  border-color: rgb(var(--us-gold-rgb) / 0.42);
+  color: var(--us-gold-text);
+}
+
+.badge[data-status='ALERT'] {
+  background: rgb(187 50 26 / 0.1);
+  border-color: rgb(187 50 26 / 0.24);
+  color: var(--us-ochre-text);
+}
+
+.badge[data-status='OFFLINE'] {
+  background: rgb(var(--us-charcoal-rgb) / 0.07);
+  border-color: rgb(var(--us-charcoal-rgb) / 0.16);
+  color: var(--us-text-tertiary);
+}
+
+.badge[data-status='SYNCING'] {
+  background: rgb(var(--us-teal-rgb) / 0.11);
+  border-color: rgb(var(--us-teal-rgb) / 0.26);
+  color: var(--us-teal-text);
+}
+
+.badge[data-status='PROTECTED'] {
+  background: rgb(198 93 59 / 0.11);
+  border-color: rgb(198 93 59 / 0.26);
+  color: var(--us-terracotta-text);
+}
+
+/* The sending badge turns, because it is the one state that is
+   genuinely in motion. Everything else is still. */
+.badge[data-status='SYNCING'] .badge__glyph {
+  animation: us-spin 1.6s linear infinite;
+}
+
+@keyframes us-spin {
+  to { transform: rotate(360deg); }
 }
 
 .queue__title {
@@ -1788,10 +1865,67 @@ code {
 /* ============================================================
    Filter bar
    ============================================================ */
+/* ---- The collapsed filter shell ---- */
+
+.filters-shell {
+  margin-bottom: var(--us-space-5);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-md);
+  background: var(--us-surface-muted);
+}
+
+.filters-shell summary {
+  display: flex;
+  align-items: center;
+  gap: var(--us-space-3);
+  min-height: var(--us-tap);
+  padding: 0 var(--us-space-4);
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-semi);
+  color: var(--us-teal-text);
+  cursor: pointer;
+  list-style: none;
+}
+
+.filters-shell summary::-webkit-details-marker {
+  display: none;
+}
+
+.filters-shell summary::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--us-dur) var(--us-ease);
+}
+
+.filters-shell[open] summary::after {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.filters-shell[open] summary {
+  border-bottom: 1px solid var(--us-border);
+}
+
+/* A filtered view that LOOKS like an empty queue is how a safety
+   manager concludes nothing was reported. The count is on the summary
+   so it is visible with the controls shut. */
+.filters-shell__count {
+  padding: 2px var(--us-space-3);
+  border-radius: var(--us-radius-pill);
+  background: rgb(var(--us-teal-rgb) / 0.13);
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-bold);
+  letter-spacing: 0.02em;
+}
+
 .filters {
+  padding: var(--us-space-5) var(--us-space-4);
   display: grid;
   gap: var(--us-space-4);
-  margin-bottom: var(--us-space-6);
 }
 
 @media (min-width: 640px) {
@@ -1812,4 +1946,71 @@ code {
   margin: 0 0 var(--us-space-2);
   font-size: var(--us-text-sm);
   color: var(--us-text-tertiary);
+}
+
+
+/* ============================================================
+   PROMPT DOCK — install, and update
+
+   Docked above the tab bar as an OVERLAY, never in the flow. A banner
+   that pushes the page down mid-sentence is how a half-typed narrative
+   gets abandoned, and an abandoned narrative is an occurrence nobody
+   hears about. Neither prompt appears while a form on screen has
+   anything typed into it; see shared/prompts.js.
+   ============================================================ */
+.prompt-dock {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 70;
+  display: grid;
+  gap: var(--us-space-2);
+  padding: var(--us-space-3) clamp(var(--us-space-3), 4vw, var(--us-space-6));
+  padding-bottom: calc(var(--us-tabbar) + env(safe-area-inset-bottom) + var(--us-space-3));
+  pointer-events: none;
+}
+
+@media (min-width: 900px) {
+  .prompt-dock {
+    inset: auto 0 0 auto;
+    max-width: 26rem;
+    padding-bottom: calc(env(safe-area-inset-bottom) + var(--us-space-5));
+  }
+}
+
+.prompt {
+  pointer-events: auto;
+  display: grid;
+  gap: var(--us-space-4);
+  padding: var(--us-space-4) var(--us-space-5);
+  background: var(--us-surface);
+  border: 1px solid var(--us-border-strong);
+  border-radius: var(--us-radius-lg);
+  box-shadow: var(--us-shadow-lg);
+  animation: us-rise var(--us-dur-slow) var(--us-ease-out) both;
+}
+
+@keyframes us-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.prompt__text {
+  margin: 0;
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+  color: var(--us-text-secondary);
+}
+
+.prompt__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--us-space-3);
+}
+
+/* Small, because these are secondary to whatever the person came to do.
+   Still 40px, because they are still tapped with a glove on. */
+.btn--sm {
+  min-height: 40px;
+  padding: 0 var(--us-space-4);
+  font-size: var(--us-text-sm);
 }

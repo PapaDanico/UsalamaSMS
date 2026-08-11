@@ -21,9 +21,9 @@ import { router } from './shared/router.js';
 import { registerServiceWorker, listenForFlushRequests } from './shared/register-sw.js';
 import { syncStatus, flushOutbox } from './shared/offline.ts';
 import { resumeSession } from './shared/session.js';
+import { watchForInstall, offerUpdate } from './shared/prompts.js';
 import { render as renderReport } from './tools/report/index.js';
 import { render as renderTriage } from './tools/triage/index.js';
-import { render as renderDesign } from './tools/design/index.js';
 import { render as renderLogin } from './tools/login/index.js';
 
 /* ------------------------------ Chrome ------------------------------ */
@@ -94,7 +94,30 @@ router
   // is where someone goes to make the queue send, not a gate they pass
   // through to reach the product.
   .register('/account', (el) => renderLogin(el), { title: 'Sign in' })
-  .register('/design', (el) => renderDesign(el), { title: 'Design system' })
+  /* LAZY. The design route renders the whole brand system — the risk
+     matrix, the obligation table, every token swatch — and it exists so
+     docs/04-BRAND.md can be checked by looking. A ramp agent never opens
+     it, and it was riding in the bundle that has to load over a bad link
+     before anyone can file anything.
+
+     Split out, it comes back over the network when someone asks for it,
+     which is a fair trade for a screen only we use. */
+  .register(
+    '/design',
+    (el) => {
+      el.innerHTML = '<p class="lede">Loading the design system…</p>';
+      import('./tools/design/index.js').then(
+        (mod) => mod.render(el),
+        () => {
+          el.innerHTML =
+            '<section class="panel"><h1>Design system</h1>' +
+            '<p class="notice notice--error">This screen could not be loaded. ' +
+            'It is fetched on demand and needs a connection the first time.</p></section>';
+        }
+      );
+    },
+    { title: 'Design system' }
+  )
   .setNotFound((el) => {
     el.innerHTML = html`
       <section class="panel">
@@ -181,9 +204,15 @@ window.addEventListener('usalamasms:report-filed', () => void renderSyncState())
 window.addEventListener('usalamasms:sync-changed', () => void renderSyncState());
 
 /* -------------------------- Offline plumbing -------------------------- */
+/* A console.info is a message for whoever wrote this, not for a ramp
+   agent. The update is offered on screen and NEVER applied on its own —
+   applying it reloads the page, and a reload with a half-typed narrative
+   on screen destroys the one thing this product promises to keep. */
 registerServiceWorker({
-  onUpdateReady: () => console.info('[usalamasms] a new version is ready; reload to apply')
+  onUpdateReady: (registration) => offerUpdate(registration)
 });
+
+watchForInstall();
 
 /* The worker asks; the page owns the ONE implementation of the flush.
    Two implementations of backoff and conflict handling is how a hazard

@@ -285,6 +285,41 @@ for (const c of checks) {
   console.log(`${mark} ${c.label.padEnd(width)}  ${c.ratio.toFixed(2)}:1  (>= ${c.floor.toFixed(1)})`);
 }
 
+/* ============================================================
+   THE OFFLINE PAGE'S INLINED COLOURS.
+
+   apps/web/public/offline.html is served with no network, so it cannot
+   link the stylesheet and every colour in it is a literal. Its own
+   header comment said this gate kept those literals in sync with the
+   tokens. It did not — there was no such assertion anywhere, and the
+   claim had been sitting in the file since it was written.
+
+   That is the failure mode this whole gate exists for: a promise about
+   a mechanism, kept by a comment. Now kept by a mechanism.
+   ============================================================ */
+const offline = readFileSync(resolve(HERE, '../apps/web/public/offline.html'), 'utf8');
+
+for (const [name, why] of [
+  ['us-sand', 'the page ground'],
+  ['us-charcoal', 'body ink'],
+  ['us-teal', 'the action button'],
+  ['us-line', 'the card border'],
+  ['us-gold-text', 'the eyebrow'],
+  ['us-ink-600', 'secondary copy'],
+  ['us-ink-400', 'the footnote'],
+]) {
+  const value = token(name).toLowerCase();
+  const present = offline.toLowerCase().includes(value);
+  checks.push({ label: `offline.html carries --${name} (${why})`, ratio: present ? 1 : 0, floor: 1, ok: present });
+  if (!present) {
+    failures.push(
+      `offline.html does not contain ${value}, the value of --${name} (${why}). ` +
+        `That page cannot link the stylesheet, so its colours are literals and ` +
+        `they drift silently when a token moves.`
+    );
+  }
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} contrast failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);

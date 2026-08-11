@@ -43,7 +43,10 @@ export function registerServiceWorker({ onFlush, onUpdateReady } = {}) {
               // there would ask the user to reload a page they just
               // opened.
               if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-                onUpdateReady?.();
+                // The REGISTRATION is passed through, because applying
+                // the update needs it and a handler that has to go and
+                // find it again races the one that fired.
+                onUpdateReady?.(registration);
               }
             });
           });

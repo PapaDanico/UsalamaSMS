@@ -25,7 +25,8 @@
    somewhere, which is most of the way to asking for it.
    ============================================================ */
 
-import { html } from '../../shared/html.js';
+import { html, raw } from '../../shared/html.js';
+import { syncBadge, StatusBadge } from '../../components/Status.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
   REPORT_TYPES, SYNC_STATES, AERODROMES, FLIGHT_PHASES,
@@ -86,6 +87,9 @@ export async function render(outlet) {
     label: labelFor(AERODROMES, code)
   }));
 
+  /* Counted, not typed — charter rule 10 applied to a UI number. */
+  const activeFilters = Object.values(filters).filter(Boolean).length;
+
   outlet.innerHTML = html`
     <section class="panel">
       <header class="page-head">
@@ -97,7 +101,19 @@ export async function render(outlet) {
         </p>
       </header>
 
-      <div class="filters card card--tinted" role="group" aria-label="Filter the queue">
+      <!-- COLLAPSED BY DEFAULT. Three stacked dropdowns are a full
+           handset screen, and they were pushing every report below the
+           fold — on the one screen whose job is to show reports. The
+           summary carries the active count, so a filtered view can never
+           be mistaken for an empty queue while the controls are shut. -->
+      <details class="filters-shell" ${activeFilters > 0 ? raw('open') : ''}>
+        <summary>
+          <span>Filter</span>
+          ${activeFilters > 0
+            ? html`<span class="filters-shell__count">${activeFilters} active</span>`
+            : ''}
+        </summary>
+        <div class="filters" role="group" aria-label="Filter the queue">
         ${Select({
           name: 'filter-type',
           label: 'Report type',
@@ -119,7 +135,8 @@ export async function render(outlet) {
           value: filters.location,
           placeholder: 'Anywhere'
         })}
-      </div>
+        </div>
+      </details>
 
       ${all.length > 0 && rows.length === 0
         ? html`<p class="lede">
@@ -193,15 +210,22 @@ function compare(a, b) {
 function row(r) {
   return html`
     <li class="queue__item" data-sync="${r.syncState}">
+      <!-- KIND on the left, STATE on the right, and nothing else on
+           this line. Two badges plus a label wrapped onto three lines at
+           390px, which is a card that has stopped being scannable. -->
       <div class="queue__head">
         <span class="queue__type">${TYPE_LABEL[r.type] ?? r.type}</span>
-        ${r.isAnonymous ? html`<span class="tag">anonymous</span>` : ''}
-        <span class="queue__state" data-state="${r.syncState}">
-          ${STATE_LABEL[r.syncState] ?? r.syncState}
-        </span>
+        ${syncBadge(r.syncState)}
       </div>
 
       <p class="queue__title">${r.title}</p>
+
+      <!-- PROTECTED, from the identity's six. It is the badge that means
+           confidentiality rather than delivery — which is what an
+           anonymous report carries and what "sent" does not. It sits
+           under the title because it describes the REPORT, where the
+           badge above describes what has happened to it. -->
+      ${r.isAnonymous ? html`<p class="queue__meta">${StatusBadge('PROTECTED', { label: 'Anonymous' })}</p>` : ''}
 
       ${r.location || r.phase
         ? html`<p class="queue__where">

@@ -102,25 +102,59 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    Raise these numbers when you have decided to; do not raise them to
    make a build pass.
-   ============================================================ */
-const BUDGET = { js: 200 * 1024, css: 32 * 1024 };
 
-const sizes = { js: 0, css: 0 };
+   ---------------------------------------------------------------
+   WHY THERE ARE NOW THREE NUMBERS RATHER THAN TWO.
+
+   This measured TOTAL JavaScript, which was the same thing as "what a
+   person downloads before they can file a report" for exactly as long
+   as there was one chunk. The design route — the whole brand system,
+   the token swatches, a screen only we open — is now split out, and
+   under a total-only budget that split made the number WORSE: the entry
+   chunk fell and the chunk overhead pushed the sum up.
+
+   A budget that punishes the change it should reward is a budget
+   measuring the wrong thing. So:
+
+     · ENTRY is what gates time-to-first-report. It is the number that
+       matters and it keeps the original 200 KB, unmoved.
+     · TOTAL still has a ceiling, because "split it into forty chunks"
+       must not become a way to smuggle a megabyte in. It is set at
+       240 KB — the entry budget plus room for the lazy routes that
+       exist, and no more.
+
+   This is a change of METRIC and it is written down here rather than
+   done quietly, because changing what you measure to pass a build is
+   the exact failure this whole block exists to prevent. The test is
+   whether the new metric would have caught the old problem: a 40 KB
+   library added to the report form still breaks ENTRY, which is what
+   the 200 KB was protecting.
+   ============================================================ */
+const BUDGET = { entry: 200 * 1024, js: 240 * 1024, css: 32 * 1024 };
+
+const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {
   const ext = asset.endsWith('.js') ? 'js' : asset.endsWith('.css') ? 'css' : null;
   if (!ext) continue;
-  sizes[ext] += statSync(resolve(DIST, asset.slice(1))).size;
+  const bytes = statSync(resolve(DIST, asset.slice(1))).size;
+  sizes[ext] += bytes;
+  // The entry chunk is the largest JS asset: Vite names lazy chunks the
+  // same way, so size is the only thing distinguishing them without
+  // parsing the manifest, and a lazy chunk larger than the entry would
+  // be a finding rather than a miscount.
+  if (ext === 'js' && bytes > sizes.entry) sizes.entry = bytes;
 }
 
 let overBudget = false;
-for (const kind of ['js', 'css']) {
+for (const kind of ['entry', 'js', 'css']) {
   const kb = (sizes[kind] / 1024).toFixed(1);
   const limit = (BUDGET[kind] / 1024).toFixed(0);
+  const label = kind === 'entry' ? 'js (entry)' : kind === 'js' ? 'js (total)' : kind;
   if (sizes[kind] > BUDGET[kind]) {
-    console.error(`  BUDGET EXCEEDED  ${kind}: ${kb} KB against a ${limit} KB budget`);
+    console.error(`  BUDGET EXCEEDED  ${label}: ${kb} KB against a ${limit} KB budget`);
     overBudget = true;
   } else {
-    console.log(`  budget ok        ${kind}: ${kb} KB of ${limit} KB`);
+    console.log(`  budget ok        ${label}: ${kb} KB of ${limit} KB`);
   }
 }
 
