@@ -1,0 +1,126 @@
+# The gates, on every push and pull request.
+#
+# Until this existed the gates ran only inside Netlify's build of the web
+# app — so a change to the API, the shared package or the regulatory
+# registry could merge without a single assertion running against it. The
+# first deploy of this repository reported three green checks while
+# building nothing at all, which is the concrete version of that problem.
+name: check
+
+on:
+  # `push: ["**"]` plus `pull_request` fires BOTH on any branch with an
+  # open PR, so the first run of this workflow executed every job twice
+  # against the same commit. Scoping push to the default branch means a
+  # PR is checked once by `pull_request` and a merge is checked once by
+  # `push`, with no commit checked twice.
+  push:
+    branches: [main]
+  pull_request:
+
+# And if a branch is pushed again while its checks are still running,
+# the older run is checking a commit nobody is waiting on any more.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    # A real Postgres, because three of the four defects this project
+    # fixed were behavioural — a chain that forked under concurrency, a
+    # verifier that accepted edited rows, a join that re-identified
+    # reporters. Not one of those is visible to a source-level guard.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: usalamasms
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/usalamasms
+      # Makes the skip guard fail rather than pass if the service above
+      # is ever removed — see tests/integration/guard.test.ts.
+      REQUIRE_DB: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      # typecheck, brand gate, claims gate, tests — see package.json.
+      - run: npm run check
+
+      # And the same code against a real database.
+      - run: npm run test:integration
+
+      # And then the built bundle, driven in a real browser. The unit
+      # tests cannot tell you the router resolves or that a report filed
+      # with the radio off survives; those are the properties the
+      # product is sold on, so they are checked against dist/ and not
+      # against source.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run smoke
+
+  # A gate is worth what its failure is worth, and a gate nobody has
+  # watched fail is a gate nobody has tested. These two cases assert that
+  # the brand gate still REJECTS the things it was written to reject: a
+  # risk scale that collapses under dichromacy, and a token that has been
+  # renamed out from under an assertion (charter rule 11).
+  #
+  # If either of these starts passing, the gate has stopped checking and
+  # this job fails instead of quietly going green.
+  gates-still-fail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+
+      - name: A mid-green risk scale must be rejected
+        run: |
+          cp apps/web/src/style.css /tmp/style.bak
+          sed -i 's/--us-risk-acceptable: #08301c;/--us-risk-acceptable: #1f7a4d;/' apps/web/src/style.css
+          if node scripts/check-brand.mjs > /dev/null 2>&1; then
+            echo "::error::The brand gate ACCEPTED a risk scale that is 1.10:1 against Ochre Red."
+            exit 1
+          fi
+          cp /tmp/style.bak apps/web/src/style.css
+
+      - name: A renamed token must be rejected
+        run: |
+          cp apps/web/src/style.css /tmp/style.bak
+          sed -i 's/--us-ochre-text:/--us-ochre-text-RENAMED:/' apps/web/src/style.css
+          if node scripts/check-brand.mjs > /dev/null 2>&1; then
+            echo "::error::The brand gate PASSED with a token it asserts on missing (charter rule 11)."
+            exit 1
+          fi
+          cp /tmp/style.bak apps/web/src/style.css
+
+      - name: A rate limit with no plugin behind it must be rejected
+        run: |
+          cp apps/api/src/server.ts /tmp/server.bak
+          sed -i 's|^import rateLimit from "@fastify/rate-limit";||' apps/api/src/server.ts
+          if node scripts/check-claims.mjs > /dev/null 2>&1; then
+            echo "::error::The claims gate PASSED with routes declaring config.rateLimit and no plugin registered. That is the exact state login shipped in: unbounded."
+            exit 1
+          fi
+          cp /tmp/server.bak apps/api/src/server.ts
+
+      - name: And the restored sources must pass
+        run: |
+          node scripts/check-brand.mjs
+          node scripts/check-claims.mjs

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f0e8" />
+    <title>Offline — UsalamaSMS</title>
+    <!--
+      Self-contained by necessity: this page is served when there is no
+      network, so it cannot reference a stylesheet, a font or an icon
+      file that might not be cached. Every colour here is a brand token's
+      literal value, and this is the ONLY file in the project permitted
+      to inline them — every other rule reads a token.
+
+      It is also the page most likely to be seen by the person this
+      product exists for, at the moment they most need to trust it: a
+      ramp agent at a remote strip who has just typed a report. So it is
+      not a browser error page with our colours on it. It is the product,
+      saying the one thing that matters.
+    -->
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        padding: 32px 24px calc(32px + env(safe-area-inset-bottom));
+        text-align: center;
+        font-family: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont,
+          'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background-color: #f5f0e8;
+        /* The same Ethiopian cross ground the app carries, so this does
+           not read as a different application. */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%232c2c2c' stroke-opacity='0.032' stroke-width='1'%3E%3Cpath d='M42 28v28M28 42h28'/%3E%3Cpath d='M35 35l-7-7M49 35l7-7M35 49l-7 7M49 49l7 7'/%3E%3C/g%3E%3C/svg%3E");
+        color: #2c2c2c;
+        line-height: 1.6;
+      }
+      .mark { width: 76px; height: 89px; }
+      .eyebrow {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #7a5c12;
+      }
+      h1 {
+        margin: 0;
+        font-size: 27px;
+        line-height: 1.15;
+        letter-spacing: -0.028em;
+      }
+      .card {
+        max-width: 34ch;
+        margin: 0;
+        padding: 20px 22px;
+        background: #ffffff;
+        border: 1px solid #e6dfd2;
+        border-radius: 18px;
+        box-shadow: 0 1px 2px rgba(44, 44, 44, 0.05);
+        text-align: left;
+        font-size: 15px;
+      }
+      .card p { margin: 0; }
+      .card p + p { margin-top: 12px; color: #5c5852; font-size: 13.5px; }
+      strong { font-weight: 600; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 28px;
+        border-radius: 12px;
+        background: #2a7a7b;
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .footnote {
+        max-width: 34ch;
+        margin: 0;
+        font-size: 12px;
+        color: #8a847b;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- The mark, inlined. A cached <img> that misses is a broken-image
+         icon on the one screen whose job is to look dependable. -->
+    <svg class="mark" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M60 4 C60 4 96 12 112 14 C114 14 116 16 116 19 L116 68 C116 104 92 126 62 136 C61 136.5 59 136.5 58 136 C28 126 4 104 4 68 L4 19 C4 16 6 14 8 14 C24 12 60 4 60 4 Z"
+        fill="none"
+        stroke="#2c2c2c"
+        stroke-width="5"
+        stroke-linejoin="round"
+      />
+      <g fill="none" stroke="#d4ab43" stroke-width="2.6" stroke-linecap="round">
+        <path d="M14 112 C34 96 58 66 104 34" />
+        <path d="M106 112 C86 96 62 66 16 34" />
+      </g>
+      <g fill="#2c2c2c">
+        <path
+          d="M46 96 C42 88 47 80 56 78 C66 76 76 80 79 87 C82 94 78 101 70 103 L54 103 C49 103 47 100 46 96 Z"
+        />
+        <path
+          d="M58 79 C53 71 53 62 58 56 C60 53 63 52 65 53 C67 54 67 57 66 59 C62 64 61 71 63 79 Z"
+        />
+        <path d="M60 54 C60 50 63 47 66 47 C69 47 71 49 71 52 L78 54 L71 56 C70 58 67 59 64 58 Z" />
+      </g>
+      <g fill="none" stroke="#2c2c2c" stroke-width="2.4" stroke-linecap="round">
+        <path d="M58 103 L57 114 M52 114 L62 114 M68 103 L70 113 M65 113 L75 113" />
+        <path d="M48 116 L72 116 M45 121 L75 121 M42 126 L78 126" />
+      </g>
+      <!-- The crest and the aircraft. At 76px this is above the mark's
+           40px detail threshold, so it carries the full artwork — a
+           crowned crane without its crest is a bird, and the arcs
+           without the aircraft are two lines. -->
+      <g fill="none" stroke="#d4ab43" stroke-width="1.9" stroke-linecap="round">
+        <path d="M63 47 L58 33 M65 46 L62 31 M67 46 L66 30 M69 46 L71 30 M70 47 L75 32 M71 48 L79 35 M61 48 L54 36 M60 50 L51 41 M72 50 L82 41" />
+      </g>
+      <path d="M98 30 L112 36 L104 38 L106 45 L102 45 L98 39 L92 40 L94 36 L90 32 L94 32 Z" fill="#d4ab43" />
+    </svg>
+
+    <div>
+      <p class="eyebrow">No connection</p>
+      <h1>Your reports are safe</h1>
+    </div>
+
+    <!--
+      The message a person needs here is not "no connection" — their
+      phone already told them that. It is whether the report they just
+      typed still exists. It does, and saying so is the difference
+      between someone trusting this at a remote strip and someone
+      re-typing everything into WhatsApp.
+    -->
+    <div class="card">
+      <p>
+        <strong>Nothing you have written has been lost.</strong> Reports are
+        held on this device and send themselves as soon as there is signal.
+      </p>
+      <p>
+        You do not need to keep this page open, and you do not need to be
+        online to file another one.
+      </p>
+    </div>
+
+    <a class="btn" href="/">File a report</a>
+
+    <p class="footnote">
+      This page is showing because the network is unreachable, not because
+      anything failed.
+    </p>
+  </body>
+</html>

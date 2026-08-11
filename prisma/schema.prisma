@@ -1,0 +1,347 @@
+// =====================================================================
+// UsalamaSMS — data model
+//
+// Every tenant-owned table carries orgId and is indexed on it first.
+// Multi-tenancy here is not a feature, it is the security boundary: two
+// operators who compete on the same routes share this database, and a
+// query that forgets orgId is a data breach between competitors.
+//
+// Connection URL lives in prisma.config.ts (Prisma 7), not here.
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7 no longer accepts `url` here — the connection lives in
+// prisma.config.ts, and the client takes an adapter. The schema had both,
+// which is not a style disagreement: `prisma generate` refuses to run,
+// so the client was never generated, so `tsc` could not resolve
+// PrismaClient, so twelve of the thirteen type errors in this repository
+// were one line in this file.
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  FRONTLINE
+  SAFETY_OFFICER
+  SAFETY_MANAGER
+  INVESTIGATOR
+  KEY_MANAGEMENT
+  ACCOUNTABLE_EXECUTIVE
+  REGULATOR_INSPECTOR
+  SYSTEM_ADMIN
+}
+
+enum ReportType {
+  MOR
+  VCR
+  HAZARD
+  SUGGESTION
+  NEAR_MISS
+  FATIGUE
+}
+
+enum ReportState {
+  SUBMITTED
+  TRIAGED
+  UNDER_INVESTIGATION
+  ACTIONS_OPEN
+  CLOSED
+}
+
+enum Severity {
+  A_CATASTROPHIC
+  B_HAZARDOUS
+  C_MAJOR
+  D_MINOR
+  E_NEGLIGIBLE
+}
+
+enum Likelihood {
+  FREQUENT
+  OCCASIONAL
+  REMOTE
+  IMPROBABLE
+  EXTREMELY_IMPROBABLE
+}
+
+enum Tolerability {
+  INTOLERABLE
+  TOLERABLE
+  ACCEPTABLE
+}
+
+enum FlightPhase {
+  STANDING
+  PUSHBACK
+  TAXI
+  TAKEOFF
+  INITIAL_CLIMB
+  CLIMB
+  CRUISE
+  DESCENT
+  APPROACH
+  LANDING
+  LANDING_ROLL
+  GO_AROUND
+  GROUND_HANDLING
+  MAINTENANCE
+}
+
+enum Jurisdiction {
+  KE
+  UG
+  TZ
+  RW
+  EU
+}
+
+model Org {
+  id           String       @id @default(uuid())
+  name         String
+  // The regulator this operator answers to. Drives which reporting
+  // obligation row applies — see packages/shared/src/regulations.ts.
+  jurisdiction Jurisdiction @default(KE)
+  aocNumber    String?
+  createdAt    DateTime     @default(now())
+
+  users     User[]
+  reports   SafetyReport[]
+  hazards   Hazard[]
+  auditLogs AuditLog[]
+  receipts  SyncReceipt[]
+  spis      Spi[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  orgId        String
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(FRONTLINE)
+  mfaSecret    String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  org      Org            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  reports  SafetyReport[]
+  tokens   RefreshToken[]
+  receipts SyncReceipt[]
+  audits   AuditLog[]
+
+  @@index([orgId, role])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model SafetyReport {
+  id       String @id @default(uuid())
+  orgId    String
+  // Client-generated idempotency key for offline submission.
+  clientId String @unique
+
+  type      ReportType
+  state     ReportState @default(SUBMITTED)
+  title     String
+  narrative String      @db.Text
+
+  /// What the reporter thinks should be done about it.
+  ///
+  /// From the operator's own hazard report form, where "Reporter's
+  /// Recommendations" sits above the safety office's analysis. The
+  /// person who saw the hazard usually knows the fix, and this is the
+  /// cheapest safety intelligence in the system.
+  ///
+  /// De-identified with the narrative, never separately: a recommendation
+  /// can identify its author as readily as the account can.
+  reporterRecommendation String? @db.Text
+
+  occurredAt DateTime?
+  // When the reporting obligation began running for this organisation.
+  // NOT the same as occurredAt, and the distinction is the difference
+  // between meeting a 24-hour deadline and missing it — an engineer who
+  // discovers a Friday defect on Monday reports from Monday.
+  awareAt      DateTime?
+  jurisdiction Jurisdiction @default(KE)
+
+  // Both now hold a code from packages/shared/src/taxonomy.ts rather than
+  // whatever someone typed. "HKJK", "JKIA" and "Nairobi" were three
+  // aerodromes to a GROUP BY, which made every safety-intelligence
+  // question unanswerable. The dropdowns keep a free-text escape, so
+  // these are still nullable strings rather than enums — a vocabulary
+  // with no way out puts the real answer in the narrative instead.
+  location     String?
+  aircraftType String?
+  phase        FlightPhase?
+  hrcTags      String[]
+
+  // ------------------------ Confidentiality ------------------------
+  isAnonymous           Boolean   @default(false)
+  // Null when anonymous, and null again — permanently — once a VCR has
+  // been through de-identification. Hard removal, never reversible
+  // encryption: a key that exists is a key that can be compelled.
+  reporterId            String?
+  isDeIdentified        Boolean   @default(false)
+  deIdentifiedAt        DateTime?
+  deIdentifiedNarrative String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org      Org              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  reporter User?            @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  hazards  Hazard[]
+
+  // DELIBERATELY NOT A COLUMN: regulatorDeadline.
+  //
+  // Charter rule 6 — regulatory status is computed from today's date,
+  // never stored. A stored deadline survives a correction to occurredAt,
+  // survives a correction to awareAt, and survives the regulator
+  // changing the rule; all three leave the operator holding a number the
+  // product is confident about and the authority disagrees with.
+  // Computed at read time by reportingDeadline() from jurisdiction +
+  // awareAt. If you are about to add this column, read that module first.
+
+  @@index([orgId, state, createdAt])
+  @@index([orgId, type, occurredAt])
+  // The aggregation this taxonomy exists to make possible.
+  @@index([orgId, location, phase])
+}
+
+model Hazard {
+  id          String  @id @default(uuid())
+  orgId       String
+  reportId    String?
+  title       String
+  description String  @db.Text
+  source      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org         Org              @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  report      SafetyReport?    @relation(fields: [reportId], references: [id], onDelete: SetNull)
+  assessments RiskAssessment[]
+
+  @@index([orgId, createdAt])
+}
+
+model RiskAssessment {
+  id          String @id @default(uuid())
+  orgId       String
+  hazardId    String
+  consequence String @db.Text
+
+  severity   Severity
+  likelihood Likelihood
+  // Stored because they are the assessment OF RECORD at a point in time
+  // — unlike a regulatory deadline, which is a property of law and
+  // changes underneath you. If the matrix is ever revised, historic
+  // assessments must keep the classification they were accepted under;
+  // recomputing them would rewrite decisions people signed.
+  score        Int
+  tolerability Tolerability
+
+  alarpJustification String?   @db.Text
+  acceptedById       String?
+  acceptedAt         DateTime?
+
+  createdAt DateTime @default(now())
+
+  hazard Hazard @relation(fields: [hazardId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, tolerability])
+}
+
+model Spi {
+  id        String   @id @default(uuid())
+  orgId     String
+  name      String
+  // Safety Performance Indicator with its target and alert level.
+  // Annex 19 Amendment 2 raises these from good practice to the
+  // substance of performance-based oversight.
+  unit      String
+  target    Float
+  alertLevel Float
+  createdAt DateTime @default(now())
+
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
+model SyncReceipt {
+  id       String @id @default(uuid())
+  orgId    String
+  clientId String
+
+  entityType String
+  op         String
+
+  // Both nullable, and BOTH ARE NULL FOR AN ANONYMOUS REPORT.
+  //
+  // These columns are the ones that used to be written unconditionally.
+  // syncReceipt.clientId and safetyReport.clientId hold the same value,
+  // so a single join re-identified every anonymous reporter. Nulling
+  // them is not a nicety; it is the difference between a confidential
+  // reporting system and a list of who reported what.
+  userId   String?
+  deviceId String?
+
+  // Keyed hash of the device, kept only for anonymous submissions so
+  // repeat sends from one handset are still recognisable as duplicates
+  // without the handset being identifiable from the row.
+  deviceHash String?
+
+  conflict   Boolean @default(false)
+  resolution String?
+
+  createdAt DateTime @default(now())
+
+  org  Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Scoped to the org, not global. A globally unique clientId let any
+  // authenticated caller probe whether an id existed in another
+  // operator's tenancy.
+  @@unique([orgId, clientId])
+  @@index([orgId, createdAt])
+}
+
+model AuditLog {
+  id         String  @id @default(uuid())
+  seq        BigInt  @default(autoincrement())
+  orgId      String
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  detail     Json?
+
+  // The chain. `hash` commits to every column above plus prevHash and
+  // createdAt — see auditMaterial() in apps/api/src/core.ts, which is
+  // the single definition both the writer and the verifier use.
+  prevHash String
+  hash     String
+
+  createdAt DateTime @default(now())
+
+  org  Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, seq])
+}

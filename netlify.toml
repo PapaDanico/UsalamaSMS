@@ -1,0 +1,34 @@
+# The gates run before the bundle. A deploy that skipped them would
+# publish a page whose contrast claims nobody checked, which is the
+# failure mode scripts/check-brand.mjs exists to prevent — so `build`
+# depends on `check` and there is no fast path around it.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # The smoke suite installs its own Chromium in CI; Netlify never runs
+  # it, so skip the ~150 MB browser download on every deploy.
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+
+[functions]
+  directory = "netlify/functions"
+  # Prisma's query engine is a native binary and is not traced by the
+  # bundler's static analysis. Without this the function deploys and
+  # then fails at runtime with a missing-engine error that reads like a
+  # Prisma bug rather than a packaging one.
+  included_files = ["node_modules/.prisma/client/**", "prisma/**"]
+  external_node_modules = ["@prisma/client", ".prisma/client", "argon2"]
+
+# The CSP is the mechanism behind this product's half of charter rule 7.
+# Nothing off-origin: no font CDN, no analytics, no tag manager. The
+# connect-src allowance is the API and nothing else, so a dependency that
+# starts phoning home fails visibly rather than quietly.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"

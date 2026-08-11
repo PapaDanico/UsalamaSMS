@@ -1,0 +1,47 @@
+{
+  "name": "UsalamaSMS \u2014 Aviation Safety Management",
+  "short_name": "UsalamaSMS",
+  "description": "File a safety report in thirty seconds, with or without signal.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f0e8",
+  "theme_color": "#f5f0e8",
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New safety report",
+      "short_name": "Report",
+      "description": "File an occurrence, hazard or near miss",
+      "url": "/report"
+    }
+  ]
+}
