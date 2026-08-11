@@ -114,6 +114,20 @@ skippable, and `reviewerAcceptedResidual` must never default to `true`.
 It is friction on purpose. The alternative is distributing whatever the
 regexes happened to leave.
 
+**THE CORPUS IS SYNTHETIC, and this is the part with an expiry date.**
+`tests/deident-corpus.test.ts` holds twenty clean narratives written to
+the phrasing of real occurrence reports. They are invented. The suite
+therefore proves the module handles aviation *vocabulary*; it does not
+prove the module handles how any particular operator's staff actually
+write — and staff write in dialect, in Swahili-English code-switch, with
+local aerodrome nicknames and abbreviations no glossary contains.
+
+**What must happen:** replace the clean corpus with 15–20 anonymised
+fragments from the design partner before the first VCR is distributed to
+anyone outside the originating operator. Until then the residual review
+is doing more of the work than the patterns are, and that is the correct
+balance to be at — but it should be a known one.
+
 **The test:** `tests/confidentiality.test.ts` — *"REPORTS the surname it
 cannot remove instead of pretending it did"* and *"flags
 self-identification by uniqueness of role"*. Both assert the module
@@ -163,7 +177,37 @@ narrow by construction and they only cover the paths that exist today.
 
 ---
 
-## 6. The stand-in typeface
+## 6. Icons are SVG only, so iOS gets no home-screen icon
+
+**The claim:** `docs/04-BRAND.md` describes an icon suite generated from
+one geometry source, and `scripts/build-icons.mjs` generates it.
+
+**Why it expires:** the suite is **SVG only**. Chrome and Android accept
+SVG icons in a web app manifest; iOS does not, and an iPhone user who
+adds UsalamaSMS to their home screen gets a screenshot tile rather than
+the mark. Rasterising needs a browser or an image library — Kanda gets
+PNGs nearly free because it already carries Playwright for
+pre-rendering, and this project carries neither and did not add a
+200-package dependency to produce six files.
+
+**The flag:** the absence of `*.png` under `apps/web/public/icons/`, and
+the absence of an `apple-touch-icon` link in `index.html`.
+
+**What must happen:** before any iOS user is asked to install this,
+either add Playwright as a build dependency and rasterise (Kanda's
+`scripts/build-icons.mjs` is the reference) or commit hand-produced PNGs
+and accept that they are generated artefacts nobody can regenerate —
+which the brand document explicitly forbids, so the first option is the
+real one.
+
+**The test:** none yet, and it is named here rather than hidden. The
+honest guard would assert that the manifest's icon list matches the
+files on disk; worth adding to `scripts/check-claims.mjs` when the PNGs
+land.
+
+---
+
+## 7. The stand-in typeface
 
 **The claim:** `docs/04-BRAND.md` states the licensed geometric sans is
 not in this repository and Inter is a documented stand-in.
@@ -182,7 +226,7 @@ rather than discovered to be a forty-file one.
 
 ---
 
-## 7. The unwritten counts
+## 8. The unwritten counts
 
 **The claim:** charter rule 10 — counts about the product are computed,
 not typed.

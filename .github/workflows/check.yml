@@ -36,6 +36,15 @@ jobs:
       # typecheck, brand gate, claims gate, tests — see package.json.
       - run: npm run check
 
+      # And then the built bundle, driven in a real browser. The unit
+      # tests cannot tell you the router resolves or that a report filed
+      # with the radio off survives; those are the properties the
+      # product is sold on, so they are checked against dist/ and not
+      # against source.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run smoke
+
   # A gate is worth what its failure is worth, and a gate nobody has
   # watched fail is a gate nobody has tested. These two cases assert that
   # the brand gate still REJECTS the things it was written to reject: a

@@ -12,6 +12,7 @@
 import Fastify, { type FastifyInstance, type FastifyError } from "fastify";
 import { ENV, prisma, verifyAuditChain, authenticate, requirePermission } from "./core";
 import { syncRoutes } from "./routes.sync";
+import { authRoutes } from "./routes.auth";
 
 export async function build(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -97,6 +98,7 @@ export async function build(): Promise<FastifyInstance> {
   });
 
   // ------------------------------ Routes ------------------------------
+  await app.register(authRoutes);
   await app.register(syncRoutes);
 
   // Regulator oversight: verify an org's audit chain by content.

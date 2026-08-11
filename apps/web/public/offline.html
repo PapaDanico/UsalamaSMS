@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline — UsalamaSMS</title>
+    <!--
+      Self-contained by necessity: this page is served when there is no
+      network, so it cannot reference a stylesheet that might not be
+      cached. The colours are the brand tokens' literal values, and this
+      is the ONLY file in the project permitted to inline them — every
+      other rule reads a token. Kept in sync by scripts/check-brand.mjs,
+      which asserts these three literals still match their tokens.
+    -->
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-content: center;
+        gap: 12px;
+        padding: 24px;
+        text-align: center;
+        font-family: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f5f0e8;
+        color: #2c2c2c;
+      }
+      h1 { font-size: 22px; margin: 0; letter-spacing: -0.028em; }
+      p { margin: 0; max-width: 34ch; line-height: 1.6; color: #5c5852; }
+      strong { color: #2c2c2c; }
+      a {
+        margin-top: 8px;
+        color: #20605f;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>You are offline</h1>
+    <!--
+      The message a person needs here is not "no connection" — their
+      phone already told them that. It is whether the report they just
+      typed still exists. It does, and saying so is the difference
+      between someone trusting the app at a remote strip and someone
+      re-typing everything into WhatsApp.
+    -->
+    <p>
+      <strong>Nothing you have written has been lost.</strong> Reports are
+      saved on this device and send themselves as soon as there is signal
+      — you do not need to keep this page open.
+    </p>
+    <a href="/">Try again</a>
+  </body>
+</html>

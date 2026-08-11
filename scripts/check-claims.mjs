@@ -18,7 +18,7 @@
    check.
    ============================================================ */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -241,9 +241,31 @@ assert(
   `README says ${brandStated}, the gate reports ${brandActual}`
 );
 
-/* Test count, from the test files themselves. */
-const testCount = ['tests/safetycritical.test.ts', 'tests/confidentiality.test.ts']
-  .map((p) => (read(p).match(/^\s*it\(/gm) ?? []).length)
+/* Test count, from the test files themselves — DISCOVERED, not listed.
+   A hardcoded file list is a guard that stops covering the moment
+   someone adds a suite, and it would have missed tests/deident-corpus
+   entirely. `it.each` blocks are counted by their case arrays so the
+   number matches what vitest reports. */
+const testFiles = readdirSync(resolve(ROOT, 'tests')).filter((f) => f.endsWith('.test.ts'));
+assert(
+  'test files were discovered',
+  testFiles.length > 0,
+  'no *.test.ts found under tests/ — this gate asserts a count over them'
+);
+
+const testCount = testFiles
+  .map((f) => {
+    const src = read(`tests/${f}`);
+    // Plain `it(` / `it.only(` cases.
+    let n = (src.match(/^\s*it(?:\.only)?\(/gm) ?? []).length;
+    // `it.each(ARRAY)` expands to one case per element. Count the entries
+    // of the named array rather than guessing.
+    for (const m of src.matchAll(/it\.each\((?:\.\.\.)?([A-Z_][A-Z0-9_]*)\)/g)) {
+      const arr = new RegExp(`const ${m[1]}[^=]*=\\s*\\[([\\s\\S]*?)\\n\\];`).exec(src);
+      if (arr) n += (arr[1].match(/^\s*[{"']/gm) ?? []).length;
+    }
+    return n;
+  })
   .reduce((a, b) => a + b, 0);
 
 const testsStated = statedCount(/(\d+) unit tests/, 'test count');
@@ -251,6 +273,16 @@ assert(
   'README test count matches the test files',
   testsStated === testCount,
   `README says ${testsStated}, the files define ${testCount}`
+);
+
+/* Smoke checks, counted from the suite rather than trusted. */
+const smoke = read('scripts/smoke.mjs');
+const smokeCount = (smoke.match(/await check\(/g) ?? []).length;
+const smokeStated = statedCount(/(\d+) checks, including filing/, 'smoke check count');
+assert(
+  'README smoke check count matches the suite',
+  smokeStated === smokeCount,
+  `README says ${smokeStated}, the suite defines ${smokeCount}`
 );
 
 /* This gate's own total is only known once every assertion has run, so

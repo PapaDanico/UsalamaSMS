@@ -33,7 +33,75 @@ interface Pattern {
   readonly category: DeIdentCategory;
   readonly pattern: RegExp;
   readonly replacement: string;
+  /**
+   * Veto. Return true to LEAVE a match alone.
+   *
+   * Regex alone cannot express "two letters and some digits, unless
+   * those letters are an aviation abbreviation", and the attempt to
+   * force it into a lookahead produced something nobody could read or
+   * change safely. A predicate is legible, unit-testable, and can
+   * consult a set.
+   */
+  readonly keep?: (match: string) => boolean;
 }
+
+/**
+ * Abbreviations that are followed by a number in ordinary aviation
+ * prose and are NOT identifiers.
+ *
+ * This set is the whole reason the module is safe to run on a real
+ * narrative. Before it existed, `\b[A-Z]{2,3}\s?\d{1,4}\b` — added to
+ * widen flight-number coverage — turned this:
+ *
+ *   "During approach to RWY 06 the crew levelled at FL 100 with
+ *    QNH 1013 ... and RVR 800."
+ *
+ * into this:
+ *
+ *   "During approach to [FLT] the crew levelled at [FLT] with
+ *    [FLT] ... and [FLT]."
+ *
+ * Four false positives in three sentences. A de-identified bulletin is
+ * circulated so other operators can learn from the occurrence; one that
+ * has had its altitudes, runways and visibilities replaced by [FLT]
+ * teaches nobody anything. Over-scrubbing does not fail safe — it
+ * destroys the only reason the report was shared, while looking like
+ * caution.
+ */
+const NOT_AN_IDENTIFIER = new Set([
+  // Aerodrome and approach
+  "RWY", "TWY", "SID", "STAR", "ILS", "LOC", "GS", "VOR", "NDB", "DME",
+  "GP", "PAPI", "VASI", "ALS", "RCC", "PCN", "ACN", "TORA", "TODA", "ASDA", "LDA",
+  // Altitude, pressure, performance
+  "FL", "MSL", "AGL", "AAL", "QNH", "QFE", "QFF", "ISA", "OAT", "MDA",
+  "DA", "DH", "MDH", "TAS", "IAS", "CAS", "GS", "MTOW", "MLW", "ZFW", "TOW", "LDW",
+  "VR", "VI", "V1", "V2", "VREF", "VMO", "MMO", "ROC", "ROD",
+  // Visibility and weather
+  "RVR", "CAVOK", "TAF", "ATIS", "METAR", "SIGMET", "AIRMET", "CB", "TCU", "TS",
+  // Systems and warnings
+  "APU", "ECAM", "EICAS", "FMS", "FMC", "MCP", "TCAS", "RA", "TA", "GPWS",
+  "EGPWS", "XPDR", "SSR", "ADS", "CPDLC", "IRS", "ADC", "AOA", "EGT", "ITT",
+  "RPM", "N1", "N2", "EPR", "FF", "CG",
+  // Documents and procedures
+  "MEL", "CDL", "QRH", "SOP", "AFM", "FCOM", "AMM", "IPC", "SB", "AD", "EO",
+  "ATA", "OM", "CAME", "MOE", "CAP", "AC", "AIC", "AIP",
+  // Time and ops
+  "ETA", "ETD", "ATD", "EOBT", "TOBT", "CTOT", "STD", "STA", "PAX", "ULD",
+  "FOD", "PPE", "GSE", "PBB", "GPU", "ACU",
+  // Regulatory
+  "CAT", "LVP", "LVO", "RVSM", "RNP", "RNAV", "PBN", "MNPS", "ETOPS", "EDTO",
+  // Units
+  "KG", "LB", "FT", "NM", "KM", "KT", "KTS", "HPA", "INHG", "USG", "LTR", "DEG",
+]);
+
+/**
+ * Registration prefixes that are digits-first.
+ *
+ * These need a hyphen to be recognised, because a bare `60` followed by
+ * letters matches ordinary prose — "60 KTS" would have become "[REG]".
+ * A hyphen is how registrations are written anyway.
+ */
+const NUMERIC_LEADING_PREFIXES = new Set(["60"]);
 
 /**
  * Aircraft registration prefixes for the states this product serves,
@@ -62,14 +130,34 @@ const REGISTRATION_PREFIXES = [
 const REG_ALTERNATION = REGISTRATION_PREFIXES.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
 
 const DEIDENT_PATTERNS: ReadonlyArray<Pattern> = [
-  // Registrations, hyphenated or not: 5Y-ABC, 5Y ABC, 5YABC, 9XR-XX.
+  // Registrations: 5Y-ABC, 5YABC, 9XR-AB, 60-XYZ.
+  //
+  // A space separator is NOT accepted. "5Y ABC" is a rarer way to write
+  // a registration than "60 KTS" is to write a speed, and the space form
+  // cost more in false positives than it bought in coverage.
   {
     category: "REG",
-    pattern: new RegExp(`\\b(?:${REG_ALTERNATION})[\\s-]?[A-Z]{2,4}\\b`, "g"),
+    pattern: new RegExp(`\\b(?:${REG_ALTERNATION})-?[A-Z]{2,4}\\b`, "g"),
     replacement: "[REG]",
+    keep: (m) => {
+      // A digits-first prefix must be hyphenated to count.
+      const prefix = REGISTRATION_PREFIXES.find((p) => m.startsWith(p));
+      return prefix !== undefined && NUMERIC_LEADING_PREFIXES.has(prefix) && !m.includes("-");
+    },
   },
-  // Flight numbers. Two or three letters then 1-4 digits, optional space.
-  { category: "FLT", pattern: /\b[A-Z]{2,3}\s?\d{1,4}\b/g, replacement: "[FLT]" },
+  // Flight numbers: two or three letters then 1-4 digits.
+  //
+  // The letters must not be an aviation abbreviation — see
+  // NOT_AN_IDENTIFIER above for what this guard is worth.
+  {
+    category: "FLT",
+    pattern: /\b([A-Z]{2,3})\s?(\d{1,4})\b/g,
+    replacement: "[FLT]",
+    keep: (m) => {
+      const letters = /^[A-Z]{2,3}/.exec(m)?.[0];
+      return letters === undefined || NOT_AN_IDENTIFIER.has(letters);
+    },
+  },
   // ISO dates and common written forms.
   { category: "DATE", pattern: /\b\d{4}-\d{2}-\d{2}\b/g, replacement: "[DATE]" },
   { category: "DATE", pattern: /\b\d{1,2}[/.]\d{1,2}[/.]\d{2,4}\b/g, replacement: "[DATE]" },
@@ -153,6 +241,21 @@ const COMMON_CAPITALISED = new Set([
   "January", "February", "March", "April", "May", "June", "July", "August",
   "September", "October", "November", "December",
   "REG", "FLT", "DATE", "TIME", "PHONE", "EMAIL", "CREW", "NAME", "ID", "URL", "COORD",
+  // Weather, terrain and ops words that recur in narratives and are not
+  // names. Without these the residual list fills with "Wind", "Rain",
+  // "Left", "Right" — and a reviewer who scrolls past forty false
+  // positives stops reading the one that matters.
+  "Wind", "Rain", "Snow", "Ice", "Fog", "Mist", "Cloud", "Turbulence", "Windshear",
+  "Left", "Right", "Centre", "Center", "North", "South", "East", "West",
+  "Takeoff", "Landing", "Departure", "Arrival", "Descent", "Climb", "Cruise",
+  "Taxi", "Pushback", "Boarding", "Turnaround", "Sector", "Stand", "Bay",
+  "Engine", "Brake", "Brakes", "Flap", "Flaps", "Gear", "Rudder", "Aileron",
+  "Elevator", "Spoiler", "Thrust", "Reverser", "Autopilot", "Autothrottle",
+  "Checklist", "Briefing", "Clearance", "Handover", "Shift", "Roster", "Duty",
+  "Fuel", "Cargo", "Baggage", "Freight", "Load", "Weight", "Balance",
+  "Report", "Reported", "Incident", "Occurrence", "Hazard", "Event", "Finding",
+  "Manual", "Procedure", "Policy", "Training", "Licence", "License", "Rating",
+  "Company", "Operator", "Station", "Base", "Line", "Hangar", "Workshop",
 ]);
 
 /**
@@ -163,12 +266,13 @@ export function deIdentify(narrative: string): DeIdentResult {
   let text = narrative;
   const removed: Partial<Record<DeIdentCategory, number>> = {};
 
-  for (const { category, pattern, replacement } of DEIDENT_PATTERNS) {
+  for (const { category, pattern, replacement, keep } of DEIDENT_PATTERNS) {
     // Fresh lastIndex each pass; these are module-level /g regexes and
     // a shared lastIndex across calls is a classic intermittent miss.
     pattern.lastIndex = 0;
     let count = 0;
-    text = text.replace(pattern, () => {
+    text = text.replace(pattern, (match) => {
+      if (keep?.(match)) return match; // vetoed — not an identifier
       count++;
       return replacement;
     });

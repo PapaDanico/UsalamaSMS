@@ -653,3 +653,309 @@ code {
   font-size: var(--us-text-sm);
   color: var(--us-text-tertiary);
 }
+
+/* ============================================================
+   Navigation
+   ============================================================ */
+.site-nav {
+  display: flex;
+  gap: var(--us-space-4);
+  margin-left: auto;
+}
+
+.site-nav a {
+  color: var(--us-text-secondary);
+  text-decoration: none;
+  font-weight: var(--us-weight-semi);
+  font-size: var(--us-text-sm);
+  padding: var(--us-space-2) 0;
+  border-bottom: 2px solid transparent;
+}
+
+.site-nav a[data-current] {
+  color: var(--us-teal-text);
+  border-bottom-color: var(--us-teal);
+}
+
+/* ============================================================
+   The report form
+
+   Sized for a thumb, not a mouse. 48px is the minimum comfortable
+   target on a handset; a ramp agent wearing gloves in sunlight is the
+   design case, and a 32px checkbox is one they will miss twice before
+   they stop trying.
+   ============================================================ */
+.report {
+  max-width: 44rem;
+}
+
+.report fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--us-space-6);
+}
+
+.report legend,
+.field__label {
+  display: block;
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-semi);
+  color: var(--us-text-secondary);
+  margin-bottom: var(--us-space-2);
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 var(--us-space-4);
+  border: 1px solid var(--us-border-strong);
+  border-radius: var(--us-radius-pill);
+  background: var(--us-surface);
+  cursor: pointer;
+  font-size: var(--us-text-sm);
+  user-select: none;
+}
+
+/* The input stays in the accessibility tree — it is only visually
+   replaced by the chip. Hiding it with display:none would take the
+   radio group away from keyboard and screen-reader users entirely. */
+.chip input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.chip:has(input:checked) {
+  background: var(--us-teal);
+  border-color: var(--us-teal);
+  color: #ffffff;
+}
+
+.chip:has(input:focus-visible) {
+  outline: 3px solid var(--us-focus);
+  outline-offset: 2px;
+}
+
+.field {
+  display: block;
+  margin-bottom: var(--us-space-6);
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--us-space-3);
+  border: 1px solid var(--us-border-strong);
+  border-radius: var(--us-radius-md);
+  background: var(--us-surface);
+  color: var(--us-text-primary);
+  font: inherit;
+}
+
+.field textarea {
+  resize: vertical;
+  line-height: var(--us-leading-normal);
+}
+
+.field__hint {
+  display: block;
+  margin-top: var(--us-space-1);
+  font-size: var(--us-text-xs);
+  color: var(--us-text-tertiary);
+}
+
+.report__more summary {
+  cursor: pointer;
+  padding: var(--us-space-3) 0;
+  font-weight: var(--us-weight-semi);
+  color: var(--us-teal-text);
+}
+
+/* The anonymity control is given weight on the page proportional to its
+   weight in the product. It is the single most consequential choice a
+   reporter makes here. */
+.report__anon {
+  display: flex;
+  gap: var(--us-space-3);
+  align-items: flex-start;
+  padding: var(--us-space-4);
+  margin-bottom: var(--us-space-6);
+  border: 1px solid var(--us-border-strong);
+  border-radius: var(--us-radius-md);
+  background: var(--us-surface-sunk);
+  cursor: pointer;
+}
+
+.report__anon input {
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--us-teal);
+}
+
+.report__anon small {
+  display: block;
+  margin-top: var(--us-space-1);
+  color: var(--us-text-tertiary);
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+}
+
+.report__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-4);
+}
+
+.btn {
+  min-height: 52px;
+  padding: 0 var(--us-space-8);
+  border: 0;
+  border-radius: var(--us-radius-md);
+  font: inherit;
+  font-weight: var(--us-weight-semi);
+  cursor: pointer;
+}
+
+.btn--primary {
+  background: var(--us-teal);
+  color: #ffffff;
+}
+
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.report__status[data-state='ok'] {
+  color: var(--us-teal-text);
+}
+
+.report__status[data-state='error'] {
+  color: var(--us-state-error);
+}
+
+/* ============================================================
+   Triage queue
+   ============================================================ */
+.queue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--us-space-3);
+}
+
+.queue__item {
+  padding: var(--us-space-4);
+  border: 1px solid var(--us-border);
+  border-left: 4px solid var(--us-border-strong);
+  border-radius: var(--us-radius-md);
+  background: var(--us-surface);
+}
+
+/* Unsent is the state the reader can do something about, so it is the
+   state that gets the edge. */
+.queue__item[data-sync='pending'],
+.queue__item[data-sync='syncing'] {
+  border-left-color: var(--us-gold);
+}
+
+.queue__item[data-sync='error'],
+.queue__item[data-sync='conflict'] {
+  border-left-color: var(--us-ochre);
+}
+
+.queue__item[data-sync='synced'] {
+  border-left-color: var(--us-teal);
+}
+
+.queue__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-2);
+  margin-bottom: var(--us-space-2);
+}
+
+.queue__type {
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-bold);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+}
+
+.queue__state {
+  margin-left: auto;
+  font-size: var(--us-text-xs);
+  font-weight: var(--us-weight-semi);
+}
+
+.queue__state[data-state='pending'],
+.queue__state[data-state='syncing'] {
+  color: var(--us-state-pending);
+}
+.queue__state[data-state='synced'] {
+  color: var(--us-state-synced);
+}
+.queue__state[data-state='error'],
+.queue__state[data-state='conflict'] {
+  color: var(--us-state-error);
+}
+
+.queue__title {
+  margin: 0 0 var(--us-space-2);
+  font-weight: var(--us-weight-medium);
+}
+
+.queue__deadline {
+  margin: 0;
+  font-size: var(--us-text-sm);
+}
+
+/* The regulatory clock is a compliance signal, so it takes the RISK
+   vocabulary rather than the operational-state one — an overdue MOR is
+   not the same kind of problem as a report that failed to upload, and
+   the two must not share a colour. */
+.queue__deadline[data-status='OVERDUE'] {
+  color: var(--us-risk-intolerable-text);
+  font-weight: var(--us-weight-semi);
+}
+.queue__deadline[data-status='DUE_SOON'] {
+  color: var(--us-risk-tolerable-text);
+  font-weight: var(--us-weight-semi);
+}
+.queue__deadline[data-status='PENDING'],
+.queue__deadline[data-status='MET'] {
+  color: var(--us-text-tertiary);
+}
+
+.queue__error {
+  margin: var(--us-space-2) 0 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-state-error);
+}
+
+.notice {
+  padding: var(--us-space-4);
+  border-radius: var(--us-radius-md);
+  border: 1px solid var(--us-border-strong);
+}
+
+.notice--error {
+  border-color: var(--us-ochre-text);
+  color: var(--us-ochre-text);
+  background: var(--us-surface-sunk);
+}

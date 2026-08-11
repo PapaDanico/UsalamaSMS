@@ -161,6 +161,33 @@ describe("anonymous reporting cannot be reversed by a join", () => {
   });
 });
 
+describe("an anonymous report is never written to disk as a draft", () => {
+  const form = read("apps/web/src/tools/report/index.js");
+
+  it("guards a file that still exists", () => {
+    expect(form).toContain("submitReportOffline");
+    expect(form).toContain("saveDraft");
+  });
+
+  it("refuses to draft an anonymous report to localStorage", () => {
+    // Drafting is a kindness on a handset that locks mid-report. For an
+    // anonymous report it is a confidentiality hole: the narrative sits
+    // in localStorage in clear, on what is in practice a shared
+    // crew-room device, readable with no authentication. A report
+    // abandoned halfway — which is exactly what happens when someone
+    // changes their mind about filing — would stay there indefinitely.
+    const draftFn = form.slice(form.indexOf("function saveDraft"), form.indexOf("function loadDraft"));
+    expect(draftFn).toContain("isAnonymous");
+    expect(draftFn).toContain("clearDraft()");
+  });
+
+  it("clears an existing draft the moment anonymity is ticked", () => {
+    // Stopping future writes is not enough: whatever was typed before
+    // the box was ticked is already on disk.
+    expect(form).toMatch(/isAnonymous\.addEventListener\('change'[\s\S]{0,160}clearDraft\(\)/);
+  });
+});
+
 describe("the audit chain verifies content, not just links", () => {
   const core = read("apps/api/src/core.ts");
   const material = read("apps/api/src/audit-material.ts");

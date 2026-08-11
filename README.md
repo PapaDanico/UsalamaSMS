@@ -10,32 +10,55 @@ Amendment 2 rather than retrofitted to it.
 
 ## Status
 
-**Phase 0.** Foundations, not features. What exists is the brand system,
-the shared safety-critical core, the regulatory engine, the corrected
-API layer, and the gates that keep every claim above checkable.
+**Phase 1, first half.** A frontline user can file a report with the
+radio off, see that it has not been sent, and find it in the triage
+queue — verified in a real browser by `npm run smoke`, which cuts the
+network, submits, and reads the record back out of IndexedDB.
 
-The one page that ships is not the product — it is the brand system
-rendering itself, so the claims in `docs/04-BRAND.md` can be checked by
-looking rather than only by reading. Its risk matrix calls
-`tolerability()` and its deadline table reads `MOR_OBLIGATIONS`, so
-neither can drift from the modules they describe.
+The Phase 1 gate in `docs/02-STRATEGY.md` is *"a frontline user files a
+report offline **and it arrives**"*. The second half is not met and is
+not close: the API has never run against a live database, because no
+migration has ever been applied. The device side is done and the arrival
+side is untested — saying otherwise would be the same category of
+confident overstatement this repository keeps catching in itself.
+
+Three routes ship: the report form, the triage queue, and a design route
+where the brand system renders itself against the real modules — its
+matrix calls `tolerability()` and its deadline table reads
+`MOR_OBLIGATIONS`, so neither can drift from the documents describing
+them.
+
+**Not yet built:** no database migration has been applied, so the sync
+and auth routes are unexercised outside their source-level guards; the
+triage queue reads this device rather than the organisation; and there
+is no investigation, CAPA or SPI workflow. See `docs/02-STRATEGY.md`.
 
 ```bash
 npm install
 npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 49 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 40 assertions that the registries match the docs
-npm test               # 42 unit tests
+npm run check:claims   # 43 assertions that the registries match the docs
+npm test               # 94 unit tests
 npm run typecheck      # tsc --noEmit, strict
+npm run verify         # build, then drive the bundle in headless Chromium
 ```
 
 `npm run build` runs `check` first. A failing gate builds nothing.
+`npm run smoke` drives the **built** bundle in a real browser at 390&times;844
+— 15 checks, including filing a report with the network cut and
+confirming it is in IndexedDB afterwards. A test that passes on source
+and fails on the bundle has never protected anyone.
 
-Bundle: **8.8 KB JS + 8.7 KB CSS** (3.8 KB + 2.4 KB gzipped), no runtime
-dependencies on the page. The risk matrix and the regulatory engine are
-pure, zod-free modules precisely so a client can import them without
-47 KB of schema machinery — the design target is a mid-range Android at
-a remote strip, where that is not a rounding error.
+Bundle: **165 KB JS + 8.7 KB CSS** (51 KB + 2.4 KB gzipped), against a
+200 KB budget the build enforces. Two runtime dependencies earn their
+weight: Dexie holds the outbox, and zod validates on the device with the
+*same schema the server uses* — a report rejected server-side after
+three days offline is unfixable, because the person who wrote it has
+forgotten the detail.
+
+The risk matrix and the regulatory engine are still pure, zod-free
+modules, so anything that needs only the matrix can import it without
+the schema machinery.
 
 ---
 
@@ -67,7 +90,7 @@ See [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) for the evidence and
 | [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) | The regulatory clock, the AFI safety case, competitor pricing, why SMS implementations fail, and the confidentiality findings |
 | [`docs/02-STRATEGY.md`](docs/02-STRATEGY.md) | Positioning, the aggregate-data fork, module suite by tier, sequencing, commercial model, architecture verdicts, risks |
 | [`docs/04-BRAND.md`](docs/04-BRAND.md) | How the six-colour identity is encoded, the two artwork combinations that are not reproduced and the measurements that condemned them, and why the risk-scale green is almost black |
-| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Seven claims with an expiry date — which flag controls each, and the test that stops it rotting |
+| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Eight claims with an expiry date — which flag controls each, and the test that stops it rotting |
 
 ---
 

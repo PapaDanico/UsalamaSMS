@@ -16,14 +16,19 @@
     "check": "npm run prisma:generate && npm run typecheck && npm run check:brand && npm run check:claims && npm run test",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "npm run check && vite build --config apps/web/vite.config.js",
+    "build": "npm run check && npm run icons && vite build --config apps/web/vite.config.js && npm run stamp-sw",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/build-icons.mjs",
+    "stamp-sw": "node scripts/stamp-sw.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "verify": "npm run build && npm run smoke"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.9.0",
+    "playwright": "^1.56.1",
     "prisma": "^7.0.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",

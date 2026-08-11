@@ -9,6 +9,8 @@
       content="Aviation safety management for the operators the incumbents priced out. Offline-first, multi-jurisdiction, built against ICAO Annex 19 Amendment 2."
     />
     <meta name="theme-color" content="#2c2c2c" />
+    <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -26,59 +28,15 @@
     <header class="site-header">
       <div id="logo-slot"></div>
       <p class="slogan">Safety born of African soil</p>
+      <nav id="nav" class="site-nav" aria-label="Main"></nav>
     </header>
 
-    <main id="main">
-      <section class="panel">
-        <h1>Phase 0 — the foundations</h1>
-        <p class="lede">
-          This page is not the product. It is the brand system rendering
-          itself, so that the claims in
-          <code>docs/04-BRAND.md</code> can be checked by looking rather
-          than only by reading.
-        </p>
-      </section>
-
-      <section class="panel">
-        <h2>Risk tolerability — ICAO Doc 9859, 5&nbsp;&times;&nbsp;5</h2>
-        <p>
-          Colour is never the only channel. Every cell carries its index
-          and a one-letter tolerability code, so the matrix survives
-          greyscale printing, a monochrome fax to a regulator, and a
-          reader who cannot separate the hues.
-        </p>
-        <div class="table-scroll">
-          <table class="risk-matrix" id="matrix">
-            <caption class="visually-hidden">
-              Risk tolerability by severity and likelihood
-            </caption>
-          </table>
-        </div>
-        <p class="footnote">
-          Savannah Gold is the lightest of the three, which inverts the
-          usual severity-as-weight reading. That is the price of the
-          three states being tellable apart without hue — the two
-          alternatives measured 1.10:1 and 1.06:1 and are recorded, with
-          their numbers, in the brand document.
-        </p>
-      </section>
-
-      <section class="panel">
-        <h2>Reporting deadlines</h2>
-        <p>
-          Computed from the jurisdiction and the moment the operator
-          became aware — never stored, never anchored to the occurrence.
-          Rows not yet read against the primary instrument say so.
-        </p>
-        <div class="table-scroll">
-          <table class="oblig-table" id="obligations"></table>
-        </div>
-      </section>
-    </main>
+    <!-- The router writes here. -->
+    <main id="main" tabindex="-1"></main>
 
     <footer class="site-footer">
       <p>
-        UsalamaSMS · Phase 0 · Figures dated
+        UsalamaSMS · Figures dated
         <time datetime="2026-08-11">11 August 2026</time>
       </p>
     </footer>
