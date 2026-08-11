@@ -49,7 +49,15 @@ export function render(outlet) {
 
   outlet.innerHTML = html`
     <form class="report" id="report-form" novalidate>
-      <h1>File a report</h1>
+      <header class="page-head">
+        <span class="eyebrow">Safety report</span>
+        <h1>File a report</h1>
+        <p class="lede">
+          Two required fields. It sends itself when there is signal.
+        </p>
+      </header>
+
+      <div class="card report__card">
 
       <!-- REQUIRED AND UNANSWERED, which costs one tap on the fastest
            path and is worth it.
@@ -185,6 +193,8 @@ export function render(outlet) {
            is how a reporter is identified by a colleague reading a
            bulletin, and the corollary belongs where the promise is made
            (charter rule 7), not two clicks away in a legal page. -->
+      </div>
+
       <label class="report__anon">
         <input type="checkbox" name="isAnonymous" ${draft.isAnonymous ? raw('checked') : ''} />
         <span>
@@ -199,8 +209,8 @@ export function render(outlet) {
       </label>
 
       <div class="report__actions">
-        <button type="submit" class="btn btn--primary">Send report</button>
-        <p class="report__status" id="report-status" role="status"></p>
+        <button type="submit" class="btn btn--primary btn--block">Send report</button>
+        <p class="report__status" id="report-status" role="status" aria-live="polite"></p>
       </div>
     </form>
   `.toString();

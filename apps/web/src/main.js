@@ -15,8 +15,8 @@
    navigate.
    ============================================================ */
 
-import { html } from './shared/html.js';
-import { Logo } from './components/Logo.js';
+import { html, raw } from './shared/html.js';
+import { Lockup } from './components/Logo.js';
 import { router } from './shared/router.js';
 import { registerServiceWorker, listenForFlushRequests } from './shared/register-sw.js';
 import { syncStatus, flushOutbox } from './shared/offline.ts';
@@ -27,14 +27,61 @@ import { render as renderDesign } from './tools/design/index.js';
 import { render as renderLogin } from './tools/login/index.js';
 
 /* ------------------------------ Chrome ------------------------------ */
-document.getElementById('logo-slot').innerHTML = Logo({ height: 40 }).toString();
+
+document.getElementById('logo-slot').innerHTML = Lockup({ height: 34 }).toString();
+document.getElementById('footer-logo-slot').innerHTML = Lockup({ height: 30 }).toString();
+
+/* The destinations, declared once and rendered into two places. A phone
+   gets them in the bottom bar where a thumb is; a desktop gets them
+   inline in the top bar. Two lists would drift, and the one that
+   drifted would be the one nobody was looking at. */
+const DESTINATIONS = [
+  {
+    href: '/',
+    label: 'Report',
+    // 24px stroke icons, drawn inline so the shell has no icon-font and
+    // no sprite request on a cold start over a bad link.
+    icon: '<path d="M15 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M15 3v4h4"/><path d="M12 11v6M9 14h6"/>'
+  },
+  {
+    href: '/triage',
+    label: 'Triage',
+    icon: '<path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="17" r="3"/>'
+  },
+  {
+    href: '/account',
+    label: 'Account',
+    icon: '<circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>'
+  }
+];
 
 document.getElementById('nav').innerHTML = html`
-  <a href="/">Report</a>
-  <a href="/triage">Triage</a>
-  <a href="/account">Account</a>
+  ${DESTINATIONS.map((d) => html`<a href="${d.href}">${d.label}</a>`)}
   <a href="/design">Design</a>
 `.toString();
+
+document.getElementById('tabbar').innerHTML = DESTINATIONS.map(
+  (d) => html`<a href="${d.href}">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        ${raw(d.icon)}
+      </svg>
+      <span>${d.label}</span>
+    </a>`
+).join('');
+
+/* Reveal the shell and retire the boot screen. Done here rather than in
+   CSS so the swap happens when the app can actually render, not when
+   the stylesheet loads — a shell that appears before its content is a
+   flash of empty chrome. */
+document.getElementById('app-shell').hidden = false;
+document.getElementById('boot')?.remove();
 
 /* ------------------------------ Routes ------------------------------ */
 const outlet = document.getElementById('main');
@@ -63,7 +110,7 @@ router
 /* Mark the current route in the nav after every navigation. */
 function markCurrentNav() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
-  for (const link of document.querySelectorAll('#nav a')) {
+  for (const link of document.querySelectorAll('#nav a, #tabbar a, .site-footer__links a')) {
     const active = link.getAttribute('href') === path;
     link.toggleAttribute('data-current', active);
     // aria-current is what a screen reader announces; the attribute

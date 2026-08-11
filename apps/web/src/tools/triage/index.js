@@ -88,9 +88,16 @@ export async function render(outlet) {
 
   outlet.innerHTML = html`
     <section class="panel">
-      <h1>Triage</h1>
+      <header class="page-head">
+        <span class="eyebrow">This device</span>
+        <h1>Triage</h1>
+        <p class="lede">
+          Everything filed on this handset, sent or not. The count above
+          is the one that matters.
+        </p>
+      </header>
 
-      <div class="filters" role="group" aria-label="Filter the queue">
+      <div class="filters card card--tinted" role="group" aria-label="Filter the queue">
         ${Select({
           name: 'filter-type',
           label: 'Report type',

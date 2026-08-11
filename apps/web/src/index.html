@@ -2,44 +2,172 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>UsalamaSMS — Safety born of African soil</title>
     <meta
       name="description"
       content="Aviation safety management for the operators the incumbents priced out. Offline-first, multi-jurisdiction, built against ICAO Annex 19 Amendment 2."
     />
-    <meta name="theme-color" content="#2c2c2c" />
+    <!-- Warm Sand, not charcoal. The status bar on a standalone PWA is
+         the top of the app, and a dark bar above a light app reads as a
+         browser that failed to hide rather than as a designed edge. -->
+    <meta name="theme-color" content="#f5f0e8" />
+    <meta name="color-scheme" content="light" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="UsalamaSMS" />
+    <!-- A ramp agent's report contains flight numbers and times. Making
+         them tappable telephone links is noise at best and a misdial in
+         a hangar at worst. -->
+    <meta name="format-detection" content="telephone=no" />
     <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.svg" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
+    <style>
+      /* Critical CSS — render-blocking and deliberately tiny. Its whole
+         job is that the first paint on a cold start over a bad link is
+         the product's own ground rather than a white flash, and that the
+         person sees something honest while the bundle arrives. */
+      *,
+      *::before,
+      *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: #f5f0e8;
+        color: #2c2c2c;
+        min-height: 100dvh;
+        font-family: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont,
+          'Segoe UI', Roboto, sans-serif;
+      }
+      .boot {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        min-height: 100dvh;
+        padding: 24px;
+        text-align: center;
+      }
+      .boot__spinner {
+        width: 30px;
+        height: 30px;
+        border: 2.5px solid #e6dfd2;
+        border-top-color: #2a7a7b;
+        border-radius: 50%;
+        animation: boot-spin 0.8s linear infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        .boot__spinner { animation-duration: 2.4s; }
+      }
+      .boot__name {
+        font-size: 19px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .boot__slogan {
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #7a5c12;
+      }
+      .boot noscript p {
+        max-width: 40ch;
+        margin-top: 12px;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: #5c5852;
+      }
+    </style>
   </head>
   <body>
-    <!-- Charter rule 8, extended: the sync state is chrome, not a
-         notification. A report that has not reached anyone has not been
-         made, and only the person holding the handset can carry it to
-         signal — so the count is always on screen, never behind a tap. -->
-    <div class="sync-strip" data-state="synced" id="sync-strip" role="status">
-      <span id="sync-text">Checking for unsent reports…</span>
-    </div>
-
     <a class="skip-link" href="#main">Skip to content</a>
 
-    <header class="site-header">
-      <div id="logo-slot"></div>
-      <p class="slogan">Safety born of African soil</p>
-      <nav id="nav" class="site-nav" aria-label="Main"></nav>
-    </header>
+    <div class="app-shell" id="app-shell" hidden>
+      <header class="topbar" id="topbar">
+        <!-- The Logo component renders its own <a href="/">, so this is
+             a plain wrapper. Nesting anchors is invalid and Chromium
+             silently un-nests them, which moves the click target. -->
+        <div class="topbar__brand" id="logo-slot"></div>
 
-    <!-- The router writes here. -->
-    <main id="main" tabindex="-1"></main>
+        <!-- Inline on a wide screen only. On a handset the destinations
+             live in the bottom bar, where a thumb is. -->
+        <nav class="topnav" id="nav" aria-label="Main"></nav>
+      </header>
 
-    <footer class="site-footer">
-      <p>
-        UsalamaSMS · Figures dated
-        <time datetime="2026-08-11">11 August 2026</time>
-      </p>
-    </footer>
+      <!-- Charter rule 8, extended: the sync state is chrome, not a
+           notification. A report that has not reached anyone has not been
+           made, and only the person holding the handset can carry it to
+           signal — so the count is always on screen, never behind a tap.
+
+           Sticky under the top bar rather than scrolled away with the
+           page, for the same reason. -->
+      <div
+        class="sync-strip"
+        data-state="synced"
+        id="sync-strip"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="sync-strip__dot" aria-hidden="true"></span>
+        <span id="sync-text">Checking for unsent reports…</span>
+      </div>
+
+      <!-- The router writes here. -->
+      <main id="main" class="page" tabindex="-1"></main>
+
+      <footer class="site-footer">
+        <div class="container">
+          <div class="site-footer__brand">
+            <span id="footer-logo-slot"></span>
+            <p class="site-footer__line">
+              Aviation safety management for the operators the incumbents
+              priced out. Built against ICAO Annex 19 Amendment 2, applicable
+              <time datetime="2026-11-26">26 November 2026</time>.
+            </p>
+          </div>
+
+          <nav class="site-footer__links" aria-label="Secondary">
+            <a href="/">File a report</a>
+            <a href="/triage">Triage</a>
+            <a href="/account">Account</a>
+            <a href="/design">Design system</a>
+          </nav>
+
+          <p class="site-footer__legal">
+            UsalamaSMS · Regulatory figures dated
+            <time datetime="2026-08-11">11 August 2026</time>
+          </p>
+        </div>
+      </footer>
+
+      <!-- Bottom tab bar: handsets only. A ramp agent is holding the
+           phone one-handed with gloves on, and the top of a 6.7&Prime;
+           screen is not reachable with a thumb. -->
+      <nav class="tabbar" id="tabbar" aria-label="Primary"></nav>
+    </div>
+
+    <div class="boot" id="boot">
+      <div class="boot__spinner" role="status" aria-label="Loading"></div>
+      <div>
+        <p class="boot__name">UsalamaSMS</p>
+        <p class="boot__slogan">Safety born of African soil</p>
+      </div>
+      <noscript>
+        <p>
+          UsalamaSMS needs JavaScript. It files reports on your device first
+          and sends them when there is signal, and that work happens in the
+          browser — which is why there is nothing to show without it.
+        </p>
+      </noscript>
+    </div>
 
     <script type="module" src="./main.js"></script>
   </body>

@@ -157,3 +157,23 @@ function escapeXml(value) {
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c]
   );
 }
+
+/**
+ * The lockup used in the app shell: mark, wordmark, and a descriptor
+ * line beneath it.
+ *
+ * The descriptor is what stops a two-word wordmark reading as a login
+ * screen for something unspecified. It is set in the gold text sibling
+ * at 8px with wide tracking — small enough to be a signature rather
+ * than a heading, and dark enough to actually be read, which flat
+ * Savannah Gold at 2.16:1 would not be.
+ */
+export function Lockup({ height = 34, descriptor = 'Aviation Safety Management' } = {}) {
+  return html`<a class="us-lockup" href="/">
+    ${Mark({ height, tone: 'ink', title: '' })}
+    <span class="us-lockup__text">
+      <span class="us-logo__word">Usalama<span class="us-logo__word-sms">SMS</span></span>
+      <span class="us-lockup__descriptor">${descriptor}</span>
+    </span>
+  </a>`;
+}

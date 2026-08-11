@@ -155,6 +155,31 @@
   --us-accent-text: var(--us-teal-text);
   --us-focus: var(--us-teal);
 
+  /* ---- Layout ----------------------------------------------
+     A reading measure, not a full-bleed grid. Every screen here is a
+     single flow of form or list; 46rem is about 75 characters at the
+     base size, which is where a line stops being comfortable. */
+  --us-container: 46rem;
+  --us-container-wide: 68rem;
+
+  /* 48, not 44. The WCAG floor is 44 and this is a form filled in with
+     gloves on, in sunlight, one-handed, sometimes on a moving airstair.
+     The floor is the floor; it is not the target. */
+  --us-tap: 48px;
+
+  --us-topbar: 60px;
+  --us-tabbar: 62px;
+
+  /* The focus ring, as a shadow rather than an outline, for controls
+     whose own border should also change. Kept as a token so it cannot
+     drift between the six places that draw it. */
+  --us-ring: 0 0 0 3px rgb(var(--us-teal-rgb) / 0.22);
+
+  /* Section rhythm. Two values, used everywhere, so vertical spacing is
+     a decision made once rather than per screen. */
+  --us-section: clamp(32px, 5vw, 56px);
+  --us-section-tight: clamp(20px, 3.4vw, 32px);
+
   /* ============================================================
      RISK — the tolerability scale
 
@@ -396,37 +421,66 @@ body {
 }
 
 /* ============================================================
-   Sync state — the strip that tells the truth about connectivity
+   Sync strip — the most important six words on the screen
 
    Kanda's charter rule 8: a refused storage write is reported to the
    user. UsalamaSMS extends it — an unsynced report is reported too,
    with a count, because the person who filed it needs to know it has
    not reached anyone yet.
+
+   It is STICKY under the top bar rather than scrolling away, tinted by
+   state rather than merely coloured in text, and carries a dot so the
+   state has a second channel for anyone who does not separate these
+   hues. A status that can be scrolled out of sight is a status the
+   person stops seeing on their second day.
    ============================================================ */
 .sync-strip {
+  position: sticky;
+  top: var(--us-topbar);
+  z-index: 40;
   display: flex;
   align-items: center;
-  gap: var(--us-space-2);
-  padding: var(--us-space-2) var(--us-space-4);
+  gap: var(--us-space-3);
+  padding: var(--us-space-3) clamp(var(--us-space-4), 4vw, var(--us-space-8));
   font-size: var(--us-text-sm);
-  background: var(--us-surface-sunk);
+  font-weight: var(--us-weight-medium);
+  line-height: var(--us-leading-snug);
   border-bottom: 1px solid var(--us-border);
+  background: var(--us-surface-muted);
+  color: var(--us-text-tertiary);
+  transition: background var(--us-dur) var(--us-ease), color var(--us-dur) var(--us-ease);
+}
+
+.sync-strip__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--us-radius-pill);
+  background: currentColor;
+  /* A ring rather than a bare dot: 8px of flat colour on a tinted band
+     is a smudge, and the halo is what makes it read as a status light. */
+  box-shadow: 0 0 0 3px rgb(var(--us-charcoal-rgb) / 0.08);
+}
+
+.sync-strip[data-state='synced'] {
+  background: rgb(var(--us-teal-rgb) / 0.07);
+  color: var(--us-teal-text);
 }
 
 .sync-strip[data-state='offline'] {
+  background: var(--us-surface-sunk);
   color: var(--us-state-offline);
 }
 
 .sync-strip[data-state='pending'] {
+  background: rgb(var(--us-gold-rgb) / 0.16);
   color: var(--us-state-pending);
 }
 
 .sync-strip[data-state='error'] {
+  background: rgb(187 50 26 / 0.08);
   color: var(--us-state-error);
-}
-
-.sync-strip[data-state='synced'] {
-  color: var(--us-teal-text);
+  font-weight: var(--us-weight-semi);
 }
 
 /* Signed out with reports queued. Ochre rather than gold: gold is
@@ -434,8 +488,22 @@ body {
    person acts, which is the same urgency class as an error even though
    nothing has failed. */
 .sync-strip[data-state='signed_out'] {
+  background: rgb(187 50 26 / 0.08);
   color: var(--us-ochre-text);
   font-weight: var(--us-weight-semi);
+}
+
+/* The pulse exists only for the states that need a person to do
+   something. A permanently animated chrome element is one everybody
+   learns to ignore, which is the opposite of the point. */
+.sync-strip[data-state='error'] .sync-strip__dot,
+.sync-strip[data-state='signed_out'] .sync-strip__dot {
+  animation: us-pulse 2.4s var(--us-ease) infinite;
+}
+
+@keyframes us-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(187 50 26 / 0.45); }
+  60% { box-shadow: 0 0 0 7px rgb(187 50 26 / 0); }
 }
 
 /* ============================================================
@@ -495,6 +563,303 @@ body {
   border: 0;
 }
 
+/* ============================================================
+   THE SHELL
+
+   Kanda's chrome, in Usalama's palette: a sticky glass top bar, a
+   sticky status strip beneath it, a reading-width page, and — the one
+   real divergence — a BOTTOM TAB BAR on handsets.
+
+   Why the tab bar. Kanda is read on a phone at a border post, but it is
+   read; this is filled in. A ramp agent has one hand on a phone, gloves
+   on, standing next to a running turboprop, and the top of a 6.7-inch
+   screen is not reachable with a thumb. A hamburger at the top right is
+   two taps and a stretch to reach the screen they are already trying to
+   get to. The destinations go where the thumb is.
+
+   Above 900px the tab bar disappears and the destinations move inline
+   into the top bar, because a mouse has no reach problem and a fixed
+   bar across a desktop viewport is a phone app pretending.
+   ============================================================ */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--us-container);
+  margin-inline: auto;
+  padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-8));
+}
+
+.container--wide {
+  max-width: var(--us-container-wide);
+}
+
+/* ---- Top bar ---------------------------------------------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--us-space-4);
+  min-height: var(--us-topbar);
+  padding: var(--us-space-2) clamp(var(--us-space-4), 4vw, var(--us-space-8));
+  padding-top: max(var(--us-space-2), env(safe-area-inset-top));
+  /* Warm Sand at 78% with a saturating blur. Flat white would sever the
+     bar from the page; the tint keeps it part of the same object while
+     content passing underneath stays legible. */
+  background: rgb(var(--us-sand-rgb) / 0.78);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--us-border);
+}
+
+/* Safari before 15.4 and Firefox without the flag ignore the filter and
+   would render 78% Warm Sand over live text. Opaque is the correct
+   fallback: slightly less refined, still readable. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar {
+    background: var(--us-sand);
+  }
+}
+
+.topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--us-tap);
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--us-radius-md);
+}
+
+/* ---- Inline nav: wide screens only ------------------------ */
+
+.topnav {
+  display: none;
+  align-items: center;
+  gap: var(--us-space-1);
+}
+
+.topnav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 var(--us-space-4);
+  border-radius: var(--us-radius-pill);
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-medium);
+  color: var(--us-text-tertiary);
+  text-decoration: none;
+  transition: background var(--us-dur) var(--us-ease), color var(--us-dur) var(--us-ease);
+}
+
+.topnav a:hover {
+  background: rgb(var(--us-charcoal-rgb) / 0.05);
+  color: var(--us-text-primary);
+}
+
+.topnav a[data-current] {
+  background: rgb(var(--us-teal-rgb) / 0.11);
+  color: var(--us-teal-text);
+  font-weight: var(--us-weight-semi);
+}
+
+@media (min-width: 900px) {
+  .topnav {
+    display: flex;
+  }
+}
+
+/* ---- Bottom tab bar: handsets ----------------------------- */
+
+.tabbar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 60;
+  display: flex;
+  align-items: stretch;
+  min-height: var(--us-tabbar);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgb(255 255 255 / 0.88);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-top: 1px solid var(--us-border);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tabbar {
+    background: var(--us-paper);
+  }
+}
+
+.tabbar a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: var(--us-tabbar);
+  padding: var(--us-space-2) var(--us-space-1);
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-medium);
+  letter-spacing: 0.01em;
+  color: var(--us-text-tertiary);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--us-dur) var(--us-ease);
+}
+
+.tabbar a svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.7;
+}
+
+.tabbar a[data-current] {
+  color: var(--us-teal-text);
+  font-weight: var(--us-weight-semi);
+}
+
+/* The active pip. An icon that only changes colour is a state a lot of
+   people miss on a small screen in bright light. */
+.tabbar a[data-current]::after {
+  content: '';
+  position: absolute;
+  bottom: 7px;
+  width: 16px;
+  height: 2.5px;
+  border-radius: var(--us-radius-pill);
+  background: currentColor;
+}
+
+.tabbar a {
+  position: relative;
+}
+
+.tabbar__badge {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  margin-left: 6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: var(--us-radius-pill);
+  background: var(--us-ochre);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: var(--us-weight-bold);
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--us-paper);
+}
+
+@media (min-width: 900px) {
+  .tabbar {
+    display: none;
+  }
+}
+
+/* ---- Page ------------------------------------------------- */
+
+#main,
+.page {
+  flex: 1;
+  width: 100%;
+  max-width: var(--us-container);
+  margin-inline: auto;
+  padding: var(--us-section-tight) clamp(var(--us-space-4), 4vw, var(--us-space-8))
+    var(--us-section);
+}
+
+/* Clear the fixed tab bar. Without this the last control on every
+   screen sits under it — and on the report form the last control is
+   Send. */
+@media (max-width: 899px) {
+  #main,
+  .page {
+    padding-bottom: calc(var(--us-tabbar) + env(safe-area-inset-bottom) + var(--us-space-8));
+  }
+}
+
+/* ---- Page head -------------------------------------------- */
+
+.page-head {
+  margin-bottom: var(--us-section-tight);
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: var(--us-text-2xl);
+  font-weight: var(--us-weight-bold);
+  line-height: var(--us-leading-tight);
+  letter-spacing: var(--us-tracking-tight);
+  text-wrap: balance;
+}
+
+.page-head .lede {
+  margin: var(--us-space-3) 0 0;
+  max-width: 46ch;
+  font-size: var(--us-text-base);
+  line-height: var(--us-leading-snug);
+  color: var(--us-text-tertiary);
+}
+
+/* The small uppercase label above a headline. Gold-text, because the
+   flat Savannah Gold is 2.16:1 and would be a rumour of a label. */
+.eyebrow {
+  display: block;
+  margin-bottom: var(--us-space-2);
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-bold);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--us-gold-text);
+}
+
+.section-title {
+  margin: 0 0 var(--us-space-3);
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+}
+
+/* ---- Card ------------------------------------------------- */
+
+.card {
+  background: var(--us-surface);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-lg);
+  padding: clamp(var(--us-space-4), 3.5vw, var(--us-space-6));
+  box-shadow: var(--us-shadow-sm);
+}
+
+.card + .card {
+  margin-top: var(--us-space-4);
+}
+
+.card--tinted {
+  background: var(--us-surface-sunk);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.card--flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ---- Site header, retained for the design route ----------- */
+
 .site-header {
   display: flex;
   flex-wrap: wrap;
@@ -502,6 +867,45 @@ body {
   gap: var(--us-space-4);
   padding: var(--us-space-6) var(--us-space-5);
   border-bottom: 1px solid var(--us-border);
+}
+
+/* ---- The shell lockup ------------------------------------- */
+
+.us-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--us-space-3);
+  text-decoration: none;
+  color: var(--us-text-primary);
+}
+
+.us-lockup__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.us-lockup .us-logo__word {
+  font-size: var(--us-text-md);
+  font-weight: var(--us-weight-bold);
+  letter-spacing: var(--us-tracking-tight);
+}
+
+/* The descriptor is what stops a two-word wordmark reading as a login
+   screen for something unspecified: small enough to be a signature
+   rather than a heading, dark enough to actually be read. */
+.us-lockup__descriptor {
+  margin-top: 4px;
+  font-size: 8px;
+  font-weight: var(--us-weight-semi);
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--us-gold-text);
+  white-space: nowrap;
+}
+
+.site-footer .us-lockup__descriptor {
+  color: var(--us-text-tertiary);
 }
 
 .us-logo {
@@ -537,14 +941,8 @@ body {
   color: var(--us-gold-text);
 }
 
-#main {
-  max-width: 62rem;
-  margin: 0 auto;
-  padding: var(--us-space-6) var(--us-space-5) var(--us-space-16);
-}
-
 .panel {
-  margin-bottom: var(--us-space-12);
+  margin-bottom: var(--us-section);
 }
 
 .panel h1,
@@ -657,43 +1055,86 @@ code {
 }
 
 .site-footer {
-  padding: var(--us-space-6) var(--us-space-5);
+  margin-top: auto;
+  padding: var(--us-section) 0 var(--us-section-tight);
+  background: var(--us-surface-sunk);
   border-top: 1px solid var(--us-border);
   font-size: var(--us-text-sm);
   color: var(--us-text-tertiary);
 }
 
-/* ============================================================
-   Navigation
-   ============================================================ */
+@media (max-width: 899px) {
+  .site-footer {
+    padding-bottom: calc(var(--us-tabbar) + env(safe-area-inset-bottom) + var(--us-space-6));
+  }
+}
+
+.site-footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-3);
+  margin-bottom: var(--us-space-6);
+}
+
+.site-footer__line {
+  margin: 0;
+  max-width: 52ch;
+  line-height: var(--us-leading-normal);
+}
+
+.site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2) var(--us-space-5);
+  padding-bottom: var(--us-space-5);
+  border-bottom: 1px solid var(--us-border);
+}
+
+.site-footer__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--us-text-secondary);
+  text-decoration: none;
+  font-weight: var(--us-weight-medium);
+}
+
+.site-footer__links a:hover {
+  color: var(--us-teal-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.site-footer__legal {
+  margin: var(--us-space-5) 0 0;
+  font-size: var(--us-text-xs);
+  color: var(--us-ink-400);
+}
+
+/* The design route still renders a plain nav; the shell's own
+   navigation is .topnav and .tabbar above. */
 .site-nav {
   display: flex;
-  gap: var(--us-space-4);
-  margin-left: auto;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
 }
 
 .site-nav a {
-  color: var(--us-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--us-space-3);
+  border-radius: var(--us-radius-pill);
+  color: var(--us-text-tertiary);
   text-decoration: none;
-  font-weight: var(--us-weight-semi);
-  font-size: var(--us-text-sm);
-  padding: var(--us-space-2) 0;
-  border-bottom: 2px solid transparent;
+  font-weight: var(--us-weight-medium);
 }
 
 .site-nav a[data-current] {
+  background: rgb(var(--us-teal-rgb) / 0.11);
   color: var(--us-teal-text);
-  border-bottom-color: var(--us-teal);
 }
 
-/* ============================================================
-   The report form
-
-   Sized for a thumb, not a mouse. 48px is the minimum comfortable
-   target on a handset; a ramp agent wearing gloves in sunlight is the
-   design case, and a 32px checkbox is one they will miss twice before
-   they stop trying.
-   ============================================================ */
 .report {
   max-width: 44rem;
 }
@@ -707,10 +1148,12 @@ code {
 .report legend,
 .field__label {
   display: block;
-  font-size: var(--us-text-sm);
-  font-weight: var(--us-weight-semi);
-  color: var(--us-text-secondary);
   margin-bottom: var(--us-space-2);
+  padding: 0;
+  font-size: var(--us-text-base);
+  font-weight: var(--us-weight-semi);
+  line-height: var(--us-leading-snug);
+  color: var(--us-text-primary);
 }
 
 .chip-row {
@@ -755,117 +1198,335 @@ code {
 
 .field {
   display: block;
-  margin-bottom: var(--us-space-6);
+  margin-bottom: var(--us-space-5);
 }
 
 .field input,
 .field textarea {
+  display: block;
   width: 100%;
-  min-height: 48px;
-  padding: var(--us-space-3);
+  min-height: var(--us-tap);
+  padding: var(--us-space-3) var(--us-space-4);
   border: 1px solid var(--us-border-strong);
   border-radius: var(--us-radius-md);
   background: var(--us-surface);
-  color: var(--us-text-primary);
   font: inherit;
+  font-size: var(--us-text-base);
+  color: var(--us-text-primary);
+  transition: border-color var(--us-dur) var(--us-ease),
+    box-shadow var(--us-dur) var(--us-ease);
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--us-ink-400);
+}
+
+.field input:hover,
+.field textarea:hover {
+  border-color: var(--us-ink-400);
+}
+
+/* The ring, not an outline offset by 2px. A control whose own border
+   changes AND which gains a halo is unmistakable in sunlight, which is
+   where this form is filled in. */
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--us-teal);
+  box-shadow: var(--us-ring);
+}
+
+.field input[aria-invalid='true'],
+.field textarea[aria-invalid='true'] {
+  border-color: var(--us-ochre);
 }
 
 .field textarea {
-  resize: vertical;
+  min-height: 148px;
   line-height: var(--us-leading-normal);
+  resize: vertical;
 }
 
 .field__hint {
   display: block;
-  margin-top: var(--us-space-1);
-  font-size: var(--us-text-xs);
+  margin-top: var(--us-space-2);
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
   color: var(--us-text-tertiary);
 }
 
-.report__more summary {
-  cursor: pointer;
-  padding: var(--us-space-3) 0;
-  font-weight: var(--us-weight-semi);
-  color: var(--us-teal-text);
+.field__count {
+  display: block;
+  margin-top: var(--us-space-2);
+  font-size: var(--us-text-xs);
+  color: var(--us-ink-400);
+  font-variant-numeric: tabular-nums;
 }
 
-/* The anonymity control is given weight on the page proportional to its
-   weight in the product. It is the single most consequential choice a
-   reporter makes here. */
+/* ============================================================
+   ONE rule for the gap between control groups.
+
+   A select and a text input are the same kind of thing to whoever is
+   filling the form in, and they were spaced differently because their
+   hints and labels lived in different blocks. Set here, once, so the
+   form reads as a rhythm rather than as a stack of components that
+   happen to be adjacent.
+   ============================================================ */
+.report .field,
+.report .field--select,
+.report fieldset {
+  margin: 0 0 var(--us-space-6);
+}
+
+.report .field:last-child,
+.report .field--select:last-child,
+.report fieldset:last-child {
+  margin-bottom: 0;
+}
+
+/* The optional block is a different kind of object from the questions
+   above it, and gets a little more air to say so. */
+.report__more {
+  margin-top: var(--us-space-8);
+}
+
+.report__more {
+  margin: var(--us-space-6) 0;
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-md);
+  background: var(--us-surface-muted);
+  overflow: hidden;
+}
+
+.report__more summary {
+  display: flex;
+  align-items: center;
+  gap: var(--us-space-3);
+  min-height: var(--us-tap);
+  padding: 0 var(--us-space-4);
+  font-weight: var(--us-weight-semi);
+  font-size: var(--us-text-sm);
+  color: var(--us-teal-text);
+  cursor: pointer;
+  list-style: none;
+}
+
+.report__more summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A chevron that rotates, rather than the platform triangle. */
+.report__more summary::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--us-dur) var(--us-ease);
+}
+
+.report__more[open] summary::after {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
+.report__more[open] summary {
+  border-bottom: 1px solid var(--us-border);
+}
+
+.report__more > *:not(summary) {
+  padding-inline: var(--us-space-4);
+}
+
+.report__more > *:not(summary):first-of-type {
+  padding-top: var(--us-space-5);
+}
+
+.report__more > *:last-child {
+  padding-bottom: var(--us-space-2);
+}
+
+/* ---- The anonymity control -------------------------------
+   On the first screen, never in a submenu. Someone who needs it has to
+   see it before they start typing, or they do not start typing. */
 .report__anon {
   display: flex;
-  gap: var(--us-space-3);
   align-items: flex-start;
-  padding: var(--us-space-4);
-  margin-bottom: var(--us-space-6);
-  border: 1px solid var(--us-border-strong);
-  border-radius: var(--us-radius-md);
-  background: var(--us-surface-sunk);
+  gap: var(--us-space-4);
+  min-height: var(--us-tap);
+  padding: var(--us-space-5);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-lg);
+  background: var(--us-surface);
+  box-shadow: var(--us-shadow-sm);
   cursor: pointer;
+  transition: border-color var(--us-dur) var(--us-ease),
+    background var(--us-dur) var(--us-ease);
+}
+
+.report__anon:hover {
+  border-color: var(--us-border-strong);
+}
+
+/* Checked is a real state change, not a tick in a box. This is the
+   single most consequential control on the screen. */
+.report__anon:has(input:checked) {
+  border-color: var(--us-teal);
+  background: rgb(var(--us-teal-rgb) / 0.05);
+}
+
+.report__anon:has(input:focus-visible) {
+  box-shadow: var(--us-ring);
 }
 
 .report__anon input {
+  flex: none;
   width: 24px;
   height: 24px;
-  margin-top: 2px;
-  flex: none;
+  margin: 1px 0 0;
   accent-color: var(--us-teal);
+}
+
+.report__anon b {
+  display: block;
+  margin-bottom: var(--us-space-2);
+  font-size: var(--us-text-md);
+  font-weight: var(--us-weight-semi);
 }
 
 .report__anon small {
   display: block;
-  margin-top: var(--us-space-1);
-  color: var(--us-text-tertiary);
   font-size: var(--us-text-sm);
   line-height: var(--us-leading-snug);
+  color: var(--us-text-tertiary);
+}
+
+/* The form body sits on a card; the anonymity control and the submit
+   sit outside it. Three objects, in the order they are decided:
+   what happened, whether your name goes with it, send. */
+.report__card {
+  margin-bottom: var(--us-space-5);
+}
+
+/* :last-CHILD, not :last-of-type. The select renders as a <div> and
+   every other control as a <label>, so :last-of-type made the FIRST
+   control on the form "the last div" and zeroed its margin — which read
+   as the report-type hint colliding with the next question. */
+.report__card > *:last-child {
+  margin-bottom: 0;
 }
 
 .report__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--us-space-4);
+  margin-top: var(--us-space-6);
 }
 
+/* On a handset the submit is the last thing above the tab bar and has
+   to be reachable without a stretch; on a desktop a full-bleed button
+   across 46rem is a banner, so it shrinks back to its content. */
+@media (min-width: 700px) {
+  .report__actions .btn--block {
+    width: auto;
+    min-width: 15rem;
+  }
+}
+
+.report__status {
+  margin: var(--us-space-4) 0 0;
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-medium);
+  line-height: var(--us-leading-snug);
+  min-height: 1.4em;
+}
+
+/* ============================================================
+   Buttons
+
+   One base, four variants, and a real pressed state. The previous set
+   had no hover, no active and a bare `.btn` with no background — which
+   rendered as the user agent's grey on the sign-in screen.
+   ============================================================ */
 .btn {
-  min-height: 52px;
-  padding: 0 var(--us-space-8);
-  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--us-space-2);
+  min-height: var(--us-tap);
+  padding: 0 var(--us-space-6);
+  border: 1px solid transparent;
   border-radius: var(--us-radius-md);
+  background: var(--us-teal);
+  color: #ffffff;
   font: inherit;
+  font-size: var(--us-text-base);
   font-weight: var(--us-weight-semi);
+  letter-spacing: var(--us-tracking-snug);
+  text-decoration: none;
   cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--us-dur) var(--us-ease),
+    border-color var(--us-dur) var(--us-ease),
+    box-shadow var(--us-dur) var(--us-ease),
+    transform var(--us-dur-fast) var(--us-ease);
+}
+
+/* Barely perceptible, and the difference between a button and a
+   picture of one. */
+.btn:active:not([disabled]) {
+  transform: scale(0.985);
 }
 
 .btn--primary {
   background: var(--us-teal);
   color: #ffffff;
+  box-shadow: 0 1px 2px rgb(var(--us-charcoal-rgb) / 0.12),
+    0 6px 18px rgb(var(--us-teal-rgb) / 0.22);
 }
 
-/* The sign-in button carries no modifier at its call site, so the base
-   class has to be usable on its own. It previously had no background at
-   all, which rendered as the user agent's default grey — legible, but
-   not this product. */
-.btn {
-  background: var(--us-teal);
-  color: #ffffff;
+.btn--primary:hover:not([disabled]) {
+  background: var(--us-teal-text);
+  box-shadow: 0 2px 4px rgb(var(--us-charcoal-rgb) / 0.14),
+    0 10px 26px rgb(var(--us-teal-rgb) / 0.28);
 }
 
-/* Sign out is destructive-adjacent and deliberately quieter than the
-   action that got you here. Ochre text on paper is 7.24:1. */
 .btn--secondary {
+  background: var(--us-surface);
+  border-color: var(--us-border-strong);
+  color: var(--us-text-secondary);
+  box-shadow: none;
+}
+
+.btn--secondary:hover:not([disabled]) {
+  background: var(--us-surface-muted);
+  border-color: var(--us-ink-400);
+  color: var(--us-text-primary);
+}
+
+.btn--ghost {
   background: transparent;
-  color: var(--us-ochre-text);
-  border: 1px solid var(--us-border-strong);
+  color: var(--us-teal-text);
+  box-shadow: none;
+}
+
+.btn--ghost:hover:not([disabled]) {
+  background: rgb(var(--us-teal-rgb) / 0.08);
+}
+
+/* Full width. On a handset the primary action is always this, because a
+   button that does not span the column is a button a thumb can miss. */
+.btn--block {
+  width: 100%;
 }
 
 .btn[disabled] {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: progress;
+  box-shadow: none;
+  transform: none;
 }
 
-/* Secondary explanatory text: the sentence after the action that says
-   what it does and does not do. */
 .hint {
   margin-top: var(--us-space-3);
   font-size: var(--us-text-sm);
@@ -1092,12 +1753,18 @@ code {
    ============================================================ */
 .filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
-  gap: var(--us-space-3);
-  padding: var(--us-space-4);
+  gap: var(--us-space-4);
   margin-bottom: var(--us-space-6);
-  background: var(--us-surface-sunk);
-  border-radius: var(--us-radius-md);
+}
+
+@media (min-width: 640px) {
+  .filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.filters .field--select {
+  margin-bottom: 0;
 }
 
 .filters .field--select {

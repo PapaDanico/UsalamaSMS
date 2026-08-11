@@ -41,7 +41,10 @@ function renderSignedIn(outlet) {
   const session = getSession() ?? {};
   outlet.innerHTML = html`
     <section class="panel" id="login-panel">
-      <h1>Signed in</h1>
+      <header class="page-head">
+        <span class="eyebrow">Account</span>
+        <h1>Signed in</h1>
+      </header>
       <p class="lede">
         Reports on this device will send automatically.
         ${session.role ? html`You are signed in as <strong>${labelForRole(session.role)}</strong>.` : ''}
@@ -64,14 +67,17 @@ function renderSignedIn(outlet) {
 function renderForm(outlet) {
   outlet.innerHTML = html`
     <section class="panel">
-      <h1>Sign in</h1>
+      <header class="page-head">
+        <span class="eyebrow">Account</span>
+        <h1>Sign in</h1>
+      </header>
       <p class="lede">
         Reports are held on this device until someone signs in, so the
         safety office can be told which organisation they belong to.
         <strong>You do not need to sign in to file one.</strong>
       </p>
 
-      <form id="login-form" novalidate>
+      <form id="login-form" class="card" novalidate>
         <label class="field">
           <span class="field__label">Email</span>
           <input
@@ -89,7 +95,7 @@ function renderForm(outlet) {
           />
         </label>
 
-        <button type="submit" class="btn">Sign in</button>
+        <button type="submit" class="btn btn--primary btn--block">Sign in</button>
         <p class="field__error" id="login-status" role="status" aria-live="polite"></p>
       </form>
     </section>

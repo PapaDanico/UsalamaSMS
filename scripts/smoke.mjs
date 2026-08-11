@@ -160,6 +160,46 @@ try {
     );
   });
 
+  await check('EXACTLY ONE navigation is visible at a time', async () => {
+    // The shell renders each destination three times: the inline top
+    // nav (wide screens), the bottom tab bar (handsets) and the footer.
+    // Only one of the first two may be visible at any width, and the
+    // moment both are, every `a[href="/triage"]` selector in this file
+    // becomes ambiguous — which is how this check came to exist, by
+    // Playwright picking a display:none link and timing out.
+    //
+    // It is also a real defect in its own right: two primary navs on
+    // screen is a person tapping the one that is not where they expect.
+    const visible = await page.evaluate(() =>
+      ['#nav', '#tabbar'].filter((sel) => {
+        const el = document.querySelector(sel);
+        return el && getComputedStyle(el).display !== 'none';
+      })
+    );
+    assert(
+      visible.length === 1,
+      `${visible.length} primary navigations visible at 390px: ${visible.join(', ') || 'none'}`
+    );
+    assert(visible[0] === '#tabbar', `at 390px the tab bar should be the navigation, got ${visible[0]}`);
+
+    // And the inverse, at a desktop width. A tab bar fixed across a
+    // 1280px viewport is a phone app pretending.
+    const wide = await page.context().newPage();
+    await wide.setViewportSize({ width: 1280, height: 900 });
+    await wide.goto(BASE, { waitUntil: 'networkidle' });
+    const wideVisible = await wide.evaluate(() =>
+      ['#nav', '#tabbar'].filter((sel) => {
+        const el = document.querySelector(sel);
+        return el && getComputedStyle(el).display !== 'none';
+      })
+    );
+    await wide.close();
+    assert(
+      wideVisible.length === 1 && wideVisible[0] === '#nav',
+      `at 1280px the inline nav should be the navigation, got [${wideVisible.join(', ')}]`
+    );
+  });
+
   await check('tap targets are at least 44px', async () => {
     // OPEN THE OPTIONAL SECTION FIRST. The HRC chips live inside a
     // collapsed <details>, and a collapsed element's children measure
@@ -398,7 +438,7 @@ try {
   });
 
   await check('the queued report appears in triage', async () => {
-    await page.click('a[href="/triage"]');
+    await page.click('.tabbar a[href="/triage"]');
     await page.waitForSelector('.queue__item', { timeout: 5000 });
     const text = await page.locator('.queue__item').first().textContent();
     assert(/Bird activity/.test(text), 'the report filed offline is not in the queue');
@@ -479,7 +519,7 @@ try {
       });
     });
 
-    await page.click('a[href="/account"]');
+    await page.click('.tabbar a[href="/account"]');
     await page.waitForSelector('#login-form', { timeout: 5000 });
     await page.fill('#login-email', 'ramp@example.test');
     await page.fill('#login-password', 'a-sufficiently-long-test-password');
@@ -506,7 +546,7 @@ try {
   });
 
   await check('the design route renders the matrix from the real module', async () => {
-    await page.click('a[href="/design"]');
+    await page.click('.site-footer__links a[href="/design"]');
     await page.waitForSelector('.risk-matrix__cell', { timeout: 5000 });
     const cells = await page.locator('.risk-matrix__cell').count();
     assert(cells === 25, `${cells} matrix cells, expected 25`);
