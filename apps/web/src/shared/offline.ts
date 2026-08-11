@@ -10,6 +10,8 @@
 // =====================================================================
 import Dexie, { type Table } from "dexie";
 import { CreateReportSchema, type CreateReportInput } from "@usalamasms/shared";
+// @ts-expect-error session.js is untyped JS, like the rest of apps/web
+import { authFetch, isSignedIn } from "./session.js";
 
 // ----------------------------- Local DB ------------------------------
 export interface LocalReport extends CreateReportInput {
@@ -101,11 +103,36 @@ export interface FlushOutcome {
   rejected: number;
   /** Items the server returned no verdict for. Retried with backoff. */
   unanswered: number;
+  /**
+   * Nothing was attempted because there is no session.
+   *
+   * Distinct from `unanswered`, and the distinction is the whole point:
+   * unanswered means the server did not reply and the device should keep
+   * trying. This means the device CANNOT succeed until a person signs
+   * in, and something has to say so out loud.
+   */
+  needsSignIn?: boolean;
 }
 
-export async function flushOutbox(fetcher: typeof fetch = fetch): Promise<FlushOutcome> {
+/**
+ * `authFetch` by default, not `fetch`.
+ *
+ * The default used to be bare `fetch`, so every request went out with no
+ * Authorization header to a route that requires one. Every sync 401'd,
+ * the 401 branch below returned silently, and a device could queue
+ * reports forever while reporting them as merely pending.
+ */
+export async function flushOutbox(fetcher: typeof fetch = authFetch): Promise<FlushOutcome> {
   const empty: FlushOutcome = { sent: 0, conflicts: 0, rejected: 0, unanswered: 0 };
   if (!navigator.onLine) return empty;
+
+  // Checked before the request rather than inferred from its 401, so the
+  // reason is known rather than guessed — and so a signed-out device
+  // does not spend a radio wakeup finding out.
+  if (!isSignedIn()) {
+    const waiting = await db.outbox.count();
+    return waiting > 0 ? { ...empty, needsSignIn: true } : empty;
+  }
 
   const due = await db.outbox
     .where("nextAttemptAt").belowOrEqual(Date.now())
@@ -129,7 +156,11 @@ export async function flushOutbox(fetcher: typeof fetch = fetch): Promise<FlushO
     return empty;
   }
 
-  if (res.status === 401) return empty; // auth refresh handled elsewhere
+  // A 401 that survives authFetch's refresh-and-retry means the session
+  // is genuinely over. Say so; do not back off into silence. The old
+  // comment here read "auth refresh handled elsewhere" and there was no
+  // elsewhere.
+  if (res.status === 401) return { ...empty, needsSignIn: true };
   if (!res.ok) { await backoffAll(due); return empty; }
 
   let body: {
@@ -241,7 +272,7 @@ function stripLocal(i: OutboxItem): Omit<OutboxItem, "localId" | "attempts" | "n
  * to signal.
  */
 export async function syncStatus(): Promise<{
-  state: "synced" | "pending" | "error" | "offline";
+  state: "synced" | "pending" | "error" | "offline" | "signed_out";
   pending: number;
   errored: number;
 }> {
@@ -250,6 +281,14 @@ export async function syncStatus(): Promise<{
     db.reports.where("syncState").equals("error").count(),
   ]);
   if (errored > 0) return { state: "error", pending, errored };
+
+  // BEFORE `offline` and before `pending`, because it outranks both.
+  // A signed-out device with reports queued is not waiting on signal —
+  // it is waiting on a person, and only one of those two messages tells
+  // that person to do something. Reports with nothing queued do not
+  // nag: someone who has not filed anything yet has nothing at risk.
+  if (pending > 0 && !isSignedIn()) return { state: "signed_out", pending, errored };
+
   if (!navigator.onLine) return { state: "offline", pending, errored };
   if (pending > 0) return { state: "pending", pending, errored };
   return { state: "synced", pending, errored };

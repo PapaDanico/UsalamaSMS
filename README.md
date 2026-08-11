@@ -21,6 +21,14 @@ now verified rather than asserted:
   through the real Fastify instance, the real route, real JWT auth and a
   real Postgres, then asserts the row, the audit entry and the
   idempotency behaviour.
+- **And the seam between them** — those two were verified for a while
+  and the join was not, which is where the whole thing was broken: the
+  app had no login screen, no token store and no `Authorization` header,
+  while the sync route has always required one. Every real sync returned
+  401, the client swallowed it, and the strip reported the report as
+  merely *waiting to send* — permanently. `smoke` now signs in and
+  asserts the batch leaves the browser carrying a bearer token, and that
+  a queued report with no session **says so** instead.
 
 Three routes ship: the report form, the triage queue, and a design route
 where the brand system renders itself against the real modules — its
@@ -57,7 +65,7 @@ npm run seed               # first org + users; prints passwords once
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 21 checks, including filing a report with the network cut and
+— 23 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 
@@ -102,7 +110,7 @@ See [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) for the evidence and
 | [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) | The regulatory clock, the AFI safety case, competitor pricing, why SMS implementations fail, and the confidentiality findings |
 | [`docs/02-STRATEGY.md`](docs/02-STRATEGY.md) | Positioning, the aggregate-data fork, module suite by tier, sequencing, commercial model, architecture verdicts, risks |
 | [`docs/04-BRAND.md`](docs/04-BRAND.md) | How the six-colour identity is encoded, the two artwork combinations that are not reproduced and the measurements that condemned them, why the risk-scale green is almost black, and the one dropdown component every operational field goes through |
-| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Nine claims with an expiry date — which flag controls each, and the test that stops it rotting |
+| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Ten claims with an expiry date — which flag controls each, and the test that stops it rotting |
 | [`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md) | The hosted database, the one-time Prisma baseline it needs, why RLS has no policies, and which environment variables go where. No secrets, by rule |
 
 ---

@@ -20,9 +20,11 @@ import { Logo } from './components/Logo.js';
 import { router } from './shared/router.js';
 import { registerServiceWorker, listenForFlushRequests } from './shared/register-sw.js';
 import { syncStatus, flushOutbox } from './shared/offline.ts';
+import { resumeSession } from './shared/session.js';
 import { render as renderReport } from './tools/report/index.js';
 import { render as renderTriage } from './tools/triage/index.js';
 import { render as renderDesign } from './tools/design/index.js';
+import { render as renderLogin } from './tools/login/index.js';
 
 /* ------------------------------ Chrome ------------------------------ */
 document.getElementById('logo-slot').innerHTML = Logo({ height: 40 }).toString();
@@ -30,6 +32,7 @@ document.getElementById('logo-slot').innerHTML = Logo({ height: 40 }).toString()
 document.getElementById('nav').innerHTML = html`
   <a href="/">Report</a>
   <a href="/triage">Triage</a>
+  <a href="/account">Account</a>
   <a href="/design">Design</a>
 `.toString();
 
@@ -39,6 +42,11 @@ const outlet = document.getElementById('main');
 router
   .register('/', (el) => renderReport(el), { title: 'File a report' })
   .register('/triage', (el) => void renderTriage(el), { title: 'Triage' })
+  // NOT a guard in front of the report form, deliberately. Filing must
+  // never require a password — see the header of tools/login. This route
+  // is where someone goes to make the queue send, not a gate they pass
+  // through to reach the product.
+  .register('/account', (el) => renderLogin(el), { title: 'Sign in' })
   .register('/design', (el) => renderDesign(el), { title: 'Design system' })
   .setNotFound((el) => {
     el.innerHTML = html`
@@ -81,7 +89,13 @@ const MESSAGES = {
     n > 0
       ? `Offline — ${n} report${n === 1 ? '' : 's'} saved on this device, will send when signal returns`
       : 'Offline — reports you file are saved on this device',
-  error: (_n, e) => `${e} report${e === 1 ? '' : 's'} could not be sent — open Triage to review`
+  error: (_n, e) => `${e} report${e === 1 ? '' : 's'} could not be sent — open Triage to review`,
+  // The message that did not exist while the app had no way to sign in.
+  // It names the ONE action that resolves it, because "waiting to send"
+  // for something that can never send is the most damaging sentence
+  // this strip could show.
+  signed_out: (n) =>
+    `${n} report${n === 1 ? '' : 's'} on this device cannot be sent until someone signs in`
 };
 
 export async function renderSyncState() {
@@ -101,10 +115,23 @@ export async function renderSyncState() {
 void renderSyncState();
 window.addEventListener('online', () => void renderSyncState());
 window.addEventListener('offline', () => void renderSyncState());
+window.addEventListener('usalamasms:session-changed', () => void renderSyncState());
+
+/* Turn the stored refresh token back into a usable access token, then
+   send anything that was waiting. Silent on failure — offline and
+   expired are both normal, and both are already described by the strip
+   rather than by an alert. */
+void resumeSession()
+  .then((ok) => (ok ? flushOutbox() : null))
+  .then(() => renderSyncState());
 
 /* Refresh the strip after a submission, without the form needing to
    know the strip exists. */
 window.addEventListener('usalamasms:report-filed', () => void renderSyncState());
+/* Fired after a flush finishes, as opposed to when a session starts. The
+   two are not the same moment and treating them as one left the strip
+   describing a queue that had already drained. */
+window.addEventListener('usalamasms:sync-changed', () => void renderSyncState());
 
 /* -------------------------- Offline plumbing -------------------------- */
 registerServiceWorker({

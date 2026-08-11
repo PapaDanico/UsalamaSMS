@@ -281,9 +281,7 @@ try {
     await page.click('button[type=submit]');
 
     await page.waitForFunction(
-      () => document.querySelector('#report-status')?.textContent?.trim().length > 0,
-      { timeout: 5000 }
-    );
+      () => document.querySelector('#report-status')?.textContent?.trim().length > 0, undefined, { timeout: 5000 });
 
     const status = await page.locator('#report-status').textContent();
     assert(
@@ -323,9 +321,7 @@ try {
     await page.fill('textarea[name=narrative]', 'A description long enough to pass validation.');
     await page.click('button[type=submit]');
     await page.waitForFunction(
-      () => document.querySelector('#report-status')?.textContent?.trim().length > 0,
-      { timeout: 5000 }
-    );
+      () => document.querySelector('#report-status')?.textContent?.trim().length > 0, undefined, { timeout: 5000 });
     const status = (await page.locator('#report-status').textContent()) ?? '';
     assert(!/Invalid enum|Expected '/.test(status), `raw schema error shown to the user: "${status.trim()}"`);
     assert(/kind of report/i.test(status), `unhelpful rejection message: "${status.trim()}"`);
@@ -362,11 +358,43 @@ try {
     // Charter rule 8 extended. A queued report that the strip does not
     // mention is a report the person believes was sent.
     await page.waitForFunction(
-      () => /waiting to send|saved on this device/i.test(document.querySelector('#sync-text')?.textContent ?? ''),
-      { timeout: 5000 }
-    );
+      () =>
+        /waiting to send|saved on this device|cannot be sent/i.test(
+          document.querySelector('#sync-text')?.textContent ?? ''
+        ), undefined, { timeout: 5000 });
     const strip = await page.locator('#sync-strip').getAttribute('data-state');
-    assert(strip === 'offline' || strip === 'pending', `sync strip is "${strip}" with an unsent report`);
+    assert(
+      ['offline', 'pending', 'signed_out'].includes(strip),
+      `sync strip is "${strip}" with an unsent report`
+    );
+  });
+
+  await check('a queued report with no session says SO, rather than "waiting to send"', async () => {
+    // THE FAILURE THIS EXISTS FOR. apps/web had no login screen, no token
+    // store and no Authorization header, while /api/v1/sync/batch has
+    // always required authentication. Every sync a real device attempted
+    // returned 401, and flushOutbox swallowed it with the comment "auth
+    // refresh handled elsewhere". There was no elsewhere.
+    //
+    // So the strip said "1 report waiting to send" — forever, truthfully
+    // about the queue and falsely about the outcome. A report that
+    // cannot be sent and says so sends someone to the safety office. A
+    // report that cannot be sent and calls itself pending is a hazard
+    // nobody ever hears about, on a handset assuring its owner otherwise.
+    await page.context().setOffline(false);
+    await page.evaluate(() => {
+      localStorage.removeItem('usalamasms.session');
+      localStorage.removeItem('usalamasms.refresh');
+    });
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+
+    await page.waitForFunction(
+      () => document.querySelector('#sync-strip')?.dataset.state === 'signed_out', undefined, { timeout: 5000 });
+    const text = (await page.locator('#sync-text').textContent()) ?? '';
+    assert(/signs? in/i.test(text), `the strip does not name the action that fixes it: "${text.trim()}"`);
+    // And it must NOT be the reassuring message, which is the specific
+    // sentence this product cannot afford to show falsely.
+    assert(!/^\s*\d+ reports? waiting to send/i.test(text), `still reporting a dead queue as merely pending: "${text.trim()}"`);
   });
 
   await check('the queued report appears in triage', async () => {
@@ -392,9 +420,7 @@ try {
     // A type the report is not.
     await page.selectOption('select[name="filter-type"]', 'MOR');
     await page.waitForFunction(
-      () => document.querySelectorAll('.queue__item').length === 0,
-      { timeout: 3000 }
-    );
+      () => document.querySelectorAll('.queue__item').length === 0, undefined, { timeout: 3000 });
     // And the empty state must say the queue is filtered, not empty —
     // a safety manager who reads "nothing reported" and is looking at a
     // filtered view draws exactly the wrong conclusion.
@@ -402,12 +428,82 @@ try {
     assert(/No reports match these filters/.test(empty), 'the filtered-empty state reads as an empty queue');
     await page.selectOption('select[name="filter-type"]', '');
     await page.waitForFunction(
-      () => document.querySelectorAll('.queue__item').length === 1,
-      { timeout: 3000 }
-    );
+      () => document.querySelectorAll('.queue__item').length === 1, undefined, { timeout: 3000 });
   });
 
   await context.setOffline(false);
+
+  await check('SYNC CARRIES THE SESSION — the seam both halves of the gate missed', async () => {
+    // The smoke suite proved a report reaches IndexedDB. The integration
+    // suite proved a batch reaches Postgres, using a token it minted
+    // itself. Neither exercised browser -> API, because the browser could
+    // not produce a session — and that gap is exactly where the missing
+    // Authorization header lived.
+    //
+    // The API is not running here, so the requests are intercepted. What
+    // is being proved is the thing that was actually absent: that the
+    // browser sends credentials at all, and that a queued report leaves
+    // the outbox once it does.
+    const seen = { login: null, sync: null };
+
+    await page.route('**/api/v1/auth/login', async (route) => {
+      seen.login = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'test-access-token',
+          refreshToken: 'test-refresh-token-that-is-long-enough-to-pass',
+          role: 'FRONTLINE',
+          orgId: 'org-under-test'
+        })
+      });
+    });
+
+    await page.route('**/api/v1/sync/batch', async (route) => {
+      const req = route.request();
+      seen.sync = {
+        authorization: req.headers()['authorization'] ?? null,
+        body: req.postDataJSON()
+      };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          results: seen.sync.body.items.map((i) => ({
+            clientId: i.clientId,
+            status: 'applied',
+            serverUpdatedAt: new Date().toISOString()
+          }))
+        })
+      });
+    });
+
+    await page.click('a[href="/account"]');
+    await page.waitForSelector('#login-form', { timeout: 5000 });
+    await page.fill('#login-email', 'ramp@example.test');
+    await page.fill('#login-password', 'a-sufficiently-long-test-password');
+    await page.click('#login-form button[type=submit]');
+
+    await page.waitForFunction(() => document.querySelector('#login-panel'), undefined, { timeout: 5000 });
+
+    assert(seen.login?.email === 'ramp@example.test', 'the login request did not carry the email');
+    assert(seen.sync, 'signing in with a queued report did not trigger a sync');
+    assert(
+      seen.sync.authorization === 'Bearer test-access-token',
+      `sync went out with authorization "${seen.sync.authorization}" — this is the defect: ` +
+        `every real sync 401'd and the device reported the report as merely pending`
+    );
+    assert(seen.sync.body.items.length >= 1, 'the queued report was not in the batch');
+    assert(seen.sync.body.deviceId, 'the batch carried no deviceId');
+
+    // And the outbox is now empty, which is what makes the strip honest.
+    await page.waitForFunction(
+      () => document.querySelector('#sync-strip')?.dataset.state === 'synced', undefined, { timeout: 5000 });
+
+    await page.unroute('**/api/v1/auth/login');
+    await page.unroute('**/api/v1/sync/batch');
+  });
 
   await check('the design route renders the matrix from the real module', async () => {
     await page.click('a[href="/design"]');

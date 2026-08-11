@@ -429,6 +429,15 @@ body {
   color: var(--us-teal-text);
 }
 
+/* Signed out with reports queued. Ochre rather than gold: gold is
+   "waiting", and this is not waiting — nothing will happen until a
+   person acts, which is the same urgency class as an error even though
+   nothing has failed. */
+.sync-strip[data-state='signed_out'] {
+  color: var(--us-ochre-text);
+  font-weight: var(--us-weight-semi);
+}
+
 /* ============================================================
    Print — the regulator's copy
 
@@ -833,9 +842,41 @@ code {
   color: #ffffff;
 }
 
+/* The sign-in button carries no modifier at its call site, so the base
+   class has to be usable on its own. It previously had no background at
+   all, which rendered as the user agent's default grey — legible, but
+   not this product. */
+.btn {
+  background: var(--us-teal);
+  color: #ffffff;
+}
+
+/* Sign out is destructive-adjacent and deliberately quieter than the
+   action that got you here. Ochre text on paper is 7.24:1. */
+.btn--secondary {
+  background: transparent;
+  color: var(--us-ochre-text);
+  border: 1px solid var(--us-border-strong);
+}
+
 .btn[disabled] {
   opacity: 0.6;
   cursor: progress;
+}
+
+/* Secondary explanatory text: the sentence after the action that says
+   what it does and does not do. */
+.hint {
+  margin-top: var(--us-space-3);
+  font-size: var(--us-text-sm);
+  color: var(--us-ink-600);
+}
+
+.field__error {
+  margin-top: var(--us-space-3);
+  font-size: var(--us-text-sm);
+  color: var(--us-state-error);
+  min-height: 1.4em;
 }
 
 .report__status[data-state='ok'] {

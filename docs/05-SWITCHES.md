@@ -302,3 +302,47 @@ if it is written by hand.
 **The test:** `scripts/check-claims.mjs`, which today asserts the
 registries are non-empty and internally consistent, and which must grow
 an assertion per public claim as claims appear.
+
+---
+
+## 10. The refresh token is in localStorage
+
+**The claim:** a signed-in device can send what it has queued, and the
+session survives a reload.
+
+**How it is done today:** the access token is held in memory only; the
+refresh token is in `localStorage`. `apps/web/src/shared/session.js`
+says so in its header rather than in a comment nobody reads.
+
+**Why it expires:** `localStorage` is readable by any script that runs
+on this origin. That is an XSS-exposed credential, and on this product
+the thing it unlocks is other people's confidential safety narratives.
+Nothing is holding it back except that no third-party script runs here:
+the CSP names no external script origin, `html.js` escapes every
+interpolation by default, and the two runtime dependencies are Dexie and
+zod. Those are real defences and none of them is the right one.
+
+The right one is an **httpOnly cookie**, and it is available: the API is
+same-origin (`/api/*` on the same host as the app), which is exactly the
+condition that makes cookie auth work without CORS gymnastics. It was
+not done because it needs a cookie-parsing path and CSRF protection the
+API does not have, and shipping a half-built version of that would be
+worse than shipping the honest simple one.
+
+**What bounds the damage meanwhile:** the access token expires in
+fifteen minutes and never touches disk. The refresh token rotates on
+every use, and a replayed one revokes every session that user has — so a
+stolen token that is used alongside the real client's takes the
+attacker's session down with it and tells the audit log it happened
+(`auth.refresh.reuse_detected`).
+
+**What must happen:** move to an httpOnly, `SameSite=Strict`, `Secure`
+cookie for the refresh token, with CSRF protection on the state-changing
+routes, before this carries a real operator's reports.
+
+**The test:** `tests/integration/auth.route.integration.test.ts` already
+proves the rotation and the reuse revocation — the properties that make
+the current arrangement survivable rather than reckless. There is no
+test asserting the storage medium, deliberately: a test that asserted
+`localStorage` would have to be deleted to make the fix, which is a
+guard that argues against its own resolution.
