@@ -22,7 +22,7 @@
    recorded in docs/05-SWITCHES.md with what to do about it.
    ============================================================ */
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -229,33 +229,68 @@ const RASTER = [
   { from: 'favicon.svg', to: 'favicon-32.png', size: 32 },
 ];
 
-const { chromium } = await import('playwright');
-const browser = await chromium.launch();
+/* The rasterised PNGs are COMMITTED, and this step regenerates them
+   where a browser exists rather than requiring one everywhere.
 
+   Netlify's build image has no Chromium, so making `npm run build`
+   depend on launching one turned a working deploy into a failed one —
+   found by the deploy failing, which is a slow way to learn it.
+
+   Skipping is only safe because the outputs are in the repository. So
+   the skip VERIFIES rather than shrugs: if a PNG the manifest depends
+   on is missing, this fails and says how to make it. Charter rule 11 —
+   a check that stops checking must fail. */
+let browser = null;
 try {
-  for (const { from, to, size } of RASTER) {
-    const page = await browser.newPage({
-      viewport: { width: size, height: size },
-      deviceScaleFactor: 1,
-    });
-    const svg = readFileSync(resolve(OUT, from), 'utf8');
-    /* The SVG is inlined into a page sized exactly to the icon, with no
-       margin and a transparent ground, so the raster is the artwork and
-       nothing else. `omitBackground` keeps the favicon's transparency —
-       a 32px charcoal mark on an opaque white square is a white square
-       in a dark browser theme. */
-    await page.setContent(
-      `<!doctype html><meta charset="utf-8">` +
-        `<style>html,body{margin:0;padding:0;background:transparent}` +
-        `svg{display:block;width:${size}px;height:${size}px}</style>` +
-        svg
-    );
-    await page.screenshot({ path: resolve(OUT, to), omitBackground: true });
-    await page.close();
-    console.log(`  wrote icons/${to}  (${size}px, rasterised from ${from})`);
+  const { chromium } = await import('playwright');
+  browser = await chromium.launch();
+} catch (err) {
+  browser = null;
+  console.log(`\n  no browser available (${err.message.split('\n')[0]})`);
+  console.log('  verifying the committed PNGs instead of regenerating them');
+}
+
+if (browser) {
+  try {
+    for (const { from, to, size } of RASTER) {
+      const page = await browser.newPage({
+        viewport: { width: size, height: size },
+        deviceScaleFactor: 1,
+      });
+      const svg = readFileSync(resolve(OUT, from), 'utf8');
+      /* The SVG is inlined into a page sized exactly to the icon, with
+         no margin and a transparent ground, so the raster is the artwork
+         and nothing else. `omitBackground` keeps the favicon's
+         transparency — a 32px charcoal mark on an opaque white square is
+         a white square in a dark browser theme. */
+      await page.setContent(
+        `<!doctype html><meta charset="utf-8">` +
+          `<style>html,body{margin:0;padding:0;background:transparent}` +
+          `svg{display:block;width:${size}px;height:${size}px}</style>` +
+          svg
+      );
+      await page.screenshot({ path: resolve(OUT, to), omitBackground: true });
+      await page.close();
+      console.log(`  wrote icons/${to}  (${size}px, rasterised from ${from})`);
+    }
+  } finally {
+    await browser.close();
   }
-} finally {
-  await browser.close();
+} else {
+  const missing = RASTER.filter(({ to }) => !existsSync(resolve(OUT, to))).map((r) => r.to);
+  if (missing.length > 0) {
+    console.error(
+      `\nFATAL: ${missing.length} raster icon(s) missing and no browser to draw them:\n` +
+        missing.map((m) => `  · icons/${m}`).join('\n') +
+        `\n\n  These are committed to the repository. Regenerate them on a machine\n` +
+        `  with Playwright's Chromium and commit the result:\n\n` +
+        `      npx playwright install chromium && npm run icons\n\n` +
+        `  Do not ship without them: an SVG-only manifest is not installable —\n` +
+        `  iOS substitutes a screenshot of the page for the touch icon.`
+    );
+    process.exit(1);
+  }
+  for (const { to } of RASTER) console.log(`  verified icons/${to} (committed)`);
 }
 
 const total = Object.keys(FILES).length + RASTER.length;
