@@ -228,6 +228,90 @@ describe.skipIf(!hasDatabase)("audit chain against Postgres", () => {
     ).toBe(true);
   });
 
+  it("VERIFIES ACROSS PAGE BOUNDARIES — a chain longer than one page", async () => {
+    // verifyAuditChain used to be one unbounded findMany: the entire
+    // audit log of an organisation into a Lambda's memory, on the
+    // endpoint a REGULATOR is invited to call. It would have fallen over
+    // on exactly the operator whose chain most needed verifying, and it
+    // would have fallen over as a timeout — which an inspector reads as
+    // "the integrity check did not work".
+    //
+    // Paging a hash chain introduces a specific new way to be wrong: the
+    // running predecessor has to survive the boundary. Restart it and
+    // every boundary looks like tampering; skip the first row's link
+    // check and a splice at a multiple of the page size passes unseen.
+    //
+    // The page is 1,000, so 2,500 rows crosses it twice. They are built
+    // and bulk-inserted rather than appended one at a time, because the
+    // property under test is the VERIFIER's paging and 2,500 locked
+    // transactions would be minutes of nothing.
+    const N = 2_500;
+    const rows = [];
+    let prev = GENESIS;
+    for (let i = 0; i < N; i++) {
+      const createdAt = new Date(Date.UTC(2026, 0, 1, 0, 0, 0) + i * 1000);
+      const row = {
+        orgId,
+        action: "bulk",
+        entityType: "T",
+        entityId: `bulk-${i}`,
+        createdAt,
+        prevHash: prev,
+        hash: "",
+      };
+      row.hash = sha256(auditMaterial({ ...row, userId: null, detail: null }));
+      prev = row.hash;
+      rows.push(row);
+    }
+    await prisma().auditLog.createMany({ data: rows });
+
+    const clean = await verifyAuditChain(orgId);
+    expect(clean.ok, "a well-formed 2,500-row chain failed to verify").toBe(true);
+    expect(clean.rowsChecked).toBe(N);
+
+    // Tamper INSIDE the second page. If the carry were broken this would
+    // still be caught, so it is the weaker of the two.
+    await prisma().$executeRawUnsafe(
+      `UPDATE "AuditLog" SET action = 'edited' WHERE "entityId" = 'bulk-1500'`,
+    );
+    const mid = await verifyAuditChain(orgId);
+    expect(mid.ok).toBe(false);
+    expect(mid.contentAlteredAtSeq).toBeDefined();
+  });
+
+  it("catches an edit at exactly the page boundary", async () => {
+    // THE COUNTER-TEST for the one above. An edit to the FIRST row of a
+    // page is the row whose link check a naive paging implementation
+    // skips — it is the row the previous page would have validated. If
+    // this passes while the test above passes, the carry is real.
+    const N = 1_200; // one full page plus a bit
+    const rows = [];
+    let prev = GENESIS;
+    for (let i = 0; i < N; i++) {
+      const createdAt = new Date(Date.UTC(2026, 0, 1, 0, 0, 0) + i * 1000);
+      const row = {
+        orgId, action: "bulk", entityType: "T", entityId: `edge-${i}`,
+        createdAt, prevHash: prev, hash: "",
+      };
+      row.hash = sha256(auditMaterial({ ...row, userId: null, detail: null }));
+      prev = row.hash;
+      rows.push(row);
+    }
+    await prisma().auditLog.createMany({ data: rows });
+    expect((await verifyAuditChain(orgId)).ok).toBe(true);
+
+    // Index 1000 is the first row of the second page.
+    await prisma().$executeRawUnsafe(
+      `UPDATE "AuditLog" SET action = 'edited' WHERE "entityId" = 'edge-1000'`,
+    );
+    const verdict = await verifyAuditChain(orgId);
+    expect(verdict.ok, "an edit at the first row of page two was not detected").toBe(false);
+    expect(verdict.contentAlteredAtSeq).toBeDefined();
+    // And it stopped AT the boundary, not before it — proof the first
+    // page verified and the carry reached across.
+    expect(verdict.rowsChecked).toBe(1000);
+  });
+
   it("keeps each org's chain independent", async () => {
     const { orgId: second } = await seedOrg("Second Operator");
     await appendAudit({ orgId, action: "a", entityType: "T", entityId: "1" });

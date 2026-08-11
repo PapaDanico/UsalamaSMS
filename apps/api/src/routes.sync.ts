@@ -62,8 +62,28 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
       // authenticated caller. That is a cross-tenant existence oracle —
       // small, but it leaks across exactly the boundary this product
       // promises to hold, and competitors share this platform.
+      //
+      // SCOPED BY OP AS WELL. It was not, and clientId identifies the
+      // ENTITY rather than the operation — the client generates one per
+      // report and reuses it for every op on that report. So once a
+      // report had been created through sync, every later UPDATE for it
+      // matched the CREATE's receipt and came back "duplicate". The
+      // client reads that as "the server already has it", deletes the
+      // outbox item and marks the report synced. The edit is discarded
+      // silently, on the device, with a success indication.
+      //
+      // Currently masked: the UPDATE branch below has no field handler
+      // yet, so it ends in "rejected" regardless. It would have become a
+      // live data-loss bug the day someone implemented one, and the
+      // symptom — an edit that vanishes with no error anywhere — is
+      // close to undiagnosable from a support conversation.
+      //
+      // Note what this does NOT give: repeated UPDATEs for one entity
+      // are not yet idempotent between themselves, because a successful
+      // update writes no receipt. That is honest for a path that does
+      // not exist; it must be closed with the first field handler.
       const existing = await prisma.syncReceipt.findFirst({
-        where: { clientId: item.clientId, orgId: auth.org },
+        where: { clientId: item.clientId, orgId: auth.org, op: item.op },
       });
       if (existing) { results.push({ clientId: item.clientId, status: "duplicate" }); continue; }
 
@@ -186,21 +206,53 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
         if (!current) { results.push({ clientId: item.clientId, status: "rejected" }); continue; }
 
         if (item.baseVersion && item.baseVersion !== current.updatedAt.toISOString()) {
-          await prisma.syncReceipt.create({
-            data: {
-              // A conflict receipt is a distinct event, not a second
-              // receipt for the same clientId — suffixed so it cannot
-              // collide with the idempotency key it describes.
-              clientId: `${item.clientId}:conflict:${current.updatedAt.toISOString()}`,
-              orgId: auth.org,
-              deviceId,
-              userId: auth.sub,
-              entityType: item.entityType,
-              op: "UPDATE",
-              conflict: true,
-              resolution: "server_wins",
-            },
-          });
+          try {
+            await prisma.syncReceipt.create({
+              data: {
+                // A conflict receipt is a distinct event, not a second
+                // receipt for the same clientId — suffixed so it cannot
+                // collide with the idempotency key it describes.
+                clientId: `${item.clientId}:conflict:${current.updatedAt.toISOString()}`,
+                orgId: auth.org,
+                deviceId,
+                userId: auth.sub,
+                entityType: item.entityType,
+                op: "UPDATE",
+                conflict: true,
+                resolution: "server_wins",
+              },
+            });
+          } catch (err) {
+            // ==========================================================
+            // A REPEATED CONFLICT IS NOT AN ERROR.
+            //
+            // The suffix is deterministic: clientId plus the server's
+            // current updatedAt. So if the response to this batch is
+            // lost — radio drops after the server commits, which is the
+            // ordinary case this whole outbox exists for — the client
+            // retries the same UPDATE, the server's updatedAt has not
+            // moved, and the receipt insert violates
+            // @@unique([orgId, clientId]).
+            //
+            // Uncaught, that threw out of the handler and returned 500
+            // for the WHOLE batch. The client saw !res.ok, backed off
+            // every item, retried, and hit it again. A permanently
+            // poisoned outbox on a device nobody can reach, caused by a
+            // dropped packet.
+            //
+            // The receipt already existing means this exact conflict is
+            // already recorded, which is precisely the state the insert
+            // was trying to reach. Idempotent, so: carry on and report
+            // the conflict, which is what the client needs to hear.
+            // ==========================================================
+            if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") {
+              throw err;
+            }
+            req.log.info(
+              { clientId: item.clientId },
+              "conflict receipt already recorded — retried batch after a lost response",
+            );
+          }
           results.push({
             clientId: item.clientId,
             status: "conflict",

@@ -11,7 +11,10 @@
 // =====================================================================
 import Fastify, { type FastifyInstance, type FastifyError } from "fastify";
 import rateLimit from "@fastify/rate-limit";
-import { ENV, prisma, verifyAuditChain, authenticate, requirePermission } from "./core";
+import {
+  ENV, prisma, verifyAuditChain, authenticate, requirePermission,
+  deIdentifyVcr, ResidualIdentifiersError,
+} from "./core";
 import { syncRoutes } from "./routes.sync";
 import { authRoutes } from "./routes.auth";
 
@@ -191,6 +194,70 @@ export async function build(): Promise<FastifyInstance> {
         return reply.code(403).send({ error: "forbidden" });
       }
       return verifyAuditChain(req.params.orgId);
+    },
+  );
+
+  // =====================================================================
+  // De-identify a voluntary confidential report.
+  //
+  // THIS PIPELINE HAD NO ROUTE. deIdentifyVcr, its reviewer-friction
+  // design, the ResidualIdentifiersError and the in-transaction audit
+  // append were all written, all correct, and reachable by nothing but
+  // their own tests. The same defect as "the routes had no server",
+  // one layer up, and equally invisible: an exported function that
+  // nothing imports still typechecks and still passes every unit test.
+  //
+  // The operation is IRREVERSIBLE. It nulls reporterId and replaces the
+  // narrative with the scrubbed copy — deliberately, because encryption
+  // that can be undone is a promise that can be broken by whoever holds
+  // the key. So the route is POST, it is tenant-scoped, and the audit
+  // entry naming the reviewer commits in the same transaction as the
+  // change.
+  // =====================================================================
+  app.post<{ Params: { id: string }; Body: { acceptResidual?: boolean } }>(
+    "/api/v1/reports/:id/deidentify",
+    {
+      preHandler: [authenticate, requirePermission("report.deidentify.review")],
+      config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
+    },
+    async (req, reply) => {
+      // Scoped BEFORE the pipeline runs, not inside it. deIdentifyVcr
+      // takes a report id and would happily de-identify another
+      // operator's report — it is a pure operation and tenant scoping is
+      // the route's job, exactly as it is for every other read here.
+      const report = await prisma.safetyReport.findFirst({
+        where: { id: req.params.id, orgId: req.auth!.org },
+        select: { id: true },
+      });
+      // 404 rather than 403 for a report in another tenancy: the two
+      // answers differ only for someone probing ids that are not theirs,
+      // and the distinction tells them which ones exist.
+      if (!report) return reply.code(404).send({ error: "not_found" });
+
+      try {
+        const { residual } = await deIdentifyVcr(req.params.id, req.auth!.sub, {
+          reviewerAcceptedResidual: req.body?.acceptResidual === true,
+        });
+        return reply.send({ ok: true, residual });
+      } catch (err) {
+        if (err instanceof ResidualIdentifiersError) {
+          // 409, not 400. The request is well-formed and the server is
+          // working; the operation is BLOCKED pending a human decision,
+          // and the spans it could not remove come back so the reviewer
+          // can look at them and decide.
+          //
+          // These spans are fragments of a narrative, so this response
+          // is exactly as confidential as the report — which is why the
+          // route sits behind report.deidentify.review and not behind
+          // any triage-level permission.
+          return reply.code(409).send({
+            error: "residual_identifiers",
+            residual: err.residual,
+            hint: "A named reviewer must confirm before distribution. Re-send with acceptResidual: true.",
+          });
+        }
+        throw err;
+      }
     },
   );
 

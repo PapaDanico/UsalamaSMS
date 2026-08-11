@@ -293,14 +293,80 @@ export interface ChainVerdict {
  * of the control.
  */
 export async function verifyAuditChain(orgId: string): Promise<ChainVerdict> {
-  const rows = await prisma.auditLog.findMany({ where: { orgId }, orderBy: { seq: "asc" } });
+  // ===================================================================
+  // PAGED, because this loaded the whole log into memory.
+  //
+  // A single unbounded findMany is fine for the org this was written
+  // against and wrong for the org it is FOR: this is the endpoint a
+  // regulator is invited to call, on an operator with a year of
+  // traffic, inside a Lambda with 1 GB and a timeout. It would fall
+  // over on exactly the organisation whose chain most needs verifying,
+  // and it would fall over as a timeout — which an inspector reads as
+  // "the integrity check did not work", the one verdict this control
+  // must never return by accident.
+  //
+  // The chain is inherently sequential, so this cannot be parallelised.
+  // It can be streamed, and that is enough: memory is now bounded by
+  // the page size rather than by the operator's history.
+  // ===================================================================
+  const PAGE = 1_000;
 
   let prev = GENESIS;
   let checked = 0;
+  let cursor: bigint | undefined;
+  let total = 0;
+
+  for (;;) {
+    const rows = await prisma.auditLog.findMany({
+      where: { orgId, ...(cursor === undefined ? {} : { seq: { gt: cursor } }) },
+      orderBy: { seq: "asc" },
+      take: PAGE,
+    });
+    if (rows.length === 0) break;
+    total += rows.length;
+    cursor = rows[rows.length - 1]!.seq;
+
+    const verdict = verifyPage(rows, prev, checked);
+    if (verdict.failure) return verdict.failure;
+    prev = verdict.prev;
+    checked = verdict.checked;
+
+    if (rows.length < PAGE) break;
+  }
+
+  // CHARTER RULE 11 — a check that stops checking must fail. An org with
+  // no audit rows at all is not a verified org; it is an org whose
+  // history is missing, and reporting `ok: true` for it would let a
+  // wiped table pass as a clean bill of health.
+  if (total === 0) {
+    return { ok: false, rowsChecked: 0 };
+  }
+
+  return { ok: true, rowsChecked: checked };
+}
+
+/**
+ * Verify one page, carrying the running predecessor across page
+ * boundaries — which is the only thing that makes paging safe here. A
+ * page that restarted from GENESIS would report a broken link at every
+ * page boundary, and a page that skipped the check at its own first row
+ * would let a splice at a multiple of the page size through unseen.
+ */
+function verifyPage(
+  rows: ReadonlyArray<{
+    seq: bigint; orgId: string; userId: string | null; action: string;
+    entityType: string; entityId: string; detail: unknown;
+    prevHash: string; hash: string; createdAt: Date;
+  }>,
+  startPrev: string,
+  startChecked: number,
+): { prev: string; checked: number; failure?: ChainVerdict } {
+  let prev = startPrev;
+  let checked = startChecked;
 
   for (const r of rows) {
     if (r.prevHash !== prev) {
-      return { ok: false, rowsChecked: checked, brokenLinkAtSeq: r.seq };
+      return { prev, checked, failure: { ok: false, rowsChecked: checked, brokenLinkAtSeq: r.seq } };
     }
 
     const expected = sha256(
@@ -316,22 +382,17 @@ export async function verifyAuditChain(orgId: string): Promise<ChainVerdict> {
       }),
     );
     if (expected !== r.hash) {
-      return { ok: false, rowsChecked: checked, contentAlteredAtSeq: r.seq };
+      return {
+        prev, checked,
+        failure: { ok: false, rowsChecked: checked, contentAlteredAtSeq: r.seq },
+      };
     }
 
     prev = r.hash;
     checked++;
   }
 
-  // CHARTER RULE 11 — a check that stops checking must fail. An org with
-  // no audit rows at all is not a verified org; it is an org whose
-  // history is missing, and reporting `ok: true` for it would let a
-  // wiped table pass as a clean bill of health.
-  if (rows.length === 0) {
-    return { ok: false, rowsChecked: 0 };
-  }
-
-  return { ok: true, rowsChecked: checked };
+  return { prev, checked };
 }
 
 // ================ De-identification (irreversible) ====================

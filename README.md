@@ -30,11 +30,12 @@ now verified rather than asserted:
   asserts the batch leaves the browser carrying a bearer token, and that
   a queued report with no session **says so** instead.
 
-Three routes ship: the report form, the triage queue, and a design route
-where the brand system renders itself against the real modules — its
-matrix calls `tolerability()` and its deadline table reads
-`MOR_OBLIGATIONS`, so neither can drift from the documents describing
-them.
+Four routes ship: the report form, the triage queue, an account screen
+that signs in (and deliberately does **not** gate the form — filing must
+never require a password), and a design route where the brand system
+renders itself against the real modules — its matrix calls
+`tolerability()` and its deadline table reads `MOR_OBLIGATIONS`, so
+neither can drift from the documents describing them.
 
 **Nearly deployable.** The hosted database exists (Supabase, eu-north-1,
 schema applied and baselined, RLS deny-by-default) and the API ships as
@@ -59,7 +60,7 @@ npm run check:claims   # 49 assertions that the registries match the docs
 npm test               # 100 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
-npm run test:integration   # 41 checks against a real Postgres
+npm run test:integration   # 51 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 ```
 

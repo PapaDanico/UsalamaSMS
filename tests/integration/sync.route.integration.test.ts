@@ -223,6 +223,54 @@ describe.skipIf(!hasDatabase)("POST /api/v1/sync/batch — a report arrives", ()
     );
   });
 
+  it("SURVIVES A RETRIED CONFLICT — a lost response must not poison the outbox", async () => {
+    // The conflict receipt's key is deterministic: clientId plus the
+    // server's current updatedAt. So when the response to a batch is
+    // lost — the radio dropping after the server commits, which is the
+    // ordinary case this outbox exists for — the client retries, the
+    // server's updatedAt has not moved, and the receipt insert violates
+    // @@unique([orgId, clientId]).
+    //
+    // Uncaught, that threw out of the handler: 500 for the WHOLE batch,
+    // client backs off every item, retries, hits it again. A device
+    // nobody can reach, stuck forever, because one packet was dropped.
+    // SAFETY_MANAGER, because safetyReport:UPDATE requires
+    // report.triage and FRONTLINE does not hold it — which the
+    // per-item permission check correctly refuses, as a sibling test
+    // asserts.
+    const token = tokenFor(frontlineId, orgId, "SAFETY_MANAGER");
+    await batch([reportItem(20)], token);
+
+    const conflicting = {
+      clientId: uuid(20),
+      entityType: "safetyReport",
+      op: "UPDATE",
+      clientUpdatedAt: new Date().toISOString(),
+      // A baseVersion the server will not agree with.
+      baseVersion: new Date(0).toISOString(),
+      payload: { title: "Edited on the device while offline" },
+    };
+
+    const first = await batch([conflicting], token);
+    expect(first.statusCode).toBe(200);
+    // Not "duplicate": the CREATE's receipt shares this clientId, and an
+    // idempotency lookup that ignored `op` matched it — which the client
+    // reads as "already have it" and answers by DELETING the edit.
+    expect(first.json().results[0].status).toBe("conflict");
+
+    // THE RETRY. Same item, same server state, same receipt key.
+    const retry = await batch([conflicting], token);
+    expect(retry.statusCode, "a retried conflict took the whole batch down with a 500").toBe(200);
+    expect(retry.json().results[0].status).toBe("conflict");
+
+    // And a healthy item in the same retried batch still applies, which
+    // is what "not poisoned" actually means to the device.
+    const mixed = await batch([conflicting, reportItem(21)], token);
+    expect(mixed.statusCode).toBe(200);
+    const results = mixed.json().results;
+    expect(results.find((r: { clientId: string }) => r.clientId === uuid(21)).status).toBe("applied");
+  });
+
   it("rejects a malformed payload without taking the batch down", async () => {
     const res = await batch(
       [reportItem(13, { narrative: "too short" }), reportItem(14)],
