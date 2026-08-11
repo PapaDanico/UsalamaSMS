@@ -30,7 +30,12 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
-import { submitReportOffline, db } from '../../shared/offline.ts';
+import { Select, wireSelects } from '../../components/Select.js';
+import {
+  AERODROMES, AIRCRAFT_TYPES, REPORT_TYPES, HRC_CATEGORIES,
+  FLIGHT_PHASES, JURISDICTION_OPTIONS, toOptions, OTHER
+} from '../../data/taxonomy.js';
+import { submitReportOffline } from '../../shared/offline.ts';
 import {
   MOR_OBLIGATIONS,
   reportingDeadline,
@@ -39,24 +44,6 @@ import {
 
 const DRAFT_KEY = 'usalamasms.reportDraft';
 
-const TYPES = [
-  ['HAZARD', 'Hazard', 'Something that could cause harm'],
-  ['NEAR_MISS', 'Near miss', 'It nearly happened'],
-  ['MOR', 'Occurrence', 'It happened — reportable to the regulator'],
-  ['VCR', 'Confidential', 'Voluntary and confidential'],
-  ['FATIGUE', 'Fatigue', 'Duty, rest or alertness'],
-  ['SUGGESTION', 'Suggestion', 'A way to make this safer']
-];
-
-const HRC = [
-  ['RE', 'Runway excursion'],
-  ['RI', 'Runway incursion'],
-  ['LOC_I', 'Loss of control'],
-  ['CFIT', 'Terrain'],
-  ['MAC', 'Mid-air conflict'],
-  ['BWI', 'Bird / wildlife']
-];
-
 export function render(outlet) {
   const draft = loadDraft();
 
@@ -64,24 +51,29 @@ export function render(outlet) {
     <form class="report" id="report-form" novalidate>
       <h1>File a report</h1>
 
-      <fieldset class="report__types">
-        <legend>What kind of report is this?</legend>
-        <div class="chip-row">
-          ${TYPES.map(
-            ([value, label, hint]) => html`
-              <label class="chip" title="${hint}">
-                <input
-                  type="radio"
-                  name="type"
-                  value="${value}"
-                  ${value === (draft.type ?? 'HAZARD') ? raw('checked') : ''}
-                />
-                <span>${label}</span>
-              </label>
-            `
-          )}
-        </div>
-      </fieldset>
+      <!-- REQUIRED AND UNANSWERED, which costs one tap on the fastest
+           path and is worth it.
+
+           This defaulted to HAZARD. That is the right guess for most
+           unprompted reports, and the guess is silent: someone filing an
+           actual occurrence who does not look at this control files it
+           as a hazard, and an MOR classified as a hazard never gets a
+           regulatory deadline computed for it. The operator then misses
+           a 24-hour KCAA obligation without a single screen ever
+           suggesting one existed.
+
+           A missed deadline is the failure this whole product is
+           organised against, so the classification is a conscious
+           choice. Every other dropdown on this form stays optional. -->
+      ${Select({
+        name: 'type',
+        label: 'What kind of report is this?',
+        options: toOptions(REPORT_TYPES),
+        value: draft.type ?? '',
+        placeholder: 'Choose a report type',
+        required: true,
+        hint: 'An occurrence carries a reporting deadline; the others do not.'
+      })}
 
       <label class="field">
         <span class="field__label">In one line, what happened?</span>
@@ -119,29 +111,67 @@ export function render(outlet) {
           <span class="field__hint" id="deadline-hint"></span>
         </label>
 
-        <label class="field">
-          <span class="field__label">Where?</span>
-          <input name="location" maxlength="200" value="${draft.location ?? ''}" placeholder="HKJK, stand 12" />
-        </label>
+        ${Select({
+          name: 'location',
+          label: 'Where did it happen?',
+          options: toOptions(AERODROMES),
+          value: draft.location ?? '',
+          placeholder: 'Choose an aerodrome',
+          otherValue: OTHER,
+          otherLabel: 'Somewhere else…',
+          otherText: draft.locationOther ?? '',
+          otherPlaceholder: 'Aerodrome, strip or location',
+          hint: 'Picking from the list is what lets the safety office count events by place.'
+        })}
 
-        <label class="field">
-          <span class="field__label">Aircraft type</span>
-          <input name="aircraftType" maxlength="50" value="${draft.aircraftType ?? ''}" placeholder="DHC-8-400" />
-        </label>
+        ${Select({
+          name: 'aircraftType',
+          label: 'Aircraft type',
+          options: toOptions(AIRCRAFT_TYPES),
+          value: draft.aircraftType ?? '',
+          placeholder: 'Choose a type (optional)',
+          otherValue: OTHER,
+          otherLabel: 'Another type…',
+          otherText: draft.aircraftTypeOther ?? '',
+          otherPlaceholder: 'Type designator'
+        })}
+
+        ${Select({
+          name: 'phase',
+          label: 'Phase of flight or operation',
+          options: toOptions(FLIGHT_PHASES),
+          value: draft.phase ?? '',
+          placeholder: 'Choose a phase (optional)',
+          hint: 'Runway excursion tells you what happened; landing roll tells you where to look.'
+        })}
+
+        ${Select({
+          name: 'jurisdiction',
+          label: 'Which authority does this operation answer to?',
+          options: toOptions(JURISDICTION_OPTIONS),
+          value: draft.jurisdiction ?? 'KE',
+          placeholder: 'Choose an authority'
+        })}
 
         <fieldset>
           <legend>Does this relate to any of these?</legend>
+          <!-- The one control that is NOT a dropdown, and the reason is
+               that this field is multi-select. A native <select multiple>
+               on a touch device requires a long-press or a modifier key
+               to pick a second item — most people never discover it, and
+               the ones who do lose their first choice trying. Checkboxes
+               styled as chips are the honest control for "choose any". -->
           <div class="chip-row">
-            ${HRC.map(
-              ([value, label]) => html`
+            ${HRC_CATEGORIES.map(
+              (c) => html`
                 <label class="chip">
                   <input
                     type="checkbox"
                     name="hrcTags"
-                    value="${value}"
-                    ${(draft.hrcTags ?? []).includes(value) ? raw('checked') : ''}
+                    value="${c.code}"
+                    ${(draft.hrcTags ?? []).includes(c.code) ? raw('checked') : ''}
                   />
-                  <span>${label}</span>
+                  <span>${c.label}</span>
                 </label>
               `
             )}
@@ -180,6 +210,9 @@ export function render(outlet) {
 
 function wire(outlet) {
   const form = outlet.querySelector('#report-form');
+  // One delegated listener for every dropdown on the screen, present or
+  // future — see wireSelects().
+  wireSelects(form);
   const status = outlet.querySelector('#report-status');
   const count = outlet.querySelector('#narrative-count');
   const deadlineHint = outlet.querySelector('#deadline-hint');
@@ -286,12 +319,30 @@ function collect(form) {
     // conflating the two is the bug the regulatory engine exists to
     // prevent.
     awareAt: new Date(),
-    jurisdiction: 'KE',
-    location: String(data.get('location') ?? '').trim() || undefined,
-    aircraftType: String(data.get('aircraftType') ?? '').trim() || undefined,
+    jurisdiction: String(data.get('jurisdiction') || 'KE'),
+    // A dropdown value, or the free text behind "not listed". Resolved
+    // here so the rest of the system only ever sees one shape — a code
+    // from the taxonomy, or a string somebody typed, never a sentinel.
+    location: resolve(data, 'location'),
+    aircraftType: resolve(data, 'aircraftType'),
+    phase: String(data.get('phase') ?? '') || undefined,
     hrcTags: data.getAll('hrcTags'),
     isAnonymous: data.get('isAnonymous') === 'on'
   };
+}
+
+/**
+ * Read a dropdown, following the escape hatch when it was used.
+ *
+ * The sentinel must never reach the database: `__OTHER__` in a location
+ * column is a value that looks like a place and groups with nothing.
+ */
+function resolve(data, name) {
+  const value = String(data.get(name) ?? '');
+  if (value === OTHER) {
+    return String(data.get(`${name}Other`) ?? '').trim() || undefined;
+  }
+  return value || undefined;
 }
 
 /**
@@ -308,12 +359,26 @@ function describeError(err) {
   const first = issues[0];
   const field = first.path?.[0];
   const FRIENDLY = {
+    // Without this entry a ramp agent saw:
+    //   "Invalid enum value. Expected 'MOR' | 'VCR' | 'HAZARD' | ..."
+    // which is the raw Zod message, and is precisely what this function
+    // exists to stop reaching a person standing on a ramp.
+    type: 'Please choose what kind of report this is — the type decides whether a reporting deadline applies.',
     title: 'The one-line summary needs at least 3 characters.',
     narrative: 'Please write at least 10 characters describing what happened.',
     occurredAt: 'An occurrence report needs the time it happened, so the reporting deadline can be worked out.',
     awareAt: 'The time you became aware cannot be before the event itself.'
   };
-  return FRIENDLY[field] ?? first.message ?? 'Please check the form and try again.';
+  if (FRIENDLY[field]) return FRIENDLY[field];
+
+  // Unmapped field. A Zod message is written for a developer reading a
+  // stack trace — "Invalid enum value. Expected 'MOR' | 'VCR' | ..." is
+  // not a sentence anyone on a ramp can act on. Name the field and stop;
+  // the raw message goes to the console for whoever is debugging.
+  console.warn('[usalamasms] unmapped validation issue', first);
+  return field
+    ? `Something is not right with the "${field}" field. Please check it and try again.`
+    : 'Please check the form and try again.';
 }
 
 /* ---------------------------- Drafting ----------------------------
@@ -360,7 +425,11 @@ function saveDraft(form) {
         narrative: data.get('narrative'),
         occurredAt: data.get('occurredAt'),
         location: data.get('location'),
+        locationOther: data.get('locationOther'),
         aircraftType: data.get('aircraftType'),
+        aircraftTypeOther: data.get('aircraftTypeOther'),
+        phase: data.get('phase'),
+        jurisdiction: data.get('jurisdiction'),
         hrcTags: data.getAll('hrcTags'),
         isAnonymous: data.get('isAnonymous') === 'on',
         detailsOpen: form.querySelector('.report__more')?.open ?? false

@@ -207,6 +207,52 @@ a generated icon — change the path and regenerate.
 
 ---
 
+## Dropdowns — one component, one vocabulary
+
+Every operational field with a bounded set of answers is a dropdown, and
+every dropdown in the product is `components/Select.js` reading a list
+from `data/taxonomy.js`. That is two kinds of standardisation and the
+first one matters more than it looks.
+
+**The data.** `location` and `aircraftType` were free text. "HKJK",
+"JKIA", "Nairobi" and "Jomo Kenyatta" are one aerodrome to a human and
+four to a `GROUP BY` — so every safety-intelligence question worth
+asking (which aerodrome accumulates runway-excursion precursors, which
+type is over-represented in fatigue reports) was already unanswerable at
+the point of data entry. Under Annex 19 Amendment 2 that is a compliance
+concern rather than a preference: Doc 10159 describes a pipeline from
+data to decision, and a pipeline over uncontrolled strings carries
+nothing.
+
+**The interface.** One markup shape, one height, one focus ring, one
+error state, one way of being labelled. A screen that hand-rolls its own
+`<select>` drifts, and the drift is invisible until somebody uses it
+with a keyboard. `scripts/smoke.mjs` asserts that every `<select>` on
+every route is `select.select__control`, so a hand-rolled one fails the
+build.
+
+**Native, deliberately.** A custom listbox would let us style the open
+menu and would cost the OS picker — a full-height sheet on Android with
+a thumb-sized hit area, momentum scrolling, and the system's own
+accessibility services. The design target is a mid-range handset in
+sunlight; the native control wins on every axis that matters here.
+
+**Three rules the component enforces.**
+
+1. *Every list carries an escape.* A vocabulary with no "not listed"
+   option does not eliminate free text — it puts the real answer in the
+   narrative where nothing can count it, and a wrong entry in the
+   column. That is worse than free text, because it is free text plus a
+   wrong number.
+2. *Nothing opens pre-answered*, with one exception. A dropdown showing
+   "Nairobi / Jomo Kenyatta" before anyone touches it collects that
+   answer from everyone who did not look. Jurisdiction is the exception:
+   it is a property of the operator, not of the event.
+3. *Multi-select is not a dropdown.* The HRC categories stay as
+   checkboxes. A native `<select multiple>` on a touch device needs a
+   long-press or a modifier key to pick a second item; most people never
+   find it, and those who do lose their first choice trying.
+
 ## Categorical colours are not risk colours
 
 `--us-cat-1` … `--us-cat-6` distinguish series in a chart — HRC

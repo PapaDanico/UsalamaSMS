@@ -94,6 +94,7 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
               jurisdiction: d.jurisdiction,
               location: d.location,
               aircraftType: d.aircraftType,
+              phase: d.phase,
               hrcTags: d.hrcTags,
               isAnonymous: d.isAnonymous,
               reporterId: d.isAnonymous ? null : auth.sub,

@@ -18,6 +18,25 @@ export const ReportTypeEnum = z.enum(["MOR", "VCR", "HAZARD", "SUGGESTION", "NEA
 export type ReportType = z.infer<typeof ReportTypeEnum>;
 
 export const HrcEnum = z.enum(["RE", "RI", "LOC_I", "CFIT", "MAC", "BWI"]);
+
+/**
+ * Phase of flight or operation — ICAO/CAST taxonomy, trimmed.
+ *
+ * Added when the UI started collecting it. Zod strips unknown keys by
+ * default, so a field captured on screen and absent from the schema is
+ * a field the reporter fills in and the database never sees — silent
+ * data loss that looks exactly like a working form.
+ *
+ * Worth capturing because it is the most useful dimension for precursor
+ * analysis: "runway excursion" says what happened, "landing roll" says
+ * where to look.
+ */
+export const FlightPhaseEnum = z.enum([
+  "STANDING", "PUSHBACK", "TAXI", "TAKEOFF", "INITIAL_CLIMB", "CLIMB",
+  "CRUISE", "DESCENT", "APPROACH", "LANDING", "LANDING_ROLL", "GO_AROUND",
+  "GROUND_HANDLING", "MAINTENANCE",
+]);
+export type FlightPhase = z.infer<typeof FlightPhaseEnum>;
 export type Hrc = z.infer<typeof HrcEnum>;
 
 export const SeverityEnum = z.enum([
@@ -138,6 +157,7 @@ export const CreateReportSchema = z.object({
   jurisdiction: z.enum(JURISDICTIONS).default("KE"),
   location: z.string().max(200).optional(),
   aircraftType: z.string().max(50).optional(),
+  phase: FlightPhaseEnum.optional(),
   hrcTags: z.array(HrcEnum).max(6).default([]),
   isAnonymous: z.boolean().default(false),
 }).refine(

@@ -73,6 +73,23 @@ enum Tolerability {
   ACCEPTABLE
 }
 
+enum FlightPhase {
+  STANDING
+  PUSHBACK
+  TAXI
+  TAKEOFF
+  INITIAL_CLIMB
+  CLIMB
+  CRUISE
+  DESCENT
+  APPROACH
+  LANDING
+  LANDING_ROLL
+  GO_AROUND
+  GROUND_HANDLING
+  MAINTENANCE
+}
+
 enum Jurisdiction {
   KE
   UG
@@ -150,8 +167,15 @@ model SafetyReport {
   awareAt      DateTime?
   jurisdiction Jurisdiction @default(KE)
 
+  // Both now hold a code from apps/web/src/data/taxonomy.js rather than
+  // whatever someone typed. "HKJK", "JKIA" and "Nairobi" were three
+  // aerodromes to a GROUP BY, which made every safety-intelligence
+  // question unanswerable. The dropdowns keep a free-text escape, so
+  // these are still nullable strings rather than enums — a vocabulary
+  // with no way out puts the real answer in the narrative instead.
   location     String?
   aircraftType String?
+  phase        FlightPhase?
   hrcTags      String[]
 
   // ------------------------ Confidentiality ------------------------
@@ -183,6 +207,8 @@ model SafetyReport {
 
   @@index([orgId, state, createdAt])
   @@index([orgId, type, occurredAt])
+  // The aggregation this taxonomy exists to make possible.
+  @@index([orgId, location, phase])
 }
 
 model Hazard {

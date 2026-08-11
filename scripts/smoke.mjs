@@ -124,12 +124,21 @@ try {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
   });
 
-  await check('the report form has exactly two required fields', async () => {
-    // The thirty-second target is a design constraint, and it is the
-    // one the whole strategy rests on. A future field marked required
-    // is a decision, not an accident, and this is where it gets made.
+  await check('the report form has exactly three required fields', async () => {
+    // The thirty-second target is a design constraint and the whole
+    // strategy rests on it, so every required field is a decision made
+    // here rather than an accident that accumulated.
+    //
+    // Three: title, narrative, and report TYPE. Type was added when it
+    // stopped being pre-answered — it defaulted to HAZARD, which meant
+    // an occurrence filed by someone who did not look at the control
+    // never had a regulatory deadline computed, and the operator missed
+    // a 24-hour KCAA obligation with no screen ever suggesting one
+    // existed. One tap against a silently missed deadline.
+    //
+    // Raising this number again needs the same kind of argument.
     const required = await page.locator('#report-form [required]').count();
-    assert(required === 2, `${required} required fields; the form is designed for 2`);
+    assert(required === 3, `${required} required fields; the form is designed for 3`);
   });
 
   await check('the anonymity control is visible without opening anything', async () => {
@@ -145,7 +154,7 @@ try {
     // because clicking the label toggles it — asserting on the input
     // would have failed a control that is genuinely easy to hit and
     // taught the next person to inflate the checkbox instead.
-    for (const sel of ['.btn--primary', '.chip', '.report__anon']) {
+    for (const sel of ['.btn--primary', '.chip', '.report__anon', '.select__control']) {
       const box = await page.locator(sel).first().boundingBox();
       assert(box, `${sel} not found`);
       assert(box.height >= 44, `${sel} is ${Math.round(box.height)}px high; gloved thumbs need 44`);
@@ -169,18 +178,71 @@ try {
     await page.setViewportSize({ width: 390, height: 844 });
   });
 
+  await check('every dropdown is the shared component', async () => {
+    // Standardisation is only real if it is enforced. A hand-rolled
+    // <select> outside .select__control would drift on height, focus
+    // ring and chevron, and nothing would notice until someone used it
+    // with a keyboard.
+    const total = await page.locator('select').count();
+    const standard = await page.locator('select.select__control').count();
+    assert(total > 0, 'no dropdowns on the report form');
+    assert(total === standard, `${total - standard} select(s) bypass the Select component`);
+  });
+
+  await check('every dropdown has a real label and an unselected default', async () => {
+    const selects = await page.locator('select.select__control').all();
+    for (const select of selects) {
+      const id = await select.getAttribute('id');
+      assert(id, 'a dropdown has no id, so its <label for> cannot bind');
+      assert(
+        await page.locator(`label[for="${id}"]`).count(),
+        `dropdown ${id} has no associated <label>`
+      );
+      // A dropdown that opens pre-answered collects that answer from
+      // everyone who did not look, and a confidently wrong aerodrome is
+      // worse for aggregation than a blank one.
+      // Jurisdiction is the one deliberate exception: it is a property
+      // of the operator, not of the event, and asking every reporter to
+      // restate their own regulator on every report is friction that
+      // buys nothing.
+      assert(
+        (await select.inputValue()) === '' || (await select.getAttribute('name')) === 'jurisdiction',
+        `dropdown ${id} opens pre-answered`
+      );
+    }
+  });
+
+  await check('the "not listed" escape reveals a free-text field', async () => {
+    // A vocabulary with no way out does not remove free text — it puts
+    // the real answer in the narrative, where nothing can count it, and
+    // a wrong entry in the column.
+    const other = page.locator('input[name="locationOther"]');
+    await page.locator('details.report__more').click();
+    assert(!(await other.isVisible()), 'the escape field is visible before it is chosen');
+    await page.selectOption('select[name="location"]', '__OTHER__');
+    assert(await other.isVisible(), 'choosing "not listed" did not reveal the free-text field');
+    await page.selectOption('select[name="location"]', 'HKJK');
+    assert(!(await other.isVisible()), 'the escape field stayed visible after choosing a real value');
+  });
+
   /* ============================================================
      THE ONE THAT MATTERS.
      ============================================================ */
   await check('files a report with the network cut', async () => {
     await context.setOffline(true);
 
+    // Type is required and unanswered by design — see the required-field
+    // check above.
+    await page.selectOption('select[name="type"]', 'HAZARD');
     await page.fill('input[name=title]', 'Bird activity on short final, runway 06');
     await page.fill(
       'textarea[name=narrative]',
       'A flock of at least twenty birds crossed the approach path below 300 ft AGL. ' +
         'Third consecutive morning. No avoidance action was required.'
     );
+    // Standardised values, chosen through the dropdowns.
+    await page.selectOption('select[name="location"]', 'HKJK');
+    await page.selectOption('select[name="phase"]', 'APPROACH');
     await page.click('button[type=submit]');
 
     await page.waitForFunction(
@@ -210,6 +272,28 @@ try {
     assert(stored.length === 1, `${stored.length} reports in IndexedDB, expected 1`);
     assert(stored[0].syncState === 'pending', `syncState is ${stored[0].syncState}, expected pending`);
     assert(stored[0].awareAt, 'awareAt was not recorded — the reporting clock has no start');
+    // The taxonomy codes, not whatever someone typed. This is the whole
+    // reason the dropdowns exist: "HKJK", "JKIA" and "Nairobi" were
+    // three aerodromes to a GROUP BY.
+    assert(stored[0].location === 'HKJK', `location stored as "${stored[0].location}"`);
+    assert(stored[0].phase === 'APPROACH', `phase stored as "${stored[0].phase}"`);
+  });
+
+  await check('an unclassified report is refused in language a person can act on', async () => {
+    // The raw Zod message for this is
+    //   "Invalid enum value. Expected 'MOR' | 'VCR' | 'HAZARD' | ..."
+    // and it reached the screen until this check existed.
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.fill('input[name=title]', 'Something happened on the ramp');
+    await page.fill('textarea[name=narrative]', 'A description long enough to pass validation.');
+    await page.click('button[type=submit]');
+    await page.waitForFunction(
+      () => document.querySelector('#report-status')?.textContent?.trim().length > 0,
+      { timeout: 5000 }
+    );
+    const status = (await page.locator('#report-status').textContent()) ?? '';
+    assert(!/Invalid enum|Expected '/.test(status), `raw schema error shown to the user: "${status.trim()}"`);
+    assert(/kind of report/i.test(status), `unhelpful rejection message: "${status.trim()}"`);
   });
 
   await check('an anonymous draft is never left on the device', async () => {
@@ -256,6 +340,36 @@ try {
     const text = await page.locator('.queue__item').first().textContent();
     assert(/Bird activity/.test(text), 'the report filed offline is not in the queue');
     assert(/Waiting to send/i.test(text), 'the queue does not show that it is unsent');
+    // The stored CODE renders as its human label, not as "HKJK".
+    assert(/Jomo Kenyatta/.test(text), 'the aerodrome code is not resolved to a label');
+    assert(/Approach/.test(text), 'the flight phase is not shown');
+  });
+
+  await check('the triage filters use the same dropdown component', async () => {
+    const total = await page.locator('.filters select').count();
+    const standard = await page.locator('.filters select.select__control').count();
+    assert(total === 3, `${total} filter dropdowns, expected 3`);
+    assert(total === standard, 'a triage filter bypasses the Select component');
+  });
+
+  await check('filtering the queue actually filters it', async () => {
+    assert(await page.locator('.queue__item').count() === 1, 'expected one report to start');
+    // A type the report is not.
+    await page.selectOption('select[name="filter-type"]', 'MOR');
+    await page.waitForFunction(
+      () => document.querySelectorAll('.queue__item').length === 0,
+      { timeout: 3000 }
+    );
+    // And the empty state must say the queue is filtered, not empty —
+    // a safety manager who reads "nothing reported" and is looking at a
+    // filtered view draws exactly the wrong conclusion.
+    const empty = await page.locator('.panel').textContent();
+    assert(/No reports match these filters/.test(empty), 'the filtered-empty state reads as an empty queue');
+    await page.selectOption('select[name="filter-type"]', '');
+    await page.waitForFunction(
+      () => document.querySelectorAll('.queue__item').length === 1,
+      { timeout: 3000 }
+    );
   });
 
   await context.setOffline(false);

@@ -959,3 +959,112 @@ code {
   color: var(--us-ochre-text);
   background: var(--us-surface-sunk);
 }
+
+/* ============================================================
+   Select — one dropdown, everywhere
+
+   The whole point of the component is that this block is the only place
+   a dropdown gets styled. A screen that rolls its own <select> drifts:
+   different height, different focus ring, a chevron that sits 2px off.
+   The drift is invisible until someone uses it with a keyboard.
+   ============================================================ */
+.field--select {
+  margin-bottom: var(--us-space-6);
+}
+
+.select {
+  position: relative;
+  display: block;
+}
+
+.select__control {
+  /* appearance:none removes the OS chrome so the control matches the
+     text inputs beside it. The chevron below replaces it — without one,
+     a bare box reads as a text field and people try to type in it. */
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--us-space-3) var(--us-space-10) var(--us-space-3) var(--us-space-3);
+  border: 1px solid var(--us-border-strong);
+  border-radius: var(--us-radius-md);
+  background: var(--us-surface);
+  color: var(--us-text-primary);
+  font: inherit;
+  cursor: pointer;
+  /* Long aerodrome labels must not stretch the control on a 320px
+     screen — the native picker shows the full text regardless. */
+  text-overflow: ellipsis;
+}
+
+/* An unanswered dropdown reads as secondary rather than as a value.
+   :has() on the empty option keeps that in CSS rather than in a class
+   the JS has to remember to toggle. */
+.select__control:not(:has(option[value='']:checked)) {
+  color: var(--us-text-primary);
+  border-color: var(--us-border-strong);
+}
+
+.select__control:has(option[value='']:checked) {
+  color: var(--us-text-tertiary);
+}
+
+.select__chevron {
+  position: absolute;
+  right: var(--us-space-4);
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -7px;
+  border-right: 2px solid var(--us-text-tertiary);
+  border-bottom: 2px solid var(--us-text-tertiary);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.select__control:focus-visible {
+  outline: 3px solid var(--us-focus);
+  outline-offset: 2px;
+}
+
+/* The free-text escape. Indented under its dropdown so the relationship
+   is visible without a label repeating the question. */
+.select__other {
+  width: 100%;
+  min-height: 48px;
+  margin-top: var(--us-space-2);
+  padding: var(--us-space-3);
+  border: 1px solid var(--us-border-strong);
+  border-left: 3px solid var(--us-teal);
+  border-radius: var(--us-radius-md);
+  background: var(--us-surface);
+  color: var(--us-text-primary);
+  font: inherit;
+}
+
+.select__other[hidden] {
+  display: none;
+}
+
+/* ============================================================
+   Filter bar
+   ============================================================ */
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--us-space-3);
+  padding: var(--us-space-4);
+  margin-bottom: var(--us-space-6);
+  background: var(--us-surface-sunk);
+  border-radius: var(--us-radius-md);
+}
+
+.filters .field--select {
+  margin-bottom: 0;
+}
+
+.queue__where {
+  margin: 0 0 var(--us-space-2);
+  font-size: var(--us-text-sm);
+  color: var(--us-text-tertiary);
+}

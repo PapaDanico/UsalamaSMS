@@ -26,6 +26,11 @@
    ============================================================ */
 
 import { html } from '../../shared/html.js';
+import { Select, wireSelects } from '../../components/Select.js';
+import {
+  REPORT_TYPES, SYNC_STATES, AERODROMES, FLIGHT_PHASES,
+  toOptions, labelFor
+} from '../../data/taxonomy.js';
 import { db } from '../../shared/offline.ts';
 import {
   reportingDeadline,
@@ -33,22 +38,19 @@ import {
   MOR_OBLIGATIONS
 } from '../../../../../packages/shared/src/regulations.ts';
 
-const STATE_LABEL = {
-  pending: 'Waiting to send',
-  syncing: 'Sending',
-  synced: 'Sent',
-  conflict: 'Needs review',
-  error: 'Rejected'
-};
+/* Labels come from the same taxonomy the report form writes with, so a
+   type added there cannot render as a raw enum here. Two hand-kept label
+   maps is how "NEAR_MISS" ends up on a safety manager's screen. */
+const STATE_LABEL = Object.fromEntries(SYNC_STATES.map((s) => [s.code, s.label]));
+const TYPE_LABEL = Object.fromEntries(
+  REPORT_TYPES.map((t) => [t.code, t.label.split(' — ')[0]])
+);
 
-const TYPE_LABEL = {
-  MOR: 'Occurrence',
-  VCR: 'Confidential',
-  HAZARD: 'Hazard',
-  NEAR_MISS: 'Near miss',
-  FATIGUE: 'Fatigue',
-  SUGGESTION: 'Suggestion'
-};
+/* The filter state lives at module scope so it survives a re-render
+   after a filter changes. Kept deliberately small — three dimensions is
+   what a queue of this size needs, and a filter bar with nine controls
+   is one nobody uses. */
+const filters = { type: '', state: '', location: '' };
 
 export async function render(outlet) {
   let reports;
@@ -72,11 +74,52 @@ export async function render(outlet) {
   }
 
   const now = new Date();
-  const rows = reports.map((r) => decorate(r, now)).sort(compare);
+  const all = reports.map((r) => decorate(r, now)).sort(compare);
+  const rows = all.filter(matchesFilters);
+
+  /* Aerodrome options are drawn from what is actually in the queue
+     rather than from the whole taxonomy: a filter listing nineteen
+     aerodromes when reports exist for two is a filter that mostly
+     produces empty results. */
+  const presentLocations = [...new Set(all.map((r) => r.location).filter(Boolean))].map((code) => ({
+    value: code,
+    label: labelFor(AERODROMES, code)
+  }));
 
   outlet.innerHTML = html`
     <section class="panel">
       <h1>Triage</h1>
+
+      <div class="filters" role="group" aria-label="Filter the queue">
+        ${Select({
+          name: 'filter-type',
+          label: 'Report type',
+          options: toOptions(REPORT_TYPES).map((o) => ({ ...o, label: o.label.split(' — ')[0] })),
+          value: filters.type,
+          placeholder: 'All types'
+        })}
+        ${Select({
+          name: 'filter-state',
+          label: 'Sync state',
+          options: toOptions(SYNC_STATES),
+          value: filters.state,
+          placeholder: 'All states'
+        })}
+        ${Select({
+          name: 'filter-location',
+          label: 'Aerodrome',
+          options: presentLocations,
+          value: filters.location,
+          placeholder: 'Anywhere'
+        })}
+      </div>
+
+      ${all.length > 0 && rows.length === 0
+        ? html`<p class="lede">
+            No reports match these filters. ${all.length} on this device in total.
+          </p>`
+        : ''}
+
       ${rows.length === 0
         ? html`<p class="lede">
             Nothing on this device yet. Reports filed here appear
@@ -93,6 +136,21 @@ export async function render(outlet) {
           `}
     </section>
   `.toString();
+
+  wireSelects(outlet);
+  outlet.addEventListener('change', (event) => {
+    const name = event.target?.name;
+    if (!name?.startsWith('filter-')) return;
+    filters[name.slice('filter-'.length)] = event.target.value;
+    void render(outlet);
+  });
+}
+
+function matchesFilters(r) {
+  if (filters.type && r.type !== filters.type) return false;
+  if (filters.state && r.syncState !== filters.state) return false;
+  if (filters.location && r.location !== filters.location) return false;
+  return true;
 }
 
 function decorate(report, now) {
@@ -137,6 +195,12 @@ function row(r) {
       </div>
 
       <p class="queue__title">${r.title}</p>
+
+      ${r.location || r.phase
+        ? html`<p class="queue__where">
+            ${r.location ? labelFor(AERODROMES, r.location) : ''}${r.location && r.phase ? ' · ' : ''}${r.phase ? labelFor(FLIGHT_PHASES, r.phase) : ''}
+          </p>`
+        : ''}
 
       ${r.deadline
         ? html`
