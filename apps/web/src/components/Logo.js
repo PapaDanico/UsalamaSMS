@@ -44,27 +44,100 @@ export const SHIELD_PATH = [
   'Z'
 ].join(' ');
 
-/* The crowned crane, reduced to the three strokes that make it
-   recognisable at small size: body, arched neck, and head. The crest is
-   separate so it can be dropped below the detail threshold. */
+/* ============================================================
+   THE CRANE, drawn from the brand illustration rather than approximated.
+
+   The previous version was three blobs — body, neck, head — which read
+   as a duck at 512px and had no crest at all. The grey crowned crane is
+   Uganda's national bird and the identity's whole centre; the crest is
+   the single feature that makes it that bird rather than any bird, so
+   it is drawn as a radiating fan and not as five stray ticks.
+
+   Grid is 120 x 140, matching the shield. The bird stands ON the runway
+   with the arcs crossing behind it.
+   ============================================================ */
+
+/* Body: an egg with the tail lifted to the left, as the illustration
+   carries it. */
 const CRANE_BODY =
-  'M44 96 C44 84 54 78 64 78 C74 78 82 84 82 92 C82 100 74 106 64 106 L50 106 C46 106 44 102 44 96 Z';
-const CRANE_NECK = 'M64 78 C60 70 58 62 62 56 C64 53 68 52 71 54 C74 56 74 60 72 62 C69 66 68 72 70 78 Z';
-const CRANE_HEAD = 'M68 52 C68 48 71 45 75 45 C79 45 82 48 82 52 C82 55 79 57 76 57 L70 57 Z';
-const CRANE_LEGS = 'M56 106 L56 118 M68 106 L68 118';
-const CRANE_CREST = 'M74 45 L70 33 M77 45 L77 32 M80 45 L84 33 M71 46 L64 36 M83 47 L90 37';
+  'M46 96 C42 88 47 80 56 78 C66 76 76 80 79 87 C82 94 78 101 70 103 L54 103 C49 103 47 100 46 96 Z';
 
-/* The climbing arc and the aircraft riding it. */
-const ARC = 'M18 74 C30 44 62 26 100 30';
-const AIRCRAFT = 'M96 22 L110 30 L96 38 L99 30 Z';
+/* The trailing wing, a second plane over the body so the silhouette is
+   not a flat oval. */
+const CRANE_WING =
+  'M52 88 C58 82 68 81 75 85 C71 90 63 93 55 92 Z';
 
-/* Runway threshold — five bars in perspective, the ground the shield
-   protects. */
+/* Neck: a long S from the shoulder up to the head, the posture the
+   bird actually stands in. */
+const CRANE_NECK =
+  'M58 79 C53 71 53 62 58 56 C60 53 63 52 65 53 C67 54 67 57 66 59 C62 64 61 71 63 79 Z';
+
+/* Head and beak. The beak points right, into the direction of flight. */
+const CRANE_HEAD =
+  'M60 54 C60 50 63 47 66 47 C69 47 71 49 71 52 L78 54 L71 56 C70 58 67 59 64 58 Z';
+
+const CRANE_EYE = 'M66 51 m -1.4 0 a 1.4 1.4 0 1 0 2.8 0 a 1.4 1.4 0 1 0 -2.8 0';
+
+/* Legs, with the toes the illustration shows. */
+const CRANE_LEGS = 'M58 103 L57 114 M52 114 L62 114 M68 103 L70 113 M65 113 L75 113';
+
+/* THE CREST: a fan of eleven rays from the back of the skull. This is
+   the feature that names the bird. Below the detail threshold it is the
+   first thing dropped, because at 32px a fan of 2px rays is a smudge
+   that makes the head look twice its size. */
+const CRANE_CREST = [
+  'M63 47 L58 33',
+  'M65 46 L62 31',
+  'M67 46 L66 30',
+  'M69 46 L71 30',
+  'M70 47 L75 32',
+  'M71 48 L79 35',
+  'M61 48 L54 36',
+  'M60 50 L51 41',
+  'M72 50 L82 41',
+].join(' ');
+
+/* ============================================================
+   THE TWO FLIGHT ARCS.
+
+   They cross low and behind the bird, quartering the shield — which is
+   what makes this a coat of arms rather than a picture in a frame. One
+   climbs left-to-right and carries the aircraft; the other descends,
+   and the two together read as a departure and an arrival over the same
+   ground.
+   ============================================================ */
+const ARC_CLIMB = 'M14 112 C34 96 58 66 104 34';
+const ARC_DESCEND = 'M106 112 C86 96 62 66 16 34';
+
+/* Kept under its old name so build-icons.mjs and every doc reference
+   still resolve: the climbing arc IS the arc the aircraft rides. */
+const ARC = ARC_CLIMB;
+
+/* The aircraft, riding the climbing arc off the upper right. Drawn as a
+   swept silhouette rather than a triangle — a triangle at the end of a
+   line is an arrowhead, and this is meant to read as an aeroplane. */
+const AIRCRAFT =
+  'M98 30 L112 36 L104 38 L106 45 L102 45 L98 39 L92 40 L94 36 L90 32 L94 32 Z';
+
+/* Runway threshold — the ground the shield protects, in perspective. */
+/* Runway threshold — the ground the shield protects, in perspective:
+   NARROWEST at the top, because that is the end receding away. Bar
+   widths are bounded by the shield outline at each y — the point of a
+   heater shield narrows fast, and a bar wider than its own field is a
+   bar sticking out of the crest. */
 const RUNWAY_BARS = [
-  'M46 122 L74 122',
-  'M44 126 L76 126',
-  'M42 130 L78 130'
+  'M48 116 L72 116',
+  'M45 121 L75 121',
+  'M42 126 L78 126'
 ];
+
+/* The quarter fills. Each is the shield clipped to one region by the
+   two arcs; drawing them as explicit wedges rather than with a clip
+   path keeps the whole mark to paths, which is what lets
+   scripts/build-icons.mjs rasterise it without a DOM. */
+const QUARTER_TOP = 'M60 4 C60 4 96 12 112 14 C114 14 116 16 116 19 L116 34 C80 60 62 78 60 80 C58 78 40 60 4 34 L4 19 C4 16 6 14 8 14 C24 12 60 4 60 4 Z';
+const QUARTER_LEFT = 'M4 36 C36 62 56 80 58 82 L58 84 C40 100 22 112 14 116 C8 108 4 92 4 68 Z';
+const QUARTER_RIGHT = 'M116 36 L116 68 C116 92 112 108 106 116 C98 112 80 100 62 84 L62 82 C64 80 84 62 116 36 Z';
 
 const DETAIL_MIN_HEIGHT = 40;
 
@@ -80,7 +153,13 @@ let seq = 0;
  * @param {string} options.title    Accessible name. Pass '' when the mark is decorative
  *                                  and an adjacent element already names it.
  */
-export function Mark({ height = 40, tone = 'ink', shieldFill = false, title = 'UsalamaSMS' } = {}) {
+export function Mark({
+  height = 40,
+  tone = 'ink',
+  shieldFill = false,
+  title = 'UsalamaSMS',
+  colour = false,
+} = {}) {
   const width = Math.round((height * 120) / 140);
   const detail = height >= DETAIL_MIN_HEIGHT;
   const id = `us-mark-${++seq}`;
@@ -92,6 +171,18 @@ export function Mark({ height = 40, tone = 'ink', shieldFill = false, title = 'U
   const stroke = tone === 'gold' ? 'var(--us-gold)' : 'var(--us-charcoal)';
   const accent = 'var(--us-gold)';
   const field = shieldFill ? (tone === 'gold' ? 'var(--us-charcoal)' : 'var(--us-sand)') : 'none';
+
+  /* `colour` is the quartered version from the identity guidelines:
+     terracotta, teal and gold behind a charcoal outline. It is the
+     primary logo and it is used where there is room for it. The
+     monochrome variants above are not a fallback — the guidelines list
+     them as approved, and a 32px favicon has no room for three fills
+     and a crest.
+
+     On the coloured shield the bird and runway go charcoal regardless
+     of `tone`, because gold on gold is the quarter disappearing. */
+  const birdTone = colour ? 'var(--us-charcoal)' : stroke;
+  const arcTone = colour ? 'var(--us-sand)' : accent;
 
   /* An empty title means decorative: aria-hidden, no <title> element,
      and no role. A mark that announces "UsalamaSMS" immediately before
@@ -106,22 +197,41 @@ export function Mark({ height = 40, tone = 'ink', shieldFill = false, title = 'U
     <svg class="us-mark" width="${width}" height="${height}" viewBox="0 0 120 140"
          xmlns="http://www.w3.org/2000/svg" ${labelling}>
       ${title ? `<title id="${id}-t">${escapeXml(title)}</title>` : ''}
-      <path d="${SHIELD_PATH}" fill="${field}" stroke="${stroke}" stroke-width="5"
+      ${
+        colour
+          ? `<g stroke="none">
+               <path d="${QUARTER_TOP}" fill="var(--us-terracotta)"/>
+               <path d="${QUARTER_LEFT}" fill="var(--us-teal)"/>
+               <path d="${QUARTER_RIGHT}" fill="var(--us-gold)"/>
+             </g>`
+          : ''
+      }
+      <path d="${SHIELD_PATH}" fill="${colour ? 'none' : field}" stroke="${stroke}" stroke-width="5"
             stroke-linejoin="round"/>
-      <g fill="${stroke}">
+      ${
+        detail
+          ? `<g fill="none" stroke="${arcTone}" stroke-width="2.6" stroke-linecap="round" opacity="${colour ? 1 : 0.9}">
+               <path d="${ARC_CLIMB}"/>
+               <path d="${ARC_DESCEND}"/>
+             </g>`
+          : ''
+      }
+      <g fill="${birdTone}">
         <path d="${CRANE_BODY}"/>
         <path d="${CRANE_NECK}"/>
         <path d="${CRANE_HEAD}"/>
       </g>
       ${
         detail
-          ? `<g stroke="${stroke}" stroke-width="2.4" stroke-linecap="round" fill="none">
+          ? `<path d="${CRANE_WING}" fill="${colour ? 'var(--us-sand)' : field === 'none' ? accent : field}" opacity="0.55"/>
+             <path d="${CRANE_EYE}" fill="${colour ? 'var(--us-sand)' : 'var(--us-sand)'}"/>
+             <g stroke="${birdTone}" stroke-width="2.4" stroke-linecap="round" fill="none">
                <path d="${CRANE_LEGS}"/>
-               <path d="${CRANE_CREST}" stroke="${accent}" stroke-width="2"/>
              </g>
-             <path d="${ARC}" fill="none" stroke="${accent}" stroke-width="3"
-                   stroke-linecap="round" stroke-dasharray="1 7"/>
-             <g stroke="${stroke}" stroke-width="3" stroke-linecap="round">
+             <g stroke="${accent}" stroke-width="1.9" stroke-linecap="round" fill="none">
+               <path d="${CRANE_CREST}"/>
+             </g>
+             <g stroke="${birdTone}" stroke-width="3" stroke-linecap="round" fill="none">
                ${RUNWAY_BARS.map((d) => `<path d="${d}"/>`).join('')}
              </g>`
           : ''
@@ -170,7 +280,7 @@ function escapeXml(value) {
  */
 export function Lockup({ height = 34, descriptor = 'Aviation Safety Management' } = {}) {
   return html`<a class="us-lockup" href="/">
-    ${Mark({ height, tone: 'ink', title: '' })}
+    ${Mark({ height, tone: 'ink', title: '', colour: true })}
     <span class="us-lockup__text">
       <span class="us-logo__word">Usalama<span class="us-logo__word-sms">SMS</span></span>
       <span class="us-lockup__descriptor">${descriptor}</span>

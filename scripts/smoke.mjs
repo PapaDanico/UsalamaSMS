@@ -561,6 +561,56 @@ try {
     assert(tags === 3, `${tags} provisional tags, expected 3 (UG, TZ, RW)`);
   });
 
+  await check('IS INSTALLABLE — the manifest advertises raster icons that exist', async () => {
+    // This shipped with an SVG-only manifest, which looks tidy and is
+    // not an installable app:
+    //
+    //   · iOS ignores an SVG apple-touch-icon completely and uses a
+    //     screenshot of the page, so Add to Home Screen produced an icon
+    //     of a half-rendered form.
+    //   · Chrome's install criteria want a raster at 192 and 512, and a
+    //     maskable one, or Android draws a white circle around it.
+    //
+    // Nothing in the build could have noticed: the manifest was valid
+    // JSON pointing at files that existed.
+    const manifest = await page.evaluate(async () => {
+      const link = document.querySelector('link[rel=manifest]');
+      if (!link) return null;
+      return (await fetch(link.href)).json();
+    });
+    assert(manifest, 'no manifest is linked from the document');
+
+    const png = (manifest.icons ?? []).filter((i) => i.type === 'image/png');
+    for (const size of ['192x192', '512x512']) {
+      assert(
+        png.some((i) => i.sizes === size),
+        `the manifest advertises no PNG icon at ${size} — Chrome will not offer to install this`
+      );
+    }
+    assert(
+      png.some((i) => (i.purpose ?? '').includes('maskable')),
+      'no maskable PNG — Android will draw a white circle around the icon'
+    );
+
+    // And every one of them must actually load. A manifest pointing at a
+    // 404 is a manifest that passes every JSON check ever written.
+    for (const iconEntry of manifest.icons ?? []) {
+      const ok = await page.evaluate(
+        async (src) => (await fetch(src, { method: 'GET' })).ok,
+        iconEntry.src
+      );
+      assert(ok, `manifest icon ${iconEntry.src} does not load`);
+    }
+
+    // iOS reads this one and nothing else.
+    const touch = await page.getAttribute('link[rel="apple-touch-icon"]', 'href');
+    assert(touch, 'no apple-touch-icon — iOS would use a screenshot of the page');
+    assert(
+      touch.endsWith('.png'),
+      `apple-touch-icon is "${touch}"; iOS ignores SVG here and substitutes a screenshot`
+    );
+  });
+
   await check('the service worker registers and precaches the shell', async () => {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     const state = await page.evaluate(async () => {

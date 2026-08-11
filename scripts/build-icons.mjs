@@ -45,6 +45,13 @@ function constant(name) {
   const literal = new RegExp(`${name} =\\s*\\n?\\s*'([^']*)'`).exec(source);
   if (literal) return literal[1];
 
+  /* A bare array of literals — RUNWAY_BARS is three separate paths that
+     must stay separate, because joining them would connect the last
+     point of one bar to the first of the next and draw the runway as a
+     zigzag. Returned as an array; every other form returns a string. */
+  const bare = new RegExp(`${name} = \\[([\\s\\S]*?)\\];`).exec(source);
+  if (bare) return [...bare[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
+
   throw new Error(
     `${name} not found in apps/web/src/components/Logo.js.\n` +
       `  The icon suite is generated from that module's geometry. If the ` +
@@ -57,6 +64,17 @@ const CRANE_BODY = constant('CRANE_BODY');
 const CRANE_NECK = constant('CRANE_NECK');
 const CRANE_HEAD = constant('CRANE_HEAD');
 const AIRCRAFT = constant('AIRCRAFT');
+const DETAIL_MIN_HEIGHT = Number(/DETAIL_MIN_HEIGHT = (\d+)/.exec(source)?.[1] ?? 40);
+const ARC_CLIMB = constant('ARC_CLIMB');
+const ARC_DESCEND = constant('ARC_DESCEND');
+const CRANE_WING = constant('CRANE_WING');
+const CRANE_EYE = constant('CRANE_EYE');
+const QUARTER_TOP = constant('QUARTER_TOP');
+const QUARTER_LEFT = constant('QUARTER_LEFT');
+const QUARTER_RIGHT = constant('QUARTER_RIGHT');
+const CRANE_LEGS = constant('CRANE_LEGS');
+const CRANE_CREST = constant('CRANE_CREST');
+const RUNWAY_BARS = constant('RUNWAY_BARS');
 
 /* Brand values, read from the stylesheet rather than typed here — one
    source, and check-brand.mjs already guards them. */
@@ -68,6 +86,8 @@ const token = (name) => {
 };
 
 const GOLD = token('us-gold');
+const TERRACOTTA = token('us-terracotta');
+const TEAL = token('us-teal');
 const CHARCOAL = token('us-charcoal');
 const SAND = token('us-sand');
 
@@ -79,22 +99,72 @@ const SAND = token('us-sand');
  * inside the 80% safe circle. An icon that fills its canvas is an icon
  * with its shoulders cut off on a Pixel.
  */
-function icon({ size, background, ink, accent, safeZone = false }) {
+function icon({ size, background, ink, accent, safeZone = false, colour = false }) {
   const scale = (safeZone ? 0.58 : 0.76) * (size / 140);
   const w = 120 * scale;
   const h = 140 * scale;
   const dx = (size - w) / 2;
   const dy = (size - h) / 2;
 
+  /* THE DETAIL THRESHOLD, applied here as it is in the in-app mark.
+     Every icon in this suite was drawn at the reduced set — shield,
+     crane body, aircraft — regardless of size, which is right at 32px
+     and wrong at 512. A home-screen icon rendered from the reduced set
+     is a blob under a floating gold triangle.
+
+     40px is Logo.js's own threshold, read from that module rather than
+     repeated, so the icons and the in-app mark cannot disagree about
+     where detail starts. */
+  const detail = size * (safeZone ? 0.58 : 0.76) >= DETAIL_MIN_HEIGHT;
+
+  const bird = colour ? CHARCOAL : ink;
+  const arcs = colour ? SAND : accent;
+
+  const runway = RUNWAY_BARS.map(
+    (d) => `<path d="${d}"/>`
+  ).join('\n        ');
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <rect width="${size}" height="${size}" fill="${background}"/>
   <g transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)}) scale(${scale.toFixed(4)})">
+    ${
+      colour
+        ? `<g stroke="none">
+      <path d="${QUARTER_TOP}" fill="${TERRACOTTA}"/>
+      <path d="${QUARTER_LEFT}" fill="${TEAL}"/>
+      <path d="${QUARTER_RIGHT}" fill="${GOLD}"/>
+    </g>`
+        : ''
+    }
     <path d="${SHIELD}" fill="none" stroke="${ink}" stroke-width="5" stroke-linejoin="round"/>
-    <g fill="${ink}">
+    ${
+      detail
+        ? `<g fill="none" stroke="${arcs}" stroke-width="2.6" stroke-linecap="round">
+      <path d="${ARC_CLIMB}"/>
+      <path d="${ARC_DESCEND}"/>
+    </g>`
+        : ''
+    }
+    <g fill="${bird}">
       <path d="${CRANE_BODY}"/>
       <path d="${CRANE_NECK}"/>
       <path d="${CRANE_HEAD}"/>
     </g>
+    ${
+      detail
+        ? `<path d="${CRANE_WING}" fill="${SAND}" opacity="0.5"/>
+    <path d="${CRANE_EYE}" fill="${SAND}"/>
+    <g fill="none" stroke="${bird}" stroke-width="2.4" stroke-linecap="round">
+      <path d="${CRANE_LEGS}"/>
+    </g>
+    <g fill="none" stroke="${accent}" stroke-width="1.9" stroke-linecap="round">
+      <path d="${CRANE_CREST}"/>
+    </g>
+    <g fill="none" stroke="${bird}" stroke-width="3" stroke-linecap="round">
+        ${runway}
+    </g>`
+        : ''
+    }
     <path d="${AIRCRAFT}" fill="${accent}"/>
   </g>
 </svg>
@@ -108,8 +178,11 @@ const FILES = {
   // to mud and only the silhouette survives. Same threshold the in-app
   // mark applies, for the same measured reason.
   'favicon.svg': icon({ size: 32, background: 'none', ink: CHARCOAL, accent: GOLD }),
-  'icon-192.svg': icon({ size: 192, background: SAND, ink: CHARCOAL, accent: GOLD }),
-  'icon-512.svg': icon({ size: 512, background: SAND, ink: CHARCOAL, accent: GOLD }),
+  // The installed app icon is the PRIMARY logo — the quartered shield
+  // from the identity guidelines, not a monochrome reduction. This is
+  // the one place the brand is seen at size and out of context.
+  'icon-192.svg': icon({ size: 192, background: SAND, ink: CHARCOAL, accent: GOLD, colour: true }),
+  'icon-512.svg': icon({ size: 512, background: SAND, ink: CHARCOAL, accent: GOLD, colour: true }),
   // Maskable: dark field, gold mark, artwork inside the safe zone.
   'maskable-512.svg': icon({
     size: 512,
@@ -127,4 +200,63 @@ for (const [name, contents] of Object.entries(FILES)) {
   console.log(`  wrote icons/${name}`);
 }
 
-console.log(`\n${Object.keys(FILES).length} icons generated from Logo.js geometry.`);
+/* ============================================================
+   PNG, because an SVG-only manifest is not an installable app.
+
+   This shipped with SVG icons alone, which looks tidy and is not
+   installable in the two places that matter:
+
+     · iOS ignores an SVG apple-touch-icon completely. Add to Home
+       Screen produces a screenshot of the page as the icon — the app
+       arrives on someone's home screen looking like a bookmark of a
+       half-rendered form.
+     · Chrome's install criteria want a raster icon at 192 and 512, and
+       a maskable one to avoid the white circle that Android draws
+       around anything it cannot mask.
+
+   Rasterised with Playwright rather than by adding sharp or canvas:
+   Playwright is already a devDependency because the smoke suite drives
+   a real browser, and the browser that renders the app is the correct
+   authority on what its own SVG looks like. No new dependency, and no
+   second renderer to disagree with the first.
+   ============================================================ */
+const RASTER = [
+  { from: 'icon-192.svg', to: 'icon-192.png', size: 192 },
+  { from: 'icon-512.svg', to: 'icon-512.png', size: 512 },
+  { from: 'maskable-512.svg', to: 'maskable-512.png', size: 512 },
+  // iOS reads this one and only this one. 180 is the size it asks for.
+  { from: 'icon-512.svg', to: 'apple-touch-icon.png', size: 180 },
+  { from: 'favicon.svg', to: 'favicon-32.png', size: 32 },
+];
+
+const { chromium } = await import('playwright');
+const browser = await chromium.launch();
+
+try {
+  for (const { from, to, size } of RASTER) {
+    const page = await browser.newPage({
+      viewport: { width: size, height: size },
+      deviceScaleFactor: 1,
+    });
+    const svg = readFileSync(resolve(OUT, from), 'utf8');
+    /* The SVG is inlined into a page sized exactly to the icon, with no
+       margin and a transparent ground, so the raster is the artwork and
+       nothing else. `omitBackground` keeps the favicon's transparency —
+       a 32px charcoal mark on an opaque white square is a white square
+       in a dark browser theme. */
+    await page.setContent(
+      `<!doctype html><meta charset="utf-8">` +
+        `<style>html,body{margin:0;padding:0;background:transparent}` +
+        `svg{display:block;width:${size}px;height:${size}px}</style>` +
+        svg
+    );
+    await page.screenshot({ path: resolve(OUT, to), omitBackground: true });
+    await page.close();
+    console.log(`  wrote icons/${to}  (${size}px, rasterised from ${from})`);
+  }
+} finally {
+  await browser.close();
+}
+
+const total = Object.keys(FILES).length + RASTER.length;
+console.log(`\n${total} icons generated from Logo.js geometry.`);

@@ -298,7 +298,6 @@ body {
   font-size: var(--us-text-base);
   line-height: var(--us-leading-normal);
   color: var(--us-text-primary);
-  background: var(--us-surface);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
@@ -581,6 +580,44 @@ body {
    into the top bar, because a mouse has no reach problem and a fixed
    bar across a desktop viewport is a phone app pretending.
    ============================================================ */
+/* ============================================================
+   GROUND TEXTURE — at the threshold of visible, and no further.
+
+   The identity ships four background textures. This is the Ethiopian
+   cross tessellation, redrawn as an inline SVG pattern so it costs no
+   request and scales without a raster.
+
+   The mud-cloth grid was tried first and rejected on looking at it: its
+   dashes and chevrons tile into shapes the eye reads as small repeated
+   GLYPHS, and a page of faint repeated glyphs behind a safety narrative
+   is a page that fights the narrative. A radially symmetric motif does
+   not do that at any opacity.
+
+   It sits at under 4% opacity on Warm Sand, which is the difference
+   between a page that has a ground and a page that has a background
+   colour — and it is deliberately below the level where it competes
+   with a safety narrative for attention. Anything stronger on a screen
+   that people read incident reports on all day is decoration charged
+   to the reader.
+
+   Not applied to cards: the texture is the ground, and the cards are
+   the things standing on it.
+   ============================================================ */
+body {
+  background-color: var(--us-sand);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%232c2c2c' stroke-opacity='0.032' stroke-width='1'%3E%3Cpath d='M42 28v28M28 42h28'/%3E%3Cpath d='M35 35l-7-7M49 35l7-7M35 49l-7 7M49 49l7 7'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-attachment: fixed;
+}
+
+/* The texture is a decoration and must never cost legibility on a
+   surface that carries a narrative, nor ink on a regulator's printer. */
+@media print {
+  body {
+    background-image: none;
+  }
+}
+
 .app-shell {
   display: flex;
   flex-direction: column;

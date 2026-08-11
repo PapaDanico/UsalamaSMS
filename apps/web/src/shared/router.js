@@ -158,7 +158,7 @@ class Router {
     // browser's own history entries.
     document.title = match?.meta?.title
       ? `${match.meta.title} — UsalamaSMS`
-      : 'UsalamaSMS — Safety born of African soil';
+      : 'UsalamaSMS — Safety intelligence for African skies';
 
     if (match?.meta?.description) {
       const meta = document.querySelector('meta[name="description"]');

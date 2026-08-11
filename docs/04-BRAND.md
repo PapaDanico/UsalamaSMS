@@ -184,17 +184,43 @@ are the single source of the geometry. The in-app mark and every
 generated icon read from them, so they cannot disagree. Never hand-edit
 a generated icon — change the path and regenerate.
 
-- **A shield carrying three ideas:** a grey crowned crane, an aircraft on
-  a climbing arc, and a runway threshold. Safety, flight, and the ground
-  the whole thing rests on.
-- **Detail threshold at 40px.** The crane's crest, the runway bars, the
-  legs and the contrail dashes are drawn only above it. Below that they
+**Redrawn from the identity guidelines, not approximated from them.**
+The first version was a shield, three blobs for a bird, and a gold
+triangle. Rasterised to 512px for the app icon it read as a duck under an
+arrowhead — which is what a mark drawn from a description rather than
+from the artwork looks like at size.
+
+- **A QUARTERED shield, which is what makes it a coat of arms** rather
+  than a picture in a frame. Two flight arcs cross low and behind the
+  bird and divide the field into three: Deep Terracotta above, Aviation
+  Teal left, Savannah Gold right. One arc climbs and carries the
+  aircraft; the other descends. A departure and an arrival over the same
+  ground.
+- **A grey crowned crane, drawn as that bird.** The crest is a fan of
+  eleven rays from the back of the skull, and it is the single feature
+  that makes this a crowned crane rather than any bird — so it is drawn
+  as a fan and not as five stray ticks. Body, wing, S-curved neck, head
+  with the beak into the direction of flight, legs with toes.
+- **A runway threshold in perspective**, narrowest at the top because
+  that is the end receding away. Bar widths are bounded by the shield
+  outline at each height: the point of a heater shield narrows fast, and
+  a bar wider than its own field is a bar sticking out of the crest.
+- **Detail threshold at 40px.** The crest, the runway, the legs, the
+  wing, the eye and both arcs are drawn only above it. Below that they
   collapse into a smudge; the 32px favicon relies on the shield
   silhouette and the crane's body. Same threshold Kanda applies to its
-  topographic texture, for the same reason.
-- **Two-tone selection, not invention.** Savannah Gold on a dark ground,
-  Dusty Charcoal on a light one, with the aircraft always keeping the
-  gold accent. Neither branch introduces a colour.
+  topographic texture, for the same reason — and it is now applied to
+  the GENERATED ICONS too, which previously drew the reduced set at
+  every size including 512.
+- **The coloured version is the primary logo.** It is what the installed
+  app icon and the in-app lockup use. The monochrome variants are not a
+  fallback — the guidelines list them as approved — but a 32px favicon
+  has no room for three fills and a crest.
+- **Two-tone selection, not invention.** On the monochrome variants:
+  Savannah Gold on a dark ground, Dusty Charcoal on a light one, with the
+  aircraft always keeping the gold accent. Neither branch introduces a
+  colour, and on the coloured shield the bird and runway go charcoal
+  regardless of tone, because gold on gold is the quarter disappearing.
 - **The mark is never rendered in risk-scale colours.** A logo that turns
   red is a logo that looks like an alert.
 - **The wordmark is live text**, not traced letterforms: crisp at any
@@ -283,3 +309,58 @@ tokens exist and are named for the job.
    disc as "danger" will misread it as "network". The tokens already
    separate them (`--us-state-*` versus `--us-risk-*`); the artwork does
    not.
+
+---
+
+## The slogan
+
+**"Safety intelligence for African skies."**
+
+It replaced *"Safety born of African soil"*, which was warm and did not
+say what the product does.
+
+Every word is load-bearing:
+
+- **Safety intelligence** is the ICAO term. Annex 19 Amendment 2 makes
+  it a formal provision on 26 November 2026 and Doc 10159 is the manual
+  behind it. It is the thing this product is positioned on, it is what
+  no incumbent was built for, and to a Director of Safety it is a
+  recognised phrase rather than a marketing one.
+- **African skies** keeps the origin without the soil metaphor. The
+  operators this is for fly; they do not farm, and a product sold to a
+  regulator reads better without a pastoral image attached.
+- It is **forward-looking**, which "born of" is not: safety intelligence
+  is what the platform accumulates, and the accumulation is the moat
+  once the compliance-timing advantage expires. `docs/05-SWITCHES.md`
+  switch 3 puts a date on that.
+
+The identity's own banner uses *"Aviation Safety, African Roots"*, which
+is a fine line for a LinkedIn header and a weaker one for a product:
+"roots" describes where it came from, and the claim that matters is what
+it does next.
+
+---
+
+## The ground texture
+
+The identity ships four background textures. The app uses the
+**Ethiopian cross tessellation**, redrawn as an inline SVG pattern — no
+request, no raster, scales to any density.
+
+It sits at **3.2% opacity** on Warm Sand and is fixed to the viewport.
+That is the difference between a page with a ground and a page with a
+background colour, and it is deliberately below the level where it
+competes with a safety narrative for attention.
+
+**The Bogolanfini mud-cloth grid was tried first and rejected on looking
+at it.** Its dashes and chevrons tile into shapes the eye reads as small
+repeated *glyphs*, and a page of faint repeated glyphs behind an incident
+report is a page that fights the report. A radially symmetric motif does
+not do that at any opacity — which is a property of the motif, not of
+the value in the opacity field, and is why lowering the number was not
+the fix.
+
+Cards do not carry it: the texture is the ground, and the cards are the
+things standing on it. It is removed entirely for print — a regulator's
+copy is evidence, and evidence does not need decoration charged to their
+toner.
