@@ -244,9 +244,15 @@ Function and answers `503 not_configured` until a connection string and
 two secrets exist. That step cannot be scripted: Supabase does not
 expose the database password through its management API, deliberately,
 and a password routed through an agent, a chat log or a ticket has
-already leaked. Connecting the Supabase extension to the Netlify project
-is the intended path — it injects `SUPABASE_DATABASE_URL` and nobody
-handles the password at all.
+already leaked.
+
+This document previously said the Netlify Supabase extension avoided
+that step, because it injects a variable called `SUPABASE_DATABASE_URL`.
+It does not. On this project that variable holds
+`https://wbixxhpaswstaphfsowz.supabase.co` — the REST API base — and
+Prisma cannot connect to it. Both `core.ts` and the function now decide
+on the **scheme**, not the name, and say so in the 503. Somebody sets
+`DATABASE_URL` by hand, once.
 
 *RLS has no policies, on purpose.* The linter reports
 `rls_enabled_no_policy` at INFO on every table forever. That is the
@@ -255,10 +261,10 @@ intended state and not a finding to clear. Someone will eventually
 hole this closed — PostgREST reaching safety narratives with a key
 designed to be public.
 
-**What must happen:** connect the Supabase extension to the Netlify
-project, set `JWT_SECRET` and `DEIDENT_SALT` as secret environment
-variables, point `DATABASE_URL` at the transaction pooler before any
-real traffic, and leave the RLS advisory alone.
+**What must happen:** set `DATABASE_URL` to Supabase's transaction
+pooler URI, set `JWT_SECRET` and `DEIDENT_SALT`, all three as secret
+environment variables on the Netlify project, and leave the RLS advisory
+alone.
 
 **The test:** none that runs in CI, and that is stated rather than
 hidden — the repository cannot reach the hosted project, and it should

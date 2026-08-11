@@ -30,11 +30,14 @@ them.
 
 **Nearly deployable.** The hosted database exists (Supabase, eu-north-1,
 schema applied and baselined, RLS deny-by-default) and the API ships as
-a Netlify Function on `/api/*`. It answers `503 not_configured` until
-the Supabase extension is connected to the Netlify project and two
-secrets are set — the one step that cannot be scripted, because Supabase
-does not expose the database password through its API and a password
-that travels through a chat log has already leaked. See
+a Netlify Function on `/api/*`. It answers `503 not_configured`, naming
+what is absent, until `DATABASE_URL` and two secrets are set by hand —
+the one step that cannot be scripted, because Supabase does not expose
+the database password through its API and a password that travels
+through a chat log has already leaked. The Netlify Supabase extension
+does **not** substitute for it: the `SUPABASE_DATABASE_URL` it injects
+is the REST API base, not a connection string, so both `core.ts` and
+the function check the scheme rather than trusting the name. See
 [`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md), which also carries the
 one-time Prisma baseline the hosted schema needs. The triage queue reads
 this device rather than the organisation, and there is no investigation,
@@ -48,7 +51,7 @@ npm run check:claims   # 46 assertions that the registries match the docs
 npm test               # 100 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
-npm run test:integration   # 39 checks against a real Postgres
+npm run test:integration   # 40 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 ```
 

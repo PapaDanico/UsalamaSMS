@@ -84,7 +84,7 @@ every table. That is the intended state, not a finding to clear.
 
 | Variable | Where it goes | Notes |
 |---|---|---|
-| `DATABASE_URL` | API host | Direct connection string, includes the password. Never in the repo |
+| `DATABASE_URL` | API host | Postgres URI, includes the password. Never in the repo. Must begin `postgres://` or `postgresql://` — the scheme is checked, not the name |
 | `JWT_SECRET` | API host | Signs access tokens and keys the HMACs. Rotating it invalidates every session and every `reporterDupToken` |
 | `DEIDENT_SALT` | API host | Read at boot; a missing value must fail the deploy, not the first VCR |
 | `LOG_LEVEL` | API host | Optional, defaults to `info` |
@@ -131,10 +131,37 @@ So this cannot be scripted from a CI job or an agent, and it should not
 be: a password that travels through a chat log, a ticket or a shell
 history has already leaked.
 
-**Connect the extension instead.** Netlify → the `usalamasms` project →
-Project configuration → Supabase → Connect, then pick the `UsalamaSMS`
-project. That injects `SUPABASE_DATABASE_URL`, which `core.ts` accepts,
-and nobody ever handles the password.
+**The Netlify Supabase extension does not remove this step.** It is
+worth being blunt, because the variable it injects is called
+`SUPABASE_DATABASE_URL` and an earlier version of this document — and of
+`core.ts` — assumed that name meant what it says. It does not. On this
+project the extension sets it to:
+
+```
+https://wbixxhpaswstaphfsowz.supabase.co
+```
+
+which is the project's **REST API base**, the value `createClient()`
+wants. It is not a Postgres URI, and Prisma cannot open a connection to
+it. Accepting it on the strength of its name produced a protocol error
+on a deploy that had just been told it was correctly connected.
+
+So the **scheme** decides and not the name: both `core.ts` and the
+function reject anything that does not begin `postgres://` or
+`postgresql://`, and say why.
+`tests/integration/function.integration.test.ts` holds that behaviour in
+place from both directions — the extension's HTTPS value must be
+refused, and a `SUPABASE_DATABASE_URL` that genuinely holds a connection
+string must be accepted.
+
+**Set `DATABASE_URL` by hand.** Supabase → Connect → Direct connection
+(or the transaction pooler, per the next section), replace
+`[YOUR-PASSWORD]`, and paste it into Netlify → Project configuration →
+Environment variables as a **secret** value. Someone has to handle the
+password once. Nothing available to an agent avoids that.
+
+The extension may stay connected; it supplies `SUPABASE_URL` and the
+anon key, neither of which this codebase uses.
 
 Then set the two secrets that are ours rather than Supabase's:
 
@@ -153,16 +180,19 @@ which one.
 
 ### Direct connection versus the pooler
 
-The extension supplies the **direct** connection (port 5432), which is
+Supabase → Connect offers both. The **direct** connection (port 5432) is
 correct for a long-lived process and wrong for a serverless one: each
 warm Lambda holds its own pool, and enough concurrency exhausts
 Supabase's connection limit. The symptom is random timeouts that look
 like a network fault.
 
-`DATABASE_URL` takes precedence over `SUPABASE_DATABASE_URL`, so the fix
-is to set `DATABASE_URL` explicitly to the transaction pooler (port
-6543) with `?pgbouncer=true&connection_limit=1`, leaving the extension
-connected. Do this before any real traffic.
+This ships as a Netlify Function, so use the **transaction pooler**
+(port 6543) with `?pgbouncer=true&connection_limit=1`. Take the direct
+connection only if the API is later moved to a container host.
+
+`DATABASE_URL` takes precedence over `SUPABASE_DATABASE_URL` in both
+`core.ts` and the function, so setting it explicitly overrides whatever
+the extension has injected.
 
 `pg_advisory_xact_lock` is transaction-scoped and therefore safe under
 transaction pooling. A session-scoped lock would not be; that is why

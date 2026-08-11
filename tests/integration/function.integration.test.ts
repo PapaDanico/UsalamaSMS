@@ -69,13 +69,36 @@ describe.skipIf(!hasDatabase)("the Netlify Function handler", () => {
     expect(JSON.stringify(body)).not.toContain(JWT_SECRET);
   });
 
-  it("accepts SUPABASE_DATABASE_URL as well as DATABASE_URL", async () => {
-    // This is what makes connecting the Supabase extension sufficient,
-    // so nobody copies a password between two dashboards.
+  it("REJECTS the Supabase extension's SUPABASE_DATABASE_URL, which is not a connection string", async () => {
+    // The trap this test exists for. The Netlify Supabase extension
+    // sets SUPABASE_DATABASE_URL to the project's REST API base —
+    // literally `https://<ref>.supabase.co` — for use with
+    // createClient(). It is not a Postgres URI, and accepting it on the
+    // strength of its name produces a Prisma protocol error on a deploy
+    // that has just been told it is correctly connected.
+    //
+    // An earlier version of this code did exactly that.
+    const handler = await loadHandler({
+      SUPABASE_DATABASE_URL: "https://wbixxhpaswstaphfsowz.supabase.co",
+      JWT_SECRET,
+      DEIDENT_SALT: "x",
+    });
+    const res = await handler(new Request(`${BASE}/api/health`), {});
+
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    // And it must SAY why, not merely refuse.
+    expect(body.missing.join(" ")).toMatch(/not a Postgres URI/i);
+    expect(body.missing.join(" ")).toMatch(/REST API base/i);
+  });
+
+  it("accepts SUPABASE_DATABASE_URL when it genuinely holds a Postgres URI", async () => {
+    // The variable is not banned — the SCHEME decides, not the name. If
+    // somebody sets it to a real connection string, that works.
     const handler = await loadHandler({
       SUPABASE_DATABASE_URL: DATABASE_URL,
       JWT_SECRET,
-      DEIDENT_SALT: "x",
+      DEIDENT_SALT: "integration-test-salt",
     });
     const res = await handler(new Request(`${BASE}/api/health`), {});
     expect(res.status).toBe(200);

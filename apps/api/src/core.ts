@@ -21,31 +21,63 @@ function requireEnv(name: string): string {
 }
 
 /**
- * The database connection string, under either name.
+ * The database connection string.
  *
- * The Netlify Supabase extension injects `SUPABASE_DATABASE_URL` when a
- * project is connected to a site. Accepting it means the connection is
- * configured by connecting the two services — nobody copies a password
- * out of one dashboard and pastes it into another, and it never passes
- * through a chat log, a ticket or a shell history.
+ * A HARD-WON PIECE OF KNOWLEDGE IS ENCODED HERE. The Netlify Supabase
+ * extension sets a variable called `SUPABASE_DATABASE_URL`, and it is
+ * NOT a database connection string. It is the project's REST API base —
+ * `https://<ref>.supabase.co` — intended for
+ * `createClient(SUPABASE_DATABASE_URL, SUPABASE_ANON_KEY)`, the client
+ * SDK path this architecture deliberately does not use.
  *
- * `DATABASE_URL` still wins when both are present. That is deliberate:
- * the extension supplies the DIRECT connection (port 5432), which is
- * right for a long-lived process and wrong for a serverless one. An
- * explicit DATABASE_URL is how you point at the transaction pooler
- * without disconnecting the extension. See docs/06-DEPLOYMENT.md.
+ * An earlier version of this function accepted that variable as a
+ * Prisma connection string on the strength of its name. Prisma would
+ * have tried to open a Postgres connection to an https:// URL and
+ * failed with an error about the protocol, which reads like a Prisma
+ * bug rather than like a misconfiguration, on a deploy that had just
+ * been told it was correctly connected.
+ *
+ * So the scheme is checked, and a wrong one is named precisely. The
+ * variable is still accepted — if somebody sets it to a real connection
+ * string it works — but the extension's value is rejected with the
+ * sentence that explains it.
  */
 function databaseUrl(): string {
-  const url = process.env["DATABASE_URL"] ?? process.env["SUPABASE_DATABASE_URL"];
+  const explicit = process.env["DATABASE_URL"];
+  const fromExtension = process.env["SUPABASE_DATABASE_URL"];
+  const url = explicit ?? fromExtension;
+
   if (!url) {
-    console.error(
-      "FATAL: no database connection string.\n" +
-        "  Set DATABASE_URL, or connect the Supabase extension to this\n" +
-        "  Netlify project so it provides SUPABASE_DATABASE_URL."
+    fatal(
+      "no database connection string.\n" +
+        "  Set DATABASE_URL to the Postgres URI from\n" +
+        "  Supabase -> Connect -> Direct connection (or the transaction\n" +
+        "  pooler, if this is running serverless)."
     );
-    process.exit(1);
   }
+
+  if (!/^postgres(ql)?:\/\//.test(url)) {
+    const which = explicit ? "DATABASE_URL" : "SUPABASE_DATABASE_URL";
+    fatal(
+      `${which} is not a Postgres connection string.\n` +
+        `  Got a URL beginning "${url.slice(0, url.indexOf(":") + 3)}".\n` +
+        (which === "SUPABASE_DATABASE_URL"
+          ? "  The Netlify Supabase extension sets SUPABASE_DATABASE_URL to the\n" +
+            "  project's REST API base, not to a database connection string —\n" +
+            "  it is meant for createClient(), which this API does not use.\n" +
+            "  Set DATABASE_URL explicitly; it takes precedence.\n"
+          : "") +
+        "  See docs/06-DEPLOYMENT.md."
+    );
+  }
+
   return url;
+}
+
+/** Print and exit. Kept separate so the messages above stay readable. */
+function fatal(message: string): never {
+  console.error(`FATAL: ${message}`);
+  process.exit(1);
 }
 
 export const ENV = {
@@ -69,8 +101,7 @@ export const ENV = {
  *
  * This was written as `new PrismaClient()` and typechecked, linted and
  * unit-tested clean for the entire life of the project, because nothing
- * ever asked it to open a connection. It took a real Postgres to find —
- * which is the argument for tests/integration in one line.
+ * ever asked it to open a connection. It took a real Postgres to find.
  */
 export const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: databaseUrl() }),

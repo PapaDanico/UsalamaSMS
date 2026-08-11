@@ -63,12 +63,23 @@ let appPromise: Promise<{
 function missingConfig(): string[] {
   const missing: string[] = [];
 
-  // Either name will do. The Netlify Supabase extension supplies the
-  // second one when a project is connected to this site, which is how
-  // the connection gets configured without anybody copying a password
-  // between two dashboards.
-  if (!Netlify.env.get("DATABASE_URL") && !Netlify.env.get("SUPABASE_DATABASE_URL")) {
-    missing.push("DATABASE_URL (or SUPABASE_DATABASE_URL via the Supabase extension)");
+  /* The Netlify Supabase extension sets SUPABASE_DATABASE_URL to the
+     project's REST API base — `https://<ref>.supabase.co` — not to a
+     Postgres connection string. Accepting it on the strength of its
+     name produces a Prisma protocol error on a deploy that has just
+     been told it is correctly connected, which is a bad hour for
+     whoever is looking at it.
+
+     So the SCHEME decides, not the name. */
+  const candidate = Netlify.env.get("DATABASE_URL") ?? Netlify.env.get("SUPABASE_DATABASE_URL");
+  if (!candidate) {
+    missing.push("DATABASE_URL — the Postgres URI from Supabase → Connect");
+  } else if (!/^postgres(ql)?:\/\//.test(candidate)) {
+    missing.push(
+      "DATABASE_URL — set, but not a Postgres URI. The Supabase extension's " +
+        "SUPABASE_DATABASE_URL is the REST API base (https://…), not a " +
+        "connection string; set DATABASE_URL explicitly.",
+    );
   }
 
   for (const name of ["JWT_SECRET", "DEIDENT_SALT"] as const) {
