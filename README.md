@@ -68,7 +68,7 @@ CAPA or SPI workflow. See `docs/02-STRATEGY.md`.
 npm install
 npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 50 assertions that the registries match the docs
+npm run check:claims   # 51 assertions that the registries match the docs
 npm test               # 141 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium

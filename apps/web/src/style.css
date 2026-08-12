@@ -909,6 +909,14 @@ html { scroll-padding-top: var(--us-chrome); }
 /* A cell that has no number because no instrument publishes one. It is
    set apart from a figure so a reader scanning the column cannot mistake
    "without delay" for a missing value — the two mean opposite things. */
+/* The corporate banner in the footer rule. Slightly stronger than the
+   line it sits in, because it is an identity rather than a caption —
+   and still quiet enough not to compete with the product name. */
+.ver__banner {
+  color: var(--us-text-secondary);
+  font-weight: var(--us-weight-semibold);
+}
+
 .cell-none {
   font-style: italic;
   font-variant-numeric: normal;
