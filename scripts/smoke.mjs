@@ -897,27 +897,34 @@ try {
     // (so the flush genuinely did not finish) or drove the flush from
     // the sign-in path, which announced itself explicitly.
     await page.context().setOffline(false);
-    /* A CLEAN OUTBOX, because the outbox is shared state.
+    /* NO CLEAN SLATE, AND NO GLOBAL ASSERTION.
 
-       The first version of this check waited for outbox.length === 0.
-       Earlier checks in this file deliberately leave reports queued
-       that cannot drain — one filed with the network cut, one filed
-       with no session — so "the outbox is empty" was never a statement
-       about THIS report. It passed or failed on what ran before it,
-       which is a flake rather than a check, and it is what turned CI
-       red.
+       Two wrong answers preceded this one and both are worth naming,
+       because the second turned CI red while passing locally.
 
-       Deleting the database is safe here: every check that reads the
-       queue has already run, and the ones below read the registry and
-       the service worker instead. */
+       The first version waited for outbox.length === 0. Earlier checks
+       deliberately leave reports queued that cannot drain, so "the
+       outbox is empty" was never a statement about THIS report.
+
+       The second deleted the database to get a clean slate. A delete
+       is BLOCKED while the page holds an open connection, and the
+       handler resolved on `onblocked` as readily as on `onsuccess` —
+       so on a slower runner the database survived, Dexie was left
+       wedged, the new report was never enqueued, and the check
+       reported "nothing was ever sent" about a send it had prevented.
+       A check that breaks the thing it measures is worse than no
+       check.
+
+       So neither. The strip is read BEFORE filing and compared with
+       after, which is exactly the regression: a report that reaches
+       the server must stop being counted. Whatever else is in the
+       queue is in it both times and cancels out. */
     await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-    await page.evaluate(
-      () =>
-        new Promise((resolve) => {
-          const req = indexedDB.deleteDatabase('usalamasms');
-          req.onsuccess = req.onerror = req.onblocked = () => resolve();
-        })
-    );
+    const countOf = async () => {
+      const text = (await page.locator('#sync-text').textContent()) ?? '';
+      const match = /(\d+) reports? waiting to send/i.exec(text);
+      return match ? Number(match[1]) : 0;
+    };
 
     /* ESTABLISHES ITS OWN SESSION rather than inheriting one from an
        earlier check. flushOutbox bails when isSignedIn() is false, and
@@ -977,6 +984,8 @@ try {
     }
 
     await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    const baseline = await countOf();
+
     const typeValue = await page.locator('select[name=type] option').nth(1).getAttribute('value');
     await page.selectOption('select[name=type]', typeValue);
     await page.fill('input[name=title]', 'Online filing, strip must not lie');
@@ -986,26 +995,32 @@ try {
     );
     await page.click('#report-form button[type=submit]');
 
-    // The queue really did drain...
-    await page.waitForFunction(
-      async () => {
-        const dbs = await indexedDB.databases();
-        if (!dbs.some((d) => d.name === 'usalamasms')) return false;
-        return await new Promise((resolve) => {
-          const req = indexedDB.open('usalamasms');
-          req.onsuccess = () => {
-            const db = req.result;
-            if (!db.objectStoreNames.contains('outbox')) return resolve(false);
-            const all = db.transaction('outbox', 'readonly').objectStore('outbox').getAll();
-            all.onsuccess = () => resolve(all.result.length === 0);
-            all.onerror = () => resolve(false);
-          };
-          req.onerror = () => resolve(false);
-        });
-      },
-      undefined,
-      { timeout: 8000 }
-    );
+    /* PROMPTLY, and the budget is the assertion.
+
+       The defect was not "the report never arrives" — a background
+       sync gets there eventually, when the browser decides to fire it.
+       The defect was that a person standing there with a working radio
+       watched nothing happen. So the window is four seconds, not
+       fifteen: long enough for a slow runner to complete one request,
+       short enough that a browser-scheduled background sync cannot be
+       what satisfies it.
+
+       A previous version polled for fifteen seconds and therefore
+       passed with the immediate flush deleted, which is the whole
+       defect. Caught by re-running the mutation.
+
+       AND EVEN AT FOUR SECONDS THIS CANNOT PROVE IT. Headless Chromium
+       fires a registered background sync almost at once, so the batch
+       arrives either way and this check stays green with the immediate
+       flush removed. The difference only exists on a real device. That
+       property is therefore asserted in scripts/check-claims.mjs, at
+       the source, where it can actually fail — and this comment is
+       here so the next person does not mistake this check for the one
+       that covers it. What THIS check covers is the strip: a report
+       that reached the server must stop being counted. */
+    const sentBy = Date.now() + 4000;
+    while (batches === 0 && Date.now() < sentBy) await page.waitForTimeout(100);
+
     if (batches === 0) {
       const why = await page.evaluate(() => ({
         online: navigator.onLine,
@@ -1017,18 +1032,20 @@ try {
       assert(false, `nothing was ever sent: ${JSON.stringify(why)}`);
     }
 
-    // ...and the strip says so, without waiting for another event.
-    await page.waitForFunction(
-      () => document.querySelector('#sync-strip')?.dataset.state === 'synced',
-      undefined,
-      { timeout: 5000 }
-    );
+    // ...and the strip comes back down, without waiting for another
+    // event. Baseline-relative: whatever was already stuck in the queue
+    // was there before this report too.
+    const settled = Date.now() + 5000;
+    let after = await countOf();
+    while (after > baseline && Date.now() < settled) {
+      await page.waitForTimeout(200);
+      after = await countOf();
+    }
     const text = (await page.locator('#sync-text').textContent()) ?? '';
-    // Anchored on the COUNT. "nothing waiting to send" is the honest
-    // message and contains the same three words as the lie.
     assert(
-      !/\d+ reports? waiting to send/i.test(text),
-      `the outbox is empty and the strip still says "${text.trim()}"`
+      after <= baseline,
+      `the report reached the server and the strip still counts it: ` +
+        `"${text.trim()}" (was ${baseline} before filing, ${after} after)`
     );
 
     await page.unroute('**/api/v1/sync/batch');
@@ -1049,27 +1066,6 @@ try {
     // retry, telling the person the report still failed while it sits
     // in the database.
     await page.context().setOffline(false);
-    /* A CLEAN OUTBOX, because the outbox is shared state.
-
-       The first version of this check waited for outbox.length === 0.
-       Earlier checks in this file deliberately leave reports queued
-       that cannot drain — one filed with the network cut, one filed
-       with no session — so "the outbox is empty" was never a statement
-       about THIS report. It passed or failed on what ran before it,
-       which is a flake rather than a check, and it is what turned CI
-       red.
-
-       Deleting the database is safe here: every check that reads the
-       queue has already run, and the ones below read the registry and
-       the service worker instead. */
-    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-    await page.evaluate(
-      () =>
-        new Promise((resolve) => {
-          const req = indexedDB.deleteDatabase('usalamasms');
-          req.onsuccess = req.onerror = req.onblocked = () => resolve();
-        })
-    );
 
     await page.route('**/api/v1/auth/refresh', (route) =>
       route.fulfill({
@@ -1171,6 +1167,81 @@ try {
 
     await page.unroute('**/api/v1/sync/batch');
     await page.unroute('**/api/v1/auth/refresh');
+  });
+
+  await check('THE MATURITY ASSESSMENT SURVIVES A RELOAD, AND SENDS NOTHING', async () => {
+    // The page tells a part-time safety manager they can do this over
+    // two sittings. That is a promise about persistence, and a promise
+    // on a surface a customer reads has to be kept by a mechanism —
+    // charter rule 7.
+    //
+    // It also promises the opposite about the network: nothing leaves
+    // the device. Both halves are checked here, because the second is
+    // the one somebody would notice too late.
+    /* Two things are NOT the assessment phoning home, and a check that
+       counted them would fail on correct behaviour:
+         · /auth/refresh, which the shell fires on every load to turn a
+           stored refresh token back into an access token;
+         · a request whose body carries none of the answers.
+       So: no API call other than that one, and no request body that
+       mentions an element id. */
+    const requests = [];
+    const watch = (r) => {
+      if (!r.url().includes('/api/')) return;
+      if (/\/auth\/refresh$/.test(new URL(r.url()).pathname)) return;
+      requests.push(`${r.method()} ${new URL(r.url()).pathname}`);
+    };
+    const leaked = [];
+    const watchBody = (r) => {
+      const body = r.postData();
+      if (body && /"?el-|maturity|"1\.1"/.test(body)) leaked.push(new URL(r.url()).pathname);
+    };
+    page.on('request', watch);
+    page.on('request', watchBody);
+
+    await page.goto(BASE + '/toolkits/maturity', { waitUntil: 'networkidle' });
+    await page.check('input[name="el-1.1"][value="3"]');
+    await page.check('input[name="el-2.1"][value="1"]');
+
+    // The score is COMPUTED, so it must already be right before any reload.
+    await page.waitForFunction(
+      () => /2\.0/.test(document.querySelector('.mat-summary__value')?.textContent ?? ''),
+      undefined,
+      { timeout: 5000 }
+    );
+
+    await page.reload({ waitUntil: 'networkidle' });
+    assert(
+      await page.locator('input[name="el-1.1"][value="3"]').isChecked(),
+      'the answers did not survive a reload, and the page says they will'
+    );
+    const restored = (await page.locator('.mat-summary__value').textContent()) ?? '';
+    assert(/2\.0/.test(restored), `the score did not come back: "${restored.trim()}"`);
+
+    // Unanswered elements excluded, not counted as zero: two answers at
+    // 3 and 1 is a mean of 2.0, never 0.33.
+    const coverage = (await page.locator('.mat-summary__coverage').textContent()) ?? '';
+    assert(/2 of 12/.test(coverage), `coverage reads "${coverage.trim()}"`);
+
+    assert(
+      requests.length === 0,
+      `the assessment made ${requests.length} API request(s): ${requests.join(', ')}`
+    );
+    assert(
+      leaked.length === 0,
+      `an assessment answer left the device in a request to ${leaked.join(', ')}`
+    );
+
+    // Clear leaves nothing behind, or the next person on a shared
+    // crew-room handset inherits somebody's assessment.
+    await page.click('#mat-clear');
+    await page.reload({ waitUntil: 'networkidle' });
+    assert(
+      (await page.locator('input[type=radio]:checked').count()) === 0,
+      'Clear answers left answers behind'
+    );
+    page.off('request', watch);
+    page.off('request', watchBody);
   });
 
   await check('METHODOLOGY renders both tables from the real modules', async () => {
