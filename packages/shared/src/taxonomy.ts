@@ -109,6 +109,13 @@ export const AIRCRAFT_TYPES = [
   { code: 'DHC6', label: 'DHC-6 Twin Otter', category: 'Turboprop' },
   { code: 'L410', label: 'LET L-410', category: 'Turboprop' },
   { code: 'F406', label: 'Reims F406 Caravan II', category: 'Turboprop' },
+  /* The Fokker 50 was missing while the Fokker 70 was here, which made
+     the list unable to describe the commonest mid-tier East African
+     fleet shape: 50s on the regional turboprop routes and 70s on the
+     jet ones, from one operator. A type list that cannot name half a
+     customer's fleet sends that half to the free-text escape, and free
+     text is the half nobody can count. */
+  { code: 'F50', label: 'Fokker 50', category: 'Turboprop' },
   { code: 'B738', label: 'Boeing 737-800', category: 'Jet' },
   { code: 'B38M', label: 'Boeing 737 MAX 8', category: 'Jet' },
   { code: 'B788', label: 'Boeing 787-8', category: 'Jet' },

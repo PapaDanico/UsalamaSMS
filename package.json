@@ -28,7 +28,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:up": "bash scripts/local-db.sh",
     "seed": "node scripts/seed.mjs",
-    "check:update": "node scripts/check-update.mjs"
+    "check:update": "node scripts/check-update.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs"
   },
   "devDependencies": {
     "@netlify/functions": "^5.3.0",
