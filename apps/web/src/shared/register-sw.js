@@ -85,5 +85,21 @@ export function listenForFlushRequests(onFlush) {
 
 /** Tell a waiting worker to take over now. */
 export function applyUpdate(registration) {
-  registration?.waiting?.postMessage({ type: 'usalamasms:skip-waiting' });
+  const waiting = registration?.waiting;
+  if (!waiting) return;
+
+  /* The message alone was the whole of this function, and it left the
+     page on the old build with the new worker in charge — the user
+     pressed Reload and nothing reloaded. The worker takes over, and
+     THEN the page comes back on the version it just accepted.
+
+     `once` matters: controllerchange also fires on the very first
+     registration, and a listener left behind here would reload the app
+     under someone the next time a worker ever changed hands. */
+  navigator.serviceWorker.addEventListener(
+    'controllerchange',
+    () => window.location.reload(),
+    { once: true }
+  );
+  waiting.postMessage({ type: 'usalamasms:skip-waiting' });
 }

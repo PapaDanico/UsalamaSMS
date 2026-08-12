@@ -186,11 +186,27 @@ function lazy(el, load) {
   load().then(
     (render) => render(el),
     () => {
-      el.innerHTML =
-        '<section class="panel wrap"><h1>This page needs a connection</h1>' +
-        '<p class="notice notice--error">It is fetched when asked for rather than ' +
-        'carried on every screen, so it needs signal the first time. Filing a report ' +
-        'does not — that works offline and is on this device already.</p></section>';
+      /* Two different failures used to share one message, and the one
+         that fires most often got the wrong half. A chunk 404s when a
+         new version has been deployed under a page that is still
+         running the old build — the reader is on full signal and was
+         being told they had none. Ask the browser which situation this
+         is rather than guessing, and offer the action that fixes it. */
+      el.innerHTML = navigator.onLine
+        ? '<section class="panel wrap"><h1>This app has been updated</h1>' +
+          '<p class="notice notice--error">A newer version was published while ' +
+          'this page was open, so part of the old one is no longer available. ' +
+          'Reload to pick it up. Anything already filed on this device is ' +
+          'untouched — reloading does not send or lose a report.</p>' +
+          '<p><button type="button" class="btn btn-primary" id="stale-reload">Reload</button></p>' +
+          '</section>'
+        : '<section class="panel wrap"><h1>This page needs a connection</h1>' +
+          '<p class="notice notice--error">It is fetched when asked for rather than ' +
+          'carried on every screen, so it needs signal the first time. Filing a report ' +
+          'does not — that works offline and is on this device already.</p></section>';
+      el.querySelector('#stale-reload')?.addEventListener('click', () =>
+        window.location.reload()
+      );
     }
   );
 }

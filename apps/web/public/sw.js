@@ -40,10 +40,29 @@ self.addEventListener('install', (event) => {
     caches
       .open(SHELL_CACHE)
       .then((cache) => cache.addAll(PRECACHE))
-      // Take over promptly. A safety report form that is one version
-      // behind because the user has not closed every tab is a support
-      // conversation nobody has time for.
-      .then(() => self.skipWaiting())
+    /* NO skipWaiting HERE, and the reason is worth the paragraph.
+
+       It used to take over the moment it installed, on the argument
+       that a form one version behind is a support conversation. What
+       it actually did was override a decision the product had already
+       written down: prompts.js says, in as many words, that an update
+       is "NEVER applied automatically... The person decides."
+
+       Driving it proved the cost. The new worker activated, its
+       activate handler deleted the previous version's cache, and
+       clients.claim() took over a page still running the previous
+       build's JavaScript. The next route that page tried to open
+       fetched a chunk whose hash had moved — 404 — and the user, on
+       full signal, was told "This page needs a connection".
+
+       It also made the prompt a lie in both directions: it appeared
+       after the update had happened, and its Reload button posted to
+       registration.waiting, which is null once the worker has skipped.
+       Clicking it did nothing at all.
+
+       So the worker waits. applyUpdate() is what moves it, the person
+       decides when, and activate — which purges the old cache — runs
+       only after they have said yes. */
   );
 });
 
