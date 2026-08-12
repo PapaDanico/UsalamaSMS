@@ -308,7 +308,8 @@ export function levelFor(mean: number): MaturityLevel {
 //
 // WHY THIS IS IN CODE. An independent audit found the product claiming
 // to be a safety management system while covering one and a half of
-// Annex 19's twelve elements. The claim is fixed; this is the mechanism
+// Annex 19's twelve elements. It now covers nine, and the same
+// arithmetic reports both — which is the point of computing it. The claim is fixed; this is the mechanism
 // that stops it coming back, and the answer to the audit's own
 // recommendation: publish which elements are implemented, which are
 // planned, and which are out of scope.
@@ -344,37 +345,82 @@ export interface ElementCoverage {
 }
 
 export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
+  /* The eight entries that follow moved on the strength of /sms, which
+     holds them ON THE SERVER rather than on the handset. That is the
+     distinction this table has used throughout to separate BUILT from
+     PARTIAL, and it is the reason these move and the browser-held
+     toolkits below do not. Each still states what it does not do. */
   {
     id: "1.1",
-    state: "ASSESSED_ONLY",
-    has: "The maturity assessment scores it and names the evidence.",
-    missing: "A signed safety policy, and any record of the accountable executive signing it.",
-    href: "/toolkits/maturity",
+    state: "BUILT",
+    has:
+      "A safety policy the operator authors, signed by the accountable executive and by " +
+      "nobody else, superseded rather than edited so an auditor can read what it said " +
+      "when a decision was taken, with acknowledgements counted per person.",
+    missing:
+      "Reaching a person who never signs in. The product records who has read the " +
+      "policy; it does not deliver it to somebody who only ever files reports.",
+    href: "/sms",
   },
   {
     id: "1.2",
-    state: "ASSESSED_ONLY",
-    has: "Eight roles exist in the data model and are enforced per action on the API.",
-    missing: "An accountability matrix an operator can author, publish and evidence.",
+    state: "BUILT",
+    has:
+      "An accountability matrix the operator authors — each post, what it answers for, " +
+      "and the Annex 19 element it discharges — held by the organisation and readable " +
+      "by an inspector it invites.",
+    missing:
+      "The half the matrix cannot evidence. This element is met when each person can " +
+      "say what they are accountable for WITHOUT reading it off a chart, and a chart " +
+      "is the one thing software can produce. Nothing here reaches the job " +
+      "descriptions, and nothing here can ask four people separately.",
+    href: "/sms",
   },
   {
     id: "1.3",
-    state: "ASSESSED_ONLY",
-    has: "The maturity assessment scores it.",
-    missing: "Appointment records, protected time, and the evidence of independence.",
-    href: "/toolkits/maturity",
+    state: "BUILT",
+    has:
+      "Appointment records against each post, with the appointment letter's reference, " +
+      "and a successor's appointment ending the incumbent's rather than sitting " +
+      "alongside it.",
+    missing:
+      "Independence, which the product records an assertion of and cannot evidence: " +
+      "protected time and direct access to the accountable executive are facts about " +
+      "an operator's week, not rows in a database.",
+    href: "/sms",
   },
   {
     id: "1.4",
-    state: "NOT_BUILT",
-    has: "",
-    missing: "The emergency response plan, its exercises, and the contact directory behind it.",
+    /* PARTIAL, and the half that is missing is the larger one. What the
+       product holds is the EXERCISE record — that one was held, what it
+       found, and whether the plan changed as a result, which is the
+       question an inspector actually asks. What it does not hold is the
+       plan being exercised, or the contact directory whose eleven
+       months out of date is the finding this record exists to capture. */
+    state: "PARTIAL",
+    has:
+      "Emergency response exercises: the scenario, who took part, what it found, and " +
+      "whether the plan was changed as a result.",
+    missing:
+      "The plan itself and the contact directory behind it. The product records that " +
+      "an operator exercised a plan; it does not hold the plan.",
+    href: "/sms",
   },
   {
     id: "1.5",
-    state: "NOT_BUILT",
-    has: "",
-    missing: "Document control: versions, approval, distribution and read-acknowledgement.",
+    /* PARTIAL for the same reason: the CONTROL is here and the
+       documents are not. Reference, version, approver and review date
+       are what document control means as a discipline, and they are the
+       part an audit checks. The product is not a document store, and
+       claiming the element outright would say it was. */
+    state: "PARTIAL",
+    has:
+      "Document control: reference, version, who approved it and when, and the date the " +
+      "next review falls due.",
+    missing:
+      "The documents. The product controls the register of them, does not store their " +
+      "content, and does not distribute them or record who has read each one.",
+    href: "/sms",
   },
   {
     id: "2.1",
@@ -466,28 +512,52 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        table written to prevent it, and it was caught by the test that
        compares this arithmetic with the sentence About states. */
     id: "3.3",
-    state: "ASSESSED_ONLY",
+    /* BUILT, and the correction above still stands: the audit CHAIN is
+       not the audit, and none of this claim rests on it. What moved the
+       element is findings with owners and due dates, a corrective
+       action, a closure, and a verification that a different role
+       performs — because a safety manager verifying their own finding
+       closed is the finding, not the evidence. */
+    state: "BUILT",
     has:
-      "The maturity assessment scores it. Separately, the audit chain makes the RECORD " +
-      "verifiable, which is a different thing from auditing the system.",
+      "Internal audit findings with a severity, an owning post and a due date; the " +
+      "corrective action taken; closure; and verification by key management rather than " +
+      "by whoever raised and closed it.",
     missing:
-      "Audit management and corrective action — scheduling, findings, owners, and " +
-      "validation that a fix worked. An audit trail is not an audit.",
-    href: "/toolkits/maturity",
+      "The audit programme's schedule. The product holds what an audit found and what " +
+      "was done about it, not when the next one falls due.",
+    href: "/sms",
   },
   {
     id: "4.1",
-    state: "NOT_BUILT",
-    has: "",
-    missing: "Training records, competency tracking and expiry alerting.",
+    /* PARTIAL. The RECORD is here — who was trained, in what, when, and
+       when it lapses, with a frontline reporter seeing their own row
+       and nobody else's. What is not here is the part that makes a
+       training matrix useful, which is being told before the expiry
+       rather than after it. */
+    state: "PARTIAL",
+    has:
+      "A training matrix: person, course, completion and expiry, with each person's own " +
+      "record visible to them and the whole matrix to those who manage it.",
+    missing:
+      "Alerting. An expired row is visible to somebody who opens the screen; nothing " +
+      "tells an operator a currency is about to lapse.",
+    href: "/sms",
   },
   {
     id: "4.2",
-    state: "NOT_BUILT",
-    has: "",
+    state: "BUILT",
+    has:
+      "Safety communication the operator publishes, and feedback attached to the report " +
+      "that prompted it — refused against an anonymous report, because a row joining " +
+      "feedback to an anonymous filing is the re-identification the product exists to " +
+      "prevent.",
     missing:
-      "The loop back to the reporter. The maturity assessment asks whether people who " +
-      "file hear what happened; the product provides no way to tell them.",
+      "Whether any of it landed. A bulletin is published and nobody has to acknowledge " +
+      "it — the policy counts its readers and this does not. And a reporter who filed " +
+      "anonymously is unreachable by design, so the loop closes for everyone except " +
+      "the people most likely to have needed the protection.",
+    href: "/sms",
   },
 ]);
 
@@ -506,9 +576,10 @@ export interface CoverageSummary {
  *
  * PARTIAL counts as a half and ASSESSED_ONLY counts as nothing, which
  * is the whole point: being able to measure an element is not covering
- * it. That arithmetic is what produces the "one and a half of twelve"
- * the About page states, and it is computed here so the sentence and
- * the table cannot disagree.
+ * it. That arithmetic is what produced the "one and a half of twelve"
+ * the About page once stated and the "nine of twelve" it states now,
+ * and it is computed here so the sentence and the table cannot
+ * disagree — in either direction.
  */
 export function coverageSummary(): CoverageSummary {
   const count = (state: CoverageState) => COVERAGE.filter((c) => c.state === state).length;
