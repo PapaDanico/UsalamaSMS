@@ -191,7 +191,28 @@ DEIDENT_SALT   # openssl rand -base64 48
 ```
 
 Set them as **secret** environment variables so they are write-only in
-the Netlify UI afterwards.
+the Netlify UI afterwards — and set them against explicit contexts
+(`production`, `deploy-preview`, `branch-deploy`) rather than `all`,
+which silently refuses secret values because it includes `dev`.
+
+### Delete the service-role key the extension injects
+
+The Netlify Supabase extension injects `SUPABASE_SERVICE_ROLE_KEY`,
+`SUPABASE_ANON_KEY`, `SUPABASE_JWT_SECRET` and `SUPABASE_DATABASE_URL`
+as **non-secret** variables, whose values are returned in full by the
+management API to anything that can read the project.
+
+`SUPABASE_SERVICE_ROLE_KEY` is the one that matters: it **bypasses RLS
+entirely**. On a database whose whole access posture is "RLS on, no
+policies, nothing reachable without the API", a readable service-role
+key is a key to everything, stored in the clear, for a codebase that
+never once references it.
+
+It was deleted on 12 August 2026. Nothing here uses any `SUPABASE_*`
+variable — `core.ts` reads `DATABASE_URL` and checks the scheme
+precisely so it cannot be fooled by the extension's REST base. **If the
+extension re-injects it, disconnect the extension**: it provides
+nothing this architecture uses.
 
 ### The short way: `npm run setup:env`
 
@@ -212,6 +233,23 @@ base instead of a connection string, `[YOUR-PASSWORD]` left in place,
 and an empty paste — warns when given the direct connection, and
 appends `?pgbouncer=true&connection_limit=1` to a pooler URI that
 lacks it.
+
+**A SECOND SILENT-FAILURE MODE, found on 12 August 2026.** Setting a
+variable as **secret** with the context `all` fails and reports
+success. Netlify refuses secret values in the `dev` context, `all`
+includes `dev`, and the write is rejected wholesale — while both the
+CLI and the Netlify MCP tool return a success message.
+
+Proved rather than guessed, because the first read-back was ambiguous
+(nothing appeared, which could equally have meant "secrets are hidden
+from the listing"): a probe variable was written **non-secret with
+context `all`** and appeared; the same key rewritten **secret with
+context `production`** also appeared. Only secret-plus-`all` vanishes.
+
+`setup-env.mjs` has always passed explicit contexts and so was never
+exposed to this. The lesson is the same one the read-back exists for,
+arriving from a second direction: **a success message from an
+environment-variable write is not evidence.**
 
 **Why it reads the project back.** `netlify env:set` exits `0` and
 prints nothing when the CLI session has expired, having written
