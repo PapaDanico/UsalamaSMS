@@ -23,6 +23,7 @@
    ============================================================ */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const SRC = 'apps/web/src';
@@ -82,6 +83,73 @@ function classesDefined() {
   const defined = new Set();
   for (const m of css.matchAll(/\.(-?[A-Za-z_][\w-]*)/g)) defined.add(m[1]);
   return defined;
+}
+
+/* ============================================================
+   IT HAS TO PARSE, and a warning is not a guard.
+
+   Removing one selector from a grouped rule left `.btn:hover,
+   .card:hover,` dangling with a trailing comma and no block. CSS
+   error recovery swallows everything up to the next brace, so the
+   whole reduced-motion block was dropped from the bundle — somebody
+   who asks their operating system for less motion kept getting the
+   card lift and the button transform.
+
+   The build DID say so. esbuild printed `Unexpected "}"` as a
+   WARNING, on a line of a concatenated stdin that names no source
+   file, in the middle of a successful build that exits 0. Nobody read
+   it, including me, for several commits.
+
+   So the parse result is a gate rather than a note. Charter rule 11:
+   a check that stops checking must fail.
+   ============================================================ */
+function mustParse() {
+  const sheets = [join(SRC, 'style.css'), join(SRC, 'fonts.css')];
+  const problems = [];
+
+  for (const sheet of sheets) {
+    /* spawnSync, NOT execFileSync — and this is the whole reason the
+       first version of this gate could not fail.
+
+       esbuild prints css-syntax-error as a WARNING, and warnings go to
+       STDERR. execFileSync returns stdout only, so the check ran the
+       compiler, threw the evidence away, and reported success. It was
+       watched failing to fail on the exact defect it exists for, which
+       is the only reason this comment is here rather than a second
+       silent guard.
+
+       --bundle so esbuild names the SOURCE file rather than <stdin>,
+       which is what made the original warning unreadable. The font and
+       icon URLs are public-directory paths rather than resolvable
+       modules, so they are external rather than missing. */
+    const run = spawnSync(
+      'npx',
+      [
+        'esbuild',
+        sheet,
+        '--bundle',
+        '--outfile=/dev/null',
+        '--external:/fonts/*',
+        '--external:/icons/*'
+      ],
+      { encoding: 'utf8' }
+    );
+    const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
+    if (run.status !== 0) problems.push(`${sheet} failed to parse:\n${output.trim()}`);
+    else if (/css-syntax-error|\[ERROR\]|\[WARNING\]/.test(output)) problems.push(output.trim());
+  }
+  return problems;
+}
+
+const parseProblems = mustParse();
+if (parseProblems.length) {
+  console.error('check:css FAILED — the stylesheet does not parse.\n');
+  console.error(parseProblems.join('\n\n'));
+  console.error(
+    '\nCSS error recovery discards everything up to the next brace, so a rule ' +
+      'that does not parse is a rule silently missing from the bundle.'
+  );
+  process.exit(1);
 }
 
 const files = walk(SRC);

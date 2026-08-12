@@ -623,12 +623,21 @@ html { scroll-padding-top: var(--us-chrome); }
     transition-duration: .001ms !important;
     scroll-behavior: auto !important;
   }
-  .btn:hover, .card:hover,
+  /* The hover lift is the one piece of motion that survives the
+     duration override above, because a transform is a position rather
+     than an animation. Somebody who has asked for less motion has
+     asked for this too. */
+  .btn:hover,
+  .card:hover {
+    transform: none;
+  }
 
-  /* Belt and braces: mountReveal() bails out under reduced motion, but if
-     it ever ran anyway, content must still be visible rather than stuck
-     at opacity 0. */
-  
+  /* Belt and braces: content must be visible rather than stuck at
+     opacity 0 if a reveal ever ran under reduced motion. */
+  .will-reveal {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* A range input has no border to recolour, so the rule above leaves it

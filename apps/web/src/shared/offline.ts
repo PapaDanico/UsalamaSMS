@@ -140,10 +140,65 @@ let flushInFlight: Promise<FlushOutcome> | null = null;
 
 export function flushOutbox(fetcher: typeof fetch = authFetch): Promise<FlushOutcome> {
   if (flushInFlight) return flushInFlight;
-  flushInFlight = runFlush(fetcher).finally(() => {
-    flushInFlight = null;
-  });
+  flushInFlight = runFlush(fetcher)
+    .then((outcome) => {
+      announce(outcome);
+      return outcome;
+    })
+    .finally(() => {
+      flushInFlight = null;
+    });
   return flushInFlight;
+}
+
+/* ============================================================
+   THE FLUSH ANNOUNCES ITSELF. Here, once, rather than at each call
+   site.
+
+   THE DEFECT THIS CLOSES, found by driving the running app against
+   the running API rather than against a mock. File a report while
+   online — the ordinary case, the one that happens every time — and:
+
+     1. the form dispatches `report-filed`;
+     2. the shell repaints the strip, reading an outbox that still
+        contains the report, and prints "1 report waiting to send";
+     3. requestBackgroundSync() flushes it; the server answers 200 and
+        the row leaves the outbox;
+     4. nothing tells the shell.
+
+   The strip then says "1 report waiting to send" for a report that
+   arrived seventy milliseconds ago, and goes on saying it. Verified
+   against a real Fastify and a real Postgres: outbox empty, row in
+   the database, audit chain extended, strip still claiming the report
+   is queued.
+
+   That is the same class of lie the strip exists to prevent, pointing
+   the other way. "Sent when it was not" sends a hazard nobody hears
+   about; "not sent when it was" sends a person back to the safety
+   office to re-file, and teaches them the one indicator this product
+   hangs on cannot be believed. The second is not the safer failure.
+   It is the one that costs the strip its authority.
+
+   Why it survived: `usalamasms:sync-changed` was dispatched by the
+   `online` listener and by one other caller, and the file-a-report
+   path goes through neither. Every test that covered the strip either
+   cut the network (so the flush genuinely did not finish) or drove
+   the flush through a mocked fetch on the online listener's path.
+
+   Fixing it at each call site would leave the next caller to
+   remember. The flush is what changes the queue, so the flush is what
+   says so — and the announcement is skipped when nothing moved, so a
+   heartbeat flush over an empty outbox does not repaint anything.
+   ============================================================ */
+function announce(outcome: FlushOutcome): void {
+  if (typeof window === "undefined") return;
+  const changed =
+    outcome.sent > 0 ||
+    outcome.conflicts > 0 ||
+    outcome.rejected > 0 ||
+    outcome.needsSignIn === true;
+  if (!changed) return;
+  window.dispatchEvent(new CustomEvent("usalamasms:sync-changed", { detail: outcome }));
 }
 
 async function runFlush(fetcher: typeof fetch): Promise<FlushOutcome> {
@@ -332,15 +387,52 @@ export async function syncStatus(): Promise<{
 }
 
 // ------------------------ Background sync API ------------------------
+/* ============================================================
+   BOTH, NOT EITHER.
+
+   THE DEFECT: this registered a background sync and, if that
+   succeeded, did nothing else. The immediate flush lived in the catch
+   block — so it ran only where the Background Sync API is MISSING.
+   Where the API is present, which is every current Chromium and
+   therefore the mid-range Android this product is designed for,
+   filing a report queued it and sent nothing.
+
+   The report then waited for the browser to decide to fire the sync
+   event. That can be seconds, or minutes, or never if the tab is
+   closed before the worker is woken. Meanwhile the form said "Report
+   saved and sending now" and the strip said the queue was pending —
+   both to somebody standing there, online, watching nothing happen.
+
+   The two calls answer different questions and neither substitutes
+   for the other:
+
+     · the FLUSH is "send it now, while there is a person here and a
+       radio that works";
+     · the REGISTRATION is "and if this tab is gone before that
+       finishes, wake up and try again".
+
+   So both, every time, and the flush is not conditional on the
+   registration succeeding or failing. flushOutbox is coalesced and
+   returns early when the outbox is empty or the device is offline, so
+   calling it here costs nothing when there is nothing to do.
+   ============================================================ */
 export async function requestBackgroundSync(): Promise<void> {
+  // Started first and deliberately not awaited before the registration
+  // below: the registration is a backstop and must not wait on a
+  // request that may take the length of a bad connection to fail.
+  const flushing = flushOutbox();
+
   try {
     const reg = await navigator.serviceWorker.ready;
     // @ts-expect-error Background Sync API not yet in all TS lib.dom versions
     await reg.sync?.register("usalamasms-outbox");
   } catch {
-    // Fallback: immediate attempt + online listener (registered in app shell)
-    void flushOutbox();
+    // No worker, no Background Sync, or registration refused. The flush
+    // above is the whole mechanism in that case, which is what this
+    // catch block used to be for.
   }
+
+  await flushing;
 }
 
 if (typeof window !== "undefined") {
@@ -349,10 +441,12 @@ if (typeof window !== "undefined") {
   // so the strip repainted from the pre-flush queue and then never heard
   // again, leaving "waiting to send" on screen for reports that had just
   // arrived. Same defect as the one the sign-in screen had.
+  // The dispatch that used to be chained here now lives inside
+  // flushOutbox, so this is the plain call. One owner for "the queue
+  // changed" — see announce() — because two owners is how the
+  // file-a-report path came to have neither.
   window.addEventListener("online", () => {
-    void flushOutbox().then(() =>
-      window.dispatchEvent(new CustomEvent("usalamasms:sync-changed")),
-    );
+    void flushOutbox();
   });
 }
 
@@ -397,8 +491,8 @@ export async function retryReport(clientId: string): Promise<void> {
       .modify({ syncState: "pending", lastError: undefined });
   });
 
+  // flushOutbox announces itself; see announce().
   await flushOutbox();
-  window.dispatchEvent(new CustomEvent("usalamasms:sync-changed"));
 }
 
 /** The report as the server's schema expects it — local bookkeeping out. */

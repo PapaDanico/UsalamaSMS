@@ -826,6 +826,167 @@ try {
     await page.unroute('**/api/v1/sync/batch');
   });
 
+  await check('FILING WHILE ONLINE LEAVES THE STRIP TELLING THE TRUTH', async () => {
+    // FOUND BY RUNNING THE APP AGAINST A REAL FASTIFY AND A REAL
+    // POSTGRES, not against a mock. File a report while online — the
+    // ordinary case, the one that happens every time — and:
+    //
+    //   the form dispatches report-filed; the shell repaints the strip
+    //   from an outbox that still holds the report and prints "1 report
+    //   waiting to send"; the flush sends it; the server answers 200;
+    //   the row leaves the outbox; and nothing tells the shell.
+    //
+    // The strip then said "1 report waiting to send" for a report that
+    // had arrived seventy milliseconds earlier, and went on saying it.
+    // Verified against the real stack: outbox empty, row in the
+    // database, audit chain extended, strip still claiming it was
+    // queued.
+    //
+    // That is the same class of lie the strip exists to prevent,
+    // pointing the other way. It sends somebody to the safety office to
+    // re-file a report that already arrived, and it teaches them that
+    // the one indicator this product hangs on cannot be believed.
+    //
+    // Every existing strip check missed it: they either cut the network
+    // (so the flush genuinely did not finish) or drove the flush from
+    // the sign-in path, which announced itself explicitly.
+    await page.context().setOffline(false);
+    let batches = 0;
+    await page.route('**/api/v1/sync/batch', async (route) => {
+      batches++;
+      const body = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          results: body.items.map((i) => ({
+            clientId: i.clientId,
+            status: 'applied',
+            serverUpdatedAt: new Date().toISOString()
+          }))
+        })
+      });
+    });
+
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    const typeValue = await page.locator('select[name=type] option').nth(1).getAttribute('value');
+    await page.selectOption('select[name=type]', typeValue);
+    await page.fill('input[name=title]', 'Online filing, strip must not lie');
+    await page.fill(
+      'textarea[name=narrative]',
+      'Filed with the network up, to prove the strip stops saying it is waiting.'
+    );
+    await page.click('#report-form button[type=submit]');
+
+    // The queue really did drain...
+    await page.waitForFunction(
+      async () => {
+        const dbs = await indexedDB.databases();
+        if (!dbs.some((d) => d.name === 'usalamasms')) return false;
+        return await new Promise((resolve) => {
+          const req = indexedDB.open('usalamasms');
+          req.onsuccess = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains('outbox')) return resolve(false);
+            const all = db.transaction('outbox', 'readonly').objectStore('outbox').getAll();
+            all.onsuccess = () => resolve(all.result.length === 0);
+            all.onerror = () => resolve(false);
+          };
+          req.onerror = () => resolve(false);
+        });
+      },
+      undefined,
+      { timeout: 8000 }
+    );
+    assert(batches > 0, 'nothing was ever sent, so this check proved nothing');
+
+    // ...and the strip says so, without waiting for another event.
+    await page.waitForFunction(
+      () => document.querySelector('#sync-strip')?.dataset.state === 'synced',
+      undefined,
+      { timeout: 5000 }
+    );
+    const text = (await page.locator('#sync-text').textContent()) ?? '';
+    // Anchored on the COUNT. "nothing waiting to send" is the honest
+    // message and contains the same three words as the lie.
+    assert(
+      !/\d+ reports? waiting to send/i.test(text),
+      `the outbox is empty and the strip still says "${text.trim()}"`
+    );
+
+    await page.unroute('**/api/v1/sync/batch');
+  });
+
+  await check('TRY AGAIN REPAINTS THE STRIP IT WAS SENT TO FIX', async () => {
+    // The strip's error state says "open Triage to review". Triage's
+    // answer is a Try again button. It calls retryReport(), which
+    // re-queues and flushes — and NOTHING in triage repaints the strip
+    // afterwards.
+    //
+    // So the only thing that can clear the error the button was pressed
+    // to clear is flushOutbox announcing its own outcome. This check is
+    // what makes that mechanism load-bearing rather than speculative:
+    // delete the announce and the strip stays red after a successful
+    // retry, telling the person the report still failed while it sits
+    // in the database.
+    await page.context().setOffline(false);
+
+    // REJECT the item rather than failing the request. A 5xx is
+    // retryable, so the report stays pending and backs off — and the
+    // Try again button only exists for a report the server has actually
+    // refused, which is the state a person needs an action for.
+    let allow = false;
+    await page.route('**/api/v1/sync/batch', async (route) => {
+      const body = route.request().postDataJSON();
+      if (!allow) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            results: body.items.map((i) => ({
+              clientId: i.clientId,
+              status: 'rejected',
+              error: 'Refused once, on purpose, so Try again has something to retry.'
+            }))
+          })
+        });
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          results: body.items.map((i) => ({
+            clientId: i.clientId,
+            status: 'applied',
+            serverUpdatedAt: new Date().toISOString()
+          }))
+        })
+      });
+    });
+
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    const typeValue = await page.locator('select[name=type] option').nth(1).getAttribute('value');
+    await page.selectOption('select[name=type]', typeValue);
+    await page.fill('input[name=title]', 'Retry probe, first send refused');
+    await page.fill('textarea[name=narrative]', 'Filed to prove Try again clears the strip it was sent to fix.');
+    await page.click('#report-form button[type=submit]');
+
+    await navigateTo(page, '/triage');
+    const retry = page.locator('[data-retry]').first();
+    await retry.waitFor({ timeout: 8000 });
+
+    allow = true;
+    await retry.click();
+
+    await page.waitForFunction(
+      () => document.querySelector('#sync-strip')?.dataset.state === 'synced',
+      undefined,
+      { timeout: 8000 }
+    );
+
+    await page.unroute('**/api/v1/sync/batch');
+  });
+
   await check('METHODOLOGY renders both tables from the real modules', async () => {
     // The route was called "design system", which described the screen
     // to the people who built it and to nobody else. What is behind it
