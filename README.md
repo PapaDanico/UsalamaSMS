@@ -69,7 +69,7 @@ npm install
 npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:claims   # 48 assertions that the registries match the docs
-npm test               # 161 unit tests
+npm test               # 165 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 4 checks across TWO versions — the PWA update path

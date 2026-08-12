@@ -79,19 +79,74 @@ describe("the direct connection, which the Connect panel pre-selects", () => {
     expect(notes).toMatch(/IPv4-only/);
   });
 
-  it("flags the direct-connection HOST even when the port says pooler", () => {
-    // The near-miss: someone reads "use port 6543" and edits the port,
-    // leaving db.<ref>.supabase.co in place. That resolves to nothing.
-    // The host is checked on its own precisely so this is caught.
-    const edited = `postgresql://postgres:pw@db.${REF}.supabase.co:6543/postgres`;
-    const notes = normalizeDatabaseUrl(edited).notes.join(" ");
-    expect(notes).toMatch(/direct-connection endpoint/);
+  it("checks the HOST separately from the port, on its own merits", () => {
+    // This assertion used to read "flags the direct-connection HOST even
+    // when the port says pooler", on the belief that db.<ref> on 6543
+    // could only be somebody who had edited the port and left the wrong
+    // host behind. That belief was wrong: db.<ref> on 6543 is the
+    // DEDICATED pooler, a real endpoint the Connect panel offers.
+    //
+    // What survives is the reason the host is checked at all — it has no
+    // IPv4 address, whatever port follows it — and that is asserted here
+    // for 5432 and in the dedicated-pooler section below for 6543. The
+    // test was rewritten rather than loosened, because a test that
+    // asserts a false premise passes for the wrong reason.
+    const notes = normalizeDatabaseUrl(DIRECT).notes.join(" ");
     expect(notes).toMatch(/pooler\.supabase\.com/);
+    expect(notes).toMatch(/postgres\.<project-ref>/);
   });
 
-  it("does not flag the pooler host as a direct-connection host", () => {
+  it("does not flag the shared pooler host as Supabase's own", () => {
     const notes = normalizeDatabaseUrl(POOLER).notes.join(" ");
-    expect(notes).not.toMatch(/direct-connection endpoint/);
+    expect(notes).not.toMatch(/no IPv4 address/);
+  });
+});
+
+/* ============================================================
+   THE THIRD ENDPOINT, which this guard did not know about.
+
+   Found against the real project. Its Connect panel offered a
+   "Dedicated pooler" on db.<ref>.supabase.co:6543 — a host this code
+   called the direct connection and a port it called correct, so it
+   emitted a warning that was plainly wrong to anyone reading it.
+
+   The dedicated pooler is the right POOLING MODE on the wrong HOST:
+   db.<ref>.supabase.co publishes an AAAA record and no A record, so it
+   is exactly as unreachable from Lambda as the direct connection is.
+   Measured rather than assumed:
+
+     A     db.<ref>.supabase.co  ENODATA
+     AAAA  db.<ref>.supabase.co  2a05:d016:...
+
+   Only the shared pooler has an IPv4 address, and the route to it is
+   the "Use IPv4 connection" toggle.
+   ============================================================ */
+const DEDICATED = `postgresql://postgres:pw@db.${REF}.supabase.co:6543/postgres`;
+
+describe("the dedicated pooler, which shares a hostname with the direct connection", () => {
+  it("is NOT reported as the direct connection just because of its host", () => {
+    // The false positive this section exists for.
+    const notes = normalizeDatabaseUrl(DEDICATED).notes.join(" ");
+    expect(notes).toMatch(/DEDICATED pooler/);
+  });
+
+  it("still warns, because the host has no IPv4 address either", () => {
+    // The trap: the port is right, the pooling mode is right, and it
+    // cannot connect. Getting the port correct is what makes someone
+    // stop looking.
+    const notes = normalizeDatabaseUrl(DEDICATED).notes.join(" ");
+    expect(notes).toMatch(/no IPv4/);
+    expect(notes).toMatch(/Use IPv4 connection/);
+  });
+
+  it("does not warn about port 5432 for a string that is on 6543", () => {
+    expect(normalizeDatabaseUrl(DEDICATED).notes.join(" ")).not.toMatch(/DIRECT connection/);
+  });
+
+  it("still appends the pooling parameters, because 6543 is pooled", () => {
+    const r = normalizeDatabaseUrl(DEDICATED);
+    expect(r.url).toMatch(/pgbouncer=true/);
+    expect(r.url).toMatch(/connection_limit=1/);
   });
 });
 

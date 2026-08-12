@@ -23,8 +23,8 @@
    entry is drawn from a list rather than typed.
 
    Typed owners were the previous behaviour and they produce exactly
-   what an auditor complains about: "Ops", "ops", "Ops dept", "D.K." and
-   "Daniel" as five different owners of the same hazard, none of which
+   what an auditor complains about: "Ops", "ops", "Ops dept", "S.K." and
+   "the safety office" as five different owners of the same hazard, none of which
    can be counted and one of which is nobody. The free-text escape stays
    for the operator whose structure genuinely differs — a list that
    cannot describe a real organisation just gets ignored — but it is the

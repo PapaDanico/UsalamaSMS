@@ -89,7 +89,7 @@ const FLEET = [
    ------------------------------------------------------------------ */
 const PEOPLE = [
   { role: "ACCOUNTABLE_EXECUTIVE", name: "Amina Wanjiru", local: "amina", title: "Accountable Executive" },
-  { role: "SAFETY_MANAGER", name: "Daniel Kiptoo", local: "daniel", title: "Safety Manager" },
+  { role: "SAFETY_MANAGER", name: "Samuel Kiprono", local: "samuel", title: "Safety Manager" },
   { role: "SAFETY_OFFICER", name: "Grace Achieng", local: "grace", title: "Safety Officer" },
   { role: "INVESTIGATOR", name: "Peter Mwangi", local: "peter", title: "Investigator" },
   { role: "KEY_MANAGEMENT", name: "Fatuma Hassan", local: "fatuma", title: "Head of Flight Operations" },
@@ -155,7 +155,7 @@ const REPORTS = [
     daysAgo: 2,
     awareDaysAgo: 2,
     isAnonymous: false,
-    reporter: "daniel",
+    reporter: "samuel",
   },
   {
     type: "HAZARD",

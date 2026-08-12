@@ -191,7 +191,28 @@ DEIDENT_SALT   # openssl rand -base64 48
 ```
 
 Set them as **secret** environment variables so they are write-only in
-the Netlify UI afterwards.
+the Netlify UI afterwards — and set them against explicit contexts
+(`production`, `deploy-preview`, `branch-deploy`) rather than `all`,
+which silently refuses secret values because it includes `dev`.
+
+### Delete the service-role key the extension injects
+
+The Netlify Supabase extension injects `SUPABASE_SERVICE_ROLE_KEY`,
+`SUPABASE_ANON_KEY`, `SUPABASE_JWT_SECRET` and `SUPABASE_DATABASE_URL`
+as **non-secret** variables, whose values are returned in full by the
+management API to anything that can read the project.
+
+`SUPABASE_SERVICE_ROLE_KEY` is the one that matters: it **bypasses RLS
+entirely**. On a database whose whole access posture is "RLS on, no
+policies, nothing reachable without the API", a readable service-role
+key is a key to everything, stored in the clear, for a codebase that
+never once references it.
+
+It was deleted on 12 August 2026. Nothing here uses any `SUPABASE_*`
+variable — `core.ts` reads `DATABASE_URL` and checks the scheme
+precisely so it cannot be fooled by the extension's REST base. **If the
+extension re-injects it, disconnect the extension**: it provides
+nothing this architecture uses.
 
 ### The short way: `npm run setup:env`
 
@@ -212,6 +233,23 @@ base instead of a connection string, `[YOUR-PASSWORD]` left in place,
 and an empty paste — warns when given the direct connection, and
 appends `?pgbouncer=true&connection_limit=1` to a pooler URI that
 lacks it.
+
+**A SECOND SILENT-FAILURE MODE, found on 12 August 2026.** Setting a
+variable as **secret** with the context `all` fails and reports
+success. Netlify refuses secret values in the `dev` context, `all`
+includes `dev`, and the write is rejected wholesale — while both the
+CLI and the Netlify MCP tool return a success message.
+
+Proved rather than guessed, because the first read-back was ambiguous
+(nothing appeared, which could equally have meant "secrets are hidden
+from the listing"): a probe variable was written **non-secret with
+context `all`** and appeared; the same key rewritten **secret with
+context `production`** also appeared. Only secret-plus-`all` vanishes.
+
+`setup-env.mjs` has always passed explicit contexts and so was never
+exposed to this. The lesson is the same one the read-back exists for,
+arriving from a second direction: **a success message from an
+environment-variable write is not evidence.**
 
 **Why it reads the project back.** `netlify env:set` exits `0` and
 prints nothing when the CLI session has expired, having written
@@ -237,6 +275,27 @@ names what is missing — deliberately, because a Lambda that crashes on
 a missing variable produces a platform error that says nothing about
 which one.
 
+### The hosted database was behind the code
+
+Found on 12 August 2026 while seeding the demo organisation: the hosted
+project had **only the first three migrations applied**. The
+`reporterRecommendation` column did not exist, so the first report the
+API wrote would have failed on a column the code takes for granted.
+
+The remaining migrations were applied through the Supabase MCP and
+recorded in `_prisma_migrations` by hand, including the two enum
+migrations that had been applied the same way earlier. That matters:
+`apply_migration` records into `supabase_migrations`, not into Prisma's
+own history, so Prisma still believed both were pending and the next
+`prisma migrate deploy` would have tried to rename a type that had
+already been renamed — and failed the deploy.
+
+**The lesson is the one this document already carries about the
+baseline: two migration histories that do not agree will disagree at
+the worst moment.** If you apply schema through anything other than
+`prisma migrate deploy`, record it in `_prisma_migrations` in the same
+change.
+
 ### Direct connection versus the pooler
 
 Supabase → Connect offers both, and it offers the **direct** connection
@@ -245,7 +304,18 @@ and wrong for a serverless one, for two independent reasons. The
 second is the one usually cited; the first is the one that actually
 bites, and it bites immediately.
 
-1. **IPv6.** Supabase direct connections resolve to IPv6 by default —
+1. **IPv6.** Measured on this project rather than assumed:
+
+   ```
+   IPv4 OK    aws-0-eu-north-1.pooler.supabase.com   16.16.102.12
+   IPv4 OK    aws-1-eu-north-1.pooler.supabase.com   51.21.189.77
+   IPv4 FAIL  db.wbixxhpaswstaphfsowz.supabase.co    ENODATA
+   ```
+
+   `ENODATA` means the direct-connection host publishes **no A record at
+   all**. It is not that IPv4 is slower or less preferred; there is
+   nothing for an IPv4-only client to connect to. Supabase direct
+   connections resolve to IPv6 by default —
    the Connect panel says so, in a banner above the connection string.
    Netlify Functions run on Lambda, which egresses IPv4-only. So the
    direct connection does not degrade under load: it never opens at
@@ -269,6 +339,38 @@ port become 6543. Editing `5432` to `6543` in a direct-connection
 string produces something that looks right and resolves to nothing.
 Re-copy from the Transaction pooler tab. `scripts/setup-env.mjs` warns
 on both the port and the host for exactly this reason.
+
+**There are THREE endpoints, not two.** The Connect panel on this
+project offers a *Dedicated pooler*, which the guidance above did not
+account for:
+
+| Endpoint | Host | Port | Reachable from Lambda |
+|---|---|---|---|
+| Direct | `db.<ref>.supabase.co` | 5432 | **No** — AAAA only |
+| **Dedicated pooler** | `db.<ref>.supabase.co` | 6543 | **No** — same AAAA-only host |
+| Shared pooler | `aws-<n>-<region>.pooler.supabase.com` | 6543 | Yes |
+
+The dedicated pooler is the right *pooling mode* on the wrong *host*.
+Measured:
+
+```
+A     db.<ref>.supabase.co  ENODATA
+AAAA  db.<ref>.supabase.co  2a05:d016:…
+```
+
+That is the trap: the port is correct, the pooling mode is correct, and
+it still cannot connect — and getting the port right is exactly what
+makes somebody stop looking. **The route to an IPv4 address is the "Use
+IPv4 connection" toggle** in the Connect panel, which switches to the
+shared pooler and changes both the host and the username. The paid
+"dedicated IPv4 add-on" is the other route and is not necessary.
+
+**And the shard number is per project.** The pooler host is
+`aws-<n>-<region>.pooler.supabase.com`, where `<n>` is not always `0` —
+both `aws-0` and `aws-1` exist in `eu-north-1` and both resolve. Read
+the host from the project's own Connect panel rather than composing it
+from the region; a wrong shard produces a connection that resolves and
+then fails to authenticate.
 
 `DATABASE_URL` takes precedence over `SUPABASE_DATABASE_URL` in both
 `core.ts` and the function, so setting it explicitly overrides whatever

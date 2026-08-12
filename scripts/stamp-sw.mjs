@@ -275,7 +275,7 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    VOCABULARY ON A SCREEN THAT ALREADY EXISTS. It earns a raise for the
    same reason a screen does — it is the product getting better at the
    job — and taxonomy.ts already carries the argument in full: a typed
-   owner becomes "Ops", "ops", "Ops dept" and "D.K.", which is four
+   owner becomes "Ops", "ops", "Ops dept" and "S.K.", which is four
    owners of one hazard, none of which can be counted and one of which
    is nobody.
 
