@@ -71,9 +71,10 @@ the measurement exists and the organisation's monitoring does not. See
 
 ```bash
 npm install
-npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
+npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:claims   # 51 assertions that the registries match the docs
+npm run check:glyphs   # every character on a screen is one the face can draw
 npm test               # 211 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
@@ -85,7 +86,7 @@ npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 51 checks, including filing a report with the network cut and
+— 52 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 
@@ -105,8 +106,10 @@ Bundle: **209 KB entry JS + 46 KB CSS**, which is **67 KB over the wire**
 gzipped, against budgets the build enforces and refuses to raise
 silently. Every route past the first paint is lazily loaded, so the
 entry figure is what a person filing a report at a strip actually pays;
-it has not moved across the last eleven screens. Plus 96 KB of self-hosted Inter — four weights, latin subset,
-precached by the service worker so the second load is offline too.
+it has not moved across the last eleven screens. Plus 63 KB of self-hosted
+DM Sans — one variable file covering 400 to 700, latin subset, precached by
+the service worker so the second load is offline too. A further 31 KB of
+latin-ext is fetched only if a character needs it.
 
 Two runtime dependencies earn their weight: Dexie holds the outbox, and
 zod validates on the device with the *same schema the server uses* — a

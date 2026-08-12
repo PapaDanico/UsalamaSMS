@@ -1,76 +1,78 @@
 /* ============================================================
    Typefaces.
 
-   THIS FILE DECLARED NOTHING FOR THE WHOLE LIFE OF THE PROJECT. It was
-   fourteen lines of comment explaining that the woff2 files were not in
-   the repository and that the stack would "fall through to the system UI
-   sans, which is a legible default rather than a broken one".
+   DM SANS, which is the face the JK & Associates platform is set in and
+   the one its sibling product already ships. Usalama was on Inter — a
+   reasonable stand-in chosen before there was a house face to align
+   with, and wrong once there was: two products under one corporate
+   banner, set in two different sans, read as two vendors.
 
-   That was true and it was the wrong call. --us-font names 'Inter'
-   first, every heading is set in it at tight tracking, and the whole
-   type hierarchy — the -0.028em on headlines, the 0.17em on the
-   descriptor, the tabular figures in the queue — was designed against
-   Inter's metrics and rendered in Roboto or SF. The layout was right and
-   the typography was somebody else's. On a phone it reads as a competent
-   web page rather than as a product, and no amount of spacing work
-   fixes a substituted face.
+   THIS FILE DECLARED NOTHING FOR THE WHOLE LIFE OF THE PROJECT, once.
+   It was fourteen lines of comment explaining that the woff2 files were
+   not in the repository and that the stack would "fall through to the
+   system UI sans, which is a legible default rather than a broken one".
+   That was true and it was the wrong call: --us-font named a family
+   first, the whole type hierarchy was designed against its metrics, and
+   every screenshot taken during design was headless Chromium's default
+   sans — so the substitution was invisible here and obvious on a
+   handset. The lesson is kept because it is the reason this file has a
+   gate behind it now.
 
-   Every screenshot taken during design was headless Chromium's default
-   sans, so the substitution was invisible to me and obvious on a
-   handset.
+   ONE VARIABLE FILE, 400 to 700 CONTINUOUS. Four static weights were
+   four downloads for four fixed stops; the variable latin subset is
+   62 KB against 96 KB and covers every weight in between. The sibling
+   product shipped four @font-face rules pointing at four BYTE-IDENTICAL
+   copies of this same variable file — 148 KB fetched to deliver 37 KB,
+   because nobody checked that four names meant four faces. Naming the
+   axis range once is what stops that.
 
-   Inter remains a STAND-IN for the brand's geometric sans, which is not
-   in this repository — recorded in docs/05-SWITCHES.md. What changed is
-   that the stand-in is now actually loaded. When the licensed family
-   arrives, replace the four sources below and nothing else: no call site
-   names a family directly; every rule reads --us-font.
+   THE WEIGHT RANGE IS DECLARED, NOT ASSUMED. `font-weight: 400 700`
+   tells the browser to instance the wght axis. Declare a single weight
+   on a variable file and every rule that asks for 700 gets a
+   SYNTHESISED bold — smeared, wrong metrics, and it looks close enough
+   in a screenshot to survive review. scripts/check-brand.mjs measures
+   real 400 and 700 widths and fails when they match.
+
+   LATIN AND LATIN-EXT, split by unicode-range. The extended file is
+   fetched only when a character needs it, so it costs nothing on the
+   common path and prevents the alternative: one accented glyph in a
+   name falling back to the system sans mid-word.
 
    SELF-HOSTED AND SAME-ORIGIN, which is the mechanism rather than a
    preference. netlify.toml's CSP sets `font-src 'self'` with no CDN
    exception, so a font served from anywhere else fails to load rather
-   than quietly working — the same discipline the benchmark applies, for the same
-   reason: this product promises a safety narrative reaches the safety
-   office and nobody else, and a font request is a request.
+   than quietly working — this product promises a safety narrative
+   reaches the safety office and nobody else, and a font request is a
+   request.
 
-   FOUR WEIGHTS, latin subset, 24 KB each. Not the variable font, which
-   is 340 KB for the axes this design uses at four fixed stops, and not
-   the full unicode range. --us-weight-normal/medium/semi/bold are the
-   only weights any rule names, so a fifth file would be one nobody asks
-   for.
+   DM Sans remains a STAND-IN for the licensed geometric sans, recorded
+   in docs/05-SWITCHES.md. When that family arrives, replace the two
+   sources below and nothing else: no call site names a family directly;
+   every rule reads --us-font.
    ============================================================ */
 
 @font-face {
-  font-family: 'Inter';
+  font-family: 'DM Sans';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 700;
   /* `swap`, deliberately. `block` hides text for up to three seconds on
      a cold load over a bad link, and this app's first screen is a form
      somebody is trying to fill in beside an aircraft. Text they can read
      in the fallback beats no text in the right face. */
   font-display: swap;
-  src: url('/fonts/inter-400.woff2') format('woff2');
+  src: url('/fonts/dm-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
 }
 
 @font-face {
-  font-family: 'Inter';
+  font-family: 'DM Sans';
   font-style: normal;
-  font-weight: 500;
+  font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/inter-500.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/fonts/inter-600.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/inter-700.woff2') format('woff2');
+  src: url('/fonts/dm-sans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
 }

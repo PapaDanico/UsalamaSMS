@@ -15,12 +15,16 @@
 
 :root {
   /* ---- Type ------------------------------------------------ */
-  /* Inter is the stand-in for the brand's geometric sans, chosen for
-     the usual reasons: open licence, the documented weights, and
-     self-hosted so the CSP can forbid every off-origin
-     request. No call site names a family directly — when the licensed
-     face arrives, replace the @font-face sources and nothing else. */
-  --us-font: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+  /* DM Sans — the face the JK & Associates platform is set in, and the
+     one the sibling product already ships. Usalama was on Inter, chosen
+     before there was a house face to align with; two products under one
+     corporate banner set in two different sans read as two vendors.
+
+     Still a stand-in for the licensed geometric sans, self-hosted so
+     the CSP can forbid every off-origin request. No call site names a
+     family directly — when the licensed face arrives, replace the
+     @font-face sources in fonts.css and nothing else. */
+  --us-font: 'DM Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
   --us-font-display: var(--us-font);
   /* Tabular figures matter here in a way they do not on a marketing

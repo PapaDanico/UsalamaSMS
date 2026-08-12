@@ -248,6 +248,23 @@ try {
   const pageErrors = [];
   page.on('pageerror', (err) => pageErrors.push(err.message));
 
+  /* Every request that leaves our own origin, collected from the first
+     navigation. The product's claim is that a safety narrative reaches
+     the safety office and nobody else; a font, an analytics beacon or a
+     CDN script is a request to somebody else, and the deployed CSP
+     forbids them. This suite runs against a local server with no CSP,
+     so nothing here would stop one — which is exactly why it is
+     counted rather than assumed. */
+  const offOrigin = [];
+  page.on('request', (req) => {
+    try {
+      const host = new URL(req.url()).hostname;
+      if (host !== '127.0.0.1' && host !== 'localhost') offOrigin.push(req.url());
+    } catch {
+      /* data: and blob: URLs have no host and go nowhere. */
+    }
+  });
+
   await page.goto(BASE, { waitUntil: 'networkidle' });
 
   await check('the app renders', async () => {
@@ -257,6 +274,92 @@ try {
 
   await check('no uncaught page errors on load', async () => {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
+  });
+
+  await check('THE HOUSE FACE LOADS, AND ITS WEIGHTS ARE REAL ONES', async () => {
+    /* Two failures this catches, and both look correct in a screenshot.
+
+       ONE: the face does not load at all and the page renders in the
+       system sans. That is not hypothetical here — fonts.css declared
+       NOTHING for the whole early life of the project while --us-font
+       named a family first, so every layout was designed against
+       metrics the browser never had. It was invisible in headless
+       Chromium, whose default sans is close enough, and obvious on a
+       handset.
+
+       TWO — the new one, and the reason this check measures rather than
+       inspects. DM Sans ships as a VARIABLE face covering 400 to 700.
+       Declare a single `font-weight: 400` on it and the browser still
+       serves every rule that asks for bold: it SYNTHESISES one by
+       smearing the regular. It looks approximately right, it survives
+       review, and the metrics the type hierarchy was built on are gone.
+       The sibling product shipped four @font-face rules pointing at four
+       byte-identical copies of this same file for exactly that reason —
+       four names read as four faces to everyone who looked.
+
+       A synthesised bold gives itself away in the widths: with only a
+       400 face, 400 and 500 render identically and 600 and 700 render
+       identically, because synthesis has one setting. A real axis moves
+       at every stop. So the assertion is STRICTLY increasing, which no
+       synthesis can satisfy. */
+    const type = await page.evaluate(async () => {
+      await document.fonts.ready;
+      const loaded = [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family);
+      const el = document.createElement('span');
+      el.style.cssText =
+        'position:absolute;visibility:hidden;white-space:nowrap;font-size:40px;font-family:"DM Sans"';
+      el.textContent = 'Hazard identification 0123';
+      document.body.appendChild(el);
+      const widths = {};
+      for (const w of [400, 500, 600, 700]) {
+        el.style.fontWeight = String(w);
+        widths[w] = el.getBoundingClientRect().width;
+      }
+      el.style.fontFamily = 'no-such-family-xyz';
+      el.style.fontWeight = '400';
+      const fallback = el.getBoundingClientRect().width;
+      el.remove();
+      return { loaded, widths, fallback, body: getComputedStyle(document.body).fontFamily };
+    });
+
+    assert(
+      type.loaded.includes('DM Sans'),
+      'no DM Sans face reported as loaded, so the page is rendering in the system ' +
+        `fallback while claiming ${type.body.split(',')[0]}. Faces loaded: ` +
+        `${type.loaded.length ? [...new Set(type.loaded)].join(', ') : 'none'}`
+    );
+    assert(
+      /^"?DM Sans"?/.test(type.body.trim()),
+      `the body is set in ${type.body.split(',')[0]} rather than the house face`
+    );
+    assert(
+      type.widths[400] !== type.fallback,
+      'text at weight 400 measures exactly the same as the system fallback, so the ' +
+        'face is declared and not actually being used'
+    );
+
+    const stops = [400, 500, 600, 700];
+    for (let i = 1; i < stops.length; i += 1) {
+      const prev = stops[i - 1];
+      const here = stops[i];
+      assert(
+        type.widths[here] > type.widths[prev],
+        `weight ${here} renders ${type.widths[here]}px against ${prev}'s ${type.widths[prev]}px. ` +
+          'Equal or narrower means the variable axis is not being instanced and the ' +
+          'browser is synthesising, which is a smeared regular wearing the metrics of one.'
+      );
+    }
+
+    /* And it came from our own origin. netlify.toml sets font-src 'self'
+       with no CDN exception, so an off-origin font would fail to load
+       rather than quietly working — but the CSP is a header on a
+       deployed site and this suite runs against a local server, where
+       nothing would stop it. A font request is a request, and this
+       product's whole claim is about where requests go. */
+    assert(
+      offOrigin.length === 0,
+      `${offOrigin.length} off-origin request(s) during load: ${offOrigin.join(', ')}`
+    );
   });
 
   await check('THE LANDING PAGE CARRIES THE DEADLINES, AND THEY ARE COMPUTED', async () => {
@@ -1463,7 +1566,7 @@ try {
     );
     assert(/Alert/.test(card), `the spike did not alert: "${card.slice(0, 140)}"`);
     assert(
-      /beyond 3σ/i.test(card),
+      /beyond 3 SD/i.test(card),
       'the alert does not name which criterion was crossed, only that one was'
     );
     const alerting = (await page.locator('#spi-strip .stat__value').nth(2).textContent()) ?? '';

@@ -101,7 +101,7 @@ prints or stores it.
 
 ## Before you say something is done
 
-`npm run check` (typecheck, brand, claims, css, unit) and
+`npm run check` (typecheck, brand, claims, css, glyphs, unit) and
 `npm run verify` (build, smoke against the built bundle, the two-version
 PWA update gate). `npm run test:integration` needs a real Postgres —
 `bash scripts/local-db.sh` starts one.
