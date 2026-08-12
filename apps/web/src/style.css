@@ -2770,3 +2770,43 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   padding-top: var(--us-space-3);
   border-top: 1px solid var(--us-border);
 }
+
+/* ── Suitability: a second question, and it must not look like the
+   first ─────────────────────────────────────────────────────────────
+   The scale above an element asks how far it has been taken. This asks
+   whether that is the right amount for THIS operator, which SM ICG
+   grades against size, nature, complexity and inherent risk. Two
+   questions in one fieldset need a visible seam, or the second reads as
+   a sixth option on the first. */
+.mat-suit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-2);
+  margin-top: var(--us-space-3);
+  padding-top: var(--us-space-3);
+  border-top: 1px dashed var(--us-border);
+}
+.mat-suit__q {
+  flex: 1 1 100%;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+}
+
+/* The findings this produces are not gaps — an element here may be well
+   developed — so the block is tinted away from the work list rather
+   than stacked into it. */
+.mat-gaps--suit {
+  border-left: 3px solid var(--us-gold);
+  background: rgb(var(--us-gold-rgb) / 0.06);
+}
+
+/* ── What signing in unlocked ────────────────────────────────────────
+   A person who has just typed a password is told the password worked;
+   this says what it was for. Read once, so it is a list rather than
+   cards — cards would give six destinations the visual weight of six
+   decisions, when the reader is picking one. */
+.next-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--us-space-3); }
+.next-item { display: flex; flex-direction: column; gap: 2px; }
+.next-item a { font-weight: var(--us-weight-semi); }
+.next-item span { font-size: var(--us-text-sm); color: var(--us-text-secondary); }
