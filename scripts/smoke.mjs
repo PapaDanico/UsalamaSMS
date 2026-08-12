@@ -1521,6 +1521,136 @@ try {
     page.off('request', watchBody);
   });
 
+  await check('THE PLAN TAKES A NAME AND A DATE, AND KEEPS THEM', async () => {
+    /* CASA's implementation-planning tool records the responsible
+       individual and a due date against every element found partially
+       or not present, because those are the two questions asked of a
+       submitted plan. The unit tests cover the derivation; what they
+       cannot see is whether the fields on the built page are wired to
+       it at all — a field that renders, accepts typing and is thrown
+       away on reload is worse than no field, because the operator
+       believes the plan is assigned.
+
+       The owner is A PERSON'S NAME. So this also watches that it does
+       not leave the device, which the block above cannot: its leak
+       filter matches element ids and the word "maturity", neither of
+       which appears in a name somebody types. */
+    const leaked = [];
+    const OWNER = 'Zawadi Kilonzo';
+    const watchName = (r) => {
+      const body = r.postData();
+      if (body && body.includes('Kilonzo')) leaked.push(new URL(r.url()).pathname);
+    };
+    page.on('request', watchName);
+
+    await page.goto(BASE + '/toolkits/maturity', { waitUntil: 'networkidle' });
+    await page.check('input[name="el-1.1"][value="0"]');
+    await page.waitForSelector('.mat-assign__owner', { timeout: 5000 });
+
+    // Before anything is typed, the plan says so — in a count, not a
+    // vague hint, because "some steps" is not a thing to act on.
+    // Collapsed, because the template wraps and the line is prose with
+    // a <strong> in the middle of it.
+    const before = ((await page.locator('#mat-unassigned').textContent()) ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    assert(
+      /1 of 1 step is missing an owner/.test(before),
+      `the unassigned line reads "${before}"`
+    );
+
+    await page.fill('.mat-assign__owner', OWNER);
+    await page.locator('.mat-assign input[type=date]').fill('2026-11-26');
+    // Blur, because the fields commit on change rather than on every
+    // keystroke — repainting mid-type would destroy the box.
+    await page.locator('#mat-unassigned').click();
+
+    await page.waitForFunction(
+      () => /Every step has an owner and a date/.test(
+        document.querySelector('#mat-unassigned')?.textContent ?? ''
+      ),
+      undefined,
+      { timeout: 5000 }
+    );
+
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForSelector('.mat-assign__owner', { timeout: 5000 });
+    assert(
+      (await page.locator('.mat-assign__owner').inputValue()) === OWNER,
+      'the owner did not survive a reload'
+    );
+    assert(
+      (await page.locator('.mat-assign input[type=date]').inputValue()) === '2026-11-26',
+      'the due date did not survive a reload'
+    );
+
+    assert(leaked.length === 0, `the owner's name was sent to ${leaked.join(', ')}`);
+
+    // And Clear takes the names with it. A shared crew-room handset
+    // must not hand the next person a colleague's name against a task.
+    await page.click('#mat-clear');
+    await page.reload({ waitUntil: 'networkidle' });
+    const after = await page.evaluate(() => localStorage.getItem('usalamasms.maturity') ?? '');
+    assert(!after.includes('Kilonzo'), 'Clear answers left an owner behind in the store');
+    page.off('request', watchName);
+  });
+
+  await check('AN ELEMENT CLAIMING A DOCUMENT IS ASKED WHICH ONE', async () => {
+    /* The finding that follows from a rule this codebase has stated
+       from the beginning and never enforced: nothing counts as being
+       in place before it is documented. So an element placed at
+       Documented or above is a claim that a document exists, and the
+       operator who cannot name it is not there.
+
+       Driven rather than unit-tested because the failure mode is the
+       one this repository keeps meeting: a field added to the data and
+       rendered nowhere, or rendered and wired to nothing. Element 4.1
+       is answered at the TOP of the scale on purpose — it produces no
+       plan step, and a finding computed from the steps would exempt
+       exactly the strongest claim on the page. */
+    await page.goto(BASE + '/toolkits/maturity', { waitUntil: 'networkidle' });
+    await page.check('input[name="el-4.1"][value="4"]');
+
+    const line = () =>
+      page
+        .locator('#mat-undocumented')
+        .textContent()
+        .then((t) => (t ?? '').replace(/\s+/g, ' ').trim());
+
+    await page.waitForFunction(
+      () => (document.querySelector('#mat-undocumented')?.textContent ?? '').includes('4.1'),
+      undefined,
+      { timeout: 5000 }
+    );
+    const before = await line();
+    assert(/1 element is/.test(before), `the finding reads "${before}"`);
+
+    await page.fill('input[name="ref-4.1"]', 'Ops Manual s.9.4 rev 12');
+    await page.locator('#mat-undocumented').click();
+    await page.waitForFunction(
+      () => (document.querySelector('#mat-undocumented')?.textContent ?? '').trim() === '',
+      undefined,
+      { timeout: 5000 }
+    );
+
+    await page.reload({ waitUntil: 'networkidle' });
+    assert(
+      (await page.locator('input[name="ref-4.1"]').inputValue()) === 'Ops Manual s.9.4 rev 12',
+      'the document reference did not survive a reload'
+    );
+    assert(
+      (await line()) === '',
+      'the finding came back after a reload, with the reference still in the box'
+    );
+
+    await page.click('#mat-clear');
+    await page.reload({ waitUntil: 'networkidle' });
+    assert(
+      (await page.locator('input[name="ref-4.1"]').inputValue()) === '',
+      'Clear answers left a document reference behind'
+    );
+  });
+
   await check('COVERAGE STATES A POSITION AN OPERATOR WOULD ADOPT ON', async () => {
     // The highest-consequence sentence in the product. An independent
     // review found it describing itself as a safety management system

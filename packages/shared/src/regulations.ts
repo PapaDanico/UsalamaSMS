@@ -102,6 +102,33 @@ export interface ReportingObligation {
    */
   readonly verifiedOn: string;
   /**
+   * When the INSTRUMENT was issued, not when we last read it.
+   *
+   * These are different clocks and only one of them says anything about
+   * whether the figure is current. `verifiedOn` records our diligence
+   * and resets every time somebody looks; the instrument's age does
+   * not reset, and it is the instrument that goes out of date.
+   *
+   * ISO date. Where an instrument states only a month, the first of it
+   * — the precision claimed matches the precision published.
+   */
+  readonly instrumentIssued: string;
+
+  /**
+   * An instrument that GOVERNS this row and has not been read against
+   * it. Present only when one is known to exist.
+   *
+   * Distinct from `instrument`, which is where the figure in this row
+   * actually came from. Moving the citation to a document nobody has
+   * read would attribute a number to it — the exact misattribution the
+   * header of this file exists to complain about, committed by us
+   * rather than by somebody else.
+   *
+   * So both are stated: where the hours came from, and what law now
+   * sits above them unchecked.
+   */
+  readonly governedByUnread?: string;
+  /**
    * The publisher's own revision cycle, in months. Staleness is measured
    * against this rather than a flat threshold — charter rule 5. An
    * advisory circular revised every three years at fourteen months is
@@ -130,6 +157,7 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
       "Management), which requires the State to operate mandatory and voluntary " +
       "safety reporting systems and leaves the reporting period to the State",
     verifiedOn: "2026-08-12",
+    instrumentIssued: "2016-07-01",
     reviewCycleMonths: 36,
     note:
       "NO FIXED PERIOD, and that is the finding rather than a gap in this row. " +
@@ -146,11 +174,21 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
     clockStart: "AWARENESS",
     instrument: "KCAA Advisory Circular CAA-AC-SMS004A (January 2023), Mandatory Occurrence Reporting",
     verifiedOn: "2026-08-11",
+    instrumentIssued: "2023-01-01",
     reviewCycleMonths: 36,
+    governedByUnread:
+      "Civil Aviation (Safety Management) Regulations, L.N. 32/2026, gazetted 3 March 2026",
     note:
       "24 hours for the pertinent information. Distinct from the 72-hour " +
       "window for undeclared or misdeclared dangerous goods, which runs " +
-      "from discovery and is a separate obligation — do not merge them.",
+      "from discovery and is a separate obligation — do not merge them. " +
+      "THE FIGURE COMES FROM AN ADVISORY CIRCULAR AND THERE IS NOW A " +
+      "REGULATION: KCAA gazetted the Civil Aviation (Safety Management) " +
+      "Regulations as L.N. 32/2026 on 3 March 2026 — law, where an AC is " +
+      "guidance. It has not been read against this row, so the 24 hours " +
+      "stays attributed to where it actually came from rather than being " +
+      "moved onto a document nobody here has opened. Working figure; " +
+      "confirm against L.N. 32/2026 before relying on it for a filing.",
   },
 };
 
@@ -415,7 +453,25 @@ const DEFAULT_DUE_SOON_HOURS = 6;
  * Charter rule 5.
  */
 export function isStale(obligation: ReportingObligation, now: Date): boolean {
-  const verified = new Date(`${obligation.verifiedOn}T00:00:00Z`);
-  const months = (now.getTime() - verified.getTime()) / (30.44 * 24 * 3_600_000);
+  /* MEASURED FROM THE INSTRUMENT, NOT FROM OUR LAST LOOK, and the
+     difference is the whole point.
+
+     This used to measure months since `verifiedOn`. That is a clock
+     which RESETS every time somebody re-reads the row — so a figure
+     taken from a January 2023 advisory circular, re-verified yesterday,
+     reported as fresh until 2029. It measured our diligence and called
+     the answer currency.
+
+     Found while checking the Kenyan row against KCARs 2025: the
+     authority published twenty-nine revised regulations that year, and
+     this row cites a 2023 AC. Whether that AC survived them is exactly
+     the question `isStale` is supposed to raise, and it could not,
+     because re-reading the old document counted as being up to date.
+
+     Both clocks are kept — `verifiedOn` still records when a human last
+     looked, which is worth showing — but the one that decides staleness
+     is the age of the thing being cited. */
+  const issued = new Date(`${obligation.instrumentIssued}T00:00:00Z`);
+  const months = (now.getTime() - issued.getTime()) / (30.44 * 24 * 3_600_000);
   return months > obligation.reviewCycleMonths;
 }

@@ -296,6 +296,30 @@ export const FAQ = {
               your operation stands on them.</p>`
         },
         {
+          q: 'We already run a workplace safety system. Is that our SMS?',
+          a: `<p>No, and this is the most common way an operator arrives at an
+              audit believing it is compliant. An occupational health and safety
+              system (OHSMS, or OSHE) exists to keep the people at work from
+              being harmed at work. An aviation SMS exists to keep the aircraft
+              operation safe. The two overlap, and neither substitutes for the
+              other.</p>
+              <p>The clearest way to see the difference is a hazard that is
+              both. A slippery apron is a workplace hazard to the person who
+              falls on it; it is also an aviation hazard, because a dropped tool
+              or a mishandled tow can damage an aircraft that then flies. The
+              two consequences are assessed differently, carry different
+              severities and are closed out by different people &mdash; so a
+              register that records only the first has not recorded the
+              occurrence, it has recorded half of it.</p>
+              <p>What does carry over is the machinery: hazard identification,
+              risk assessment, corrective action and review are the same
+              disciplines. An operator with a working OHS programme is not
+              starting from nothing &mdash; it is extending something it already
+              runs to a second set of consequences. The
+              <a href="/toolkits/maturity">maturity assessment</a> is the
+              honest place to find out how much of that extension is done.</p>`
+        },
+        {
           q: 'Who is it for?',
           a: `<p>Operators of roughly three to fifteen aircraft with a
               part-time safety manager — the segment the established products

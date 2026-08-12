@@ -278,10 +278,80 @@ describe("regulatory reporting deadlines", () => {
   });
 
   it("measures staleness against the publisher's own cycle", () => {
-    // Charter rule 5. A 36-month circular at 13 months is current.
+    // Charter rule 5. A 36-month circular is current inside 36 months
+    // OF ITS ISSUE — the Kenyan AC is dated January 2023.
     const ke = MOR_OBLIGATIONS.KE;
-    expect(isStale(ke, new Date("2027-09-11T00:00:00Z"))).toBe(false);
-    expect(isStale(ke, new Date("2030-01-01T00:00:00Z"))).toBe(true);
+    expect(isStale(ke, new Date("2024-06-01T00:00:00Z"))).toBe(false);
+    expect(isStale(ke, new Date("2026-08-12T00:00:00Z"))).toBe(true);
+  });
+
+  it("DOES NOT LET RE-READING AN OLD DOCUMENT MAKE IT CURRENT", () => {
+    /* The clock this used to run on was `verifiedOn`, which resets
+       every time somebody looks at the row. A figure taken from a
+       January 2023 advisory circular and re-verified yesterday reported
+       as fresh until 2029 — it measured our diligence and called the
+       answer currency.
+
+       Found while checking the Kenyan row against KCARs 2025: the
+       authority published twenty-nine revised regulations that year and
+       this row cites a 2023 AC. Whether it survived them is precisely
+       what isStale() exists to raise, and it could not.
+
+       So: a row verified TODAY against an instrument older than the
+       cycle is still stale. */
+    const justRead = { ...MOR_OBLIGATIONS.KE, verifiedOn: "2026-08-12" };
+    expect(
+      isStale(justRead, new Date("2026-08-12T00:00:00Z")),
+      "re-reading a three-year-old circular reset its staleness",
+    ).toBe(true);
+
+    // And the converse: a recently ISSUED instrument is current even if
+    // nobody has looked at it for a while.
+    const freshInstrument = {
+      ...MOR_OBLIGATIONS.KE,
+      instrumentIssued: "2026-06-01",
+      verifiedOn: "2026-06-01",
+    };
+    expect(isStale(freshInstrument, new Date("2026-08-12T00:00:00Z"))).toBe(false);
+  });
+
+  it("KEEPS THE FIGURE ATTRIBUTED TO WHERE IT CAME FROM, AND NAMES THE LAW ABOVE IT", () => {
+    /* The Kenyan 24 hours comes from Advisory Circular CAA-AC-SMS004A,
+       January 2023. KCAA has since gazetted the Civil Aviation (Safety
+       Management) Regulations as L.N. 32/2026 — law, where an AC is
+       guidance — and nobody here has read it.
+
+       The tempting move is to update `instrument` to the regulation.
+       That would attribute 24 hours to a document nobody has opened,
+       which is precisely the misattribution this module's own header
+       complains about: three rows once carried the EU's 72 hours as an
+       "ICAO-common" figure. Doing it ourselves would be worse.
+
+       So the two facts stay separate, and both must survive. */
+    const ke = MOR_OBLIGATIONS.KE;
+    expect(ke.instrument, "the figure was reattributed to an unread instrument").toMatch(
+      /CAA-AC-SMS004A/,
+    );
+    expect(ke.governedByUnread, "the governing regulation is not named").toMatch(/L\.N\. 32\/2026/);
+    expect(ke.note, "the note does not warn that the figure predates the regulation").toMatch(
+      /L\.N\. 32\/2026/,
+    );
+  });
+
+  it("does not claim a governing instrument where none is known", () => {
+    // The field is optional on purpose. Asserting one for ICAO would
+    // invent a Kenyan-style gazette record for a SARP.
+    expect(MOR_OBLIGATIONS.ICAO.governedByUnread).toBeUndefined();
+  });
+
+  it("gives every obligation an instrument date, or staleness is unmeasurable", () => {
+    for (const [id, o] of Object.entries(MOR_OBLIGATIONS)) {
+      expect(o.instrumentIssued, `${id} has no instrument date`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(
+        new Date(`${o.instrumentIssued}T00:00:00Z`).getTime(),
+        `${id} has an unparseable instrument date`,
+      ).not.toBeNaN();
+    }
   });
 });
 

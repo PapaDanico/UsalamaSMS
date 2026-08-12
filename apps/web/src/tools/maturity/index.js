@@ -30,11 +30,17 @@ import {
   scoreAssessment,
   levelFor
 } from '../../../../../packages/shared/src/maturity.ts';
+import { implementationPlan } from '../../../../../packages/shared/src/plan.ts';
 
 const STORE = 'usalamasms.maturity';
 
 const SUIT_VALUES = ['SUITABLE', 'NOT_SUITABLE'];
 const SCALE_IDS = OPERATOR_SCALES.map((s) => s.id);
+
+/* CASA's action-plan columns that the operator fills in, rather than
+   the assessment deriving: responsible person(s), target completion
+   date, resources required. */
+const ASSIGN_FIELDS = ['owner', 'due', 'resources'];
 
 /**
  * Read the assessment.
@@ -63,9 +69,37 @@ function load() {
       Object.entries(parsed._suitability ?? {}).filter(([, v]) => SUIT_VALUES.includes(v))
     );
     const scale = SCALE_IDS.includes(parsed._scale) ? parsed._scale : undefined;
-    return { answers, suitability, scale };
+    /* Owners and dates, validated as hard as the levels are. A name is
+       capped rather than trusted — the store is hand-editable and this
+       string is rendered — and a date must be an actual ISO day, not
+       whatever the box was left holding. */
+    const assignments = Object.fromEntries(
+      Object.entries(parsed._assignments ?? {})
+        .filter(([, v]) => v && typeof v === 'object')
+        .map(([k, v]) => [
+          k,
+          {
+            ...(typeof v.owner === 'string' && v.owner.trim()
+              ? { owner: v.owner.trim().slice(0, 120) }
+              : {}),
+            ...(typeof v.due === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.due)
+              ? { due: v.due }
+              : {}),
+            ...(typeof v.resources === 'string' && v.resources.trim()
+              ? { resources: v.resources.trim().slice(0, 200) }
+              : {})
+          }
+        ])
+        .filter(([, v]) => v.owner || v.due || v.resources)
+    );
+    const references = Object.fromEntries(
+      Object.entries(parsed._references ?? {})
+        .filter(([, v]) => typeof v === 'string' && v.trim())
+        .map(([k, v]) => [k, v.trim().slice(0, 200)])
+    );
+    return { answers, suitability, scale, assignments, references };
   } catch {
-    return { answers: {}, suitability: {}, scale: undefined };
+    return { answers: {}, suitability: {}, scale: undefined, assignments: {}, references: {} };
   }
 }
 
@@ -73,7 +107,13 @@ function save(state) {
   try {
     localStorage.setItem(
       STORE,
-      JSON.stringify({ ...state.answers, _suitability: state.suitability, _scale: state.scale })
+      JSON.stringify({
+        ...state.answers,
+        _suitability: state.suitability,
+        _scale: state.scale,
+        _assignments: state.assignments,
+        _references: state.references
+      })
     );
   } catch {
     /* Private mode, or a full quota. The assessment still works for
@@ -82,7 +122,7 @@ function save(state) {
   }
 }
 
-function Element(element, answers, suitability) {
+function Element(element, answers, suitability, references) {
   const current = answers[element.id];
   const suit = suitability[element.id];
   return html`
@@ -114,6 +154,27 @@ function Element(element, answers, suitability) {
         <strong>Evidence for the top of the scale:</strong> ${element.evidence}
       </p>
 
+      <!-- WHERE IS IT WRITTEN DOWN? CASA's gap analysis carries this
+           column against every indicator, and it is the question that
+           turns a radio button into a finding: an assessor's next words
+           after "is it present?" are "show me". Asked of every element,
+           including the ones at the top of the scale, because those are
+           making the strongest documentation claim on the page and are
+           the ones nobody thinks to check. -->
+      <p class="mat-ref">
+        <label>
+          <span class="mat-ref__q">Where is this written down?</span>
+          <input
+            type="text"
+            name="ref-${element.id}"
+            maxlength="200"
+            autocomplete="off"
+            placeholder="Manual, section, revision — or leave blank if nowhere"
+            value="${references[element.id] ?? ''}"
+          />
+        </label>
+      </p>
+
       <!-- A SECOND, DIFFERENT QUESTION. The scale above asks how far
            this element has been taken; this asks whether that is the
            right amount for THIS operator. SM ICG grades suitability
@@ -140,7 +201,44 @@ function Element(element, answers, suitability) {
   `;
 }
 
-function Result(result, scale) {
+/**
+ * How much of the plan has a name and a date against it.
+ *
+ * Its own function because it is refreshed on its own: typing an owner
+ * repaints this one line rather than the panel, since rebuilding the
+ * panel would destroy the input the person is tabbing out of.
+ */
+function unassignedLine(plan) {
+  const total = plan.phases.reduce((n, p) => n + p.steps.length, 0);
+  const open = plan.unassigned.length;
+  if (total === 0) return '';
+  if (open === 0) {
+    return html`Every step has an owner and a date. That is what makes this a plan rather
+      than a list of findings.`;
+  }
+  return html`<strong>${open} of ${total}</strong> ${open === 1 ? 'step is' : 'steps are'}
+    missing an owner, a date, or both. A regulator reading a submitted plan asks who and
+    by when before it asks anything else.`;
+}
+
+/**
+ * The elements claiming a document that name none.
+ *
+ * Its own function for the same reason as the line above: typing a
+ * reference refreshes this one line rather than rebuilding the panel.
+ */
+function undocumentedLine(plan) {
+  const open = plan.undocumented;
+  if (open.length === 0) return '';
+  return html`<strong>${open.length}</strong>
+    ${open.length === 1 ? 'element is' : 'elements are'} placed at
+    <em>${MATURITY_LEVELS[1].label.toLowerCase()}</em> or above while naming no document:
+    ${open.map((e) => e.id).join(', ')}. Nothing counts as being in place before it is
+    written down, so each of these is a claim an assessor will ask to see. Name the manual
+    and section against the element and this goes away.`;
+}
+
+function Result(result, scale, plan) {
   if (result.answered === 0) {
     return html`<p class="mat-empty">
       Answer an element and the position appears here. Nothing is sent anywhere,
@@ -256,11 +354,109 @@ function Result(result, scale) {
           No element is at Absent or Documented. That is a real position; the next
           question is which component the evidence is thinnest in.
         </p>`}
+
+    <!-- Rendered whether or not there is a plan. An operator at the top
+         of the scale on every element has no steps and the strongest
+         documentation claim on the page. -->
+    <p class="mat-phase__assign" id="mat-undocumented">${undocumentedLine(plan)}</p>
+
+    ${plan.phases.length
+      ? html`<div class="mat-plan">
+          <h3>Your implementation plan</h3>
+          <p class="mat-gaps__lede">
+            The artefact a regulator asks a new operator to submit, built from the
+            answers above rather than from a template you fill in again. The phases
+            are this scale's own rungs: everything on one rung, moved to the next.
+            Nothing counts as being in place before it is written down, so that is
+            phase one — that rule is SM ICG's, not ours.
+            ${plan.scale
+              ? html`Scoped to an operation you described as
+                  <strong>${(OPERATOR_SCALES.find((s) => s.id === plan.scale) || {}).label}</strong>.`
+              : ''}
+          </p>
+          ${plan.phases.map(
+            (phase) => html`<section class="mat-phase">
+              <h4>
+                <span class="mat-element__id">Phase ${phase.order}</span>
+                ${phase.title}
+              </h4>
+              <p class="mat-phase__purpose">${phase.purpose}</p>
+              <ol>
+                ${phase.steps.map(
+                  (step) => html`<li>
+                    <strong>${step.element.id} ${step.element.name}</strong> —
+                    ${step.from.label.toLowerCase()} to ${step.to.label.toLowerCase()}.
+                    <span class="mat-gaps__evidence">${step.action}</span>
+                    <span class="mat-phase__done"><strong>Done when:</strong> ${step.evidence}</span>
+                    <!-- WHO, AND BY WHEN. The two questions a regulator
+                         asks of a submitted implementation plan, and the
+                         two this tool used to leave the operator to
+                         answer somewhere else. Typed here, printed with
+                         the plan. -->
+                    <span class="mat-assign">
+                      <label>
+                        <span class="mat-assign__label">Owner</span>
+                        <input
+                          type="text"
+                          class="mat-assign__owner"
+                          data-field="owner"
+                          data-element="${step.element.id}"
+                          maxlength="120"
+                          autocomplete="off"
+                          placeholder="Nobody yet"
+                          value="${step.owner ?? ''}"
+                        />
+                      </label>
+                      <label>
+                        <span class="mat-assign__label">Due</span>
+                        <input
+                          type="date"
+                          data-field="due"
+                          data-element="${step.element.id}"
+                          value="${step.due ?? ''}"
+                        />
+                      </label>
+                      <label class="mat-assign__wide">
+                        <span class="mat-assign__label">Needs</span>
+                        <input
+                          type="text"
+                          class="mat-assign__resources"
+                          data-field="resources"
+                          data-element="${step.element.id}"
+                          maxlength="200"
+                          autocomplete="off"
+                          placeholder="Time, people, money — or nothing new"
+                          value="${step.resources ?? ''}"
+                        />
+                      </label>
+                    </span>
+                  </li>`
+                )}
+              </ol>
+            </section>`
+          )}
+          <p class="mat-phase__assign" id="mat-unassigned">${unassignedLine(plan)}</p>
+          ${plan.settled.length
+            ? html`<p class="mat-phase__settled">
+                Already at the top of the scale, and carried here so the plan shows the
+                whole picture rather than only the debt:
+                ${plan.settled.map((e) => `${e.id} ${e.name}`).join(', ')}.
+              </p>`
+            : ''}
+          ${plan.complete
+            ? ''
+            : html`<p class="mat-phase__partial">
+                This plan covers the elements you have answered. Answer the rest and it
+                will cover those too — it says nothing about an element it was never
+                told about, rather than guessing.
+              </p>`}
+        </div>`
+      : ''}
   `;
 }
 
 export function render(outlet) {
-  let { answers, suitability, scale } = load();
+  let { answers, suitability, scale, assignments, references } = load();
 
   outlet.innerHTML = html`
     <section class="band-dark">
@@ -375,7 +571,7 @@ export function render(outlet) {
           (component) => html`<section class="doc-section" id="component-${component.id}">
             <h2>${component.id}. ${component.name}</h2>
             <p class="lede lede--tight">${component.purpose}</p>
-            ${component.elements.map((element) => Element(element, answers, suitability))}
+            ${component.elements.map((element) => Element(element, answers, suitability, references))}
           </section>`
         )}
       </form>
@@ -385,8 +581,20 @@ export function render(outlet) {
   const form = outlet.querySelector('#mat-form');
   const body = outlet.querySelector('#mat-result-body');
 
+  const currentPlan = () =>
+    implementationPlan(answers, {
+      suitability,
+      assignments,
+      references,
+      ...(scale ? { scale } : {})
+    });
+
   const repaint = () => {
-    body.innerHTML = Result(scoreAssessment(answers, 1, suitability), scale).toString();
+    body.innerHTML = Result(
+      scoreAssessment(answers, 1, suitability),
+      scale,
+      currentPlan()
+    ).toString();
   };
 
   form.addEventListener('change', (event) => {
@@ -402,8 +610,52 @@ export function render(outlet) {
     } else {
       return;
     }
-    save({ answers, suitability, scale });
+    save({ answers, suitability, scale, assignments, references });
     repaint();
+  });
+
+  /* The document reference is a TEXT field inside the form, so it is
+     handled here rather than with the radios: those repaint the result
+     panel on every change, and doing that on a text field's blur would
+     be a rebuild the person did not ask for. Only the finding that
+     depends on it is refreshed. */
+  form.addEventListener('change', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || !input.name.startsWith('ref-')) return;
+    const id = input.name.slice(4);
+    const value = input.value.trim();
+    references = { ...references, [id]: value };
+    if (!value) delete references[id];
+    save({ answers, suitability, scale, assignments, references });
+    const line = body.querySelector('#mat-undocumented');
+    if (line) line.innerHTML = undocumentedLine(currentPlan()).toString();
+  });
+
+  /* Owners and dates live in the result panel, which the radios above
+     rebuild wholesale. So they are handled separately and DELIBERATELY
+     do not repaint it: a full rebuild here would destroy the input the
+     person is tabbing out of, mid-tab. Only the one line that changed
+     is refreshed. */
+  body.addEventListener('change', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const id = input.dataset.element;
+    if (!id) return;
+    /* A data attribute, not a class. Two of these three fields are
+       type=text, so the type cannot tell them apart; and a class used
+       only to find an element in JS is a class the CSS gate then has to
+       be told to ignore. */
+    const field = input.dataset.field;
+    if (!ASSIGN_FIELDS.includes(field)) return;
+
+    const next = { ...(assignments[id] ?? {}), [field]: input.value.trim() };
+    for (const k of ASSIGN_FIELDS) if (!next[k]) delete next[k];
+    assignments = { ...assignments, [id]: next };
+    if (ASSIGN_FIELDS.every((k) => !next[k])) delete assignments[id];
+
+    save({ answers, suitability, scale, assignments, references });
+    const line = body.querySelector('#mat-unassigned');
+    if (line) line.innerHTML = unassignedLine(currentPlan()).toString();
   });
 
   outlet.querySelector('#mat-print').addEventListener('click', () => window.print());
@@ -412,8 +664,11 @@ export function render(outlet) {
     answers = {};
     suitability = {};
     scale = undefined;
-    save({ answers, suitability, scale });
+    assignments = {};
+    references = {};
+    save({ answers, suitability, scale, assignments, references });
     for (const input of form.querySelectorAll('input[type=radio]')) input.checked = false;
+    for (const input of form.querySelectorAll('input[type=text]')) input.value = '';
     repaint();
   });
 

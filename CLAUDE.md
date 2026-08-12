@@ -34,12 +34,21 @@ owner with no policies locks the application out of its own database.
 
 **Supabase's own security advisor also says otherwise**, and will keep
 saying it. `mcp__Supabase__get_advisors` reports
-`rls_enabled_no_policy` at level INFO against all ten tables, with a
-remediation link to a page about writing policies. Checked on 12 August
-2026: those ten notices are the *entire* security finding list — there
-are no errors and no warnings. Ten INFO notices describing the intended
-state is a clean bill of health for this architecture, not a to-do
-list.
+`rls_enabled_no_policy` at level INFO against **every** table, with a
+remediation link to a page about writing policies. Re-checked on 12
+August 2026 after the nine Annex 19 tables landed: **nineteen** notices,
+all of them that one, and they are the *entire* security finding list —
+no errors and no warnings. Nineteen INFO notices describing the
+intended state is a clean bill of health for this architecture, not a
+to-do list.
+
+The number is written here as a count and will go stale again. What
+does not go stale is the shape: EVERY table carries this notice and
+NOTHING carries anything else. If a table ever appears without it, RLS
+was not enabled on it — that is the real finding, and it is the one
+`tests/integration/rls.integration.test.ts` asserts over `pg_tables`
+rather than over a list, precisely because the ten-table version of
+that list is how eight tables once arrived outside the posture.
 
 If this ever changes — if something genuinely starts using the Data
 API — that is a deliberate architectural decision, and it needs the

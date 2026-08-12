@@ -573,6 +573,42 @@ assert(
     'the deploy would fail to boot, or worse, resolve a hoisted transitive copy'
 );
 
+/* ============================================================
+   NO SITE-WIDE CURRENCY CLAIM IN THE CHROME.
+
+   The footer once ended "regulatory figures verified 11 August 2026" —
+   a hardcoded date in static HTML, on every page of the product. It
+   rotted the day after it was written, no gate noticed, and by the time
+   anybody looked it was contradicting the very table it summarised:
+   both obligations past their own review cycle, and the Kenyan one
+   governed by a regulation nobody had read.
+
+   A currency statement belongs beside the figure it qualifies. The
+   chrome may say what the product is BUILT TO — that is a design
+   statement and does not expire — and must not say when anything was
+   last checked, because the chrome cannot know.
+   ============================================================ */
+{
+  const shell = read('apps/web/src/index.html');
+  /* Comments stripped first. This gate's own explanation of what it
+     forbids quotes the forbidden line, and a comment is not a claim
+     made to a reader — testing the raw source made the gate fail on
+     the note describing why it exists. */
+  const footer = shell
+    .slice(shell.indexOf('<footer'))
+    .replace(/<!--[\s\S]*?-->/g, '');
+  assert(
+    'the footer states no site-wide verification date',
+    !/verified\s*(<time|[0-9])/i.test(footer),
+    'the chrome claims a currency it cannot know — put it beside the figure instead',
+  );
+  assert(
+    'the footer sends the reader to where currency IS stated',
+    /methodology/.test(footer),
+    'no route from the standard-conformance line to the per-instrument basis',
+  );
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);
