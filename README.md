@@ -85,7 +85,7 @@ the measurement exists and the organisation's monitoring does not. See
 npm install
 npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 53 assertions that the registries match the docs
+npm run check:claims   # 55 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm test               # 250 unit tests
 npm run typecheck      # tsc --noEmit, strict

@@ -2860,3 +2860,54 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     display: none;
   }
 }
+
+/* An instrument superseded, or outranked, by one nobody has read yet.
+   Set below the citation rather than beside it: this is a caveat on the
+   number in the same row, and a reader who takes the window without it
+   has taken the wrong thing. */
+.cite__governs {
+  display: block;
+  margin-top: var(--us-space-2);
+  padding-left: var(--us-space-3);
+  border-left: 2px solid var(--us-gold);
+  font-size: var(--us-text-xs);
+  color: var(--us-text-secondary);
+  max-width: 52ch;
+}
+
+/* ── The instrument cell is prose, not a chip ────────────────────────
+   `.cite` is a pill: inline-flex, nowrap, rounded. That is right for a
+   short citation chip inline in a sentence, and wrong for a table cell
+   holding a full instrument title — nowrap forces the table to the
+   width of its longest unbroken line, so the obligations table scrolled
+   sideways and the reader had to drag to reach the end of a citation.
+
+   Adding the governing-instrument caveat made an existing problem
+   visible rather than causing it: the ICAO row's instrument string has
+   always been a sentence. Found by screenshotting the page after the
+   caveat landed, not by reading the stylesheet. */
+.oblig-table td.cite {
+  display: table-cell;
+  white-space: normal;
+  border-radius: 0;
+  background: none;
+  border: 0;
+  font-size: var(--us-text-xs);
+  font-weight: var(--us-weight-regular);
+  letter-spacing: 0;
+  color: var(--us-text-secondary);
+  padding: var(--us-space-3);
+  max-width: 34rem;
+}
+
+/* An instrument older than its own publisher's revision cycle.
+   Deliberately distinct from .tag--provisional: that one means nobody
+   has read the primary instrument, this one means the instrument was
+   read and has since aged out. Gold rather than the provisional red —
+   a figure past review is a prompt to check, not a figure we never
+   stood behind. */
+.tag--stale {
+  border-color: var(--us-gold);
+  color: var(--us-gold-text);
+  background: rgb(var(--us-gold-rgb) / 0.10);
+}

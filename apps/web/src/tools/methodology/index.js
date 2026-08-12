@@ -32,6 +32,7 @@ import {
   MOR_OBLIGATIONS,
   JURISDICTIONS,
   isProvisional,
+  isStale,
   reportingDeadline
 } from '../../../../../packages/shared/src/regulations.ts';
 
@@ -117,7 +118,30 @@ function Obligations() {
             </td>
             <td class="cite" data-label="Instrument">
               ${o.instrument}
+              <!-- "verified <date>" ON ITS OWN WAS THE PROBLEM. It is the
+                   date somebody last looked, and printed alone it reads
+                   as reassurance — while the row can be citing an
+                   instrument years past its own review cycle, with a
+                   newer one gazetted above it. The reader was being
+                   shown our diligence and not the document's age. -->
               <span class="verified">verified ${o.verifiedOn}</span>
+              <!-- ITS OWN CLASS, not tag--provisional. The two say
+                   different things: provisional means we have not read
+                   the primary instrument, stale means the instrument
+                   has outlived its own revision cycle. Reusing the
+                   class also broke the smoke check that counts
+                   provisional rows — correctly, because on that count a
+                   stale row WAS being reported as provisional. -->
+              ${isStale(o, new Date())
+                ? html`<span class="tag tag--stale">past its review cycle</span>`
+                : ''}
+              ${o.governedByUnread
+                ? html`<span class="cite__governs">
+                    Now governed by ${o.governedByUnread}, which has not been read against this
+                    row. Treat the window above as a working figure and confirm it there before
+                    relying on it for a filing.
+                  </span>`
+                : ''}
             </td>
           </tr>
         `;
