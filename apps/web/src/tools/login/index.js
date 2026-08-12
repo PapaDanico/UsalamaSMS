@@ -18,7 +18,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
-import { signIn, signOut, isSignedIn, getSession } from '../../shared/session.js';
+import { signIn, signOut, isSignedIn, getSession, authFetch } from '../../shared/session.js';
 import { flushOutbox } from '../../shared/offline.ts';
 
 const REASONS = {
@@ -105,6 +105,16 @@ function renderSignedIn(outlet) {
         on this device stay here until someone signs in and they send.
       </p>
     </section>
+
+    <!-- Shown only to a role that actually holds user.manage. The
+         server checks too — this is so the screen does not offer an
+         action that will be refused, not so the rule lives here. -->
+    <!-- Filled by a lazily-imported module, and only for a role that
+         holds user.manage. It lived here first and cost 2.5 KB of the
+         ENTRY bundle — charged to every ramp agent filing a report, to
+         carry a panel one person opens twice a year. The budget caught
+         it. -->
+    <div id="admin-reset-slot"></div>
   `.toString();
 
   outlet.querySelector('#sign-out').addEventListener('click', async () => {
@@ -112,6 +122,10 @@ function renderSignedIn(outlet) {
     window.dispatchEvent(new CustomEvent('usalamasms:session-changed'));
     render(outlet);
   });
+
+  if (session.role === 'SYSTEM_ADMIN') {
+    import('./admin-reset.js').then((m) => m.mount(outlet.querySelector('#admin-reset-slot')));
+  }
 }
 
 function renderForm(outlet) {

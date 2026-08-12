@@ -254,4 +254,133 @@ describe.skipIf(!hasDatabase)("auth routes against Postgres", () => {
     });
     expect(res.statusCode).toBe(401);
   });
+
+  /* ================================================================
+     ADMINISTRATIVE PASSWORD RESET.
+
+     The route exists because login/refresh/logout/me was the whole of
+     authentication and a person who forgot a password had no way back
+     in. What is tested here is not that it changes a hash — that part
+     is hard to get wrong — but the three properties that make it a
+     reset rather than a password change.
+     ================================================================ */
+  const asAdmin = async () => {
+    await prisma().user.create({
+      data: {
+        orgId,
+        email: "admin@example.test",
+        passwordHash: await argon2.hash(PASSWORD, { type: argon2.argon2id }),
+        name: "System Admin",
+        role: "SYSTEM_ADMIN",
+      },
+    });
+    const res = await login("admin@example.test", PASSWORD, `10.9.0.${testIndex}`);
+    return res.json().accessToken as string;
+  };
+
+  const targetId = async () =>
+    (await prisma().user.findFirstOrThrow({ where: { email: "safety@example.test" } })).id;
+
+  const resetAs = (token: string, userId: string) =>
+    app.inject({
+      method: "POST",
+      url: "/api/v1/auth/admin/reset-password",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { userId },
+    });
+
+  it("RESETS a password, and the new one actually works", async () => {
+    const token = await asAdmin();
+    const res = await resetAs(token, await targetId());
+    expect(res.statusCode).toBe(200);
+
+    const { password } = res.json();
+    expect(typeof password).toBe("string");
+    expect(password.length).toBeGreaterThanOrEqual(12);
+
+    // The old one is finished and the new one is live. Both halves,
+    // because only checking the new one would pass on an implementation
+    // that added a second valid password.
+    expect((await login("safety@example.test", PASSWORD, "10.8.0.1")).statusCode).toBe(401);
+    expect((await login("safety@example.test", password, "10.8.0.2")).statusCode).toBe(200);
+  });
+
+  it("REVOKES every existing session, not just the current one", async () => {
+    // The property that makes this a reset. Changing the hash while
+    // leaving refresh tokens alive means whoever holds one keeps their
+    // access — the reset feels like a remedy and is not one.
+    const victim = await login("safety@example.test", PASSWORD, "10.7.0.1");
+    const stolen = victim.json().refreshToken as string;
+
+    // It works before the reset, so the assertion after it means
+    // something.
+    const before = await app.inject({
+      method: "POST", url: "/api/v1/auth/refresh", payload: { refreshToken: stolen },
+    });
+    expect(before.statusCode).toBe(200);
+
+    const token = await asAdmin();
+    expect((await resetAs(token, await targetId())).statusCode).toBe(200);
+
+    const after = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/refresh",
+      payload: { refreshToken: before.json().refreshToken },
+    });
+    expect(after.statusCode).not.toBe(200);
+  });
+
+  it("CANNOT reach a user in another tenant", async () => {
+    // Two operators who compete on the same routes share this database.
+    const other = await prisma().org.create({ data: { name: "A Competitor" } });
+    const stranger = await prisma().user.create({
+      data: {
+        orgId: other.id,
+        email: "stranger@other.test",
+        passwordHash: await argon2.hash(PASSWORD, { type: argon2.argon2id }),
+        name: "Someone Else",
+        role: "SAFETY_MANAGER",
+      },
+    });
+
+    const token = await asAdmin();
+    const res = await resetAs(token, stranger.id);
+
+    // 404 rather than 403: whether a user id exists in another tenant is
+    // itself information this admin is not entitled to.
+    expect(res.statusCode).toBe(404);
+
+    // And the password is untouched — the refusal is real, not cosmetic.
+    const after = await prisma().user.findFirstOrThrow({ where: { id: stranger.id } });
+    expect(await argon2.verify(after.passwordHash, PASSWORD)).toBe(true);
+  });
+
+  it("REFUSES a caller without user.manage, however senior", async () => {
+    // The safety manager is the most senior operational role and does
+    // not hold user.manage. Seniority is not the permission.
+    const res = await resetAs(
+      (await login("safety@example.test", PASSWORD, "10.6.0.1")).json().accessToken,
+      await targetId(),
+    );
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("WRITES an audit entry naming the actor and subject, and not the password", async () => {
+    const token = await asAdmin();
+    const res = await resetAs(token, await targetId());
+    const { password } = res.json();
+
+    const entry = await prisma().auditLog.findFirstOrThrow({
+      where: { orgId, action: "auth.password.reset" },
+      orderBy: { seq: "desc" },
+    });
+    expect(entry.entityType).toBe("User");
+
+    // The credential must not be recoverable from the record of the
+    // reset — an audit log that stores the password it issued is a
+    // second copy of it, kept forever.
+    expect(JSON.stringify(entry.detail ?? {})).not.toContain(password);
+    expect(JSON.stringify(entry.detail ?? {})).toContain("safety@example.test");
+  });
+
 });
