@@ -170,11 +170,33 @@ One family, the documented weights, self-hosted:
 than on a marketing site: risk indices, SPI values and report references
 are read in columns and compared down the column.
 
-**Inter is a stand-in.** The brand's own geometric sans is not in this
-repository. Faces are self-hosted and same-origin — no font CDN. When the
-licensed family arrives, replace the `@font-face` sources in
-`apps/web/src/fonts.css` and nothing else changes; no call site names a
-family directly. Recorded in `docs/05-SWITCHES.md`.
+**DM Sans is the stand-in, and it is the JK & Associates platform's own
+face.** Usalama was set in Inter — a defensible choice made before there
+was a house face to align with, and the wrong one once there was: two
+products under one corporate banner set in two different sans read as two
+vendors. The brand's licensed geometric sans is still not in this
+repository, so DM Sans remains a stand-in; it is now the same stand-in the
+sibling product uses.
+
+It ships as **one variable file covering 400 to 700**, not four statics.
+The four weights above are stops on an axis rather than four downloads,
+which is both smaller (63 KB against 96 KB) and the only arrangement that
+cannot drift: four static files can silently become four copies of one, and
+in the sibling product they had.
+
+**A declared weight range is load-bearing.** `font-weight: 400 700` on the
+`@font-face` is what tells the browser to instance the axis. Declare a
+single weight on a variable file and every rule asking for bold gets a
+*synthesised* one — a smeared regular with the wrong metrics, which looks
+close enough at screenshot size to pass review. `npm run smoke` measures
+rendered widths at 400, 500, 600 and 700 and fails unless each is strictly
+wider than the last, which no synthesis can satisfy.
+
+Faces are self-hosted and same-origin — no font CDN, and smoke counts every
+off-origin request during load. When the licensed family arrives, replace
+the two `@font-face` sources in `apps/web/src/fonts.css` and nothing else
+changes; no call site names a family directly. Recorded in
+`docs/05-SWITCHES.md`.
 
 ---
 
@@ -297,8 +319,8 @@ tokens exist and are named for the job.
 
 ## Still needed
 
-1. **The licensed geometric sans** (woff2 subsets). Inter is a documented
-   stand-in.
+1. **The licensed geometric sans** (woff2 subsets). DM Sans — the JK &
+   Associates platform face — is the documented stand-in.
 2. **The master logo vector**, if the production artwork differs from the
    code-drawn paths. Replace the constants; everything downstream
    follows.

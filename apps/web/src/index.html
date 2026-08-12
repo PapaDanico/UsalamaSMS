@@ -30,13 +30,16 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="manifest" href="/manifest.json" />
-    <!-- The two weights in the first paint: body text and the headline.
-         Preloaded so a cold start does not render the fallback and then
-         reflow into Inter, which is the flash that makes a page look
-         like it is still arriving. 500 and 600 load normally — they
-         appear below the fold on every screen. -->
-    <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/inter-700.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- ONE preload now, not two. DM Sans ships as a variable face
+         covering 400 to 700, so body text and the headline come out of
+         the same file — the second preload would have fetched the same
+         bytes again. Preloaded so a cold start does not render the
+         fallback and then reflow, which is the flash that makes a page
+         look like it is still arriving. The latin-ext file is not
+         preloaded: it is fetched only if a character needs it, and
+         preloading it would cost every cold start for the few reports
+         that carry one. -->
+    <link rel="preload" href="/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
     <style>
@@ -52,7 +55,7 @@
         background: #f5f0e8;
         color: #2c2c2c;
         min-height: 100dvh;
-        font-family: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont,
+        font-family: 'DM Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont,
           'Segoe UI', Roboto, sans-serif;
       }
       .boot {

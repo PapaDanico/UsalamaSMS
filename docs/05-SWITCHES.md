@@ -229,14 +229,19 @@ land.
 ## 7. The stand-in typeface
 
 **The claim:** `docs/04-BRAND.md` states the licensed geometric sans is
-not in this repository and Inter is a documented stand-in.
+not in this repository and DM Sans — the face the JK & Associates platform
+is set in — is a documented stand-in.
 
 **Why it expires:** when the licensed family arrives.
 
-**The flag:** the `@font-face` sources in `apps/web/src/fonts.css`.
+**The flag:** the two `@font-face` sources in `apps/web/src/fonts.css`.
 
 **What must happen:** replace the sources. Nothing else — no call site
-names a family directly; every rule reads `--us-font`.
+names a family directly; every rule reads `--us-font`. If the licensed
+family ships as statics rather than a variable face, the `font-weight:
+400 700` range must become one rule per weight in the same change, or the
+browser will synthesise the ones it cannot find. `npm run smoke` measures
+that and fails, which is the point.
 
 **The test:** `scripts/check-brand.mjs` asserts tokens, not faces, so
 this one is guarded by the token indirection rather than by an

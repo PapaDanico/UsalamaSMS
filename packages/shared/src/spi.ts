@@ -250,21 +250,21 @@ export interface AlertCriterion {
 export const ALERT_CRITERIA: readonly AlertCriterion[] = [
   {
     id: "single-3sd",
-    label: "One period beyond 3σ",
+    label: "One period beyond 3 SD",
     consecutive: 1,
     sigma: 3,
     meaning: "A single period this far out is unlikely to be ordinary variation.",
   },
   {
     id: "two-2sd",
-    label: "Two consecutive beyond 2σ",
+    label: "Two consecutive beyond 2 SD",
     consecutive: 2,
     sigma: 2,
     meaning: "Twice in a row, well out. One period out is noise; two is a signal.",
   },
   {
     id: "three-1sd",
-    label: "Three consecutive beyond 1σ",
+    label: "Three consecutive beyond 1 SD",
     consecutive: 3,
     sigma: 1,
     meaning:

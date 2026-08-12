@@ -143,7 +143,12 @@ function Chart(verdict) {
   </svg>`;
 }
 
-const BAND_WORD = ['inside', 'beyond 1σ', 'beyond 2σ', 'beyond 3σ'];
+/* SD rather than σ, and not for brevity. Greek sigma is outside both
+   unicode ranges DM Sans ships here, so it rendered in the system
+   fallback in the middle of a label — the exact defect the subset
+   split exists to prevent, introduced by the label that described the
+   arithmetic. SD is also what State guidance writes. */
+const BAND_WORD = ['inside', 'beyond 1 SD', 'beyond 2 SD', 'beyond 3 SD'];
 
 function PeriodTable(ind, verdict) {
   const sigmaAt = new Map(verdict.watched.map((p) => [p.index, p.sigma]));
@@ -216,13 +221,13 @@ function IndicatorCard(ind) {
             >average ${num(verdict.levels.average)}</span
           >
           <span class="risk-chip" data-tolerability="TOLERABLE"
-            >1σ ${num(verdict.levels.one)}</span
+            >1 SD ${num(verdict.levels.one)}</span
           >
           <span class="risk-chip" data-tolerability="TOLERABLE"
-            >2σ ${num(verdict.levels.two)}</span
+            >2 SD ${num(verdict.levels.two)}</span
           >
           <span class="risk-chip" data-tolerability="INTOLERABLE"
-            >3σ ${num(verdict.levels.three)}</span
+            >3 SD ${num(verdict.levels.three)}</span
           >
         </p>`
       : html`<p class="cov__missing">
