@@ -302,6 +302,31 @@ string produces something that looks right and resolves to nothing.
 Re-copy from the Transaction pooler tab. `scripts/setup-env.mjs` warns
 on both the port and the host for exactly this reason.
 
+**There are THREE endpoints, not two.** The Connect panel on this
+project offers a *Dedicated pooler*, which the guidance above did not
+account for:
+
+| Endpoint | Host | Port | Reachable from Lambda |
+|---|---|---|---|
+| Direct | `db.<ref>.supabase.co` | 5432 | **No** — AAAA only |
+| **Dedicated pooler** | `db.<ref>.supabase.co` | 6543 | **No** — same AAAA-only host |
+| Shared pooler | `aws-<n>-<region>.pooler.supabase.com` | 6543 | Yes |
+
+The dedicated pooler is the right *pooling mode* on the wrong *host*.
+Measured:
+
+```
+A     db.<ref>.supabase.co  ENODATA
+AAAA  db.<ref>.supabase.co  2a05:d016:…
+```
+
+That is the trap: the port is correct, the pooling mode is correct, and
+it still cannot connect — and getting the port right is exactly what
+makes somebody stop looking. **The route to an IPv4 address is the "Use
+IPv4 connection" toggle** in the Connect panel, which switches to the
+shared pooler and changes both the host and the username. The paid
+"dedicated IPv4 add-on" is the other route and is not necessary.
+
 **And the shard number is per project.** The pooler host is
 `aws-<n>-<region>.pooler.supabase.com`, where `<n>` is not always `0` —
 both `aws-0` and `aws-1` exist in `eu-north-1` and both resolve. Read

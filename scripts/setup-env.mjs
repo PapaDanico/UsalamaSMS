@@ -248,16 +248,45 @@ export function normalizeDatabaseUrl(raw) {
     );
   }
 
-  /* The direct-connection hostname, named explicitly. Someone who has
-     copied from the wrong tab has `db.<ref>.supabase.co` in hand and a
-     port number that may have been edited by a well-meaning search and
-     replace, so the host is worth checking on its own. */
-  if (/^db\..*\.supabase\.co$/i.test(parsed.hostname)) {
+  /* THERE ARE THREE ENDPOINTS, NOT TWO, and the first version of this
+     function knew about two. Found against a real project whose Connect
+     panel showed a "Dedicated pooler" on `db.<ref>.supabase.co:6543` —
+     a host this code was calling the direct connection, and a port it
+     was calling correct, so it emitted a warning that was simply wrong.
+
+       · db.<ref>.supabase.co:5432       direct connection
+       · db.<ref>.supabase.co:6543       DEDICATED pooler
+       · aws-<n>-<region>.pooler…:6543   SHARED pooler
+
+     The first two share a hostname and, critically, a problem: that
+     hostname publishes an AAAA record and NO A record. Measured:
+
+       A     db.<ref>.supabase.co  ENODATA
+       AAAA  db.<ref>.supabase.co  2a05:d016:...
+
+     So a dedicated pooler is no more reachable from Lambda than the
+     direct connection is. Only the SHARED pooler has an IPv4 address,
+     and the way to it is the "Use IPv4 connection" toggle in the
+     Connect panel — which switches the panel to the shared endpoint
+     and changes both the host and the username. */
+  const isSupabaseOwnHost = /^db\..*\.supabase\.co$/i.test(parsed.hostname);
+  if (isSupabaseOwnHost && port === '6543') {
     notes.push(
-      `the host ${parsed.hostname} is the direct-connection endpoint. The ` +
-        'pooler is a different host entirely — aws-<n>-<region>.pooler.' +
-        'supabase.com — and the username changes to postgres.<project-ref>. ' +
-        'Changing the port alone is not enough; re-copy from the Transaction ' +
+      `${parsed.hostname} on port 6543 is the DEDICATED pooler. It is the ` +
+        'right pooling mode, on a host with no IPv4 address — the same ' +
+        'AAAA-only hostname as the direct connection — so a Netlify ' +
+        'Function still cannot reach it. Turn ON "Use IPv4 connection" in ' +
+        'Supabase -> Connect; that switches to the shared pooler, whose ' +
+        'host is aws-<n>-<region>.pooler.supabase.com and whose username ' +
+        'becomes postgres.<project-ref>. Then re-copy the string.'
+    );
+  } else if (isSupabaseOwnHost) {
+    notes.push(
+      `the host ${parsed.hostname} is Supabase's own, which has no IPv4 ` +
+        'address. The shared pooler is a different host entirely — ' +
+        'aws-<n>-<region>.pooler.supabase.com — and the username changes ' +
+        'to postgres.<project-ref>. Changing the port alone is not enough; ' +
+        'turn on "Use IPv4 connection" and re-copy from the Transaction ' +
         'pooler tab.'
     );
   }
