@@ -41,7 +41,13 @@ async function loadHandler(env: Record<string, string | undefined>): Promise<Han
   return mod.default as Handler;
 }
 
-const BASE = "https://usalamasms.netlify.app";
+/* The official origin. Nothing in the app depends on it — the manifest's
+   start_url and scope are relative, the CSP is entirely 'self', and the
+   client calls /api/v1/... with no host — so this is only the origin the
+   Request objects below are built against. It is written as the real one
+   so the file does not quietly document a hostname that is no longer the
+   product's. */
+const BASE = "https://usalamasms.com";
 
 describe.skipIf(!hasDatabase)("the Netlify Function handler", () => {
   beforeAll(() => migrate());

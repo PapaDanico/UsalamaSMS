@@ -162,6 +162,106 @@ export function rates(indicator: Indicator): readonly number[] {
     .filter((r): r is number => r !== null);
 }
 
+/**
+ * A comparable position for a period label, or null when it has none.
+ *
+ * WHY THIS EXISTS. The whole method rests on judging each period against
+ * the periods BEFORE it, and the screen defined "before" as the order
+ * somebody typed things in. Back-fill last year's quarters after this
+ * year's, or enter one twice, and every alert level, every band and the
+ * alerting count are computed from the wrong baseline — presented with
+ * exactly the same confidence as a correct one.
+ *
+ * WHY IT RETURNS NULL RATHER THAN GUESSING. A label is whatever the
+ * operator's cadence is called. "2026-Q3" has an unambiguous position;
+ * "March" does not — sorted alphabetically it precedes "May", which is
+ * wrong, and a guard that rejects legitimate input is worse than the
+ * defect it replaces. So only the shapes that are genuinely ordered are
+ * ordered, and everything else is left to the caller to handle honestly
+ * rather than confidently.
+ *
+ * Recognised: YYYY, YYYY-Qn, YYYYQn, YYYY-MM, YYYY-MM-DD, with an
+ * optional space instead of the hyphen.
+ */
+export function periodOrder(label: string): number | null {
+  const t = label.trim().toUpperCase().replace(/\s+/g, "-");
+
+  const quarter = /^(\d{4})-?Q([1-4])$/.exec(t);
+  if (quarter) return Number(quarter[1]) * 10000 + Number(quarter[2]) * 250;
+
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (day) {
+    const m = Number(day[2]);
+    const d = Number(day[3]);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    return Number(day[1]) * 10000 + m * 100 + d;
+  }
+
+  const month = /^(\d{4})-(\d{2})$/.exec(t);
+  if (month) {
+    const m = Number(month[2]);
+    if (m < 1 || m > 12) return null;
+    return Number(month[1]) * 10000 + m * 100;
+  }
+
+  const year = /^(\d{4})$/.exec(t);
+  if (year) return Number(year[1]) * 10000;
+
+  return null;
+}
+
+export type PeriodRefusal =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: string };
+
+/**
+ * Whether a period may be appended to the ones already recorded.
+ *
+ * Two refusals, and they are deliberately different in kind.
+ *
+ * A DUPLICATE LABEL is always wrong — the same quarter entered twice
+ * double-counts it into the baseline and shifts every level. That test
+ * needs no understanding of the label at all, so it always applies.
+ *
+ * OUT OF SEQUENCE is refused only where both labels have a position
+ * periodOrder() can see. Where they do not, this returns ok and the
+ * screen says plainly that the order shown is the order used — an honest
+ * "we cannot check this" beats a confident rejection of a cadence the
+ * operator actually uses.
+ */
+export function canAppendPeriod(
+  existing: readonly Period[],
+  label: string,
+): PeriodRefusal {
+  const trimmed = label.trim();
+  if (!trimmed) return { ok: false, reason: "A period needs a label." };
+
+  const clash = existing.find((p) => p.label.trim().toLowerCase() === trimmed.toLowerCase());
+  if (clash) {
+    return {
+      ok: false,
+      reason:
+        `${clash.label} is already recorded. Entering it twice counts it twice into the ` +
+        "baseline and moves every alert level with it.",
+    };
+  }
+
+  const here = periodOrder(trimmed);
+  const last = existing[existing.length - 1];
+  const there = last ? periodOrder(last.label) : null;
+  if (here !== null && there !== null && here <= there) {
+    return {
+      ok: false,
+      reason:
+        `${trimmed} comes before ${last!.label}, which is already the latest period. ` +
+        "Alert levels are set from the periods before each one, so a period entered out " +
+        "of sequence is judged against a baseline it should have been part of.",
+    };
+  }
+
+  return { ok: true };
+}
+
 export function mean(xs: readonly number[]): number {
   if (!xs.length) throw new RangeError("mean of an empty series");
   return xs.reduce((a, b) => a + b, 0) / xs.length;

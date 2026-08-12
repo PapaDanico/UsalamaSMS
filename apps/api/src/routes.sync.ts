@@ -96,7 +96,25 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
         // its audit entry commit together or not at all — previously a
         // crash between the create and the audit left a safety report
         // with no record of how it arrived.
-        const created = await prisma.$transaction(async (tx) => {
+        //
+        // AND WRAPPED, because a unique violation here must not take the
+        // batch down. The receipt lookup above runs outside this
+        // transaction, so two flushes racing each other — two tabs on a
+        // crew-room tablet regaining signal together — can both pass it
+        // and both reach this create. Uncaught, the second one threw out
+        // of the handler and returned 500 for all hundred items; the
+        // client read !res.ok, backed off every one of them including
+        // the ninety-nine that were fine, and retried into the same
+        // wall. The UPDATE path has carried this reasoning since a lost
+        // response poisoned an outbox; the CREATE path never got it.
+        //
+        // A P2002 on (orgId, clientId) means the report is already
+        // stored, which is the state this insert was trying to reach.
+        // That is a duplicate, and duplicate is a success the client
+        // knows how to act on.
+        let created;
+        try {
+          created = await prisma.$transaction(async (tx) => {
           const report = await tx.safetyReport.create({
             data: {
               orgId: auth.org,
@@ -186,8 +204,19 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
               : { deviceId, type: d.type, anonymous: false },
           });
 
-          return report;
-        });
+            return report;
+          });
+        } catch (err) {
+          if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") {
+            throw err;
+          }
+          req.log.info(
+            { clientId: item.clientId },
+            "report already stored under this clientId — concurrent flush or a retried batch",
+          );
+          results.push({ clientId: item.clientId, status: "duplicate" });
+          continue;
+        }
 
         results.push({
           clientId: item.clientId,
@@ -215,12 +244,41 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
                 // collide with the idempotency key it describes.
                 clientId: `${item.clientId}:conflict:${current.updatedAt.toISOString()}`,
                 orgId: auth.org,
-                deviceId,
-                userId: auth.sub,
                 entityType: item.entityType,
                 op: "UPDATE",
                 conflict: true,
                 resolution: "server_wins",
+                // ======================================================
+                // THE SAME ANONYMITY RULE AS THE CREATE PATH, and it was
+                // missing here.
+                //
+                // The CREATE receipt above is careful: for an anonymous
+                // report it stores a keyed device hash and nulls both
+                // userId and deviceId. This receipt wrote userId and
+                // deviceId unconditionally — under a clientId that
+                // CONTAINS the anonymous report's own key as a prefix:
+                //
+                //     SELECT s."userId"
+                //       FROM "SafetyReport" r
+                //       JOIN "SyncReceipt"  s
+                //         ON s."clientId" LIKE r."clientId" || ':conflict:%'
+                //      WHERE r."isAnonymous"
+                //
+                // The comment on the CREATE path says a confidential
+                // reporting system that can be un-anonymised by a join
+                // is not a confidential reporting system, it is a list.
+                // That was true of this row. The suffix meant the guard
+                // test's exact-equality join could not see it, so the
+                // control read as enforced while the side door stood
+                // open — which is why that test now joins on a prefix.
+                //
+                // `current` is the row being updated, so its own
+                // isAnonymous is the authority here rather than anything
+                // the client sent.
+                // ======================================================
+                ...(current.isAnonymous
+                  ? { deviceHash: hmac(deviceId), userId: null, deviceId: null }
+                  : { deviceId, userId: auth.sub, deviceHash: null }),
               },
             });
           } catch (err) {

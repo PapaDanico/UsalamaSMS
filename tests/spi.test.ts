@@ -22,6 +22,8 @@ import {
   MIN_BASELINE,
   alertLevels,
   breaches,
+  canAppendPeriod,
+  periodOrder,
   mean,
   rate,
   rates,
@@ -81,6 +83,59 @@ describe("the rate", () => {
       }),
     );
     expect(series).toEqual([2, 4]);
+  });
+});
+
+describe("the order periods are entered in", () => {
+  it("places the shapes it can place, and refuses to guess at the rest", () => {
+    expect(periodOrder("2026-Q1")).toBeLessThan(periodOrder("2026-Q2")!);
+    expect(periodOrder("2026-Q4")).toBeLessThan(periodOrder("2027-Q1")!);
+    expect(periodOrder("2026-01")).toBeLessThan(periodOrder("2026-12")!);
+    expect(periodOrder("2026-03-01")).toBeLessThan(periodOrder("2026-03-28")!);
+    expect(periodOrder("2025")).toBeLessThan(periodOrder("2026")!);
+    expect(periodOrder("2026 Q2")).toBe(periodOrder("2026-Q2"));
+
+    // "March" sorted alphabetically precedes "May", which is wrong. A
+    // guard that rejects a legitimate cadence is worse than the defect
+    // it replaces, so an unrecognised label has no position at all.
+    expect(periodOrder("March")).toBeNull();
+    expect(periodOrder("Winter season")).toBeNull();
+    expect(periodOrder("2026-13")).toBeNull();
+  });
+
+  it("REFUSES A DUPLICATE, whatever the label looks like", () => {
+    // The same quarter twice counts it twice into the baseline and moves
+    // every alert level with it.
+    const existing = periods([4, 4]).map((p, i) => ({ ...p, label: ["Q1", "Q2"][i]! }));
+    expect(canAppendPeriod(existing, "Q2").ok).toBe(false);
+    expect(canAppendPeriod(existing, " q2 ").ok, "case and padding are the same period").toBe(false);
+    expect(canAppendPeriod(existing, "Q3").ok).toBe(true);
+  });
+
+  it("REFUSES A PERIOD ENTERED OUT OF SEQUENCE", () => {
+    // The defect this exists for: back-filling last year after this year
+    // silently judges every period against the wrong baseline, and the
+    // screen shows the result with the same confidence as a right one.
+    const existing = [
+      { label: "2026-Q1", events: 4, exposure: 1000 },
+      { label: "2026-Q2", events: 4, exposure: 1000 },
+    ];
+    const refused = canAppendPeriod(existing, "2025-Q4");
+    expect(refused.ok).toBe(false);
+    expect(refused.ok === false && refused.reason).toMatch(/comes before/);
+    expect(canAppendPeriod(existing, "2026-Q3").ok).toBe(true);
+  });
+
+  it("does not refuse a cadence it cannot read", () => {
+    // An operator whose periods are "Summer", "Monsoon", "Winter" gets
+    // the duplicate guard and no ordering opinion.
+    const existing = [{ label: "Monsoon", events: 4, exposure: 1000 }];
+    expect(canAppendPeriod(existing, "Winter").ok).toBe(true);
+    expect(canAppendPeriod(existing, "Summer").ok).toBe(true);
+  });
+
+  it("refuses an empty label rather than recording a nameless period", () => {
+    expect(canAppendPeriod([], "   ").ok).toBe(false);
   });
 });
 

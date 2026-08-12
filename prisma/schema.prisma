@@ -161,7 +161,14 @@ model SafetyReport {
   id       String @id @default(uuid())
   orgId    String
   // Client-generated idempotency key for offline submission.
-  clientId String @unique
+  // Scoped to the org below, not globally unique. See the same note on
+  // SyncReceipt: clientId is generated on the device, so a global
+  // constraint let one operator's id collide with another's — which
+  // raised an uncaught P2002 inside the batch loop, returned 500 for
+  // the whole batch, and left the device retrying into it forever. It
+  // also answered "does this id exist in another tenancy?" through the
+  // status code. The receipt table was fixed; this one was missed.
+  clientId String
 
   type      ReportType
   state     ReportState @default(SUBMITTED)
@@ -225,6 +232,7 @@ model SafetyReport {
   // Computed at read time by reportingDeadline() from jurisdiction +
   // awareAt. If you are about to add this column, read that module first.
 
+  @@unique([orgId, clientId])
   @@index([orgId, state, createdAt])
   @@index([orgId, type, occurredAt])
   // The aggregation this taxonomy exists to make possible.
@@ -349,8 +357,34 @@ model AuditLog {
 
   createdAt DateTime @default(now())
 
-  org  Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  // ===================================================================
+  // RESTRICT, not SetNull, and the difference is the whole control.
+  //
+  // The chain's hash commits to `userId` — see auditMaterial() in
+  // apps/api/src/audit-material.ts. SetNull therefore let an ordinary
+  // administrative act rewrite the hashed content of every row naming a
+  // departing member of staff, and every one of those rows stopped
+  // matching its own hash. Reproduced:
+  //
+  //   chain BEFORE offboarding: {"ok":true,"rowsChecked":3}
+  //   chain AFTER  offboarding: {"ok":false,"contentAlteredAtSeq":"4"}
+  //
+  // An audit log that spontaneously reports itself altered is
+  // indistinguishable, to the regulator reading it, from one that was —
+  // which is the sentence audit-material.ts already carries about key
+  // ordering, arriving here through a foreign key.
+  //
+  // So the row cannot be deleted while the log names it. `User.active`
+  // already exists and is what offboarding is supposed to use; the
+  // integration test alongside this asserts the refusal and that the
+  // chain still verifies afterwards.
+  //
+  // SafetyReport.reporterId stays SetNull deliberately: a report must
+  // survive its author leaving, and nothing hashes it.
+  // ===================================================================
+  user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([orgId, seq])
 }

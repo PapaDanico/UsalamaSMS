@@ -969,6 +969,50 @@ try {
     await page.selectOption('select[name="filter-type"]', '');
     await page.waitForFunction(
       () => document.querySelectorAll('.queue__item').length === 1, undefined, { timeout: 3000 });
+
+    // ONE RENDER PER CHANGE, and it used to be two to the power of the
+    // number of changes. Both delegated listeners were attached inside
+    // render(), and render() calls itself from inside both of them; the
+    // router clears the outlet's children between routes but never
+    // replaces the outlet, so nothing removed a listener from it.
+    // Measured before the fix: 1, 2, 4, 8, 16, 32 renders across six
+    // filter changes, each one a full read of the report store and a
+    // complete rebuild of the list. Twelve changes locked the tab.
+    //
+    // Counting renders rather than listeners, because the render is what
+    // costs — and because a future rewrite that leaks in some other way
+    // still fails this.
+    const renders = await page.evaluate(() => {
+      window.__renders = 0;
+      const outlet = document.querySelector('#main');
+      new MutationObserver((recs) => {
+        for (const r of recs) if (r.addedNodes.length) window.__renders += 1;
+      }).observe(outlet, { childList: true });
+      return true;
+    });
+    void renders;
+
+    // Driven through the element rather than through Playwright's
+    // selectOption: each render rebuilds the filter bar, and the
+    // collapsed <details> around it makes visibility waits flaky in a
+    // way that has nothing to do with what is being measured.
+    const CHANGES = ['MOR', '', 'MOR', '', 'MOR', ''];
+    for (const value of CHANGES) {
+      await page.evaluate((v) => {
+        const sel = document.querySelector('select[name="filter-type"]');
+        sel.value = v;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }, value);
+      await page.waitForTimeout(140);
+    }
+    const counted = await page.evaluate(() => window.__renders);
+    assert(
+      counted <= CHANGES.length,
+      `${CHANGES.length} filter changes produced ${counted} renders. Each is a full read of ` +
+        'the report store and a rebuild of the list; the listeners are accumulating.'
+    );
+    await page.waitForFunction(
+      () => document.querySelectorAll('.queue__item').length === 1, undefined, { timeout: 3000 });
   });
 
   await context.setOffline(false);
@@ -1534,7 +1578,10 @@ try {
       await page.waitForTimeout(120);
     };
 
-    for (const [i, n] of [4, 4, 4, 4, 4, 4].entries()) await addPeriod(`Q${i + 1}`, n);
+    // Dated labels, as an operator's cadence actually is — and as the
+    // ordering guard needs in order to have an opinion at all.
+    const QUARTERS = ['2025-Q1', '2025-Q2', '2025-Q3', '2025-Q4', '2026-Q1', '2026-Q2'];
+    for (const label of QUARTERS) await addPeriod(label, 4);
 
     // Six periods of baseline and nothing judged yet — the screen must
     // say so rather than drawing a confident line through them.
@@ -1550,7 +1597,7 @@ try {
     );
 
     // An ordinary seventh: still quiet.
-    await addPeriod('Q7', 4);
+    await addPeriod('2026-Q3', 4);
     head = ((await page.locator('.cov__has').first().textContent()) ?? '').trim();
     assert(
       !/^Alert/.test(head),
@@ -1559,7 +1606,7 @@ try {
 
     // And a spike: loud, with the criterion named in words rather than
     // signalled by a colour.
-    await addPeriod('Q8', 40);
+    await addPeriod('2026-Q4', 40);
     const card = ((await page.locator('.reg-entry').first().textContent()) ?? '').replace(
       /\s+/g,
       ' '
@@ -1571,6 +1618,42 @@ try {
     );
     const alerting = (await page.locator('#spi-strip .stat__value').nth(2).textContent()) ?? '';
     assert(alerting.trim() === '1', `"alerting now" reads ${alerting.trim()}, expected 1`);
+
+    // AND IT REFUSES A PERIOD THAT WOULD CORRUPT THE BASELINE. The whole
+    // method judges each period against the periods before it, and entry
+    // order was the only definition of "before" — nothing stopped a
+    // back-filled quarter or the same one twice, and every level, band
+    // and count then came out of the wrong baseline, shown with exactly
+    // the same confidence as a right one.
+    const bandsBefore = await page.locator('.oblig-table tbody tr').count();
+    await page.fill('[data-add-period] input[name="label"]', '2026-Q2');
+    await page.fill('[data-add-period] input[name="events"]', '4');
+    await page.fill('[data-add-period] input[name="exposure"]', '1000');
+    await page.click('[data-add-period] button[type="submit"]');
+    await page.waitForTimeout(150);
+    let refusal = ((await page.locator('.spi-period__error').first().textContent()) ?? '').trim();
+    assert(/already recorded/.test(refusal), `a duplicate period was accepted: "${refusal}"`);
+    assert(
+      (await page.locator('.oblig-table tbody tr').count()) === bandsBefore,
+      'the duplicate period was written despite the refusal'
+    );
+
+    await page.fill('[data-add-period] input[name="label"]', '2020-Q1');
+    await page.fill('[data-add-period] input[name="events"]', '4');
+    await page.fill('[data-add-period] input[name="exposure"]', '1000');
+    await page.click('[data-add-period] button[type="submit"]');
+    await page.waitForTimeout(150);
+    refusal = ((await page.locator('.spi-period__error').first().textContent()) ?? '').trim();
+    assert(/comes before/.test(refusal), `an out-of-sequence period was accepted: "${refusal}"`);
+
+    // The refusal is next to the form that produced it, not in the
+    // "Add an indicator" section at the bottom of the page — where it
+    // used to be written, usually off screen.
+    const wherePlaced = await page.evaluate(() => {
+      const region = document.querySelector('.spi-period__error');
+      return Boolean(region?.closest('[data-add-period]'));
+    });
+    assert(wherePlaced, 'the refusal is rendered outside the form that caused it');
 
     // The chart is decoration and says so; the numbers are in the table.
     assert(

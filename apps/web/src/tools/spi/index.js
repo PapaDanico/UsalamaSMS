@@ -34,6 +34,8 @@ import {
   ALERT_CRITERIA,
   MIN_BASELINE,
   spiVerdict,
+  canAppendPeriod,
+  periodOrder,
   rate
 } from '../../../../../packages/shared/src/spi.ts';
 import { SAFETY_ROLES } from '../../../../../packages/shared/src/posts.ts';
@@ -270,6 +272,14 @@ function IndicatorCard(ind) {
       </label>
       <button type="submit" class="btn btn-secondary btn-sm">Add period</button>
       <button type="button" class="btn btn-ghost btn-sm" data-remove="${ind.id}">Remove</button>
+      <!-- The error belongs to THIS form. It used to be written into the
+           one live region at the bottom of the page, inside "Add an
+           indicator" — so a bad period on the first indicator reported
+           itself in a different section, usually off screen, and so did
+           the refused-write message, which is the one that most needs
+           to be seen. -->
+      <p class="field-error spi-period__error" data-error="${ind.id}"
+        role="status" aria-live="polite"></p>
     </form>
   </article>`;
 }
@@ -517,13 +527,43 @@ export function render(outlet) {
     if (!id) return;
     event.preventDefault();
     const f = event.target.elements;
+    const say = (message) => {
+      const region = list.querySelector(`[data-error="${id}"]`);
+      if (region) region.textContent = message;
+      else error.textContent = message;
+    };
     const events = Number(f.events.value);
     const exposure = Number(f.exposure.value);
-    if (!f.label.value.trim() || !Number.isFinite(events) || !Number.isFinite(exposure)) {
-      error.textContent = 'A period needs a label, a count of events and the exposure it happened over.';
+    if (!Number.isFinite(events) || !Number.isFinite(exposure)) {
+      say('A period needs a count of events and the exposure it happened over.');
       return;
     }
-    error.textContent = '';
+
+    /* ============================================================
+       THE ORDER IS THE METHOD, so it is checked before the write.
+
+       Every alert level is set from the periods BEFORE the one being
+       judged. Entry order was the only definition of "before", and
+       nothing enforced it: back-fill last year's quarters after this
+       year's, or type one twice, and every level, every band and the
+       alerting count come out of the wrong baseline — shown with
+       exactly the same confidence as a right one.
+
+       canAppendPeriod() refuses a duplicate always, and refuses an
+       out-of-sequence period only where both labels have a position it
+       can actually read. An operator whose periods are "Monsoon" and
+       "Winter" gets the duplicate guard and no opinion about order,
+       because a guard that rejects a real cadence is worse than the
+       defect it replaces.
+       ============================================================ */
+    const target = state.indicators.find((i) => i.id === id);
+    const verdict = canAppendPeriod(target?.periods ?? [], f.label.value);
+    if (!verdict.ok) {
+      say(verdict.reason);
+      return;
+    }
+    say('');
+
     state = {
       indicators: state.indicators.map((ind) =>
         ind.id === id

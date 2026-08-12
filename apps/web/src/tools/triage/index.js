@@ -163,6 +163,40 @@ export async function render(outlet) {
   `.toString();
 
   wireSelects(outlet);
+  bindOnce(outlet);
+}
+
+/* ============================================================
+   BOUND ONCE PER OUTLET, and that qualifier is the fix.
+
+   These two listeners used to be attached inside render(), and render()
+   calls itself from inside both of them. The router clears the outlet's
+   CHILDREN between routes — replaceChildren() — but never replaces the
+   outlet itself, so nothing ever removed a listener from it. Every
+   render added another pair, and every handler triggered another
+   render. Measured in Chromium, renders per one filter change:
+
+     change 1 ->  1      change 4 ->  8
+     change 2 ->  2      change 5 -> 16
+     change 3 ->  4      change 6 -> 32
+
+   Each of those is a full read of the report store and a complete
+   rebuild of the list. Twelve filter changes is a little over two
+   thousand of them and the tab stops responding — on the screen a
+   safety officer works a queue on. One tap of "Try again" fired the
+   retry N times as well.
+
+   The delegation itself was right and the comment defending it was
+   right; what was wrong was doing it again on every pass. A WeakSet
+   keyed on the node remembers, survives navigating away and back, and
+   holds nothing alive on its own.
+   ============================================================ */
+const bound = new WeakSet();
+
+function bindOnce(outlet) {
+  if (bound.has(outlet)) return;
+  bound.add(outlet);
+
   outlet.addEventListener('change', (event) => {
     const name = event.target?.name;
     if (!name?.startsWith('filter-')) return;

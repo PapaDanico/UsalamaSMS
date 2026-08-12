@@ -270,10 +270,28 @@ function lockKeyFor(orgId: string): number {
 export interface ChainVerdict {
   ok: boolean;
   rowsChecked: number;
-  /** First row whose predecessor link is wrong. */
-  brokenLinkAtSeq?: bigint;
+  /**
+   * First row whose predecessor link is wrong.
+   *
+   * A STRING, and that is not cosmetic. `AuditLog.seq` is a Postgres
+   * BigInt, so Prisma hands back a JavaScript `bigint` — and
+   * `JSON.stringify` throws on one. The oversight route carries no
+   * response schema, so Fastify serialises with `JSON.stringify` and
+   * the throw became a 500 through the error handler.
+   *
+   * The effect was that this endpoint answered 200 for an intact chain
+   * and 500 for an altered one — indistinguishable from a database
+   * outage, on the one verdict the control exists to deliver. Every
+   * test called verifyAuditChain() directly, where a bigint is fine,
+   * so nothing saw it.
+   *
+   * A sequence number here is an identifier a person looks a row up by,
+   * never an operand. String is the honest type for that, and it cannot
+   * reintroduce the defect at any call site.
+   */
+  brokenLinkAtSeq?: string;
   /** First row whose stored hash does not match its own content. */
-  contentAlteredAtSeq?: bigint;
+  contentAlteredAtSeq?: string;
 }
 
 /**
@@ -366,7 +384,7 @@ function verifyPage(
 
   for (const r of rows) {
     if (r.prevHash !== prev) {
-      return { prev, checked, failure: { ok: false, rowsChecked: checked, brokenLinkAtSeq: r.seq } };
+      return { prev, checked, failure: { ok: false, rowsChecked: checked, brokenLinkAtSeq: String(r.seq) } };
     }
 
     const expected = sha256(
@@ -384,7 +402,7 @@ function verifyPage(
     if (expected !== r.hash) {
       return {
         prev, checked,
-        failure: { ok: false, rowsChecked: checked, contentAlteredAtSeq: r.seq },
+        failure: { ok: false, rowsChecked: checked, contentAlteredAtSeq: String(r.seq) },
       };
     }
 

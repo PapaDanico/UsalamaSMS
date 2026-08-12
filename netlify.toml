@@ -32,6 +32,17 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     X-Frame-Options = "DENY"
+    # Added when usalamasms.com became the official origin. Until there
+    # was a domain of the product's own there was nothing to pin: a
+    # netlify.app subdomain inherits whatever policy that apex carries.
+    #
+    # A year, and subdomains included, because every host under this
+    # domain is part of the same product and a safety narrative must not
+    # travel to any of them in clear. NOT `preload` — that submits the
+    # domain to a browser-vendor list which is slow and awkward to leave,
+    # and it is a commitment the operator of the domain should make
+    # deliberately rather than one a header file makes for them.
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
 # ============================================================
 # THE SPA FALLBACK, WHICH DID NOT EXIST.

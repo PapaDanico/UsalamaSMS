@@ -132,9 +132,86 @@ describe("token storage", () => {
   });
 });
 
+describe("a KDF failure", () => {
+  it("is LOGGED, while the response stays indistinguishable", () => {
+    // `.catch(() => false)` discarded the exception entirely. An argon2
+    // native-binding failure after a runtime bump would make every
+    // verification throw, every login return 401, and the only trace be
+    // "login failed" — a total authentication outage on a safety
+    // platform, indistinguishable in the logs from a bad week for
+    // passwords, with health and readiness both still green.
+    const loginBlock = auth.slice(auth.indexOf("/api/v1/auth/login"));
+    expect(loginBlock, "the KDF exception is discarded rather than logged").not.toMatch(
+      /verifyPassword\([\s\S]{0,120}?\.catch\(\(\)\s*=>\s*false\)/,
+    );
+    expect(loginBlock).toMatch(/verifyPassword\([\s\S]{0,200}?\.catch\([\s\S]{0,200}?log\.error/);
+
+    // And the response must NOT change shape — a KDF failure that
+    // returned 500 would tell an attacker which accounts exist.
+    expect(loginBlock).toMatch(/return false;/);
+    expect(loginBlock).toMatch(/GENERIC_FAILURE/);
+  });
+});
+
 describe("logout", () => {
   it("revokes every refresh token for the user, not just the one presented", () => {
     const logoutBlock = auth.slice(auth.indexOf("/api/v1/auth/logout"));
     expect(logoutBlock).toMatch(/updateMany\(\{[\s\S]*?userId: req\.auth!\.sub, revokedAt: null/);
+  });
+});
+
+/* =====================================================================
+   What the rate limiter counts against.
+
+   Unlike its neighbours in this file, this one imports the function and
+   runs it. rateLimitKey is pure, so the rule can be stated as
+   arithmetic rather than as a grep — and the rule is the whole control:
+   the limiter must count the platform's view of the caller, never a
+   value the caller writes.
+   ===================================================================== */
+import { rateLimitKey } from "../apps/api/src/rate-limit-key";
+
+describe("the rate limiter's key", () => {
+  it("PREFERS the edge's view over anything the caller sent", () => {
+    // The defect: keying on req.ip, which under `trustProxy: true`
+    // resolves to the leftmost X-Forwarded-For entry — chosen by the
+    // caller. A random header per request bought a fresh bucket.
+    const a = rateLimitKey({ "x-nf-client-connection-ip": "203.0.113.7" }, "10.0.0.1");
+    const b = rateLimitKey({ "x-nf-client-connection-ip": "203.0.113.7" }, "10.0.0.999");
+    expect(a).toBe(b);
+  });
+
+  it("falls back to the connection address when the edge says nothing", () => {
+    expect(rateLimitKey({}, "10.0.0.1")).not.toBe(rateLimitKey({}, "10.0.0.2"));
+  });
+
+  it("cannot be made to collide across the two sources", () => {
+    // An `ip:`/`edge:` prefix, so a caller who could somehow set their
+    // fallback address to another caller's edge address still lands in
+    // a different bucket rather than inheriting or exhausting theirs.
+    expect(rateLimitKey({}, "203.0.113.7")).not.toBe(
+      rateLimitKey({ "x-nf-client-connection-ip": "203.0.113.7" }, "10.0.0.1"),
+    );
+  });
+
+  it("ignores an empty or whitespace edge header rather than bucketing everyone together", () => {
+    // A blank header must not become one shared key for every caller,
+    // which would let one attacker exhaust the limit for all of them.
+    expect(rateLimitKey({ "x-nf-client-connection-ip": "   " }, "10.0.0.1")).toBe(
+      rateLimitKey({}, "10.0.0.1"),
+    );
+    expect(rateLimitKey({ "x-nf-client-connection-ip": "   " }, "10.0.0.1")).not.toBe(
+      rateLimitKey({ "x-nf-client-connection-ip": "   " }, "10.0.0.2"),
+    );
+  });
+
+  it("keeps one hop of proxy trust, so the fallback is not free to forge", () => {
+    /* Line-anchored, so the comment above the setting — which quotes
+       the old value to explain what it did — is not mistaken for the
+       setting itself. A comment line starts with `//`. */
+    expect(server).toMatch(/^\s*trustProxy:\s*1,/m);
+    expect(server, "trustProxy: true resolves req.ip to the caller's own header").not.toMatch(
+      /^\s*trustProxy:\s*true/m,
+    );
   });
 });

@@ -62,7 +62,19 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
       // Always run the KDF, even with no user and even for a deactivated
       // one, so all three paths cost the same.
-      const ok = await verifyPassword(user?.passwordHash ?? DUMMY_HASH, password).catch(() => false);
+      // The catch keeps the RESPONSE indistinguishable — a KDF failure
+      // must not become a different status code that tells an attacker
+      // which accounts exist. What it used to do as well was discard the
+      // exception entirely, and that is a different thing: an argon2
+      // native-binding failure after a runtime bump would make every
+      // verification throw, every login return 401, and the only trace
+      // be "login failed" — a total authentication outage on a safety
+      // platform, indistinguishable in the logs from a bad week for
+      // passwords, with health and readiness both still green.
+      const ok = await verifyPassword(user?.passwordHash ?? DUMMY_HASH, password).catch((err) => {
+        req.log.error({ err: { message: String(err) } }, "password verification threw");
+        return false;
+      });
 
       if (!user || !user.active || !ok) {
         // Logged for the operator's own security review, and the log
@@ -155,11 +167,50 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       });
       if (!user || !user.active) return reply.code(401).send({ error: "invalid_refresh_token" });
 
-      // Burn this one, then issue the replacement.
-      await prisma.refreshToken.update({
-        where: { id: existing.id },
+      // ==============================================================
+      // BURN IT CONDITIONALLY, and treat losing the race as reuse.
+      //
+      // This was `update({ where: { id } })` — unconditional — against a
+      // `revokedAt` that had been READ several statements earlier. Two
+      // requests presenting the same token concurrently both read null,
+      // both passed the reuse check above, and both minted a fresh pair.
+      // Two live token chains, no reuse_detected, nothing revoked: the
+      // theft this whole block exists to catch, invisible for the full
+      // thirty days, precisely when it is being actively exploited.
+      //
+      // `updateMany` with `revokedAt: null` in the WHERE makes the check
+      // and the write one atomic statement. Exactly one racer can get a
+      // count of 1. The loser did not present an unused token — somebody
+      // else used it first — which is the definition of reuse, so it
+      // falls through to the same revoke-everything response rather
+      // than to a quiet 401.
+      // ==============================================================
+      const burned = await prisma.refreshToken.updateMany({
+        where: { id: existing.id, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+
+      if (burned.count === 0) {
+        await prisma.$transaction(async (tx) => {
+          await tx.refreshToken.updateMany({
+            where: { userId: existing.userId, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+          await appendAuditTx(tx, {
+            orgId: user.orgId,
+            userId: existing.userId,
+            action: "auth.refresh.reuse_detected",
+            entityType: "User",
+            entityId: existing.userId,
+            detail: { allSessionsRevoked: true, concurrent: true },
+          });
+        });
+        req.log.error(
+          { userId: existing.userId },
+          "refresh token used twice concurrently — all sessions revoked",
+        );
+        return reply.code(401).send({ error: "invalid_refresh_token" });
+      }
 
       const accessToken = issueAccessToken({ sub: user.id, org: user.orgId, role: user.role });
       const refreshToken = await issueRefreshToken(user.id);
