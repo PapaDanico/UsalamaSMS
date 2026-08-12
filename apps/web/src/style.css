@@ -1,25 +1,23 @@
 /* ============================================================
    UsalamaSMS — design tokens
 
-   Ported from the Kanda stylesheet's discipline, not its palette:
-   component rules reference tokens, never raw values. If you find
-   yourself typing a pixel or a hex below the token block, the token is
-   missing — add it rather than inlining it.
+   One discipline, inherited from the benchmark: component rules
+   reference tokens, never raw values. If you find yourself typing a
+   pixel or a hex below the token block, the token is missing — add it
+   rather than inlining it.
 
-   ONE DELIBERATE DIVERGENCE FROM KANDA: there is no dark scheme. Kanda
-   resolves every brand colour through a light/dark pair because it is
-   read on a phone at a border post at night. UsalamaSMS is read in a
-   cockpit, a hangar office and a regulator's meeting room, and a safety
-   report that renders differently depending on an OS setting is a
-   safety report two people can describe differently. One scheme, one
+   NO DARK SCHEME, deliberately. UsalamaSMS is read in a cockpit, a
+   hangar office and a regulator's meeting room, and a safety report
+   that renders differently depending on an OS setting is a safety
+   report two people can describe differently. One scheme, one
    rendering, one printed output. See docs/04-BRAND.md.
    ============================================================ */
 
 :root {
   /* ---- Type ------------------------------------------------ */
   /* Inter is the stand-in for the brand's geometric sans, chosen for
-     the same reason Kanda chose DM Sans: open licence, the documented
-     weights, and self-hosted so the CSP can forbid every off-origin
+     the usual reasons: open licence, the documented weights, and
+     self-hosted so the CSP can forbid every off-origin
      request. No call site names a family directly — when the licensed
      face arrives, replace the @font-face sources and nothing else. */
   --us-font: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -103,9 +101,9 @@
   --us-sand: #f5f0e8;       /* Warm Sand        — ground, sunk surfaces   */
   --us-ochre: #bb321a;      /* Ochre Red        — alert, intolerable risk */
 
-  /* Channel triplets, for brand colour at partial alpha. Kanda learned
-     this the expensive way: a hardcoded rgba() is invisible to a token
-     sweep, so ten hairlines carried a stale cream through a repaint. */
+  /* Channel triplets, for brand colour at partial alpha. A hardcoded
+     rgba() is invisible to a token sweep, which is how ten hairlines
+     carried a stale cream through a repaint on the sibling product. */
   --us-sand-rgb: 245 240 232;
   --us-charcoal-rgb: 44 44 44;
   --us-teal-rgb: 42 122 123;
@@ -168,6 +166,12 @@
   --us-tap: 48px;
 
   --us-topbar: 60px;
+  /* The sticky chrome: the top bar plus the sync strip, which is also
+     sticky and also above the content. Anything scrolled to — an
+     anchor, a focused control — has to clear BOTH, and the 88px this
+     replaced cleared only the first. 8px of air on top so a heading
+     does not sit flush against the strip's border. */
+  --us-chrome: calc(var(--us-topbar) + 52px);
   --us-tabbar: 62px;
 
   /* The focus ring, as a shadow rather than an outline, for controls
@@ -267,8 +271,9 @@
   /* ---- Categorical -------------------------------------------
      For distinguishing series in a chart — HRC categories, report types,
      departments. Carries NO semantic meaning and must never signal good
-     or bad. Kanda shipped that exact defect: the worst finding rendered
-     green because its category happened to be green. Here the rule is
+     or bad. The sibling product shipped that exact defect: the worst
+     finding rendered green because its category happened to be green.
+     Here the rule is
      enforced by name — anything reading --us-cat-* to express severity
      is wrong by construction. */
   --us-cat-1: #2a7a7b;
@@ -280,150 +285,380 @@
 }
 
 /* ============================================================
-   Base
+   JK & ASSOCIATES' COMPONENT LAYER, ported.
+
+   JK & Associates (jkassociates.enterprises) is the benchmark, and it
+   is the right one by temperature: its ramp runs oxblood -> terracotta
+   -> ember -> amber -> sand over warm ink and parchment, and its
+   stylesheet says outright that "nothing here is cool-toned; the whole
+   system is deliberately one temperature". That is Usalama's palette
+   described in another product's words.
+
+   THE MAPPING, and every line of it is a decision:
+
+     --jk-ink        -> --us-charcoal      warm near-black, the ink
+     --jk-terracotta -> --us-teal          JK's PRIMARY accent becomes
+                                           Usalama's action colour, which
+                                           the brand book assigns to
+                                           Aviation Teal. This is the one
+                                           place the port refuses JK's
+                                           own choice: teal is where
+                                           Usalama puts its buttons,
+                                           links and focus rings.
+     --jk-ember      -> --us-terracotta    Deep Terracotta keeps its
+                                           decorative role
+     --jk-amber      -> --us-gold          Savannah Gold
+     --jk-parchment  -> --us-surface-muted
+     --jk-sand       -> --us-sand          Warm Sand
+     --jk-red        -> --us-ochre         Ochre Red, alert only
+     --jk-muted      -> --us-ink-600
+
+   TYPOGRAPHY IS NOT PORTED. JK sets its headings in Cormorant Garamond
+   over DM Sans, and that serif IS its identity. Usalama's wordmark is a
+   geometric sans; a Garamond headline above it reads as two companies
+   on one screen. Both --serif and --sans resolve to --us-font here, so
+   the structure ports and the voice does not.
    ============================================================ */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+
+
+
+/* ============================================================
+   FIGURES — read this before touching numeric type.
+
+   Cormorant Garamond ships OLD-STYLE (text) figures by default: "11"
+   renders as "II", the 3 in "$1.3" drops below the baseline, and the 0
+   in "110+" sits at x-height. That is correct for running prose and
+   actively wrong for data — in the venture tools it made "12–24" read
+   as "I2–24" and financial totals look broken.
+
+   LINING is set at the root and inherited, rather than enumerated per
+   selector. An allow-list is the wrong shape here: it silently misses
+   inline-styled and JS-generated markup — which is exactly what happened
+   to the hero stat figures on the first attempt — and every new numeric
+   surface would have to remember to opt in. DM Sans carries only lining
+   figures, so this is a no-op for body copy and corrects Cormorant
+   everywhere it is used, including markup that does not exist yet.
+   ============================================================ */
+body { font-variant-numeric: lining-nums; }
+
+/* Tabular on top, for figures that sit in columns or update in place, so
+   digits keep a constant advance width and numbers do not jitter as they
+   change under the cursor. */
+.field input[type="number"],
+#lookthrough td {
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
-}
-
+/* ---------- reset / base ---------- */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
   margin: 0;
   font-family: var(--us-font);
-  font-size: var(--us-text-base);
-  line-height: var(--us-leading-normal);
-  color: var(--us-text-primary);
-  font-variant-numeric: tabular-nums;
+  color: var(--us-charcoal);
+  background: var(--us-paper);
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
+/* Tracking is optical, not fixed: a display face set at 3.6rem needs to be
+   pulled tighter than the same face at 1.3rem, where negative tracking just
+   makes it muddy. Line-height tightens as size grows for the same reason.
+   text-wrap:balance stops a headline stranding one word on its own line. */
+h1, h2, h3, h4 { font-family: var(--us-font); font-weight: 700; margin: 0 0 .4em; text-wrap: balance; }
+h1 { font-size: clamp(2.2rem, 5vw, 3.6rem);   line-height: 1.06; letter-spacing: -.022em; }
+h2 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); line-height: 1.12; letter-spacing: -.016em; }
+/* Component heading rules below are written :is(h2, h3, h4) rather than
+   pinned to one tag. Appearance belongs to the component; the LEVEL
+   belongs to the document, and the two were fused here — a footer
+   column heading was an h4 because h4 looked right, on pages whose
+   deepest content heading was h2. That skips a level, and 26 of 28
+   pages did it.
 
-/* Focus is Aviation Teal at full strength and never removed. A safety
-   report is filled in by people wearing gloves on a ramp and by people
-   who navigate entirely by keyboard; both need to see where they are. */
-:focus-visible {
-  outline: 3px solid var(--us-focus);
-  outline-offset: 2px;
-  border-radius: var(--us-radius-sm);
+   Pinning the selector to a tag makes fixing the level a visual
+   regression, which is why it stays broken. Matching a range costs
+   nothing — :is() takes the specificity of its most specific argument,
+   and these are all type selectors, so (0,0,1) either way — and it
+   means a heading can be renumbered for the outline without anyone
+   having to re-style it. */
+h3 { font-size: clamp(1.25rem, 2vw, 1.6rem);  line-height: 1.18; letter-spacing: -.008em; }
+h4 { line-height: 1.25; letter-spacing: 0; }
+/* Body copy wants a sane measure and no orphans. */
+p { text-wrap: pretty; }
+p { margin: 0 0 1rem; }
+a { color: var(--us-teal); text-decoration: none; }
+a:hover { text-decoration: underline; }
+img { max-width: 100%; display: block; }
+.eyebrow { font-family: var(--us-font); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: .72rem; color: var(--us-teal); margin: 0 0 .8rem; }
+section { padding: var(--us-section) 0; }
+:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 3px; border-radius: 2px; }
+/* On the ink surfaces a terracotta ring disappears into the background; the
+   focus indicator has to be visible against whatever it lands on. */
+.band-dark :focus-visible,
+.footer :focus-visible { outline-color: var(--us-gold); }
+
+/* Selection picks up the brand rather than the browser's default blue. */
+::selection { background: var(--us-sand); color: var(--us-charcoal); }
+.band-dark ::selection, .footer ::selection { background: var(--us-gold); color: var(--us-charcoal); }
+
+/* Anchored jumps must clear the sticky header instead of hiding the
+   heading behind it. */
+/* scroll-padding on the scroller covers focus moves as well as
+   fragments — WCAG 2.2 SC 2.4.11, which a sticky header is the usual
+   way to fail. scroll-margin on the targets covers the case where the
+   scroller is not the document. */
+html { scroll-padding-top: var(--us-chrome); }
+:target,
+[id] { scroll-margin-top: var(--us-chrome); }
+
+/* skip link — keyboard users land here first */
+.skip-link {
+  position: absolute; left: -9999px; top: 0; z-index: 200;
+  background: var(--us-charcoal); color: #fff; padding: .8rem 1.2rem;
+  border-radius: 0 0 var(--us-radius-sm) 0; font-weight: 700; font-size: .9rem;
+}
+.skip-link:focus { left: 0; text-decoration: none; }
+
+/* Present to assistive technology, absent from the visual composition —
+   for things a screen reader needs and a sighted reader already has from
+   the surrounding layout, such as a data table's caption. Clipped rather
+   than display:none, which would remove it from the accessibility tree
+   as well and defeat the purpose. */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
 }
 
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-family: var(--us-font); font-weight: 700; font-size: .98rem;
+  padding: .85rem 1.5rem; border-radius: var(--us-radius-sm);
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform var(--us-dur-fast) var(--us-ease),
+              background-color var(--us-dur-fast) var(--us-ease),
+              border-color var(--us-dur-fast) var(--us-ease),
+              box-shadow var(--us-dur-fast) var(--us-ease),
+              color var(--us-dur-fast) var(--us-ease);
+  text-decoration: none; will-change: transform;
+}
+.btn:hover { text-decoration: none; transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(.98); transition-duration: .05s; }
+.btn:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 3px; border-radius: 2px; }
+.btn-primary { background: var(--us-teal); color: #fff; }
+.btn-primary:hover { background: var(--us-teal-text); box-shadow: 0 8px 22px rgba(158,49,22,.34); }
+.btn-primary:disabled { background: var(--us-ink-600); cursor: not-allowed; opacity: .65; transform: none; box-shadow: none; }
+.btn-ghost { background: transparent; color: var(--us-charcoal); border-color: var(--us-border-strong); }
+.btn-ghost:hover { border-color: var(--us-teal); color: var(--us-teal); }
+.btn-ghost:disabled { border-color: var(--us-border); color: var(--us-ink-600); cursor: not-allowed; transform: none; }
+.btn-sm { padding: .55rem 1rem; font-size: .86rem; }
+.nav-links { display: flex; align-items: center; gap: 1.3rem; }
+/* :not(.btn) is load-bearing, not tidiness. The nav carries one button —
+   the "Start free" CTA, which appears on all 28 pages and is the most
+   clicked element on the site — and `.nav-links a` (0,1,1) outranks
+   `.btn-primary` (0,1,0), so without the exclusion the CTA is painted
+   ink-on-rust at 2.61:1 and the button's own `color: #fff` never lands.
+   The same applies to the :hover rule below, which was pushing it to
+   1.87:1. A button dropped into the nav later should look like a button,
+   not like a nav link that happens to have a background. */
+.nav-links a:not(.btn) { color: var(--us-charcoal); font-weight: 600; font-size: .93rem; transition: color var(--us-dur-fast) var(--us-ease); }
+.nav-links a:not(.btn):hover { color: var(--us-teal); text-decoration: none; }
+.nav-links a:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 4px; border-radius: 3px; }
+@media (max-width: 980px) {
+  .dropdown-menu { position: static; opacity: 1; visibility: visible; transform: none; box-shadow: none; border: 0; background: transparent; padding: 0 0 0 1rem; min-width: 0; }
+}
+
+/* trust strip */
+.trust-strip { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 2rem; padding-top: 1.6rem; border-top: 1px solid var(--us-border); }
+.card { background: #fff; color: var(--us-charcoal); border: 1px solid var(--us-border); border-radius: var(--us-radius-md); padding: 28px; box-shadow: var(--us-shadow-md);
+  transition: transform var(--us-dur) var(--us-ease), box-shadow var(--us-dur) var(--us-ease), border-color var(--us-dur) var(--us-ease); }
+.card:hover { transform: translateY(-4px); box-shadow: var(--us-shadow-hover); border-color: var(--us-border-strong); }
+.card :is(h2, h3) { margin-top: 0; }
+
+/* ...except inside something that paints its own light surface.
+
+   The rule above is more specific than a component's own `color`, so a
+   .tile inside a dark band got cream from itself and white headings
+   from the band. Five headings on the tutorial shipped at 1.08:1 — the
+   paragraphs read because .tile p sets a colour, the headings did not
+   because .tile h4 never did. Nothing in the suite could see it:
+   textContent has no colour.
+
+   :is() carries the specificity of its heaviest argument, so this lands
+   at 0,2,1 and beats .band-dark h4 at 0,1,1. Listed rather than
+   inherited because a component that paints a background owes the
+   reader a matching foreground, and saying so once here is cheaper than
+   auditing every future band. */
+.band-dark :is(.card, .note),
+.band-dark :is(.card, .note)
+  :is(h1, h2, h3, h4, h5, h6, p, li, dt, dd, strong, b, span) {
+  color: var(--us-charcoal);
+}
+.band-dark :is(.card, .note) p { color: var(--us-ink-600); }
+/* .score-hero is a dark surface too — it just isn't named .band-dark, so
+   it was missed when the dark-surface eyebrow colour was set. The base
+   .eyebrow is rust, which on ink is 2.61:1: the "Sample strategic gap
+   report" label above every scorecard result. Grouped here rather than
+   given its own rule so the next dark band added has one list to join. */
+.band-dark .eyebrow { color: var(--us-gold); }
+
+/* ---------- footer ---------- */
+.footer { background: var(--us-charcoal); padding: 54px 0 28px; }
+.footer :is(h2, h3, h4) { color: #fff; font-family: var(--us-font); font-size: .88rem; letter-spacing: .06em; text-transform: uppercase; }
+/* On ink, at 0.78 alpha sand, a link was the exact colour of the
+   sentence around it — colour as the sole signal, which WCAG 1.4.1
+   asks 3:1 for and this gave 1.0:1. Underlined instead, which works
+   for a reader who cannot separate the two hues at all. */
+.footer a { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.footer a:hover { color: var(--us-gold); }
+/* The lockup is an <a> and it is a logo. Underlining a wordmark makes
+   it look like a broken link rather than like the way home. */
+.footer .us-lockup { text-decoration: none; }
+
+/* The legal strip's links are inline inside a sentence, and colour was
+   the only thing separating them from it: #cbbfb8 link on #9a8c85 text
+   is 1.8:1, against the 3:1 that WCAG 1.4.1 asks when colour is the
+   sole distinguishing signal. Both colours are perfectly legible on
+   their own — the failure is that someone who cannot separate the two
+   hues has nothing else to go on.
+
+   Scoped to .ver rather than .footer: the column links above sit one
+   per line with no surrounding prose, so they are not links "in a text
+   block" and underlining them would be noise. */
+.footer .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); gap: clamp(2rem, 5vw, 3.5rem); }
+.footer .ver { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: .77rem; color: #9a8c85; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+
+
+.footer p { font-size: .89rem; margin-bottom: .45rem; }
+
+
+/* Embedded mode (?embed=1) — the content, without JK's furniture.
+   The attribution line is the exception and is not optional: a corpus
+   inside someone else's page still has to say whose it is. */
+
+
+
+/* gap table */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+
+
+/* form fields */
+/* 18px in the port. A hint under one control sat 18px from the LABEL
+   of the next, and a label reads as belonging to whatever is nearest —
+   so "Tell us more" looked like part of the field above it. */
+.field { margin-bottom: 26px; }
+.field label { display: block; font-weight: 600; font-size: .91rem; margin-bottom: .35rem; }
+.field .hint { font-size: .78rem; color: var(--us-ink-600); margin-top: .25rem; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: .78rem 1rem; border: 1px solid var(--us-border-strong);
+  border-radius: var(--us-radius-sm); font-size: 1rem; font-family: var(--us-font);
+  background: #fff; color: var(--us-charcoal);
+  transition: border-color var(--us-dur-fast) var(--us-ease), box-shadow var(--us-dur-fast) var(--us-ease);
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--us-teal); box-shadow: 0 0 0 3px rgb(var(--us-teal-rgb) / 0.08); }
+.field input[type="number"] { font-variant-numeric: tabular-nums; }
+
+
+
+
+
+/* regulatory citation chip */
+.cite {
+  display: inline-flex; align-items: center; gap: .35rem; font-size: .7rem; font-weight: 700;
+  padding: .16rem .55rem; border-radius: 99px; letter-spacing: .02em;
+  background: rgb(var(--us-teal-rgb) / 0.08); color: var(--us-teal-text); border: 1px solid transparent;
+  white-space: nowrap; margin: .3rem .3rem 0 0;
+}
+.cite a { color: inherit; text-decoration: underline; }
+
+
+.tag { font-size: .66rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: .16rem .5rem; border-radius: 4px; background: var(--us-sand); color: var(--us-ink-600); }
+
+@media (max-width: 980px) {
+  .footer .cols { grid-template-columns: 1fr; }
+  
+  .footer .cols { grid-template-columns: 1fr 1fr; }
+  .nav-links { display: none; position: absolute; top: 72px; left: 0; right: 0; background: #fff; flex-direction: column; align-items: stretch; padding: 1rem 24px; border-bottom: 1px solid var(--us-border); gap: .5rem; box-shadow: var(--us-shadow-md); max-height: calc(100vh - 72px); overflow-y: auto; }
+  .nav-toggle { display: block; }
+  
+  
+}
+@media (max-width: 620px) {
+  .footer .cols { grid-template-columns: 1fr; }
+}
+
+/* The printed pack — a regulator's copy, and this app's own screens
+   rather than the benchmark's. The ported rule listed nineteen
+   selectors for a scorecard, an email capture and a share bar, none of
+   which exist here; what does exist is a report, a queue and a dark
+   band that has to arrive as ink on white. */
+@media print {
+  @page { margin: 14mm; }
+  html, body { background: #fff !important; }
+  body { color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .nav, .dropdown-menu, .footer, .btn, .nav-toggle, .skip-link,
+  .sync-strip, .prompt-dock, .no-print { display: none !important; }
+  .band-dark, .band-parchment { background: #fff !important; color: #000 !important; padding: 0 0 10px !important; }
+  .band-dark *, .band-parchment * { color: var(--us-charcoal) !important; }
+  section { padding: 12px 0 !important; }
+  h1, h2 { page-break-after: avoid; }
+  .table-scroll { overflow: visible !important; }
+  /* Every collapsed disclosure prints expanded — a printed pack that
+     omits the optional section is a pack that omits the aerodrome. */
+  details { display: block !important; }
+  details > summary { display: none !important; }
+  .card { box-shadow: none !important; }
+}
+
+/* ============================================================
+   Reduced motion — everything above is progressive polish. A
+   visitor who asks for less motion gets a calm, instant interface
+   with every hover/focus state still legible.
+   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
   }
+  .btn:hover, .card:hover,
+
+  /* Belt and braces: mountReveal() bails out under reduced motion, but if
+     it ever ran anyway, content must still be visible rather than stuck
+     at opacity 0. */
+  
 }
+
+/* A range input has no border to recolour, so the rule above leaves it
+   with nothing but a 10%-alpha terracotta glow — 1.18:1 on the white
+   card, which is no indicator at all. Text inputs are fine: the
+   border-colour change carries them. Sliders get a real ring instead,
+   terracotta on white at 7.23:1. Specificity (0,3,1) beats the
+   `.field input:focus` rule that sets `outline: none`. */
+.field input[type="range"]:focus-visible {
+  outline: 2px solid var(--us-teal);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+
 
 /* ============================================================
-   Risk chip — colour is never the only channel
+   USALAMA'S OWN LAYER — what neither benchmark has a concept of.
 
-   WCAG 1.4.1: information must not be conveyed by colour alone. Every
-   risk chip therefore carries the tolerability WORD and the numeric
-   index alongside its fill. Printed in greyscale, faxed, or read by
-   someone with a colour deficiency, it still says what it is.
+   The sync strip, the Doc 9859 risk matrix, the triage queue, the
+   shared dropdown, the report form's anonymity control, the mark, the
+   provisional tag and the print rules. Everything structural above this
+   line is JK's.
    ============================================================ */
-.risk-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--us-space-2);
-  padding: var(--us-space-1) var(--us-space-3);
-  border-radius: var(--us-radius-pill);
-  font-size: var(--us-text-xs);
-  font-weight: var(--us-weight-semi);
-  letter-spacing: var(--us-tracking-wide);
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.risk-chip[data-tolerability='INTOLERABLE'] {
-  background: var(--us-risk-intolerable);
-  color: var(--us-risk-intolerable-on);
-}
-
-.risk-chip[data-tolerability='TOLERABLE'] {
-  background: var(--us-risk-tolerable);
-  color: var(--us-risk-tolerable-on);
-}
-
-.risk-chip[data-tolerability='ACCEPTABLE'] {
-  background: var(--us-risk-acceptable);
-  color: var(--us-risk-acceptable-on);
-}
-
-.risk-chip__index {
-  font-family: var(--us-font-mono);
-  font-size: var(--us-text-2xs);
-  opacity: 0.85;
-}
-
-/* ============================================================
-   Risk matrix — 5 x 5, Doc 9859 4th Ed.
-   ============================================================ */
-.risk-matrix {
-  border-collapse: collapse;
-  width: 100%;
-}
-
-.risk-matrix th {
-  font-size: var(--us-text-2xs);
-  font-weight: var(--us-weight-semi);
-  letter-spacing: var(--us-tracking-wide);
-  text-transform: uppercase;
-  color: var(--us-text-tertiary);
-  padding: var(--us-space-2);
-  text-align: left;
-}
-
-.risk-matrix td {
-  padding: 0;
-  border: 2px solid var(--us-surface);
-}
-
-.risk-matrix__cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 56px;
-  font-family: var(--us-font-mono);
-  font-size: var(--us-text-sm);
-  font-weight: var(--us-weight-bold);
-}
-
-.risk-matrix__cell[data-tolerability='INTOLERABLE'] {
-  background: var(--us-risk-intolerable);
-  color: var(--us-risk-intolerable-on);
-}
-
-.risk-matrix__cell[data-tolerability='TOLERABLE'] {
-  background: var(--us-risk-tolerable);
-  color: var(--us-risk-tolerable-on);
-}
-
-.risk-matrix__cell[data-tolerability='ACCEPTABLE'] {
-  background: var(--us-risk-acceptable);
-  color: var(--us-risk-acceptable-on);
-}
-
-/* The one-letter tolerability code, so the cell is legible without its
-   fill. I/T/A rather than a colour swatch. */
-.risk-matrix__code {
-  font-size: var(--us-text-2xs);
-  letter-spacing: var(--us-tracking-wide);
-  opacity: 0.9;
-}
 
 /* ============================================================
    Sync strip — the most important six words on the screen
 
-   Kanda's charter rule 8: a refused storage write is reported to the
-   user. UsalamaSMS extends it — an unsynced report is reported too,
+   Charter rule 8: a refused storage write is reported to the user.
+   UsalamaSMS extends it — an unsynced report is reported too,
    with a count, because the person who filed it needs to know it has
    not reached anyone yet.
 
@@ -513,399 +748,43 @@ body {
    print-colour-adjust: exact so an intolerable risk does not arrive on
    the Director General's desk as a pale grey box.
    ============================================================ */
+/* One block. This was three separate @media print rules that had
+   drifted apart — the last of them set background-image: none on a
+   body the first had already painted white. */
 @media print {
-  .sync-strip,
-  .no-print {
-    display: none !important;
-  }
-
-  .risk-chip,
   .risk-matrix__cell {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-
-  body {
-    background: #ffffff;
-  }
+  body { background: #fff; background-image: none; }
 }
 
-/* ============================================================
-   Phase 0 page layer
-
-   Kept deliberately small. These are the rules the shell needs to
-   demonstrate the tokens; they are not a design system for the product,
-   which does not exist yet.
-   ============================================================ */
-.skip-link {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  padding: var(--us-space-3) var(--us-space-4);
-  background: var(--us-charcoal);
-  color: #ffffff;
-  z-index: 10;
-}
-.skip-link:focus {
-  left: 0;
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* ============================================================
-   THE SHELL
-
-   Kanda's chrome, in Usalama's palette: a sticky glass top bar, a
-   sticky status strip beneath it, a reading-width page, and — the one
-   real divergence — a BOTTOM TAB BAR on handsets.
-
-   Why the tab bar. Kanda is read on a phone at a border post, but it is
-   read; this is filled in. A ramp agent has one hand on a phone, gloves
-   on, standing next to a running turboprop, and the top of a 6.7-inch
-   screen is not reachable with a thumb. A hamburger at the top right is
-   two taps and a stretch to reach the screen they are already trying to
-   get to. The destinations go where the thumb is.
-
-   Above 900px the tab bar disappears and the destinations move inline
-   into the top bar, because a mouse has no reach problem and a fixed
-   bar across a desktop viewport is a phone app pretending.
-   ============================================================ */
-/* ============================================================
-   GROUND TEXTURE — at the threshold of visible, and no further.
-
-   The identity ships four background textures. This is the Ethiopian
-   cross tessellation, redrawn as an inline SVG pattern so it costs no
-   request and scales without a raster.
-
-   The mud-cloth grid was tried first and rejected on looking at it: its
-   dashes and chevrons tile into shapes the eye reads as small repeated
-   GLYPHS, and a page of faint repeated glyphs behind a safety narrative
-   is a page that fights the narrative. A radially symmetric motif does
-   not do that at any opacity.
-
-   It sits at under 4% opacity on Warm Sand, which is the difference
-   between a page that has a ground and a page that has a background
-   colour — and it is deliberately below the level where it competes
-   with a safety narrative for attention. Anything stronger on a screen
-   that people read incident reports on all day is decoration charged
-   to the reader.
-
-   Not applied to cards: the texture is the ground, and the cards are
-   the things standing on it.
-   ============================================================ */
-body {
-  background-color: var(--us-sand);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%232c2c2c' stroke-opacity='0.032' stroke-width='1'%3E%3Cpath d='M42 28v28M28 42h28'/%3E%3Cpath d='M35 35l-7-7M49 35l7-7M35 49l-7 7M49 49l7 7'/%3E%3C/g%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-attachment: fixed;
-}
-
-/* The texture is a decoration and must never cost legibility on a
-   surface that carries a narrative, nor ink on a regulator's printer. */
-@media print {
-  body {
-    background-image: none;
-  }
-}
-
-.app-shell {
-  display: flex;
-  flex-direction: column;
-  min-height: 100dvh;
-}
-
-.container {
-  width: 100%;
-  max-width: var(--us-container);
-  margin-inline: auto;
-  padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-8));
-}
-
-.container--wide {
-  max-width: var(--us-container-wide);
-}
-
-/* ---- Top bar ---------------------------------------------- */
-
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--us-space-4);
-  min-height: var(--us-topbar);
-  padding: var(--us-space-2) clamp(var(--us-space-4), 4vw, var(--us-space-8));
-  padding-top: max(var(--us-space-2), env(safe-area-inset-top));
-  /* Warm Sand at 78% with a saturating blur. Flat white would sever the
-     bar from the page; the tint keeps it part of the same object while
-     content passing underneath stays legible. */
-  background: rgb(var(--us-sand-rgb) / 0.78);
-  backdrop-filter: saturate(180%) blur(14px);
-  -webkit-backdrop-filter: saturate(180%) blur(14px);
-  border-bottom: 1px solid var(--us-border);
-}
-
-/* Safari before 15.4 and Firefox without the flag ignore the filter and
-   would render 78% Warm Sand over live text. Opaque is the correct
-   fallback: slightly less refined, still readable. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .topbar {
-    background: var(--us-sand);
-  }
-}
-
-.topbar__brand {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--us-tap);
-  text-decoration: none;
-  color: inherit;
-  border-radius: var(--us-radius-md);
-}
-
-/* ---- Inline nav: wide screens only ------------------------ */
-
-.topnav {
-  display: none;
-  align-items: center;
-  gap: var(--us-space-1);
-}
-
-.topnav a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 38px;
-  padding: 0 var(--us-space-4);
-  border-radius: var(--us-radius-pill);
-  font-size: var(--us-text-sm);
-  font-weight: var(--us-weight-medium);
-  color: var(--us-text-tertiary);
-  text-decoration: none;
-  transition: background var(--us-dur) var(--us-ease), color var(--us-dur) var(--us-ease);
-}
-
-.topnav a:hover {
-  background: rgb(var(--us-charcoal-rgb) / 0.05);
-  color: var(--us-text-primary);
-}
-
-.topnav a[data-current] {
-  background: rgb(var(--us-teal-rgb) / 0.11);
-  color: var(--us-teal-text);
-  font-weight: var(--us-weight-semi);
-}
-
-@media (min-width: 900px) {
-  .topnav {
-    display: flex;
-  }
-}
-
-/* ---- Bottom tab bar: handsets ----------------------------- */
-
-.tabbar {
-  position: fixed;
-  inset: auto 0 0 0;
-  z-index: 60;
-  display: flex;
-  align-items: stretch;
-  min-height: var(--us-tabbar);
-  padding-bottom: env(safe-area-inset-bottom);
-  background: rgb(255 255 255 / 0.88);
-  backdrop-filter: saturate(180%) blur(14px);
-  -webkit-backdrop-filter: saturate(180%) blur(14px);
-  border-top: 1px solid var(--us-border);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .tabbar {
-    background: var(--us-paper);
-  }
-}
-
-.tabbar a {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-height: var(--us-tabbar);
-  padding: var(--us-space-2) var(--us-space-1);
-  font-size: var(--us-text-2xs);
-  font-weight: var(--us-weight-medium);
-  letter-spacing: 0.01em;
-  color: var(--us-text-tertiary);
-  text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: color var(--us-dur) var(--us-ease);
-}
-
-.tabbar a svg {
-  width: 22px;
-  height: 22px;
-  stroke-width: 1.7;
-}
-
-.tabbar a[data-current] {
-  color: var(--us-teal-text);
-  font-weight: var(--us-weight-semi);
-}
-
-/* The active pip. An icon that only changes colour is a state a lot of
-   people miss on a small screen in bright light. */
-.tabbar a[data-current]::after {
-  content: '';
-  position: absolute;
-  bottom: 7px;
-  width: 16px;
-  height: 2.5px;
-  border-radius: var(--us-radius-pill);
-  background: currentColor;
-}
-
-.tabbar a {
-  position: relative;
-}
-
+/* The unsent count, on the only navigation affordance a handset shows. */
 .tabbar__badge {
   position: absolute;
-  top: 8px;
-  left: 50%;
-  margin-left: 6px;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
+  top: -6px;
+  right: -4px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
   border-radius: var(--us-radius-pill);
   background: var(--us-ochre);
   color: #ffffff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: var(--us-weight-bold);
-  line-height: 17px;
+  line-height: 19px;
   text-align: center;
-  box-shadow: 0 0 0 2px var(--us-paper);
+  box-shadow: 0 0 0 2px var(--us-sand);
 }
 
-@media (min-width: 900px) {
-  .tabbar {
-    display: none;
-  }
-}
-
-/* ---- Page ------------------------------------------------- */
-
-#main,
-.page {
-  flex: 1;
-  width: 100%;
-  max-width: var(--us-container);
-  margin-inline: auto;
-  padding: var(--us-section-tight) clamp(var(--us-space-4), 4vw, var(--us-space-8))
-    var(--us-section);
-}
-
-/* Clear the fixed tab bar. Without this the last control on every
-   screen sits under it — and on the report form the last control is
-   Send. */
-@media (max-width: 899px) {
-  #main,
-  .page {
-    padding-bottom: calc(var(--us-tabbar) + env(safe-area-inset-bottom) + var(--us-space-8));
-  }
-}
-
-/* ---- Page head -------------------------------------------- */
-
-.page-head {
-  margin-bottom: var(--us-section-tight);
-}
-
-.page-head h1 {
-  margin: 0;
-  font-size: var(--us-text-2xl);
-  font-weight: var(--us-weight-bold);
-  line-height: var(--us-leading-tight);
-  letter-spacing: var(--us-tracking-tight);
-  text-wrap: balance;
-}
-
-.page-head .lede {
-  margin: var(--us-space-3) 0 0;
-  max-width: 46ch;
-  font-size: var(--us-text-base);
-  line-height: var(--us-leading-snug);
-  color: var(--us-text-tertiary);
-}
-
-/* The small uppercase label above a headline. Gold-text, because the
-   flat Savannah Gold is 2.16:1 and would be a rumour of a label. */
-.eyebrow {
-  display: block;
-  margin-bottom: var(--us-space-2);
-  font-size: var(--us-text-2xs);
-  font-weight: var(--us-weight-bold);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--us-gold-text);
-}
-
-.section-title {
-  margin: 0 0 var(--us-space-3);
-  font-size: var(--us-text-2xs);
-  font-weight: var(--us-weight-semi);
-  letter-spacing: var(--us-tracking-wide);
-  text-transform: uppercase;
-  color: var(--us-text-tertiary);
-}
-
-/* ---- Card ------------------------------------------------- */
-
-.card {
-  background: var(--us-surface);
-  border: 1px solid var(--us-border);
-  border-radius: var(--us-radius-lg);
-  padding: clamp(var(--us-space-4), 3.5vw, var(--us-space-6));
-  box-shadow: var(--us-shadow-sm);
-}
-
-.card + .card {
-  margin-top: var(--us-space-4);
-}
-
-.card--tinted {
-  background: var(--us-surface-sunk);
-  border-color: transparent;
-  box-shadow: none;
-}
-
-.card--flush {
-  padding: 0;
-  overflow: hidden;
-}
-
-/* ---- Site header, retained for the design route ----------- */
-
-.site-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--us-space-4);
-  padding: var(--us-space-6) var(--us-space-5);
-  border-bottom: 1px solid var(--us-border);
-}
-
+/* The mark is pinned to its ink treatment inside the band. Left to the
+   light-ground rule it draws a charcoal shield on a charcoal field and
+   disappears, leaving a floating crest. */
 /* ---- The shell lockup ------------------------------------- */
 
 .us-lockup {
@@ -928,9 +807,6 @@ body {
   letter-spacing: var(--us-tracking-tight);
 }
 
-/* The descriptor is what stops a two-word wordmark reading as a login
-   screen for something unspecified: small enough to be a signature
-   rather than a heading, dark enough to actually be read. */
 .us-lockup__descriptor {
   margin-top: 4px;
   font-size: 8px;
@@ -941,8 +817,11 @@ body {
   white-space: nowrap;
 }
 
-.site-footer .us-lockup__descriptor {
-  color: var(--us-text-tertiary);
+/* The footer's lockup sits on ink. `.site-footer` was JK's element and
+   this app's footer is `.footer`, so this rule matched nothing and the
+   descriptor rendered in the light-surface gold-text at 1.9:1. */
+.footer .us-lockup__descriptor {
+  color: var(--us-gold);
 }
 
 .us-logo {
@@ -967,110 +846,11 @@ body {
   margin-left: 2px;
 }
 
-.slogan {
-  margin: 0;
-  font-size: var(--us-text-xs);
-  font-weight: var(--us-weight-semi);
-  letter-spacing: var(--us-tracking-wide);
-  text-transform: uppercase;
-  /* The sibling, not the flat gold: 2.16:1 would make the slogan a
-     rumour of a slogan. */
-  color: var(--us-gold-text);
-}
-
-.panel {
-  margin-bottom: var(--us-section);
-}
-
-.panel h1,
-.panel h2 {
-  letter-spacing: var(--us-tracking-tight);
-  line-height: var(--us-leading-tight);
-}
-
-.panel h1 {
-  font-size: var(--us-text-2xl);
-}
-.panel h2 {
-  font-size: var(--us-text-xl);
-}
-
-.lede {
-  font-size: var(--us-text-md);
-  color: var(--us-text-secondary);
-  max-width: 48ch;
-}
-
-.panel p {
-  max-width: 62ch;
-}
-
-.footnote {
-  font-size: var(--us-text-sm);
-  color: var(--us-text-tertiary);
-}
-
-code {
-  font-family: var(--us-font-mono);
-  font-size: 0.9em;
-  background: var(--us-surface-sunk);
-  padding: 0 var(--us-space-1);
-  border-radius: 4px;
-}
-
-/* Wide content scrolls inside its own container. The page body must
-   never scroll horizontally — Kanda tests this at 320px, and a safety
-   report filled in on a phone is the reason it matters. */
-.table-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
 /* TOLERABLE is the lightest of the three fills, which inverts the usual
    severity-as-weight reading. A darker gold border claws some of that
    back without touching the brand value. */
 .risk-matrix__cell[data-tolerability='TOLERABLE'] {
   box-shadow: inset 0 0 0 2px var(--us-gold-text);
-}
-
-.oblig-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: var(--us-text-sm);
-}
-
-.oblig-table th,
-.oblig-table td {
-  text-align: left;
-  padding: var(--us-space-3);
-  border-bottom: 1px solid var(--us-border);
-  vertical-align: top;
-}
-
-.oblig-table thead th {
-  font-size: var(--us-text-2xs);
-  letter-spacing: var(--us-tracking-wide);
-  text-transform: uppercase;
-  color: var(--us-text-tertiary);
-}
-
-.oblig-table .num {
-  font-family: var(--us-font-mono);
-  white-space: nowrap;
-}
-
-.cite {
-  color: var(--us-text-tertiary);
-  max-width: 34ch;
-}
-
-/* Charter rule 4 — every figure carries its date, on the surface rather
-   than in a footnote. */
-.verified {
-  display: block;
-  font-size: var(--us-text-2xs);
-  color: var(--us-text-tertiary);
-  margin-top: var(--us-space-1);
 }
 
 /* A provisional row must never look like a citation. */
@@ -1091,106 +871,34 @@ code {
   border: 1px dashed var(--us-ochre-text);
 }
 
-.site-footer {
-  margin-top: auto;
-  padding: var(--us-section) 0 var(--us-section-tight);
-  background: var(--us-surface-sunk);
-  border-top: 1px solid var(--us-border);
-  font-size: var(--us-text-sm);
-  color: var(--us-text-tertiary);
-}
-
-@media (max-width: 899px) {
-  .site-footer {
-    padding-bottom: calc(var(--us-tabbar) + env(safe-area-inset-bottom) + var(--us-space-6));
-  }
-}
-
-.site-footer__brand {
-  display: flex;
-  flex-direction: column;
-  gap: var(--us-space-3);
-  margin-bottom: var(--us-space-6);
-}
-
-.site-footer__line {
+/* The regulatory rows. A definition list because that is what it is:
+   an authority, and the obligation it imposes. */
+.reg-list {
   margin: 0;
-  max-width: 52ch;
-  line-height: var(--us-leading-normal);
 }
 
-.site-footer__links {
+.reg-list__row + .reg-list__row {
+  margin-top: var(--us-space-3);
+  padding-top: var(--us-space-3);
+  border-top: 1px solid var(--us-border);
+}
+
+.reg-list dt {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--us-space-2) var(--us-space-5);
-  padding-bottom: var(--us-space-5);
-  border-bottom: 1px solid var(--us-border);
-}
-
-.site-footer__links a {
-  display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  color: var(--us-text-secondary);
-  text-decoration: none;
-  font-weight: var(--us-weight-medium);
-}
-
-.site-footer__links a:hover {
-  color: var(--us-teal-text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.site-footer__legal {
-  margin: var(--us-space-5) 0 0;
-  font-size: var(--us-text-xs);
-  color: var(--us-ink-400);
-}
-
-/* The design route still renders a plain nav; the shell's own
-   navigation is .topnav and .tabbar above. */
-.site-nav {
-  display: flex;
-  flex-wrap: wrap;
   gap: var(--us-space-2);
-}
-
-.site-nav a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 0 var(--us-space-3);
-  border-radius: var(--us-radius-pill);
-  color: var(--us-text-tertiary);
-  text-decoration: none;
-  font-weight: var(--us-weight-medium);
-}
-
-.site-nav a[data-current] {
-  background: rgb(var(--us-teal-rgb) / 0.11);
-  color: var(--us-teal-text);
-}
-
-.report {
-  max-width: 44rem;
-}
-
-.report fieldset {
-  border: 0;
-  padding: 0;
-  margin: 0 0 var(--us-space-6);
-}
-
-.report legend,
-.field__label {
-  display: block;
-  margin-bottom: var(--us-space-2);
-  padding: 0;
-  font-size: var(--us-text-base);
   font-weight: var(--us-weight-semi);
+  color: var(--us-text-secondary);
+}
+
+.reg-list dd {
+  margin: var(--us-space-1) 0 0;
+  font-size: var(--us-text-sm);
   line-height: var(--us-leading-snug);
-  color: var(--us-text-primary);
+}
+
+.reg-list__source {
+  color: var(--us-text-tertiary);
 }
 
 .chip-row {
@@ -1231,74 +939,6 @@ code {
 .chip:has(input:focus-visible) {
   outline: 3px solid var(--us-focus);
   outline-offset: 2px;
-}
-
-.field {
-  display: block;
-  margin-bottom: var(--us-space-5);
-}
-
-.field input,
-.field textarea {
-  display: block;
-  width: 100%;
-  min-height: var(--us-tap);
-  padding: var(--us-space-3) var(--us-space-4);
-  border: 1px solid var(--us-border-strong);
-  border-radius: var(--us-radius-md);
-  background: var(--us-surface);
-  font: inherit;
-  font-size: var(--us-text-base);
-  color: var(--us-text-primary);
-  transition: border-color var(--us-dur) var(--us-ease),
-    box-shadow var(--us-dur) var(--us-ease);
-}
-
-.field input::placeholder,
-.field textarea::placeholder {
-  color: var(--us-ink-400);
-}
-
-.field input:hover,
-.field textarea:hover {
-  border-color: var(--us-ink-400);
-}
-
-/* The ring, not an outline offset by 2px. A control whose own border
-   changes AND which gains a halo is unmistakable in sunlight, which is
-   where this form is filled in. */
-.field input:focus,
-.field textarea:focus {
-  outline: none;
-  border-color: var(--us-teal);
-  box-shadow: var(--us-ring);
-}
-
-.field input[aria-invalid='true'],
-.field textarea[aria-invalid='true'] {
-  border-color: var(--us-ochre);
-}
-
-.field textarea {
-  min-height: 148px;
-  line-height: var(--us-leading-normal);
-  resize: vertical;
-}
-
-.field__hint {
-  display: block;
-  margin-top: var(--us-space-2);
-  font-size: var(--us-text-sm);
-  line-height: var(--us-leading-snug);
-  color: var(--us-text-tertiary);
-}
-
-.field__count {
-  display: block;
-  margin-top: var(--us-space-2);
-  font-size: var(--us-text-xs);
-  color: var(--us-ink-400);
-  font-variant-numeric: tabular-nums;
 }
 
 /* ============================================================
@@ -1459,121 +1099,11 @@ code {
   margin-top: var(--us-space-6);
 }
 
-/* On a handset the submit is the last thing above the tab bar and has
-   to be reachable without a stretch; on a desktop a full-bleed button
-   across 46rem is a banner, so it shrinks back to its content. */
-@media (min-width: 700px) {
-  .report__actions .btn--block {
-    width: auto;
-    min-width: 15rem;
-  }
-}
-
 .report__status {
   margin: var(--us-space-4) 0 0;
   font-size: var(--us-text-sm);
   font-weight: var(--us-weight-medium);
   line-height: var(--us-leading-snug);
-  min-height: 1.4em;
-}
-
-/* ============================================================
-   Buttons
-
-   One base, four variants, and a real pressed state. The previous set
-   had no hover, no active and a bare `.btn` with no background — which
-   rendered as the user agent's grey on the sign-in screen.
-   ============================================================ */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--us-space-2);
-  min-height: var(--us-tap);
-  padding: 0 var(--us-space-6);
-  border: 1px solid transparent;
-  border-radius: var(--us-radius-md);
-  background: var(--us-teal);
-  color: #ffffff;
-  font: inherit;
-  font-size: var(--us-text-base);
-  font-weight: var(--us-weight-semi);
-  letter-spacing: var(--us-tracking-snug);
-  text-decoration: none;
-  cursor: pointer;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: background var(--us-dur) var(--us-ease),
-    border-color var(--us-dur) var(--us-ease),
-    box-shadow var(--us-dur) var(--us-ease),
-    transform var(--us-dur-fast) var(--us-ease);
-}
-
-/* Barely perceptible, and the difference between a button and a
-   picture of one. */
-.btn:active:not([disabled]) {
-  transform: scale(0.985);
-}
-
-.btn--primary {
-  background: var(--us-teal);
-  color: #ffffff;
-  box-shadow: 0 1px 2px rgb(var(--us-charcoal-rgb) / 0.12),
-    0 6px 18px rgb(var(--us-teal-rgb) / 0.22);
-}
-
-.btn--primary:hover:not([disabled]) {
-  background: var(--us-teal-text);
-  box-shadow: 0 2px 4px rgb(var(--us-charcoal-rgb) / 0.14),
-    0 10px 26px rgb(var(--us-teal-rgb) / 0.28);
-}
-
-.btn--secondary {
-  background: var(--us-surface);
-  border-color: var(--us-border-strong);
-  color: var(--us-text-secondary);
-  box-shadow: none;
-}
-
-.btn--secondary:hover:not([disabled]) {
-  background: var(--us-surface-muted);
-  border-color: var(--us-ink-400);
-  color: var(--us-text-primary);
-}
-
-.btn--ghost {
-  background: transparent;
-  color: var(--us-teal-text);
-  box-shadow: none;
-}
-
-.btn--ghost:hover:not([disabled]) {
-  background: rgb(var(--us-teal-rgb) / 0.08);
-}
-
-/* Full width. On a handset the primary action is always this, because a
-   button that does not span the column is a button a thumb can miss. */
-.btn--block {
-  width: 100%;
-}
-
-.btn[disabled] {
-  opacity: 0.55;
-  cursor: progress;
-  box-shadow: none;
-  transform: none;
-}
-
-.hint {
-  margin-top: var(--us-space-3);
-  font-size: var(--us-text-sm);
-  color: var(--us-ink-600);
-}
-
-.field__error {
-  margin-top: var(--us-space-3);
-  font-size: var(--us-text-sm);
-  color: var(--us-state-error);
   min-height: 1.4em;
 }
 
@@ -1658,79 +1188,6 @@ code {
   color: var(--us-text-tertiary);
 }
 
-/* ============================================================
-   Status badges — the identity's six, at queue size
-
-   The brand sheet renders them as gold-rimmed coins. At 390px in a list
-   of thirty, a decorated ring is a smudge around a word and the word is
-   the part that has to survive sunlight. The colour assignments and the
-   glyphs are kept exactly; the emboss is not.
-   ============================================================ */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--us-space-2);
-  padding: 3px var(--us-space-3) 3px var(--us-space-2);
-  border: 1px solid transparent;
-  border-radius: var(--us-radius-pill);
-  font-size: var(--us-text-xs);
-  font-weight: var(--us-weight-semi);
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-
-.badge__glyph {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-
-.badge[data-status='SAFE'] {
-  background: rgb(8 48 28 / 0.09);
-  border-color: rgb(8 48 28 / 0.18);
-  color: var(--us-risk-acceptable);
-}
-
-.badge[data-status='CAUTION'] {
-  background: rgb(var(--us-gold-rgb) / 0.2);
-  border-color: rgb(var(--us-gold-rgb) / 0.42);
-  color: var(--us-gold-text);
-}
-
-.badge[data-status='ALERT'] {
-  background: rgb(187 50 26 / 0.1);
-  border-color: rgb(187 50 26 / 0.24);
-  color: var(--us-ochre-text);
-}
-
-.badge[data-status='OFFLINE'] {
-  background: rgb(var(--us-charcoal-rgb) / 0.07);
-  border-color: rgb(var(--us-charcoal-rgb) / 0.16);
-  color: var(--us-text-tertiary);
-}
-
-.badge[data-status='SYNCING'] {
-  background: rgb(var(--us-teal-rgb) / 0.11);
-  border-color: rgb(var(--us-teal-rgb) / 0.26);
-  color: var(--us-teal-text);
-}
-
-.badge[data-status='PROTECTED'] {
-  background: rgb(198 93 59 / 0.11);
-  border-color: rgb(198 93 59 / 0.26);
-  color: var(--us-terracotta-text);
-}
-
-/* The sending badge turns, because it is the one state that is
-   genuinely in motion. Everything else is still. */
-.badge[data-status='SYNCING'] .badge__glyph {
-  animation: us-spin 1.6s linear infinite;
-}
-
-@keyframes us-spin {
-  to { transform: rotate(360deg); }
-}
-
 .queue__title {
   margin: 0 0 var(--us-space-2);
   font-weight: var(--us-weight-medium);
@@ -1749,13 +1206,26 @@ code {
   color: var(--us-risk-intolerable-text);
   font-weight: var(--us-weight-semi);
 }
+
 .queue__deadline[data-status='DUE_SOON'] {
   color: var(--us-risk-tolerable-text);
   font-weight: var(--us-weight-semi);
 }
+
 .queue__deadline[data-status='PENDING'],
 .queue__deadline[data-status='MET'] {
   color: var(--us-text-tertiary);
+}
+
+/* The actions on a failed report. Right-aligned and quiet: they are
+   the exception on this screen, not its purpose. */
+.queue__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+  margin-top: var(--us-space-4);
+  padding-top: var(--us-space-4);
+  border-top: 1px solid var(--us-border);
 }
 
 .queue__error {
@@ -1948,7 +1418,6 @@ code {
   color: var(--us-text-tertiary);
 }
 
-
 /* ============================================================
    PROMPT DOCK — install, and update
 
@@ -1989,11 +1458,6 @@ code {
   animation: us-rise var(--us-dur-slow) var(--us-ease-out) both;
 }
 
-@keyframes us-rise {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
-}
-
 .prompt__text {
   margin: 0;
   font-size: var(--us-text-sm);
@@ -2006,11 +1470,799 @@ code {
   justify-content: flex-end;
   gap: var(--us-space-3);
 }
+/* ============================================================
+   SHELL BRIDGE — where this app's chrome meets JK's layer.
 
-/* Small, because these are secondary to whatever the person came to do.
-   Still 40px, because they are still tapped with a glove on. */
-.btn--sm {
-  min-height: 40px;
-  padding: 0 var(--us-space-4);
+   JK is a multi-page site: every page wraps its own content in .wrap,
+   and .nav .wrap does the header's layout. This app writes screens into
+   one outlet through a router, so the outlet takes the container's job.
+   Without this every screen rendered flush to the left edge.
+
+   Keyed on .page rather than on #main: the id is the router's handle
+   and the class is the role, and a second outlet (a print view, a
+   dialog) should get the layout by naming the role.
+   ============================================================ */
+.page {
+  width: 100%;
+  max-width: var(--us-container);
+  margin-inline: auto;
+  padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-8));
+  padding-block: var(--us-section-tight) var(--us-section);
+}
+
+/* A screen supplying its own full-bleed band takes the gutter back — a
+   band inset by the page padding is a card, not a band. */
+.page:has(> .band-dark) {
+  max-width: none;
+  padding-inline: 0;
+  padding-top: 0;
+}
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--us-space-4);
+  min-height: var(--us-topbar);
+  padding: var(--us-space-2) clamp(var(--us-space-4), 4vw, var(--us-space-8));
+  padding-top: max(var(--us-space-2), env(safe-area-inset-top));
+  background: rgb(var(--us-sand-rgb) / 0.82);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--us-border);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nav { background: var(--us-sand); }
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--us-space-2);
+}
+
+.nav-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--us-space-2);
   font-size: var(--us-text-sm);
+}
+
+.nav-toggle svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+/* JK opens its dropdowns on hover, which is not available to a thumb.
+   This one is a button-controlled panel, fixed under the bar. */
+.dropdown-menu {
+  position: fixed;
+  top: calc(var(--us-topbar) + env(safe-area-inset-top));
+  right: clamp(var(--us-space-3), 3vw, var(--us-space-6));
+  left: auto;
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  min-width: min(22rem, calc(100vw - 2 * var(--us-space-4)));
+  padding: var(--us-space-2);
+  background: var(--us-paper);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-lg);
+  box-shadow: var(--us-shadow-lg);
+  z-index: 70;
+}
+
+.dropdown-menu[hidden] { display: none; }
+
+.nav-group + .nav-group { margin-top: var(--us-space-3); padding-top: var(--us-space-3); border-top: 1px solid var(--us-border); }
+
+.nav-group__title {
+  margin: 0 0 var(--us-space-1);
+  padding: 0 var(--us-space-4);
+  font-size: var(--us-text-2xs);
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--us-ink-400);
+}
+
+.nav-item {
+  display: block;
+  padding: var(--us-space-3) var(--us-space-4);
+  border-radius: var(--us-radius-md);
+  text-decoration: none;
+  color: inherit;
+}
+
+.nav-item:hover { background: var(--us-surface-muted); }
+.nav-item[data-current] { background: rgb(var(--us-teal-rgb) / 0.1); }
+
+.nav-item-title {
+  display: block;
+  font-size: var(--us-text-md);
+  font-weight: var(--us-weight-semi);
+  line-height: var(--us-leading-snug);
+}
+
+.nav-item[data-current] .nav-item-title { color: var(--us-teal-text); }
+
+.nav-item-summary {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+  color: var(--us-text-tertiary);
+}
+
+@media (min-width: 900px) {
+  .nav-toggle { display: none; }
+}
+
+@media (max-width: 899px) {
+  .nav-links { display: none; }
+}
+
+/* JK's ink band, carrying Usalama's washes. */
+.band-dark {
+  position: relative;
+  overflow: hidden;
+  padding-block: clamp(2rem, 6vw, 3.25rem);
+  background:
+    radial-gradient(760px 460px at 6% 8%, rgb(var(--us-teal-rgb) / 0.36) 0%, transparent 62%),
+    radial-gradient(640px 420px at 92% 0%, rgb(198 93 59 / 0.3) 0%, transparent 58%),
+    var(--us-charcoal);
+  color: var(--us-sand);
+}
+
+.band-dark h1,
+.band-dark h2 { color: var(--us-sand); }
+.band-dark .lede { color: rgb(var(--us-sand-rgb) / 0.86); }
+.band-dark .eyebrow { color: var(--us-gold); }
+.band-dark .trust-item { color: rgb(var(--us-sand-rgb) / 0.9); }
+
+.trust-item svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--us-gold);
+  stroke-width: 1.9;
+}
+
+/* ============================================================
+   APP VOCABULARY — the class names this app's markup emits that JK
+   has no page to have needed.
+
+   HOW THIS SECTION CAME TO BE MISSING, because the mechanism matters
+   more than the list. Porting JK's sheet meant dropping the 404 rules
+   for pages this app does not render, and the tool that did the
+   dropping worked from the class names JK's own HTML uses. Every class
+   only OUR markup emits therefore read as dead and went with them —
+   including `.wrap`, which is JK's page container and the reason the
+   account screen shipped its heading flush against the left edge with
+   the lede running off the right.
+
+   Nothing caught it. The smoke suite reads text and geometry it asked
+   for by selector; an element with no styling still has textContent, a
+   bounding box, and a passing assertion. The check that would have
+   seen it is the one added below it: every class the markup emits must
+   resolve to at least one rule. That check now runs in the gate, and
+   it is what this section is answerable to.
+   ============================================================ */
+
+/* JK's page container, at JK's width. Wider than --us-container on
+   purpose: that token is the READING measure the report form and the
+   triage queue are set to, and a form field 1,000px wide is a worse
+   form. .wrap is the other kind of container — a landing page, a
+   footer, anything laid out in columns — and at 46rem those columns
+   were 150px wide with three words a line. Text inside still caps its
+   own measure; .lede and .footer-line both do. */
+.wrap { width: 100%; max-width: var(--us-container-wide); margin-inline: auto; padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-6)); }
+
+/* THE LEDE HAD NO RULE. It is the paragraph directly under every h1 in
+   this app — the one sentence that says what a screen is for — and the
+   port left it with only a colour inside .band-dark. It rendered at
+   body size, at whatever measure its container happened to be, on
+   every screen. */
+.lede {
+  max-width: 62ch;
+  font-size: clamp(1.02rem, 1.4vw, 1.15rem);
+  line-height: var(--us-leading-normal);
+  color: var(--us-ink-600);
+}
+.band-dark .lede,
+.band-parchment .lede { max-width: 58ch; }
+
+/* `section` already carries JK's vertical rhythm. A panel is a screen's
+   own content block, one step tighter, because it follows a band that
+   has just spent that space. */
+.panel { padding-block: clamp(1.5rem, 4.5vw, 2.5rem); }
+.panel + .panel { padding-top: 0; }
+.page-head { margin-bottom: var(--us-space-6); }
+.page-head h1 { margin: 0 0 var(--us-space-2); }
+.page-head p { margin: 0; max-width: 62ch; color: var(--us-ink-600); }
+.section-title { font-size: var(--us-text-md); letter-spacing: -.01em; margin: 0 0 var(--us-space-3); }
+.footnote { margin-top: var(--us-space-3); font-size: var(--us-text-xs); color: var(--us-ink-600); }
+.lede--tight { max-width: 62ch; font-size: var(--us-text-base); }
+/* A form is a reading measure, not a page width — .panel .wrap is now
+   JK's 68rem and a sign-in field stretched the whole way across it. */
+.panel > .card,
+.panel > form.card { max-width: var(--us-container); }
+.empty-state { padding: var(--us-space-8) var(--us-space-4); text-align: center; color: var(--us-text-tertiary); }
+.empty-state :is(h1, h3) { font-size: var(--us-text-md); color: var(--us-charcoal); margin-bottom: var(--us-space-2); }
+.empty-state p { max-width: 44ch; margin-inline: auto; font-size: var(--us-text-sm); }
+
+/* Buttons the app names that JK's set does not. Secondary is JK's
+   .btn-ghost with a surface behind it — a paired action beside a
+   primary, which on a phone needs its own edge to be hittable. */
+.btn-secondary { background: var(--us-surface); color: var(--us-charcoal); border-color: var(--us-border-strong); }
+.btn-secondary:hover:not(:disabled) { background: var(--us-surface-muted); border-color: var(--us-teal); color: var(--us-teal); }
+.btn-secondary:disabled { color: var(--us-ink-600); border-color: var(--us-border); cursor: not-allowed; transform: none; }
+.btn-block { width: 100%; justify-content: center; }
+
+/* The form. JK styles `.field input`; this app labels with a <span>
+   and classes its controls, because a screen reader on a report form
+   is not a nice-to-have and `.field label` cannot carry an error. */
+.field-label { display: block; font-weight: 600; font-size: .91rem; margin-bottom: .35rem; }
+.field-hint { font-size: .78rem; color: var(--us-ink-600); margin-top: .25rem; }
+.field-error { font-size: .78rem; color: var(--us-ochre-text); margin-top: .3rem; min-height: 1.1em; }
+.input-field {
+  width: 100%; min-height: var(--us-tap); padding: .78rem 1rem;
+  border: 1px solid var(--us-border-strong); border-radius: var(--us-radius-sm);
+  font-size: 1rem; font-family: var(--us-font); background: #fff; color: var(--us-charcoal);
+  transition: border-color var(--us-dur-fast) var(--us-ease), box-shadow var(--us-dur-fast) var(--us-ease);
+}
+.input-field:hover { border-color: var(--us-ink-400); }
+.input-field:focus { outline: none; border-color: var(--us-teal); box-shadow: 0 0 0 3px rgb(var(--us-teal-rgb) / 0.16); }
+.input-field[aria-invalid='true'] { border-color: var(--us-ochre-text); }
+
+/* Status badges. The six are defined once in components/Status.js and
+   the six colour pairs are the identity's, checked by the brand gate —
+   so these rules read tokens and never a literal. */
+.badge {
+  display: inline-flex; align-items: center; gap: var(--us-space-1);
+  padding: 3px var(--us-space-2); border-radius: var(--us-radius-pill);
+  font-size: var(--us-text-2xs); font-weight: 700; line-height: 1.5;
+  letter-spacing: .02em; white-space: nowrap;
+}
+.badge__glyph { width: 13px; height: 13px; flex: none; }
+/* The pill sets white-space: nowrap so a two-word status never breaks
+   into two lines and doubles a queue row's height; the label is what
+   gives way instead when the row is 320px wide. */
+.badge__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* An <svg> is inline by default, so the mark sat on a text baseline and
+   carried a descender's worth of gap under it inside the lockup. */
+.us-mark { display: block; }
+.badge[data-status='SAFE'] { background: rgb(24 107 67 / 0.12); color: var(--us-risk-acceptable-text); }
+.badge[data-status='CAUTION'] { background: rgb(var(--us-gold-rgb) / 0.2); color: var(--us-gold-text); }
+.badge[data-status='ALERT'] { background: rgb(187 50 26 / 0.12); color: var(--us-ochre-text); }
+.badge[data-status='OFFLINE'] { background: var(--us-surface-muted); color: var(--us-ink-600); }
+.badge[data-status='SYNCING'] { background: rgb(var(--us-teal-rgb) / 0.12); color: var(--us-teal-text); }
+.badge[data-status='PROTECTED'] { background: rgb(var(--us-teal-rgb) / 0.12); color: var(--us-teal-text); }
+
+/* The two tables on the design screen. `table` is already styled; these
+   carry only what makes a regulatory obligation and a 5x5 matrix
+   readable on a 320px screen. */
+.oblig-table th { font-size: var(--us-text-2xs); text-transform: uppercase; letter-spacing: .08em; }
+.oblig-table td:first-child { font-weight: 600; }
+/* ---- The two reference tables on a handset -------------------------
+
+   Both overflowed. .table-scroll made them scrollable, which is not
+   the same as readable: the instrument column and its verification
+   date — the entire evidence for every figure on the page — sat off
+   the right edge of a 390px screen with nothing saying so.
+
+   The matrix SHRINKS, because a 5x5 grid of two-character cells has
+   no reason not to fit. The obligation table RESTACKS, because five
+   columns of prose has every reason not to. */
+.risk-matrix { table-layout: fixed; width: 100%; }
+.risk-matrix th { font-size: var(--us-text-2xs); font-weight: var(--us-weight-semi); }
+
+@media (max-width: 620px) {
+  .risk-matrix th, .risk-matrix td { padding: 3px 2px; }
+  .risk-matrix thead th { font-size: 9px; line-height: 1.15; }
+  .risk-matrix tbody th { font-size: 9.5px; line-height: 1.15; }
+  .risk-matrix__cell { padding: 4px 2px; gap: 1px; }
+  .risk-matrix__code { font-size: 9px; }
+}
+
+/* Each row becomes a labelled block. The header row is hidden and the
+   labels come back from data-label, so the markup stays a table — it
+   IS tabular data, and a screen reader on a wide screen should still
+   hear it as one. */
+@media (max-width: 700px) {
+  .oblig-table thead { display: none; }
+  .oblig-table, .oblig-table tbody, .oblig-table tr, .oblig-table th, .oblig-table td {
+    display: block;
+    width: auto;
+  }
+  .oblig-table tbody tr {
+    padding: var(--us-space-4) 0;
+    border-bottom: 1px solid var(--us-border);
+  }
+  .oblig-table tbody tr:last-child { border-bottom: 0; }
+  .oblig-table th[scope='row'] {
+    padding: 0 0 var(--us-space-2);
+    border: 0;
+    font-size: var(--us-text-md);
+  }
+  .oblig-table td {
+    display: flex;
+    gap: var(--us-space-3);
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 2px 0;
+    border: 0;
+    text-align: left;
+  }
+  .oblig-table td::before {
+    content: attr(data-label);
+    flex: none;
+    font-size: var(--us-text-2xs);
+    font-weight: var(--us-weight-semi);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--us-text-tertiary);
+  }
+  /* The citation is a pill, and a pill is nowrap. A regulation title
+     runs to sixty characters, so on a handset it has to be allowed to
+     wrap or the instrument — the evidence for the figure above it —
+     runs off the edge of the block that was built to stop exactly
+     that. */
+  .oblig-table td.cite {
+    display: block;
+    margin-top: var(--us-space-2);
+    white-space: normal;
+    line-height: var(--us-leading-snug);
+  }
+  .oblig-table td.cite::before { display: block; margin-bottom: 2px; }
+  .oblig-table th[scope='row'] { text-align: left; }
+}
+.risk-matrix td { text-align: center; font-variant-numeric: tabular-nums; }
+/* A numeric column reads as a column only when the digits line up. */
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.risk-matrix__code { font-weight: 700; font-size: var(--us-text-xs); }
+.verified { font-size: var(--us-text-2xs); color: var(--us-risk-acceptable-text); font-weight: 600; }
+
+/* Trust strip. JK's markup calls each item .ti; this app's calls it
+   .trust-item, and an <li> that is a flex item still paints its marker
+   in Chrome — which is why four bullets sat in the middle of the ink
+   band. The reset is the fix; the rest is JK's rule. */
+.trust-strip { list-style: none; padding-left: 0; }
+.trust-item { display: flex; align-items: flex-start; gap: .55rem; flex: 1 1 20rem; font-size: .89rem; font-weight: 600; line-height: var(--us-leading-snug); }
+.band-dark .trust-strip { border-top-color: rgb(var(--us-sand-rgb) / 0.18); }
+
+/* Shell chrome. #app-shell is the router's host and the boot splash is
+   what stands in front of it until the first screen paints. */
+.app-shell { display: flex; flex-direction: column; min-height: 100dvh; }
+.app-shell > .page { flex: 1 0 auto; }
+
+/* ---- The landing page ----------------------------------------------
+
+   Four bands alternating ink / paper / parchment / paper, which is the
+   benchmark's whole page rhythm: a reader scrolling knows a new claim
+   has started because the ground changed under it. */
+
+/* Two rows of actions — one closing the hero, one closing a document
+   section — and they are the same row. Written once because a second
+   copy is a second gap value to keep in step. */
+.hero-actions,
+.doc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-3);
+  margin: var(--us-space-6) 0 0;
+}
+.doc-actions { margin-top: var(--us-space-5); }
+
+/* The secondary hero action sits on ink, where .btn-ghost's charcoal
+   border and charcoal label are both invisible. */
+.btn-ghost-lt { background: transparent; color: #fff; border-color: rgb(255 255 255 / 0.34); }
+.btn-ghost-lt:hover { border-color: #fff; background: rgb(255 255 255 / 0.08); color: #fff; }
+
+/* A warm ground between two paper sections. This is where the
+   regulatory rows live, and they are the one thing on the page a
+   person may have been sent a link to — so they get their own surface
+   rather than being a heading in the middle of a scroll. */
+.band-parchment {
+  background: var(--us-surface-muted);
+  border-block: 1px solid var(--us-border);
+}
+
+.step-grid {
+  display: grid;
+  gap: var(--us-space-4);
+  margin-top: var(--us-space-6);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.step { position: relative; }
+
+.step__n {
+  display: block;
+  margin-bottom: var(--us-space-2);
+  font-size: var(--us-text-xs);
+  font-weight: 700;
+  letter-spacing: .14em;
+  color: var(--us-teal);
+  font-variant-numeric: tabular-nums;
+}
+
+.step h3 { font-size: var(--us-text-md); margin: 0 0 var(--us-space-2); }
+.step p { margin: 0; font-size: var(--us-text-sm); color: var(--us-ink-600); }
+
+/* The deadline rows, on their own surface rather than in a footer. */
+.band-parchment .reg-list { margin-top: var(--us-space-5); }
+.band-parchment .reg-list dt { font-size: var(--us-text-md); }
+
+/* ---- Document pages -------------------------------------------------
+
+   About, Methodology, Tutorials, Questions, Privacy, Terms. One
+   two-column layout: a contents list that sticks on a wide screen and
+   collapses to a card above the text on a handset, and a body set to a
+   reading measure regardless of how wide .wrap is. */
+
+.doc {
+  display: grid;
+  gap: clamp(var(--us-space-6), 4vw, var(--us-space-8));
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .doc { grid-template-columns: 15rem minmax(0, 1fr); }
+  .toc { position: sticky; top: calc(var(--us-topbar) + var(--us-space-6)); }
+}
+
+.doc__body { min-width: 0; max-width: 68ch; }
+
+/* `section { padding: var(--us-section) 0 }` is the benchmark's rule
+   for a marketing page whose sections are full-bleed bands. A document
+   section is not that — it is a heading and its prose inside one
+   panel, and inheriting 56px top and bottom put roughly 200px of
+   nothing between "The product" and "Your data". */
+.doc-section { padding-block: 0; }
+
+.doc-section + .doc-section {
+  margin-top: clamp(var(--us-space-8), 5vw, 3.25rem);
+  padding-top: clamp(var(--us-space-6), 4vw, var(--us-space-8));
+  border-top: 1px solid var(--us-border);
+}
+
+.doc-section h2 { font-size: clamp(1.32rem, 2.4vw, 1.75rem); margin: 0 0 var(--us-space-4); }
+.doc-section h3 { font-size: var(--us-text-md); margin: 0 0 var(--us-space-2); }
+.doc-section p { max-width: 68ch; }
+
+/* On this page. Numbered because the order is the argument on the
+   tutorial and the methodology, and a bare list of links is not. */
+.toc {
+  padding: var(--us-space-5);
+  background: var(--us-surface-muted);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-lg);
+}
+
+.toc ol { margin: 0; padding-left: 1.2rem; }
+.toc li { margin-bottom: var(--us-space-2); font-size: var(--us-text-sm); }
+.toc a { color: var(--us-charcoal); }
+.toc a:hover { color: var(--us-teal); }
+.toc__count {
+  margin-left: var(--us-space-2);
+  font-size: var(--us-text-2xs);
+  font-weight: 700;
+  color: var(--us-ink-400);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The figure strip under a page head. Four facts a reader can take
+   without reading the page, which is what most readers of a
+   methodology page actually want. */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: var(--us-space-5);
+  margin: var(--us-space-6) 0 0;
+  padding-top: var(--us-space-5);
+  border-top: 1px solid rgb(var(--us-sand-rgb) / 0.18);
+}
+
+/* Each figure is a <div> inside the <dl> so the value and its label
+   stay associated; the wrapper is what keeps them from being laid out
+   as a flat run of dt/dd pairs. */
+.stat { min-width: 0; }
+
+.stat__value {
+  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  font-weight: var(--us-weight-bold);
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  color: var(--us-gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__label {
+  margin: var(--us-space-1) 0 0;
+  font-size: var(--us-text-xs);
+  line-height: var(--us-leading-snug);
+  color: rgb(var(--us-sand-rgb) / 0.76);
+}
+
+/* Questions. Native <details> rather than a scripted accordion: it is
+   keyboard-operable without a line of JS, and it prints expanded,
+   which the print rule depends on. */
+.qa-controls { display: flex; gap: var(--us-space-2); margin-top: var(--us-space-5); }
+.qa { border-top: 1px solid var(--us-border); margin-top: var(--us-space-3); }
+
+/* Present but quiet: the person who wants to link to an answer is
+   looking for it, and everybody else is reading the answer. */
+.qa__link {
+  display: inline-block;
+  margin-top: var(--us-space-2);
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+}
+.qa__link:hover { color: var(--us-teal); }
+
+.qa__item {
+  border-bottom: 1px solid var(--us-border);
+}
+
+.qa__item summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--us-space-4);
+  padding: var(--us-space-4) 0;
+  min-height: var(--us-tap);
+  font-weight: var(--us-weight-semi);
+  cursor: pointer;
+  list-style: none;
+}
+
+.qa__item summary::-webkit-details-marker { display: none; }
+
+/* A chevron drawn in CSS, so there is no icon to load and it rotates
+   with the disclosure rather than being redrawn. */
+.qa__item summary::after {
+  content: '';
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-top: 7px;
+  border-right: 2px solid var(--us-teal);
+  border-bottom: 2px solid var(--us-teal);
+  transform: rotate(45deg);
+  transition: transform var(--us-dur) var(--us-ease);
+}
+
+.qa__item[open] summary::after { transform: rotate(-135deg); margin-top: 11px; }
+.qa__item summary:hover { color: var(--us-teal); }
+.qa__answer { padding-bottom: var(--us-space-4); }
+.qa__answer p { margin: 0 0 var(--us-space-3); font-size: var(--us-text-sm); }
+.qa__answer p:last-child { margin-bottom: 0; }
+
+/* The tutorial's numbered steps. The counter is drawn rather than
+   typed, so inserting a step renumbers the rest. */
+.numbered { list-style: none; counter-reset: step; margin: var(--us-space-6) 0 0; padding: 0; }
+
+.numbered__item {
+  counter-increment: step;
+  position: relative;
+  padding-left: 3.25rem;
+  margin-bottom: var(--us-space-8);
+}
+
+.numbered__item::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  font-size: var(--us-text-sm);
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--us-teal);
+  font-variant-numeric: tabular-nums;
+}
+
+.numbered__item p { margin: 0 0 var(--us-space-3); }
+
+/* ---- Reference components ------------------------------------------
+
+   The glossary and the deadline calculator. Both render from modules
+   that already existed and were shown to nobody — sixty acronyms and
+   the three occurrence classes on one side, reportingDeadline() on the
+   other. */
+
+/* An occurrence class: the label, whether it is reportable, the legal
+   test, and the note that is usually the thing somebody needed. */
+.class-card { margin-bottom: var(--us-space-4); }
+
+.class-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-3);
+  margin-bottom: var(--us-space-3);
+}
+
+.class-card__head h3 { margin: 0; }
+
+/* Any ONE of these is enough, which is why they are a list of
+   thresholds and not a paragraph. Marked so it reads as a test. */
+.threshold-list { margin: var(--us-space-5) 0 0; padding-left: 1.1rem; }
+.threshold-list li { margin-bottom: var(--us-space-3); padding-left: var(--us-space-2); }
+.threshold-list li::marker { color: var(--us-teal); }
+
+/* Definition lists. Two columns where there is room, so a term and its
+   expansion read as a pair rather than as alternating lines. */
+.deflist { margin: var(--us-space-5) 0 0; }
+
+.deflist__row {
+  display: grid;
+  gap: 2px var(--us-space-5);
+  padding: var(--us-space-3) 0;
+  border-bottom: 1px solid var(--us-border);
+}
+
+.deflist__row:last-child { border-bottom: 0; }
+.deflist dt { font-weight: var(--us-weight-semi); }
+.deflist dd { margin: 0; color: var(--us-ink-600); }
+.deflist--tight .deflist__row { padding: var(--us-space-2) 0; }
+.deflist--tight dt { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+
+@media (min-width: 640px) {
+  .deflist__row { grid-template-columns: minmax(8rem, 14rem) minmax(0, 1fr); align-items: baseline; }
+  .deflist--tight .deflist__row { grid-template-columns: 5.5rem minmax(0, 1fr); }
+}
+
+/* The filter sits above the list and is the widest input on the page,
+   because a search field narrower than its own placeholder reads as
+   optional. */
+.filter-field { margin: var(--us-space-5) 0 var(--us-space-4); }
+.filter-field .field-hint { font-variant-numeric: tabular-nums; }
+
+.alpha { margin-top: var(--us-space-6); }
+.alpha[hidden] { display: none; }
+
+.alpha__letter {
+  margin: 0;
+  font-size: var(--us-text-sm);
+  font-weight: 700;
+  letter-spacing: .16em;
+  color: var(--us-teal);
+  border-bottom: 2px solid rgb(var(--us-teal-rgb) / 0.24);
+  padding-bottom: var(--us-space-1);
+}
+
+/* The calculator. A result that changes as you type needs to look like
+   a result rather than like another field, so it gets the ink. */
+.calc-card { margin-top: var(--us-space-5); }
+.calc-card .field:last-of-type { margin-bottom: var(--us-space-5); }
+
+.calc__out {
+  display: block;
+  padding: var(--us-space-4);
+  border-radius: var(--us-radius-md);
+  background: var(--us-charcoal);
+  color: var(--us-sand);
+  font-size: var(--us-text-md);
+  font-weight: var(--us-weight-semi);
+  font-variant-numeric: tabular-nums;
+}
+
+.calc__out[data-state='idle'] {
+  background: var(--us-surface-muted);
+  color: var(--us-text-tertiary);
+  font-weight: var(--us-weight-normal);
+  font-size: var(--us-text-sm);
+}
+
+.calc__out[data-state='error'] {
+  background: rgb(187 50 26 / 0.1);
+  color: var(--us-ochre-text);
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-normal);
+}
+
+.calc__detail {
+  display: block;
+  margin-top: var(--us-space-2);
+  font-size: var(--us-text-xs);
+  font-weight: var(--us-weight-normal);
+  color: rgb(var(--us-sand-rgb) / 0.72);
+}
+
+.calc__out[data-state='ok'] .tag--provisional { background: var(--us-sand); }
+
+/* ---- The footer, which is the only ink surface carrying body copy ----
+
+   THE DEFECT: the regulatory rows are the footer's whole reason for
+   existing — the instrument behind every deadline this product
+   computes — and they shipped in --us-text-secondary on #2c2c2c. That
+   is 1.5:1. On the screenshot the words "Kenya Civil Aviation
+   Authority" were legible only because I knew they were there.
+
+   It happened because .reg-list was drawn for a light panel and the
+   footer moved underneath it. Colour is the one property a component
+   cannot own alone: it is a contract with whatever is behind it, and
+   the surface changed without the component hearing about it. So the
+   surface restates it, once, for everything it contains — the same
+   pattern .band-dark already uses two screens up. */
+.footer { color: rgb(var(--us-sand-rgb) / 0.78); }
+.footer .section-title { color: #fff; }
+.footer .footer-note,
+
+.footer .us-lockup,
+.footer .us-lockup__descriptor { color: var(--us-gold); }
+.footer .reg-list dt { color: #fff; }
+.footer .reg-list dd { color: rgb(var(--us-sand-rgb) / 0.78); }
+.footer .reg-list__source { color: rgb(var(--us-sand-rgb) / 0.6); }
+.footer .reg-list__row + .reg-list__row { border-top-color: rgb(255 255 255 / 0.12); }
+.footer strong { color: #fff; }
+/* The provisional tag is a light pill on ink and stays that way: it is
+   the one thing in the footer a reader is meant to stop on. */
+.footer .tag { background: var(--us-sand); border-color: var(--us-ochre-text); }
+
+.footer-brand p { margin: var(--us-space-3) 0 0; font-size: var(--us-text-sm); max-width: 46ch; }
+/* Four columns where there is room for four. auto-fit at a 9.5rem
+   minimum put Legal on its own row at 1280px, one column short, which
+   reads as a mistake rather than as a group. */
+.footer-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  gap: var(--us-space-6) var(--us-space-5);
+}
+.footer-col p { margin: 0 0 var(--us-space-2); font-size: var(--us-text-sm); }
+.footer-col .section-title { margin-bottom: var(--us-space-3); }
+.footer .footer-note { margin-top: var(--us-space-2); font-size: var(--us-text-xs); color: rgb(var(--us-sand-rgb) / 0.7); }
+
+
+/* JK's four-column footer is a desktop grid. On a handset four columns
+   at 1.5fr/1fr/1fr/1fr are four columns eighty pixels wide, so the grid
+   collapses — but to TWO, not to one: these blocks are two or three
+   lines each, and stacking them makes the footer tall again, which is
+   the thing this rebuild was for. */
+@media (max-width: 900px) {
+  .footer .cols { grid-template-columns: 1fr; gap: var(--us-space-6); }
+}
+
+@media (max-width: 420px) {
+  .footer .cols { grid-template-columns: 1fr; gap: var(--us-space-5); }
+}
+
+.footer-line { margin: 0; max-width: 52ch; line-height: var(--us-leading-normal); }
+.footer-note { margin: var(--us-space-4) 0 0; font-size: var(--us-text-sm); color: var(--us-text-tertiary); }
+
+/* The tightest row in the app is the lockup beside a Menu button, and
+   JK's .nav padding is wider than this shell's was. Let the lockup
+   shrink rather than push the row past the viewport. */
+@media (max-width: 359px) {
+  .nav {
+    padding-inline: var(--us-space-3);
+    gap: var(--us-space-2);
+  }
+
+  .brand,
+  .us-lockup,
+  .us-lockup__text {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .us-lockup__descriptor { display: none; }
+  .nav-toggle span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
 }

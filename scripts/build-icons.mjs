@@ -9,14 +9,12 @@
    Everything below reads the path constants out of
    apps/web/src/components/Logo.js by parsing the module rather than by
    copying the strings, so the favicon cannot disagree with the header
-   mark. Kanda's icon suite works the same way and for the same reason:
-   two sources of a logo's geometry means two logos, eventually.
+   mark. Two sources of a logo's geometry means two logos, eventually.
 
    SVG ONLY, and that is a documented limitation rather than an
-   oversight. Rasterising to PNG needs a browser or an image library;
-   Kanda already carries Playwright for pre-rendering so it gets PNGs
-   nearly free, and this project carries neither and is not adding a
-   200-package dependency to produce six files. Chrome and Android
+   oversight. Rasterising to PNG needs a browser or an image library, and
+   this project is not adding a 200-package dependency to produce six
+   files. Chrome and Android
    accept SVG icons in a manifest. iOS home-screen icons do not, so an
    iPhone user who installs this gets the default screenshot tile —
    recorded in docs/05-SWITCHES.md with what to do about it.

@@ -52,14 +52,72 @@ const MIME = {
   '.woff2': 'font/woff2'
 };
 
-/* A static server that mirrors the SPA fallback Netlify provides, so a
-   deep link to /triage resolves here the way it does in production. */
+/* ============================================================
+   A static server that serves what NETLIFY WOULD SERVE.
+
+   THE DEFECT THIS CLOSES. It used to fall back to index.html for every
+   unmatched path, under a comment saying it "mirrors the SPA fallback
+   Netlify provides". Netlify provided nothing of the kind: netlify.toml
+   had no [[redirects]] at all, so on the deployed site /report,
+   /triage, /account and /design were the platform's 404 page. Only the
+   root worked, and only because dist/index.html happens to be there.
+
+   Two checks in this file exist specifically to prove a deep link
+   resolves — one of them named "the offline claim, at the URL a person
+   is on" — and both passed for the whole life of the project against a
+   fallback the production host did not have. A test server that is more
+   forgiving than the real one does not test the deployment; it tests
+   itself.
+
+   So the rules are READ FROM netlify.toml. Delete the redirect block
+   and the deep-link checks fail here, which is how the fix was
+   verified.
+   ============================================================ */
+const REDIRECTS = (() => {
+  const toml = readFileSync(resolve(ROOT, 'netlify.toml'), 'utf8');
+  const rules = [];
+  // Deliberately a small reader rather than a TOML dependency: it
+  // handles the [[redirects]] tables this file needs and REFUSES the
+  // rest, so a rule shape it cannot model is an error rather than a
+  // silent omission that would put the lie back.
+  for (const block of toml.split(/\[\[redirects\]\]/).slice(1)) {
+    const body = block.split(/\n\[/)[0];
+    const read = (key) => new RegExp(`^\\s*${key}\\s*=\\s*"?([^"\\n]+)"?`, 'm').exec(body)?.[1]?.trim();
+    const from = read('from');
+    const to = read('to');
+    const status = Number(read('status') ?? 301);
+    const force = /^\s*force\s*=\s*true/m.test(body);
+    if (!from || !to) continue;
+    if (!from.endsWith('/*') || status !== 200) {
+      console.error(
+        `FATAL: scripts/smoke.mjs models splat rewrites only, and netlify.toml ` +
+          `declares ${from} -> ${to} (${status}). Teach this reader that shape ` +
+          `rather than letting the suite test a routing table the deploy does not have.`
+      );
+      process.exit(1);
+    }
+    rules.push({ prefix: from.slice(0, -1), to, force });
+  }
+  return rules;
+})();
+
 const server = createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
-  let file = join(DIST, decodeURIComponent(url.pathname));
+  const pathname = decodeURIComponent(url.pathname);
+  let file = join(DIST, pathname);
+  const isFile = existsSync(file) && !statSync(file).isDirectory();
 
-  if (!existsSync(file) || statSync(file).isDirectory()) {
-    file = join(DIST, url.pathname === '/' ? 'index.html' : 'index.html');
+  if (pathname === '/') file = join(DIST, 'index.html');
+  else if (!isFile) {
+    // An existing asset wins over a rewrite unless the rule is forced,
+    // which is Netlify's shadowing order — /sw.js and /manifest.json
+    // must reach the browser as themselves.
+    const rule = REDIRECTS.find((r) => pathname.startsWith(r.prefix));
+    if (!rule) {
+      res.writeHead(404).end('not found');
+      return;
+    }
+    file = join(DIST, rule.to);
   }
 
   try {
@@ -73,6 +131,17 @@ const server = createServer((req, res) => {
 
 const PORT = 4321;
 const BASE = `http://127.0.0.1:${PORT}`;
+
+
+/* The navigation is a header menu now, so reaching a destination on a
+   handset is two actions: open, then choose. Wrapped so every call site
+   does it the same way and none of them reach into a panel that is
+   closed. */
+async function navigateTo(page, href) {
+  const toggle = page.locator('#menu-toggle');
+  if (await toggle.isVisible()) await toggle.click();
+  await page.click(`#menu-panel a[href="${href}"]`);
+}
 
 const results = [];
 let failed = 0;
@@ -128,13 +197,72 @@ try {
   await page.goto(BASE, { waitUntil: 'networkidle' });
 
   await check('the app renders', async () => {
-    assert(await page.locator('#report-form').isVisible(), 'the report form did not render');
+    assert(await page.locator('.band-dark h1').isVisible(), 'the landing page did not render');
     assert(await page.locator('.us-mark').first().isVisible(), 'the mark did not render');
   });
 
   await check('no uncaught page errors on load', async () => {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
   });
+
+  await check('THE LANDING PAGE CARRIES THE DEADLINES, AND THEY ARE COMPUTED', async () => {
+    // The five regulatory rows were the footer of every screen, which
+    // made the most consequential claim in the product into the thing a
+    // person scrolled past. They are a section here, at an anchor a
+    // safety manager can be sent a link to.
+    //
+    // Rendered from MOR_OBLIGATIONS rather than written into the page —
+    // charter rule 10, and the only way a page citing a 24-hour
+    // obligation cannot drift from the engine that computes the
+    // countdown.
+    const section = await page.evaluate(() => {
+      const el = document.querySelector('#deadlines');
+      if (!el) return null;
+      return {
+        rows: el.querySelectorAll('.reg-list__row').length,
+        text: el.textContent ?? ''
+      };
+    });
+
+    assert(section, 'there is no #deadlines section on the landing page to link to');
+    assert(
+      section.rows >= 5,
+      `${section.rows} regulatory rows; the registry defines five jurisdictions`
+    );
+    // The Kenyan figure is the one that was wrong for most of this
+    // project's life. If this ever prints 72 for KCAA again, that is the
+    // original defect resurfacing on a new surface.
+    assert(/24 hours/.test(section.text), 'the 24-hour KCAA obligation is not stated');
+    assert(/becoming aware/.test(section.text), 'when the clock starts is not stated');
+    assert(
+      /provisional/i.test(section.text),
+      'which jurisdictions are provisional is not stated — switch 1 is the highest-risk ' +
+        'claim in the product and this is the surface someone checking a deadline lands on'
+    );
+  });
+
+  await check('THE FRONT DOOR REACHES THE FORM IN ONE TAP', async () => {
+    // A landing page in front of a thirty-second form is a tax on the
+    // person the form was designed for. It is only acceptable because
+    // the form is one visible, unscrolled tap away here — and because
+    // the manifest's start_url is /report, so nobody who INSTALLED this
+    // ever sees this page at all.
+    const cta = page.locator('.hero-actions a[href="/report"]');
+    assert(await cta.isVisible(), 'the landing page has no visible link to the report form');
+    const box = await cta.boundingBox();
+    assert(box && box.y < 844, `the "File a report" action is ${Math.round(box?.y ?? 0)}px down, below the first screen`);
+
+    const manifest = JSON.parse(readFileSync(join(DIST, 'manifest.json'), 'utf8'));
+    assert(
+      manifest.start_url === '/report',
+      `the manifest starts an installed app at ${manifest.start_url}, not on the form`
+    );
+  });
+
+  /* Everything below drives the report form, which is no longer at the
+     root. Navigating once here rather than per check keeps the run at
+     one page load. */
+  await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
 
   await check('the report form has exactly three required fields', async () => {
     // The thirty-second target is a design constraint and the whole
@@ -153,6 +281,28 @@ try {
     assert(required === 3, `${required} required fields; the form is designed for 3`);
   });
 
+  await check('the form STATES the number of required fields it actually has', async () => {
+    // It said "Two required fields" while the form asked for three, from
+    // the day report type stopped being pre-answered. Nobody re-read the
+    // sentence because nothing pointed at it, and the one number a
+    // thirty-second form makes a promise about was wrong on the screen
+    // that makes the promise.
+    //
+    // The fix was to count it from the DOM. This is what stops someone
+    // typing it back in — charter rule 11: a claim that can drift needs
+    // something that fails when it does.
+    const WORDS = { No: 0, One: 1, Two: 2, Three: 3, Four: 4, Five: 5 };
+    const lede = (await page.locator('.page-head .lede').textContent()) ?? '';
+    const stated = /^\s*(\w+)\s+required fields?/i.exec(lede.trim());
+    assert(stated, `the form does not state how many fields are required: "${lede.trim()}"`);
+    const claimed = WORDS[stated[1]] ?? Number(stated[1]);
+    const actual = await page.locator('#report-form [required]').count();
+    assert(
+      claimed === actual,
+      `the form says ${stated[1]} required fields and has ${actual}`
+    );
+  });
+
   await check('the anonymity control is visible without opening anything', async () => {
     assert(
       await page.locator('.report__anon input').isVisible(),
@@ -161,43 +311,148 @@ try {
   });
 
   await check('EXACTLY ONE navigation is visible at a time', async () => {
-    // The shell renders each destination three times: the inline top
-    // nav (wide screens), the bottom tab bar (handsets) and the footer.
-    // Only one of the first two may be visible at any width, and the
-    // moment both are, every `a[href="/triage"]` selector in this file
-    // becomes ambiguous — which is how this check came to exist, by
-    // Playwright picking a display:none link and timing out.
+    // The shell renders the destinations twice: inline in the header for
+    // wide screens, and in a menu panel behind a button for handsets.
+    // Only one may be reachable at a width, and the moment both are,
+    // every a[href] selector in this file becomes ambiguous — which is
+    // how this check came to exist, by Playwright picking a display:none
+    // link and timing out.
     //
-    // It is also a real defect in its own right: two primary navs on
+    // It is a real defect in its own right: two ways around on one
     // screen is a person tapping the one that is not where they expect.
-    const visible = await page.evaluate(() =>
-      ['#nav', '#tabbar'].filter((sel) => {
-        const el = document.querySelector(sel);
-        return el && getComputedStyle(el).display !== 'none';
-      })
-    );
-    assert(
-      visible.length === 1,
-      `${visible.length} primary navigations visible at 390px: ${visible.join(', ') || 'none'}`
-    );
-    assert(visible[0] === '#tabbar', `at 390px the tab bar should be the navigation, got ${visible[0]}`);
+    const at390 = await page.evaluate(() => ({
+      inline: getComputedStyle(document.querySelector('#nav')).display !== 'none',
+      toggle: getComputedStyle(document.querySelector('#menu-toggle')).display !== 'none',
+      panelOpen: !document.querySelector('#menu-panel').hidden,
+    }));
+    assert(!at390.inline, 'the inline header nav is visible at 390px; it should be behind Menu');
+    assert(at390.toggle, 'the Menu button is not visible at 390px, so there is no way around');
+    assert(!at390.panelOpen, 'the menu panel is open before anyone asked for it');
 
-    // And the inverse, at a desktop width. A tab bar fixed across a
-    // 1280px viewport is a phone app pretending.
+    // It opens, it closes on Escape, and it says where each link goes.
+    await page.click('#menu-toggle');
+    assert(await page.locator('#menu-panel').isVisible(), 'the menu did not open');
+    const hints = await page.locator('.nav-item-summary').count();
+    const items = await page.locator('.nav-item').count();
+    assert(items >= 3, `${items} destinations in the menu`);
+    assert(hints === items, `${items} destinations but ${hints} hints — a label alone is not navigation`);
+    await page.keyboard.press('Escape');
+    assert(await page.locator('#menu-panel').isHidden(), 'Escape did not close the menu');
+
+    // And the inverse at a desktop width: inline links, no Menu button.
     const wide = await page.context().newPage();
     await wide.setViewportSize({ width: 1280, height: 900 });
     await wide.goto(BASE, { waitUntil: 'networkidle' });
-    const wideVisible = await wide.evaluate(() =>
-      ['#nav', '#tabbar'].filter((sel) => {
-        const el = document.querySelector(sel);
-        return el && getComputedStyle(el).display !== 'none';
-      })
-    );
+    const at1280 = await wide.evaluate(() => ({
+      inline: getComputedStyle(document.querySelector('#nav')).display !== 'none',
+      toggle: getComputedStyle(document.querySelector('#menu-toggle')).display !== 'none',
+    }));
     await wide.close();
+    assert(at1280.inline, 'the inline nav is hidden at 1280px');
+    assert(!at1280.toggle, 'the Menu button is still shown at 1280px, beside the inline links');
+  });
+
+  await check('THE FOOTER IS A SITE INDEX, NOT THE HEADER DRAWN TWICE', async () => {
+    // The original defect was a footer carrying exactly the header's
+    // four destinations and nothing else — a menu drawn twice that told
+    // nobody anything. The first version of this check policed it by
+    // counting links and requiring FEWER than the menu, which was a
+    // proxy and the wrong one: it would have failed a proper site index
+    // and passed a footer that repeated three of four destinations.
+    //
+    // The rule that actually expresses it: the footer must carry
+    // destinations the header does not. Those are the ones a person
+    // looks to the bottom of a page for — the methodology, the terms,
+    // who is behind this — and their absence is what made the old
+    // footer redundant.
+    //
+    // Both lists are rendered from shared/sitemap.js, so this also
+    // fails if that declaration is bypassed and someone hand-writes a
+    // column again.
+    const links = await page.evaluate(() => {
+      const hrefs = (sel) =>
+        [...document.querySelectorAll(sel)].map((a) => a.getAttribute('href'));
+      const footer = hrefs('.footer a');
+      const header = new Set([...hrefs('#menu-panel a'), ...hrefs('#nav a')]);
+      const el = document.querySelector('.footer');
+      return {
+        footer,
+        headerOnly: [...header],
+        footerOnly: footer.filter((h) => !header.has(h)),
+        height: el.getBoundingClientRect().height,
+        viewport: window.innerHeight,
+        regRows: el.querySelectorAll('.reg-list__row').length,
+        text: el.textContent ?? ''
+      };
+    });
+
     assert(
-      wideVisible.length === 1 && wideVisible[0] === '#nav',
-      `at 1280px the inline nav should be the navigation, got [${wideVisible.join(', ')}]`
+      links.footerOnly.length >= 4,
+      `the footer carries ${links.footerOnly.length} destinations the header does not ` +
+        `(${links.footerOnly.join(', ') || 'none'}). Below four it is the navigation ` +
+        'drawn twice, which is what it was before.'
     );
+    assert(
+      links.regRows === 0,
+      `${links.regRows} regulatory rows are still in the footer; they belong at /#deadlines`
+    );
+    assert(
+      links.height < links.viewport * 1.5,
+      `the footer is ${Math.round(links.height)}px tall against a ${links.viewport}px ` +
+        'viewport — a footer longer than a screen and a half is a page of its own'
+    );
+    // What it must still say. The jurisdiction count is computed from
+    // the registry rather than typed, so a sixth changes this sentence
+    // without anyone editing the HTML — charter rule 10, applied to the
+    // one line that survived the move.
+    assert(
+      /jurisdictions/.test(links.text),
+      'the footer does not say how many jurisdictions the figures cover'
+    );
+    assert(
+      /provisional/i.test(links.text),
+      'the footer does not carry the provisional caveat'
+    );
+    assert(
+      /Annex 19 Amendment 2/.test(links.text),
+      'the footer does not name the standard the product is built against'
+    );
+    assert(
+      links.footer.includes('/#deadlines'),
+      'the footer does not link to the deadlines it used to contain'
+    );
+  });
+
+  await check('EVERY DESTINATION IN THE ARCHITECTURE RESOLVES', async () => {
+    // Six of these are lazily loaded, which means six chances for a
+    // route to be declared in the sitemap and never registered on the
+    // router — a menu item that lands on "not found". Nothing else in
+    // this file would notice: the link renders, it is clickable, and
+    // the not-found screen is a screen.
+    const hrefs = await page.evaluate(() =>
+      [...document.querySelectorAll('.footer a, #menu-panel a')]
+        .map((a) => a.getAttribute('href'))
+        .filter((h) => h && h.startsWith('/'))
+    );
+    const unique = [...new Set(hrefs)];
+    assert(unique.length >= 8, `${unique.length} distinct destinations declared`);
+
+    for (const href of unique) {
+      const probe = await page.context().newPage();
+      await probe.goto(BASE + href, { waitUntil: 'networkidle' });
+      const heading = (await probe.locator('#main h1').first().textContent()) ?? '';
+      const failed = await probe.locator('.notice--error').count();
+      await probe.close();
+      assert(
+        !/not found/i.test(heading),
+        `${href} is declared in the architecture and resolves to the not-found screen`
+      );
+      assert(
+        failed === 0,
+        `${href} rendered its load-failure message; its chunk did not arrive`
+      );
+      assert(heading.trim().length > 0, `${href} rendered no heading at all`);
+    }
   });
 
   await check('tap targets are at least 44px', async () => {
@@ -215,7 +470,7 @@ try {
     // because clicking the label toggles it — asserting on the input
     // would have failed a control that is genuinely easy to hit and
     // taught the next person to inflate the checkbox instead.
-    for (const sel of ['.btn--primary', '.chip', '.report__anon', '.select__control']) {
+    for (const sel of ['.btn-primary', '.chip', '.report__anon', '.select__control']) {
       const locator = page.locator(sel).first();
       assert(await locator.count(), `${sel} not found on the page at all`);
       assert(await locator.isVisible(), `${sel} is not visible, so its size means nothing`);
@@ -356,7 +611,7 @@ try {
     // The raw Zod message for this is
     //   "Invalid enum value. Expected 'MOR' | 'VCR' | 'HAZARD' | ..."
     // and it reached the screen until this check existed.
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
     await page.fill('input[name=title]', 'Something happened on the ramp');
     await page.fill('textarea[name=narrative]', 'A description long enough to pass validation.');
     await page.click('button[type=submit]');
@@ -373,7 +628,7 @@ try {
     // next person to pick up a shared crew-room handset, with no
     // authentication, and it would make the server's irreversible
     // anonymity irrelevant.
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
 
     await page.fill('input[name=title]', 'Ordinary draft that should persist');
     await page.fill('textarea[name=narrative]', 'A named report may be drafted to disk.');
@@ -438,7 +693,7 @@ try {
   });
 
   await check('the queued report appears in triage', async () => {
-    await page.click('.tabbar a[href="/triage"]');
+    await navigateTo(page, '/triage');
     await page.waitForSelector('.queue__item', { timeout: 5000 });
     const text = await page.locator('.queue__item').first().textContent();
     assert(/Bird activity/.test(text), 'the report filed offline is not in the queue');
@@ -545,7 +800,7 @@ try {
       });
     });
 
-    await page.click('.tabbar a[href="/account"]');
+    await navigateTo(page, '/account');
     await page.waitForSelector('#login-form', { timeout: 5000 });
     await page.fill('#login-email', 'ramp@example.test');
     await page.fill('#login-password', 'a-sufficiently-long-test-password');
@@ -571,8 +826,14 @@ try {
     await page.unroute('**/api/v1/sync/batch');
   });
 
-  await check('the design route renders the matrix from the real module', async () => {
-    await page.click('.site-footer__links a[href="/design"]');
+  await check('METHODOLOGY renders both tables from the real modules', async () => {
+    // The route was called "design system", which described the screen
+    // to the people who built it and to nobody else. What is behind it
+    // — the Doc 9859 matrix and the deadline registry, rendered by the
+    // modules that compute them — is the most useful page for anyone
+    // deciding whether to trust the numbers, so it is named for what it
+    // is and carries the derivation in prose beside the tables.
+    await navigateTo(page, '/methodology');
     await page.waitForSelector('.risk-matrix__cell', { timeout: 5000 });
     const cells = await page.locator('.risk-matrix__cell').count();
     assert(cells === 25, `${cells} matrix cells, expected 25`);
@@ -580,10 +841,287 @@ try {
     // Colour is never the only channel: every cell carries its code.
     const codes = await page.locator('.risk-matrix__code').count();
     assert(codes === 25, `${codes} tolerability codes, expected 25`);
+
+    // And the obligation table, which is the other half of the claim.
+    // Five authorities, each with the date its figure was last read
+    // against the primary instrument — a figure without one does not
+    // enter the registry, and a page that dropped the dates would be
+    // making the claim without the evidence.
+    const rows = await page.locator('.oblig-table tbody tr').count();
+    assert(rows === 5, `${rows} obligation rows, expected 5`);
+    const verified = await page.locator('.oblig-table .verified').count();
+    assert(verified === 5, `${verified} rows carry a verification date, expected 5`);
+  });
+
+  await check('THE DEADLINE CALCULATOR COMPUTES, AND REFUSES THE UNSAFE INPUT', async () => {
+    // A page that explains a derivation and leaves the reader to do the
+    // arithmetic has explained nothing. This drives the same
+    // reportingDeadline() the report form calls.
+    //
+    // The refusal is the half that matters. Awareness before the
+    // occurrence is a silent error in the OPERATOR'S FAVOUR — it moves
+    // a deadline later — which is the direction that gets somebody in
+    // trouble with an authority rather than the direction that gets
+    // caught. The engine throws on it; this proves the screen does not
+    // swallow the throw and print a number anyway.
+    await page.selectOption('#deadline-calc select[name=jurisdiction]', 'KE');
+    await page.fill('#deadline-calc input[name=occurredAt]', '2026-08-11T10:00');
+    await page.fill('#deadline-calc input[name=awareAt]', '2026-08-14T08:00');
+    await page.waitForFunction(
+      () => document.querySelector('#deadline-result')?.dataset.state === 'ok',
+      undefined,
+      { timeout: 5000 }
+    );
+
+    const answer = (await page.locator('#deadline-result').textContent()) ?? '';
+    // 24 hours from awareness at 08:00Z on the 14th is 08:00Z on the 15th.
+    // Anchored to the occurrence it would read 2026-08-12, which is the
+    // defect the whole clockStart model exists to prevent.
+    assert(
+      /2026-08-15 08:00Z/.test(answer),
+      `KCAA 24h from 2026-08-14 08:00Z should be 2026-08-15 08:00Z; got "${answer.trim()}"`
+    );
+    assert(/24 hours from awareness/.test(answer), `the answer does not state its basis: "${answer.trim()}"`);
+
+    // Now the wrong way round.
+    await page.fill('#deadline-calc input[name=awareAt]', '2026-08-10T08:00');
+    await page.waitForFunction(
+      () => document.querySelector('#deadline-result')?.dataset.state === 'error',
+      undefined,
+      { timeout: 5000 }
+    );
+    const refusal = (await page.locator('#deadline-result').textContent()) ?? '';
+    assert(
+      /awareness cannot come before/i.test(refusal),
+      `the refusal does not say what is wrong: "${refusal.trim()}"`
+    );
+    assert(
+      !/\d{4}-\d{2}-\d{2}/.test(refusal),
+      `a date was printed alongside the refusal: "${refusal.trim()}"`
+    );
+  });
+
+  await check('IN-PAGE ANCHORS SCROLL, AND CLEAR THE STICKY CHROME', async () => {
+    // TWO FAILURES, ONE CHECK, because they present identically to a
+    // reader: nothing useful happened.
+    //
+    // The first was fatal and invisible. The router re-rendered on
+    // popstate, and Chrome fires popstate for a same-document hash
+    // change — so clicking any in-page anchor rebuilt the screen,
+    // destroying the DOM the browser was about to scroll to and
+    // resetting the scroll to zero. Every contents entry on six
+    // document pages, the footer's link to the deadlines, and the skip
+    // link a keyboard user reaches first: all dead. Nothing saw it,
+    // because a re-render produces identical markup and every selector
+    // still matched. The only evidence was a scroll position.
+    //
+    // The second is WCAG 2.2 SC 2.4.11 (Focus Not Obscured). This app
+    // has a sticky header AND a sticky sync strip above the content;
+    // landing a heading underneath them is arriving at a section whose
+    // title you cannot read.
+    await navigateTo(page, '/faq');
+    await page.waitForSelector('.toc a', { timeout: 5000 });
+    await page.click('.toc a[href="#regulatory"]');
+    // Wait for the scroll to SETTLE, not to start. scroll-behavior is
+    // smooth, so "scrollY > 0" is true a frame after the click while the
+    // page is still a thousand pixels from where it is going — and the
+    // first version of this check measured exactly there and reported an
+    // overshoot that was really a race.
+    await page.waitForFunction(
+      () => {
+        const y = window.scrollY;
+        if (window.__lastY === y) return true;
+        window.__lastY = y;
+        return false;
+      },
+      undefined,
+      { timeout: 5000, polling: 250 }
+    );
+
+    const landing = await page.evaluate(() => {
+      const heading = document.querySelector('#regulatory h2').getBoundingClientRect();
+      const chromeBottom = Math.max(
+        document.querySelector('.nav').getBoundingClientRect().bottom,
+        document.querySelector('#sync-strip').getBoundingClientRect().bottom
+      );
+      return {
+        scrollY: window.scrollY,
+        clearance: heading.top - chromeBottom,
+        hash: window.location.hash
+      };
+    });
+
+    assert(landing.scrollY > 0, 'clicking a contents entry did not scroll the page at all');
+    assert(landing.hash === '#regulatory', `the URL is ${landing.hash}, so it cannot be shared`);
+    assert(
+      landing.clearance >= 0,
+      `the heading lands ${Math.abs(Math.round(landing.clearance))}px underneath the sticky ` +
+        'header and sync strip — WCAG 2.2 SC 2.4.11'
+    );
+
+    // And the section really is the one in view, not merely somewhere
+    // on a page that happened to scroll.
+    assert(
+      landing.clearance < 200,
+      `the heading is ${Math.round(landing.clearance)}px below the chrome; the anchor ` +
+        'overshot the section it names'
+    );
+
+    // THE CROSS-PAGE CASE, which is the footer's most important link and
+    // had never once worked. "/#deadlines" starts with a slash, so the
+    // router claimed it; normalise() strips the fragment to get a route,
+    // and the fragment went with it. Every press landed on the top of
+    // the landing page instead of on the regulatory basis.
+    await page.click('.footer a[href="/#deadlines"]');
+    await page.waitForFunction(
+      () => {
+        if (!document.querySelector('#deadlines')) return false;
+        const y = window.scrollY;
+        if (window.__lastY2 === y) return true;
+        window.__lastY2 = y;
+        return false;
+      },
+      undefined,
+      { timeout: 5000, polling: 250 }
+    );
+
+    const crossPage = await page.evaluate(() => {
+      const heading = document.querySelector('#deadlines h2').getBoundingClientRect();
+      const chromeBottom = Math.max(
+        document.querySelector('.nav').getBoundingClientRect().bottom,
+        document.querySelector('#sync-strip').getBoundingClientRect().bottom
+      );
+      return {
+        path: window.location.pathname,
+        hash: window.location.hash,
+        scrollY: window.scrollY,
+        clearance: heading.top - chromeBottom
+      };
+    });
+
+    assert(crossPage.path === '/', `the deadlines link went to ${crossPage.path}`);
+    assert(crossPage.hash === '#deadlines', `the fragment was dropped: "${crossPage.hash}"`);
+    assert(
+      crossPage.scrollY > 0,
+      'the deadlines link landed on the top of the landing page rather than on the deadlines'
+    );
+    assert(
+      crossPage.clearance >= 0 && crossPage.clearance < 200,
+      `the deadlines heading is ${Math.round(crossPage.clearance)}px from the sticky chrome`
+    );
+  });
+
+  await check('A LINKED ANSWER OPENS ITSELF', async () => {
+    // Every question has a URL, derived from its own text so the id
+    // cannot drift from the sentence above it. Landing on one has to
+    // OPEN it: the browser scrolls to a closed disclosure perfectly
+    // happily, and the reader arrives at the question they already
+    // clicked and none of the answer.
+    await navigateTo(page, '/faq');
+    const id = await page.locator('.qa__item').first().getAttribute('id');
+    assert(id && id.startsWith('q-'), `a question has no linkable id: "${id}"`);
+
+    await page.goto(`${BASE}/faq#${id}`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(
+      (target) => document.getElementById(target)?.hasAttribute('open'),
+      id,
+      { timeout: 5000 }
+    );
+    assert(
+      await page.locator(`#${id} .qa__answer`).isVisible(),
+      'the linked question is open but its answer is not visible'
+    );
+
+    // Expand all / collapse all, which is the affordance somebody
+    // printing the page reaches for first.
+    await page.click('[data-qa="close"]');
+    const closed = await page.locator('.qa__item[open]').count();
+    await page.click('[data-qa="open"]');
+    const opened = await page.locator('.qa__item[open]').count();
+    const total = await page.locator('.qa__item').count();
+    assert(closed === 0, `${closed} questions stayed open after Collapse all`);
+    assert(opened > 0 && opened < total, 'Expand all opened every group, not just its own');
+  });
+
+  await check('THE GLOSSARY RENDERS THE MODULE, NOT A COPY OF IT', async () => {
+    // 186 lines of vocabulary transcribed from the KCAA course glossary
+    // existed in the repository so the de-identifier would not scrub
+    // "the AOC holder" into "the [FLT] holder", and nothing ever showed
+    // a word of it to a user.
+    //
+    // The count is read from the page and compared against the module
+    // the de-identifier reads. A page that retyped the list would drift
+    // from the redactor, and the drift would show up as a safety
+    // narrative with a mangled acronym in it.
+    await navigateTo(page, '/glossary');
+    await page.waitForSelector('#acronyms', { timeout: 5000 });
+
+    const onPage = await page.locator('#acronyms .deflist__row').count();
+    const inModule = Object.keys(
+      (await import('../packages/shared/src/glossary.ts')).SMS_ACRONYMS
+    ).length;
+    assert(
+      onPage === inModule,
+      `${onPage} abbreviations rendered against ${inModule} in the module the de-identifier reads`
+    );
+
+    // The three occurrence classes, and the sentence a reporter needs.
+    const classes = await page.locator('.class-card').count();
+    assert(classes === 3, `${classes} occurrence classes, expected 3`);
+    const text = (await page.locator('#classes').textContent()) ?? '';
+    assert(
+      /only in the result/.test(text),
+      'the glossary does not carry the accident/serious-incident distinction, ' +
+        'which is the single sentence most reporters get wrong'
+    );
+    // And the provenance, because a transcription without a date is a
+    // claim about a document nobody can re-check.
+    const source = (await page.locator('#acronyms .footnote').textContent()) ?? '';
+    assert(/KCAA/.test(source) && /\d{4}-\d{2}-\d{2}/.test(source),
+      `the glossary does not name its source and transcription date: "${source.trim()}"`);
+
+    // The filter narrows the list and SAYS how far. A filter that hides
+    // rows without a count is indistinguishable from a page that has
+    // lost its content, which on a reference page is the difference
+    // between "no match" and "broken".
+    await page.fill('#glossary-filter', 'aoc');
+    await page.waitForFunction(
+      () => document.querySelectorAll('#acronyms .deflist__row:not([hidden])').length === 1,
+      undefined,
+      { timeout: 5000 }
+    );
+    const shown = (await page.locator('#acronyms .deflist__row:not([hidden])').textContent()) ?? '';
+    assert(/Air operator certificate/.test(shown), `filtering for AOC showed "${shown.trim()}"`);
+    const counter = (await page.locator('#glossary-count').textContent()) ?? '';
+    assert(/1 of \d+/.test(counter), `the filter does not say how far it narrowed: "${counter.trim()}"`);
+    // A letter heading with nothing under it is worse than no heading.
+    const strayLetters = await page.locator('#acronyms .alpha:not([hidden])').count();
+    assert(strayLetters === 1, `${strayLetters} letter groups visible for a single match`);
+
+    // And it matches the EXPANSION too — somebody who half-remembers
+    // "the performance indicator one" should find SPI.
+    await page.fill('#glossary-filter', 'performance indicator');
+    await page.waitForFunction(
+      () => document.querySelectorAll('#acronyms .deflist__row:not([hidden])').length > 0,
+      undefined,
+      { timeout: 5000 }
+    );
+    const byMeaning = (await page.locator('#acronyms').textContent()) ?? '';
+    assert(/SPI/.test(byMeaning), 'the filter does not search the expansions, only the terms');
+
+    await page.fill('#glossary-filter', 'zzzz');
+    await page.waitForSelector('#glossary-empty:not([hidden])', { timeout: 5000 });
+    await page.fill('#glossary-filter', '');
   });
 
   await check('provisional jurisdictions are marked as provisional', async () => {
-    const tags = await page.locator('.tag--provisional').count();
+    // Navigates itself. It used to read whatever the previous check had
+    // left on screen, which meant inserting a check above it silently
+    // changed what it was measuring — and it did, the first time one
+    // was: it went green on a page with no jurisdictions on it at all.
+    await navigateTo(page, '/methodology');
+    await page.waitForSelector('.oblig-table', { timeout: 5000 });
+    const tags = await page.locator('#main .tag--provisional').count();
     assert(tags === 3, `${tags} provisional tags, expected 3 (UG, TZ, RW)`);
   });
 
@@ -657,6 +1195,50 @@ try {
   await check('a deep link resolves after a full reload', async () => {
     await page.goto(`${BASE}/triage`, { waitUntil: 'networkidle' });
     assert(await page.locator('.queue').isVisible(), '/triage did not render on a cold load');
+  });
+
+  await check('A DEEP LINK RELOADS OFFLINE — the offline claim, at the URL a person is on', async () => {
+    // The worker precaches '/' and the hashed assets. It does NOT cache
+    // /triage or /account, because those URLs are the router's business
+    // and never exist as documents — they are reached by tapping the tab
+    // bar, which is client-side and issues no navigation request.
+    //
+    // So a reload on one of them with no network matched nothing, fell
+    // through to offline.html, and told the person "you are offline"
+    // while the entire app sat in the cache one entry along. A product
+    // whose central claim is that it works without signal must not show
+    // an offline page to someone whose app is already on the device.
+    //
+    // THE URL MATTERS HERE. An earlier version of this check navigated
+    // to /triage online first and then reloaded — which passed against
+    // the broken worker, because that online visit had cached /triage
+    // as a document. The defect only appears for a route reached the way
+    // people actually reach it. This uses /account, which the suite only
+    // ever opens by tapping.
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.waitForTimeout(400);
+
+    await page.context().setOffline(true);
+    await page.goto(`${BASE}/account`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(700);
+
+    const state = await page.evaluate(() => ({
+      isOfflinePage: /you are offline|no connection|reports you file are saved/i.test(
+        document.querySelector('.offline-page, #offline')?.textContent ?? ''
+      ),
+      hasShell: Boolean(document.querySelector('#menu-toggle')),
+      heading: document.querySelector('h1')?.textContent?.trim() ?? '',
+    }));
+    await page.context().setOffline(false);
+
+    assert(
+      state.hasShell,
+      `an offline reload of /account did not render the app shell — it served ` +
+        `"${state.heading}", which is the offline page for an app already on the device`
+    );
+    assert(!state.isOfflinePage, 'the offline page was served instead of the cached app');
+    assert(/sign in|signed in/i.test(state.heading), `offline /account rendered "${state.heading}"`);
   });
 
   await check('no uncaught page errors across the whole run', async () => {

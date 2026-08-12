@@ -17,7 +17,7 @@
    VOLUME is what kills an SMS. Filing must never be gated. Sending is.
    ============================================================ */
 
-import { html } from '../../shared/html.js';
+import { html, raw } from '../../shared/html.js';
 import { signIn, signOut, isSignedIn, getSession } from '../../shared/session.js';
 import { flushOutbox } from '../../shared/offline.ts';
 
@@ -32,6 +32,58 @@ const REASONS = {
     'No connection, so signing in is not possible right now. You can still file reports — they stay on this device and send when you are back in signal.'
 };
 
+
+/* Four claims, and every one is a mechanism this repository can point
+   at rather than a sentiment. Charter rule 7 as it applies here: the
+   promise is kept by a mechanism, and a claim printed on a surface a
+   customer reads has to name one. */
+const TRUST = [
+  {
+    text: 'Records without a connection — the report is on this device before it is anywhere else',
+    icon: '<path d="M5 12.5a7 7 0 0 1 14 0"/><path d="M8.5 16a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/><path d="M3 3l18 18"/>'
+  },
+  {
+    text: 'A name is attached only if you choose — an anonymous report stores no identifier at all',
+    icon: '<path d="M12 3l7 3v6c0 4.2-2.9 7.9-7 9-4.1-1.1-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/>'
+  },
+  {
+    text: 'Every reporting deadline computed on each read, never stored — so no figure goes stale',
+    icon: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'
+  },
+  {
+    text: 'Reaches the safety office and nobody else — tenant-scoped, on a hash-chained record',
+    icon: '<rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>'
+  }
+];
+
+function Banner(headline, lede) {
+  return html`
+    <section class="band-dark">
+      <div class="wrap">
+        <!-- No lockup here. A hero carries one when the nav lockup is
+             small and a hundred pixels of scroll away; ours is the same
+             size and sits directly above, so a second copy reads as a
+             rendering mistake rather than as a statement. -->
+        <span class="eyebrow">Account</span>
+        <h1>${headline}</h1>
+        <p class="lede">${lede}</p>
+
+        <ul class="trust-strip">
+          ${TRUST.map(
+            (t) => html`<li class="trust-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                ${raw(t.icon)}
+              </svg>
+              <span>${t.text}</span>
+            </li>`
+          )}
+        </ul>
+      </div>
+    </section>
+  `;
+}
+
 export function render(outlet) {
   if (isSignedIn()) return renderSignedIn(outlet);
   return renderForm(outlet);
@@ -40,16 +92,14 @@ export function render(outlet) {
 function renderSignedIn(outlet) {
   const session = getSession() ?? {};
   outlet.innerHTML = html`
-    <section class="panel" id="login-panel">
-      <header class="page-head">
-        <span class="eyebrow">Account</span>
-        <h1>Signed in</h1>
-      </header>
-      <p class="lede">
-        Reports on this device will send automatically.
-        ${session.role ? html`You are signed in as <strong>${labelForRole(session.role)}</strong>.` : ''}
-      </p>
-      <button type="button" class="btn btn--secondary" id="sign-out">Sign out</button>
+    ${Banner(
+      'Signed in',
+      html`Reports on this device send automatically from now on.${session.role
+        ? html` You are signed in as <strong>${labelForRole(session.role)}</strong>.`
+        : ''}`
+    )}
+    <section class="panel wrap" id="login-panel">
+      <button type="button" class="btn btn-secondary" id="sign-out">Sign out</button>
       <p class="hint">
         Signing out does not delete anything you have filed. Reports still
         on this device stay here until someone signs in and they send.
@@ -66,37 +116,39 @@ function renderSignedIn(outlet) {
 
 function renderForm(outlet) {
   outlet.innerHTML = html`
-    <section class="panel">
-      <header class="page-head">
-        <span class="eyebrow">Account</span>
-        <h1>Sign in</h1>
-      </header>
-      <p class="lede">
-        Reports are held on this device until someone signs in, so the
-        safety office can be told which organisation they belong to.
-        <strong>You do not need to sign in to file one.</strong>
+    ${Banner(
+      'Sign in',
+      html`Reports are held on this device until somebody signs in. Until then the
+        system does not know which operator they belong to, and has nowhere to
+        send them.`
+    )}
+    <section class="panel wrap">
+      <p class="lede lede--tight">
+        <strong>Signing in is not required to file a report.</strong> Filing
+        works with no account and no connection; signing in is what sends what
+        is already queued.
       </p>
 
       <form id="login-form" class="card" novalidate>
         <label class="field">
-          <span class="field__label">Email</span>
+          <span class="field-label">Email</span>
           <input
             type="email" name="email" id="login-email"
             autocomplete="username" inputmode="email"
             autocapitalize="off" spellcheck="false" required
-          />
+          class="input-field"/>
         </label>
 
         <label class="field">
-          <span class="field__label">Password</span>
+          <span class="field-label">Password</span>
           <input
             type="password" name="password" id="login-password"
             autocomplete="current-password" required
-          />
+          class="input-field"/>
         </label>
 
-        <button type="submit" class="btn btn--primary btn--block">Sign in</button>
-        <p class="field__error" id="login-status" role="status" aria-live="polite"></p>
+        <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+        <p class="field-error" id="login-status" role="status" aria-live="polite"></p>
       </form>
     </section>
   `.toString();

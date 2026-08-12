@@ -58,10 +58,10 @@ function show({ id, text, actionLabel, onAction, dismissLabel = 'Not now', onDis
   el.innerHTML = html`
     <p class="prompt__text">${text}</p>
     <div class="prompt__actions">
-      <button type="button" class="btn btn--secondary btn--sm" data-act="dismiss">
+      <button type="button" class="btn btn-secondary btn-sm" data-act="dismiss">
         ${dismissLabel}
       </button>
-      <button type="button" class="btn btn--primary btn--sm" data-act="go">${actionLabel}</button>
+      <button type="button" class="btn btn-primary btn-sm" data-act="go">${actionLabel}</button>
     </div>
   `.toString();
 

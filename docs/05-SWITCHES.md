@@ -1,6 +1,6 @@
 # Claims with an expiry date
 
-*Companion to `docs/DIAGNOSTIC-CHARTER.md`. Ported from Kanda's
+*Companion to `docs/DIAGNOSTIC-CHARTER.md`. Ported from the sibling product's
 `05-SWITCHES.md`, which exists because a product's most dangerous
 statements are the true ones that quietly stop being true.*
 
@@ -185,7 +185,7 @@ one geometry source, and `scripts/build-icons.mjs` generates it.
 **Why it expires:** the suite is **SVG only**. Chrome and Android accept
 SVG icons in a web app manifest; iOS does not, and an iPhone user who
 adds UsalamaSMS to their home screen gets a screenshot tile rather than
-the mark. Rasterising needs a browser or an image library — Kanda gets
+the mark. Rasterising needs a browser or an image library — the sibling product gets
 PNGs nearly free because it already carries Playwright for
 pre-rendering, and this project carries neither and did not add a
 200-package dependency to produce six files.
@@ -194,7 +194,7 @@ pre-rendering, and this project carries neither and did not add a
 the absence of an `apple-touch-icon` link in `index.html`.
 
 **What must happen:** before any iOS user is asked to install this,
-either add Playwright as a build dependency and rasterise (Kanda's
+either add Playwright as a build dependency and rasterise (the sibling product's
 `scripts/build-icons.mjs` is the reference) or commit hand-produced PNGs
 and accept that they are generated artefacts nobody can regenerate —
 which the brand document explicitly forbids, so the first option is the

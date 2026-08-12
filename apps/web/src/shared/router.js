@@ -17,7 +17,34 @@ class Router {
     this.notFound = null;
     this.outlet = null;
     this.current = null;
-    this._onPop = () => this.render();
+    /* ============================================================
+       ONLY WHEN THE PATH CHANGED.
+
+       THE DEFECT: this was `() => this.render()`. Chrome fires popstate
+       for a same-document hash change, so clicking any in-page anchor
+       re-rendered the whole screen from scratch — which wiped the DOM
+       the browser was about to scroll to and reset the scroll position
+       to zero.
+
+       Every in-page anchor in the product was therefore dead. The
+       contents list on six document pages, the footer's link to the
+       deadlines section, and the skip link that is the first thing a
+       keyboard user reaches: all of them changed the URL, did nothing
+       visible, and left the reader at the top of the page.
+
+       Nothing in the suite could see it. A re-render produces the same
+       markup, so every selector still matched, every assertion still
+       passed, and the only evidence was a scroll position — which
+       nothing was reading.
+
+       Re-rendering the CURRENT path on demand is still deliberate and
+       still available: navigate() does it when asked for the route it
+       is already on. This is the other case, and the two are not the
+       same event.
+       ============================================================ */
+    this._onPop = () => {
+      if (this.current !== this.path) this.render();
+    };
   }
 
   register(path, handler, meta = {}) {
@@ -51,8 +78,16 @@ class Router {
       const path = normalise(href);
       if (!this.routes.has(path)) return; // let the server answer
 
+      /* THE FRAGMENT SURVIVES. normalise() strips it — correctly, since
+         a route is a path — and the first version of this handler threw
+         it away with it. So the footer's "/#deadlines", which is the
+         link to the regulatory basis and the most consequential thing
+         in the footer, navigated to the landing page and scrolled to
+         the top. It had never once worked. */
+      const hash = href.includes('#') ? href.slice(href.indexOf('#')) : '';
+
       event.preventDefault();
-      this.navigate(path);
+      this.navigate(path + hash);
     });
 
     this.render();
@@ -64,14 +99,46 @@ class Router {
   }
 
   navigate(path, { replace = false } = {}) {
-    const target = normalise(path);
+    const input = String(path);
+    const hash = input.includes('#') ? input.slice(input.indexOf('#')) : '';
+    const target = normalise(input);
+    const url = target + hash;
+
     if (target === this.path) {
-      this.render();
+      /* Same route. If a fragment came with it, this is an in-page
+         move and re-rendering would destroy the element being scrolled
+         to — the same defect popstate had. Without one it is a request
+         to redraw the current screen, which is deliberate. */
+      if (hash) {
+        window.history.pushState({}, '', url);
+        this.scrollToFragment(hash);
+      } else {
+        this.render();
+      }
       return;
     }
-    if (replace) window.history.replaceState({}, '', target);
-    else window.history.pushState({}, '', target);
+
+    if (replace) window.history.replaceState({}, '', url);
+    else window.history.pushState({}, '', url);
     this.render();
+  }
+
+  /* Scroll to a fragment on the screen that is now rendered.
+     scrollIntoView rather than assigning location.hash: the hash is
+     already set by the time this runs, so assigning it again would be a
+     no-op, and this way the CSS scroll-margin (which clears the sticky
+     header — WCAG 2.2 SC 2.4.11) is applied either way. */
+  scrollToFragment(hash) {
+    const id = hash.replace(/^#/, '');
+    if (!id) return false;
+    const target = document.getElementById(id);
+    if (!target) return false;
+    target.scrollIntoView();
+    // Focus follows the scroll, or a keyboard user is left where they
+    // were while the sighted view moved somewhere else entirely.
+    if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+    target.focus({ preventScroll: true });
+    return true;
   }
 
   back() {
@@ -90,9 +157,9 @@ class Router {
     const match = this.routes.get(path);
     this.current = path;
 
-    /* HANDLER CONTRACT — changed from Kanda's, deliberately.
+    /* HANDLER CONTRACT — changed from the one this was ported from.
 
-       Kanda's handlers take no arguments and RETURN a DOM node, which
+       There, handlers take no arguments and RETURN a DOM node, which
        the router appends. That works when every screen is synchronous.
        This product's triage queue reads IndexedDB, so its render is
        async, and a returned promise would have been appended as the
@@ -127,7 +194,21 @@ class Router {
       });
     }
 
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    /* Top, UNLESS the URL asked for somewhere in particular. A route
+       reached as /#deadlines has to land on the deadlines, and a
+       scroll-to-top here would undo the fragment the click preserved.
+       Deferred a frame because an async screen has not written its
+       markup yet, so the element may not exist at this instant. */
+    const pendingHash = window.location.hash;
+    if (pendingHash) {
+      requestAnimationFrame(() => {
+        if (!this.scrollToFragment(pendingHash)) {
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+      });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
 
     /* Move focus to the new screen.
 
@@ -148,7 +229,7 @@ class Router {
        who has just arrived, and fight the browser's own restoration when
        returning to a page. preventScroll because the scroll position is
        set on the line above and focus must not override it. */
-    if (this._hasRendered) {
+    if (this._hasRendered && !pendingHash) {
       this.outlet.focus({ preventScroll: true });
     }
     this._hasRendered = true;

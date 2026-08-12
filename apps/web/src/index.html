@@ -30,6 +30,13 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- The two weights in the first paint: body text and the headline.
+         Preloaded so a cold start does not render the fallback and then
+         reflow into Inter, which is the flash that makes a page look
+         like it is still arriving. 500 and 600 load normally — they
+         appear below the fold on every screen. -->
+    <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/inter-700.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
     <style>
@@ -95,16 +102,34 @@
     <a class="skip-link" href="#main">Skip to content</a>
 
     <div class="app-shell" id="app-shell" hidden>
-      <header class="topbar" id="topbar">
+      <header class="nav" id="topbar">
         <!-- The Logo component renders its own <a href="/">, so this is
              a plain wrapper. Nesting anchors is invalid and Chromium
              silently un-nests them, which moves the click target. -->
-        <div class="topbar__brand" id="logo-slot"></div>
+        <div class="brand" id="logo-slot"></div>
 
-        <!-- Inline on a wide screen only. On a handset the destinations
-             live in the bottom bar, where a thumb is. -->
-        <nav class="topnav" id="nav" aria-label="Main"></nav>
+        <div class="nav-right">
+          <!-- Inline on a wide screen; behind Menu on a handset. -->
+          <nav class="nav-links" id="nav" aria-label="Main"></nav>
+
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm nav-toggle"
+            id="menu-toggle"
+            aria-expanded="false"
+            aria-controls="menu-panel"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+            <span>Menu</span>
+          </button>
+        </div>
       </header>
+
+      <!-- Written by the shell, closed until asked for. -->
+      <nav class="dropdown-menu" id="menu-panel" aria-label="Primary" hidden></nav>
 
       <!-- Charter rule 8, extended: the sync state is chrome, not a
            notification. A report that has not reached anyone has not been
@@ -127,35 +152,54 @@
       <!-- The router writes here. -->
       <main id="main" class="page" tabindex="-1"></main>
 
-      <footer class="site-footer">
-        <div class="container">
-          <div class="site-footer__brand">
-            <span id="footer-logo-slot"></span>
-            <p class="site-footer__line">
-              Aviation safety management for the operators the incumbents
-              priced out. Built against ICAO Annex 19 Amendment 2, applicable
-              <time datetime="2026-11-26">26 November 2026</time>.
-            </p>
+      <!-- ============================================================
+           THE FOOTER: A SITE INDEX AND A STATEMENT OF BASIS.
+
+           It held the five regulatory rows in full, which made it the
+           tallest thing on every screen — a person on a handset
+           scrolled through two thousand pixels of citation to reach a
+           copyright line — while setting the most consequential claim
+           in the product in footnote type below the fold. Those rows
+           are a section on the landing page now, at #deadlines, where
+           somebody checking a deadline can be sent a URL.
+
+           The columns are RENDERED FROM shared/sitemap.js, the same
+           declaration the header menu reads. Two hand-written lists is
+           how this came to repeat the header's four destinations and
+           tell nobody anything.
+
+           It is not the header drawn twice: it carries About,
+           Methodology, Tutorials, Questions, the privacy notice and
+           the terms, none of which are working navigation. The check
+           in scripts/smoke.mjs holds that line.
+           ============================================================ -->
+      <footer class="footer">
+        <div class="wrap">
+          <div class="cols">
+            <div class="footer-brand">
+              <span id="footer-logo-slot"></span>
+              <p class="footer-line">
+                Aviation safety management for the operators the incumbents
+                priced out. Reports are held on the device that files them
+                and reach the safety office of that operator and nobody else.
+              </p>
+              <p class="footer-note" id="footer-jurisdictions"></p>
+            </div>
+
+            <!-- Written by the shell from the architecture. -->
+            <div class="footer-cols" id="footer-columns"></div>
           </div>
 
-          <nav class="site-footer__links" aria-label="Secondary">
-            <a href="/">File a report</a>
-            <a href="/triage">Triage</a>
-            <a href="/account">Account</a>
-            <a href="/design">Design system</a>
-          </nav>
-
-          <p class="site-footer__legal">
-            UsalamaSMS · Regulatory figures dated
-            <time datetime="2026-08-11">11 August 2026</time>
-          </p>
+          <div class="ver">
+            <span>UsalamaSMS &middot; Safety intelligence for African skies</span>
+            <span>
+              Built to ICAO Annex 19 Amendment 2 &middot; regulatory figures verified
+              <time datetime="2026-08-11">11 August 2026</time>
+            </span>
+          </div>
         </div>
       </footer>
 
-      <!-- Bottom tab bar: handsets only. A ramp agent is holding the
-           phone one-handed with gloves on, and the top of a 6.7&Prime;
-           screen is not reachable with a thumb. -->
-      <nav class="tabbar" id="tabbar" aria-label="Primary"></nav>
     </div>
 
     <div class="boot" id="boot">

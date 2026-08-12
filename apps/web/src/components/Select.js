@@ -78,7 +78,7 @@ export function Select({
 
   return html`
     <div class="field field--select" data-has-other="${otherValue ? 'true' : 'false'}">
-      <label class="field__label" for="${id}">
+      <label class="field-label" for="${id}">
         ${label}${required ? html`<span aria-hidden="true"> *</span>` : ''}
       </label>
 
@@ -116,7 +116,7 @@ export function Select({
         <span class="select__chevron" aria-hidden="true"></span>
       </div>
 
-      ${hint ? html`<span class="field__hint" id="${hintId}">${hint}</span>` : ''}
+      ${hint ? html`<span class="field-hint" id="${hintId}">${hint}</span>` : ''}
 
       ${otherValue
         ? html`<input
