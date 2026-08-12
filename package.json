@@ -32,7 +32,8 @@
     "seed": "node scripts/seed.mjs",
     "check:update": "node scripts/check-update.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
-    "check:wiring": "node scripts/check-wiring.mjs"
+    "check:wiring": "node scripts/check-wiring.mjs",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "devDependencies": {
     "@netlify/functions": "^5.3.0",

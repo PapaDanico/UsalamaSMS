@@ -20,6 +20,7 @@ import { authRoutes } from "./routes.auth";
 import { smsRoutes } from "./routes.sms";
 import { exportRoutes } from "./routes.export";
 import { rateLimitKey } from "./rate-limit-key";
+import { missingTables } from "./schema-guard";
 
 export async function build(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -185,12 +186,33 @@ export async function build(): Promise<FastifyInstance> {
   for (const prefix of ["", "/api"]) {
     app.get(`${prefix}/health`, async () => ({ ok: true }));
 
+    /* READY MEANS READY. `SELECT 1` proves a connection and nothing
+       else — which is why this endpoint answered {"ok":true} for the
+       whole window in which #20's code was deployed against a database
+       that had never had its migration applied. See schema-guard.ts.
+
+       The schema check runs on every probe rather than being cached at
+       boot: on a serverless function the process is short-lived and a
+       cache would mostly measure cold starts, and a migration applied
+       while instances are warm should turn this green without a
+       redeploy. It is one query. */
     app.get(`${prefix}/ready`, async (_req, reply) => {
       try {
-        await prisma.$queryRaw`SELECT 1`;
+        const missing = await missingTables(prisma);
+        if (missing.length) {
+          return reply.code(503).send({
+            ok: false,
+            reason: "schema_behind_code",
+            missingTables: missing,
+            detail:
+              "The database is reachable but does not have every table this build " +
+              "queries. Run the outstanding Prisma migration — deploying code does " +
+              "not apply one.",
+          });
+        }
         return { ok: true };
       } catch {
-        return reply.code(503).send({ ok: false });
+        return reply.code(503).send({ ok: false, reason: "unreachable" });
       }
     });
   }
