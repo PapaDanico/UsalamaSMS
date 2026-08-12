@@ -734,9 +734,36 @@ html { scroll-padding-top: var(--us-chrome); }
   box-shadow: 0 0 0 3px rgb(var(--us-charcoal-rgb) / 0.08);
 }
 
+/* SYNCED RECEDES. Every other state is a call to action and keeps the
+   full-width band; this one is a reassurance, and a reassurance does
+   not need a row of chrome under the header on every screen of the
+   product. It was reading as a hanging banner that announced nothing.
+
+   Still sticky, still present, still the same element and the same
+   text — the status must not disappear, because a person who never
+   sees "up to date" has no baseline against which "3 waiting to send"
+   means anything. What changes is its weight: no tinted band, a hairline
+   instead of a border, half the vertical space, and pushed to the
+   right where the eye parks rather than where it starts reading. */
 .sync-strip[data-state='synced'] {
-  background: rgb(var(--us-teal-rgb) / 0.07);
-  color: var(--us-teal-text);
+  justify-content: flex-end;
+  padding-top: var(--us-space-1);
+  padding-bottom: var(--us-space-1);
+  gap: var(--us-space-2);
+  font-size: var(--us-text-xs);
+  font-weight: var(--us-weight-regular);
+  background: var(--us-surface);
+  border-bottom-color: rgb(var(--us-charcoal-rgb) / 0.06);
+  color: var(--us-text-tertiary);
+}
+
+/* The dot keeps the teal it earned — it is the one part that should
+   still read as a status light, and at 6px it is the whole signal. */
+.sync-strip[data-state='synced'] .sync-strip__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--us-teal-text);
+  box-shadow: none;
 }
 
 .sync-strip[data-state='offline'] {
@@ -1761,7 +1788,23 @@ html { scroll-padding-top: var(--us-chrome); }
 .page-head { margin-bottom: var(--us-space-6); }
 .page-head h1 { margin: 0 0 var(--us-space-2); }
 .page-head p { margin: 0; max-width: 62ch; color: var(--us-ink-600); }
-.section-title { font-size: var(--us-text-md); letter-spacing: -.01em; margin: 0 0 var(--us-space-3); }
+/* OPTICALLY CORRECTED, not arbitrarily enlarged. This is a heading, so
+   it renders in the display face — and Cormorant Garamond has a much
+   smaller x-height than DM Sans, so at the same 17px it read SMALLER
+   than the 15px body text sitting directly beneath it. A section
+   heading that is out-read by its own paragraph inverts the hierarchy
+   it exists to create.
+
+   Tied to the token with a multiplier rather than hardcoded, so the
+   scale stays single-source: change --us-text-md and this moves with
+   it. The 1.15 is the ratio that puts the two x-heights level; it is a
+   property of this typeface pairing, which is why it lives on the rule
+   that uses the display face rather than in the scale itself. */
+.section-title {
+  font-size: calc(var(--us-text-md) * 1.15);
+  letter-spacing: -.01em;
+  margin: 0 0 var(--us-space-3);
+}
 .footnote { margin-top: var(--us-space-3); font-size: var(--us-text-xs); color: var(--us-ink-600); }
 .lede--tight { max-width: 62ch; font-size: var(--us-text-base); }
 /* A form is a reading measure, not a page width — .panel .wrap is now

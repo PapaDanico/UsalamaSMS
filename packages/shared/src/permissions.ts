@@ -41,7 +41,12 @@ export type Permission =
   | "policy.draft" | "policy.sign"
   | "accountability.manage" | "appointment.manage"
   | "erp.manage" | "sms.audit.conduct" | "sms.audit.verify"
-  | "communication.publish";
+  | "communication.publish"
+  /* The operator's own copy of its own record. Deliberately NOT
+     org.manage: taking a full copy of every safety narrative the
+     organisation holds is a different act from administering accounts,
+     and the roles that may do it are different ones. */
+  | "org.export";
 
 export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   FRONTLINE: new Set<Permission>([
@@ -63,6 +68,9 @@ export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
     // policy and does NOT verify its own findings.
     "policy.draft", "accountability.manage", "appointment.manage",
     "erp.manage", "sms.audit.conduct", "communication.publish",
+    // The post that would be asked for the record in an audit is the
+    // post that can take a copy of it.
+    "org.export",
   ]),
   INVESTIGATOR: new Set<Permission>([
     "report.read.org", "report.investigate", "hazard.manage", "risk.assess",
@@ -88,6 +96,9 @@ export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
     "policy.sign",
     // And appointing the key personnel, which is the same authority.
     "appointment.manage",
+    /* And holding the operator's own copy. Data ownership that depends
+       on the safety manager still being employed is not ownership. */
+    "org.export",
   ]),
   REGULATOR_INSPECTOR: new Set<Permission>([
     "regulator.oversight", "audit.read", "spi.read", "document.read",

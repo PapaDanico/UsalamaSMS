@@ -54,6 +54,34 @@ export default defineConfig({
   build: {
     outDir: path.resolve(repoRoot, 'dist'),
     emptyOutDir: true,
-    target: 'es2020'
+    target: 'es2020',
+
+    /* ============================================================
+       THE RBAC MATRIX IS NOT THE RAMP AGENT'S TO CARRY.
+
+       permissions.ts was split out of the shared index precisely to
+       keep it off the first paint: `new Set([...])` at module scope is
+       a side-effectful expression Rollup cannot tree-shake, so the
+       whole eight-role matrix rides along with whatever imports it.
+
+       That split held while ONE lazy screen imported it. The moment a
+       second did — /account, to decide whether to offer the export —
+       Rollup did what it does with a module two lazy chunks share and
+       hoisted it into the common parent, which is the entry. The
+       matrix came back, 3.4 KB, charged to every person opening the
+       report form at a strip, to answer a question two screens ask.
+
+       Naming it here keeps it a chunk of its own: fetched by /sms and
+       /account when somebody opens them, and never by anyone else. The
+       fix is the chunk, not a bigger budget — the budget existed to
+       catch exactly this, and raising it would have bought silence.
+       ============================================================ */
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          rbac: [path.resolve(repoRoot, 'packages/shared/src/permissions.ts')]
+        }
+      }
+    }
   }
 });
