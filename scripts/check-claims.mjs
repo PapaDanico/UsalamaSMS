@@ -157,9 +157,20 @@ if (prefixBlock) {
     prefixes.length >= 5,
     `only ${prefixes.length} prefixes — the stated market is the East African corridor`
   );
-  /* The four the corridor is actually flown between. Named individually
-     so dropping one is a specific, legible failure. */
-  for (const required of ['5Y', '5X', '5H', '9XR']) {
+  /* KENYA, AND ONLY KENYA IS REQUIRED NOW.
+
+     This list was ['5Y', '5X', '5H', '9XR'] — the four the corridor is
+     actually flown between — and it failed when the last three were
+     removed on 12 August 2026 as part of scoping the product to the
+     State of Registry. That failure was the gate working: an
+     uncovered prefix passes through de-identification in clear, and
+     the check said so before anything was built.
+
+     The three are not silently dropped from the check. They are
+     asserted ABSENT below, so restoring one fails here and points at
+     the decision rather than at a bug, and so the pairing with
+     docs/05-SWITCHES.md entry 11 cannot drift. */
+  for (const required of ['5Y']) {
     assert(
       `registration prefix ${required} is covered`,
       prefixes.includes(required),
