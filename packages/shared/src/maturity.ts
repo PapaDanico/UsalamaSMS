@@ -223,6 +223,105 @@ export const MATURITY_SOURCE = Object.freeze({
   /** Not yet read against Doc 9859 fourth edition directly. */
   provisional: true,
   appliesFrom: "2026-11-26",
+
+  /* WHERE THE SCORING RULE COMES FROM, since it is not ours.
+
+     The scale above is this product's articulation and is labelled as
+     such wherever it appears. The rule that an assessment is positioned
+     at its WEAKEST element rather than its average is not — it follows
+     the SM ICG SMS Evaluation Tool, whose stated expectation is that
+     all individual indicators reach at least "operating" and that
+     effectiveness is achieved in all of the elements.
+
+     Named here so the screen can cite it. Deliberately NOT claimed as a
+     mapping between our five levels and SM ICG's four: a correspondence
+     between "Practised" and "Operating" would be our reading, and
+     presenting our reading as SM ICG's is the same invented authority
+     this module already refuses to claim for the scale itself. */
+  scoringBasis:
+    "SM ICG SMS Evaluation Tool — adopted by CASA as Form 1591 V3. It expects every " +
+    "element to be at least operating, which is why this assessment reports the weakest " +
+    "element rather than an average.",
+  scoringBasisUrl: "https://www.casa.gov.au/safety-management-system-sms-evaluation-tool-and-guidance",
+});
+
+/**
+ * SM ICG's four levels, quoted rather than paraphrased.
+ *
+ * Read from the primary document — CASA Safety Management System (SMS)
+ * Evaluation Tool and Guidance, V 3.0, CASA-04-1388, October 2024,
+ * published under Creative Commons Attribution 4.0 International, which
+ * is why it can be quoted here with the attribution below.
+ *
+ * NOT YET THIS PRODUCT'S SCALE, and the gap is deliberate. Ours has
+ * five levels and this has four, and they do not correspond one to one
+ * — see SUITABLE below, which is not a rung on a maturity ladder at
+ * all. Adopting PSOE is a decision about what the assessment IS, not a
+ * relabelling, and it changes a customer-facing figure. Held here as
+ * the authority the scoring rule already cites, so that decision is
+ * made against the real text and not against a summary of it.
+ */
+export const SM_ICG_LEVELS = Object.freeze([
+  {
+    code: "P",
+    label: "Present",
+    definition:
+      "There is evidence that the relevant indicator is documented within the " +
+      "organisation's SMS documentation.",
+  },
+  {
+    code: "S",
+    label: "Suitable",
+    /* THE ONE THAT IS NOT A MATURITY RUNG.
+       Suitability is graded against the operator — its size, nature,
+       complexity and inherent risk — not against a fixed bar. A
+       six-turboprop AOC and a widebody carrier can both be Suitable
+       while holding visibly different things, which is this product's
+       entire market thesis written into a regulator's grading scheme
+       rather than into our marketing. It pairs with the scaling
+       guidance in CASA's SMS Book 7, and it is why PSOE cannot simply
+       be mapped onto a five-point ladder. */
+    definition:
+      "The relevant indicator is suitable based on the size, nature, and complexity of " +
+      "the organisation and the inherent risk in its activity.",
+  },
+  {
+    code: "O",
+    label: "Operating",
+    definition:
+      "There is evidence that the relevant indicator is in use and an output is being produced.",
+  },
+  {
+    code: "E",
+    label: "Effective",
+    definition:
+      "There is evidence that the relevant indicator is achieving the desired outcome and " +
+      "has a positive safety impact.",
+  },
+]);
+
+/**
+ * The prerequisite rule, and the reason the assessment reports its
+ * weakest element rather than an average. Quoted for the same reason
+ * the levels are: this is the sentence the scoring rule rests on.
+ */
+export const SM_ICG_PREREQUISITE =
+  "An item cannot be considered Operating or Effective if it is not Present and it cannot " +
+  "be considered as Present if it is not documented — documentation ensures consistent " +
+  "repeatable and systematic outcomes.";
+
+/** When each half of the scale applies, per the same guidance. */
+export const SM_ICG_STAGES =
+  "Present and Suitable are generally used for initial approval or certification. " +
+  "Operating and Effective are expected to be found in a functioning SMS.";
+
+export const SM_ICG_ATTRIBUTION = Object.freeze({
+  title: "CASA Safety Management System (SMS) Evaluation Tool and Guidance",
+  version: "V 3.0",
+  reference: "CASA-04-1388",
+  issued: "2024-10",
+  licence: "CC BY 4.0",
+  readOn: "2026-08-12",
 });
 
 export interface ComponentScore {
@@ -242,6 +341,43 @@ export interface MaturityResult {
   /** Elements at or below `gapAtOrBelow`, weakest first — the work list. */
   readonly gaps: ReadonlyArray<{ element: SmsElement; level: number }>;
   readonly complete: boolean;
+
+  /**
+   * THE POSITION AN OPERATOR CAN ACTUALLY DEFEND, which is the level of
+   * its WEAKEST answered element — not the average of all twelve.
+   *
+   * The mean above is compensatory: eleven elements at Improving and
+   * one at Absent averages 3.67, labels as "Measured", and reads as a
+   * healthy SMS while a twelfth of it does not exist. An auditor does
+   * not average. They find the element that is missing and write it up.
+   *
+   * This follows the SM ICG SMS Evaluation Tool — the instrument CASA
+   * has adopted wholesale as Form 1591 — whose stated expectation is
+   * that ALL individual indicators reach at least "operating" and that
+   * effectiveness is achieved in ALL of the elements. A framework whose
+   * pass condition is universal cannot be reported by an average.
+   *
+   * Undefined until every element is answered: the weakest of four
+   * answers is not the weakest of twelve, and reporting it as though it
+   * were would be the same overclaim in the opposite direction.
+   */
+  readonly position?: number;
+
+  /**
+   * The elements sitting AT that position — what is holding the whole
+   * assessment where it is, and therefore the only work that can move
+   * it. Improving anything else changes the mean and not the position.
+   */
+  readonly limitedBy: ReadonlyArray<SmsElement>;
+
+  /**
+   * Elements the operator judged NOT SUITABLE for its operation,
+   * whatever level they sit at. Never scored and never counted as gaps
+   * — suitability is a different question from maturity, and merging
+   * them would lose the only case a maturity ladder cannot express: an
+   * element taken a long way and still wrong for this operator.
+   */
+  readonly unsuitable: ReadonlyArray<SuitabilityFinding>;
 }
 
 /**
@@ -262,9 +398,78 @@ export interface MaturityResult {
  * half-finished assessment that reports 1.4 out of 4 is telling the
  * user about their progress through the form, not about their SMS.
  */
+/**
+ * How big and how complicated the operator is.
+ *
+ * SM ICG grades SUITABLE against "the size, nature, and complexity of
+ * the organisation and the inherent risk in its activity" — so a
+ * product that asks whether an SMS is suitable and never asks who it
+ * belongs to is asking half a question. CASA's SMS Book 7 (Scaling for
+ * size and complexity) puts the small, non-complex band at ten or fewer
+ * people, which is not a rounding of the market this product is for; it
+ * IS the market.
+ *
+ * Bands rather than a headcount box, because the judgement this feeds
+ * is qualitative and a number invites false precision — an operator
+ * with eleven staff is not categorically different from one with nine.
+ */
+export const OPERATOR_SCALES = Object.freeze([
+  {
+    id: "SMALL_NON_COMPLEX",
+    label: "Small and non-complex",
+    meaning:
+      "Around ten people or fewer, one operating model, and a safety manager who holds " +
+      "the post alongside another job.",
+  },
+  {
+    id: "SMALL",
+    label: "Small",
+    meaning: "Under about fifty people, a single certificate, and a settled route or task mix.",
+  },
+  {
+    id: "MEDIUM",
+    label: "Medium",
+    meaning:
+      "Several operating models or certificates, or a fleet mixed enough that one procedure " +
+      "does not cover it.",
+  },
+  {
+    id: "COMPLEX",
+    label: "Large or complex",
+    meaning:
+      "Multiple bases or certificates, contracted operations, or an activity whose inherent " +
+      "risk is high regardless of headcount.",
+  },
+]);
+export type OperatorScale = (typeof OPERATOR_SCALES)[number]["id"];
+
+/**
+ * Whether what the operator holds is SUITABLE for the operator.
+ *
+ * Deliberately separate from the level. A level says how far an element
+ * has been taken; suitability says whether that is the right amount for
+ * this operation — and the two genuinely come apart in both directions.
+ * A six-aircraft charter running an airline's procedure set is at a
+ * high level and unsuitable, because nobody follows it. A one-page
+ * emergency plan at a small strip can be entirely suitable.
+ *
+ * Recorded per element, and unanswered is a real third state: it is the
+ * question most operators have never been asked, and defaulting it
+ * either way would invent an answer.
+ */
+export type Suitability = "SUITABLE" | "NOT_SUITABLE" | undefined;
+
+export interface SuitabilityFinding {
+  readonly element: SmsElement;
+  readonly level: number;
+  /** True when the element is well developed AND judged unsuitable. */
+  readonly overBuilt: boolean;
+}
+
 export function scoreAssessment(
   answers: Readonly<Record<string, number | undefined>>,
   gapAtOrBelow = 1,
+  suitability: Readonly<Record<string, Suitability>> = {},
 ): MaturityResult {
   const components = SMS_COMPONENTS.map((component) => {
     const levels = component.elements
@@ -287,13 +492,47 @@ export function scoreAssessment(
     .filter((g) => g.level <= gapAtOrBelow)
     .sort((a, b) => a.level - b.level || a.element.id.localeCompare(b.element.id));
 
+  /* Only once every element has been answered — see `position` on
+     MaturityResult. The weakest of four answers says nothing about an
+     SMS of twelve elements. */
+  const complete = all.length === SMS_ELEMENTS.length;
+  const position = complete ? Math.min(...all) : undefined;
+  const limitedBy = complete
+    ? SMS_ELEMENTS.filter((e) => answers[e.id] === position)
+    : [];
+
+  /* Suitability findings, which are NOT gaps and are not scored.
+     Scoring them would collapse the distinction the split exists to
+     make — and SM ICG's own guidance is that this evaluation should not
+     be scored at all. They are reported as findings an operator can act
+     on, which is what the guidance uses them for.
+
+     `overBuilt` marks the case worth naming: an element taken to
+     Practised or beyond and judged unsuitable. That is not an operator
+     behind on its SMS; it is one carrying a system built for somebody
+     else, which is the failure mode this product exists to argue
+     against and the one a maturity ladder alone cannot see. */
+  const unsuitable: SuitabilityFinding[] = SMS_ELEMENTS
+    .filter((e) => suitability[e.id] === "NOT_SUITABLE")
+    .map((element) => {
+      const level = answers[element.id];
+      return {
+        element,
+        level: typeof level === "number" ? level : 0,
+        overBuilt: typeof level === "number" && level >= 2,
+      };
+    });
+
   return {
     components,
     mean: all.length ? all.reduce((a, b) => a + b, 0) / all.length : undefined,
     answered: all.length,
     total: SMS_ELEMENTS.length,
     gaps,
-    complete: all.length === SMS_ELEMENTS.length,
+    complete,
+    position,
+    limitedBy,
+    unsuitable,
   };
 }
 
@@ -308,7 +547,8 @@ export function levelFor(mean: number): MaturityLevel {
 //
 // WHY THIS IS IN CODE. An independent audit found the product claiming
 // to be a safety management system while covering one and a half of
-// Annex 19's twelve elements. The claim is fixed; this is the mechanism
+// Annex 19's twelve elements. It now covers nine, and the same
+// arithmetic reports both — which is the point of computing it. The claim is fixed; this is the mechanism
 // that stops it coming back, and the answer to the audit's own
 // recommendation: publish which elements are implemented, which are
 // planned, and which are out of scope.
@@ -344,37 +584,82 @@ export interface ElementCoverage {
 }
 
 export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
+  /* The eight entries that follow moved on the strength of /sms, which
+     holds them ON THE SERVER rather than on the handset. That is the
+     distinction this table has used throughout to separate BUILT from
+     PARTIAL, and it is the reason these move and the browser-held
+     toolkits below do not. Each still states what it does not do. */
   {
     id: "1.1",
-    state: "ASSESSED_ONLY",
-    has: "The maturity assessment scores it and names the evidence.",
-    missing: "A signed safety policy, and any record of the accountable executive signing it.",
-    href: "/toolkits/maturity",
+    state: "BUILT",
+    has:
+      "A safety policy the operator authors, signed by the accountable executive and by " +
+      "nobody else, superseded rather than edited so an auditor can read what it said " +
+      "when a decision was taken, with acknowledgements counted per person.",
+    missing:
+      "Reaching a person who never signs in. The product records who has read the " +
+      "policy; it does not deliver it to somebody who only ever files reports.",
+    href: "/sms",
   },
   {
     id: "1.2",
-    state: "ASSESSED_ONLY",
-    has: "Eight roles exist in the data model and are enforced per action on the API.",
-    missing: "An accountability matrix an operator can author, publish and evidence.",
+    state: "BUILT",
+    has:
+      "An accountability matrix the operator authors — each post, what it answers for, " +
+      "and the Annex 19 element it discharges — held by the organisation and readable " +
+      "by an inspector it invites.",
+    missing:
+      "The half the matrix cannot evidence. This element is met when each person can " +
+      "say what they are accountable for WITHOUT reading it off a chart, and a chart " +
+      "is the one thing software can produce. Nothing here reaches the job " +
+      "descriptions, and nothing here can ask four people separately.",
+    href: "/sms",
   },
   {
     id: "1.3",
-    state: "ASSESSED_ONLY",
-    has: "The maturity assessment scores it.",
-    missing: "Appointment records, protected time, and the evidence of independence.",
-    href: "/toolkits/maturity",
+    state: "BUILT",
+    has:
+      "Appointment records against each post, with the appointment letter's reference, " +
+      "and a successor's appointment ending the incumbent's rather than sitting " +
+      "alongside it.",
+    missing:
+      "Independence, which the product records an assertion of and cannot evidence: " +
+      "protected time and direct access to the accountable executive are facts about " +
+      "an operator's week, not rows in a database.",
+    href: "/sms",
   },
   {
     id: "1.4",
-    state: "NOT_BUILT",
-    has: "",
-    missing: "The emergency response plan, its exercises, and the contact directory behind it.",
+    /* PARTIAL, and the half that is missing is the larger one. What the
+       product holds is the EXERCISE record — that one was held, what it
+       found, and whether the plan changed as a result, which is the
+       question an inspector actually asks. What it does not hold is the
+       plan being exercised, or the contact directory whose eleven
+       months out of date is the finding this record exists to capture. */
+    state: "PARTIAL",
+    has:
+      "Emergency response exercises: the scenario, who took part, what it found, and " +
+      "whether the plan was changed as a result.",
+    missing:
+      "The plan itself and the contact directory behind it. The product records that " +
+      "an operator exercised a plan; it does not hold the plan.",
+    href: "/sms",
   },
   {
     id: "1.5",
-    state: "NOT_BUILT",
-    has: "",
-    missing: "Document control: versions, approval, distribution and read-acknowledgement.",
+    /* PARTIAL for the same reason: the CONTROL is here and the
+       documents are not. Reference, version, approver and review date
+       are what document control means as a discipline, and they are the
+       part an audit checks. The product is not a document store, and
+       claiming the element outright would say it was. */
+    state: "PARTIAL",
+    has:
+      "Document control: reference, version, who approved it and when, and the date the " +
+      "next review falls due.",
+    missing:
+      "The documents. The product controls the register of them, does not store their " +
+      "content, and does not distribute them or record who has read each one.",
+    href: "/sms",
   },
   {
     id: "2.1",
@@ -466,28 +751,52 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        table written to prevent it, and it was caught by the test that
        compares this arithmetic with the sentence About states. */
     id: "3.3",
-    state: "ASSESSED_ONLY",
+    /* BUILT, and the correction above still stands: the audit CHAIN is
+       not the audit, and none of this claim rests on it. What moved the
+       element is findings with owners and due dates, a corrective
+       action, a closure, and a verification that a different role
+       performs — because a safety manager verifying their own finding
+       closed is the finding, not the evidence. */
+    state: "BUILT",
     has:
-      "The maturity assessment scores it. Separately, the audit chain makes the RECORD " +
-      "verifiable, which is a different thing from auditing the system.",
+      "Internal audit findings with a severity, an owning post and a due date; the " +
+      "corrective action taken; closure; and verification by key management rather than " +
+      "by whoever raised and closed it.",
     missing:
-      "Audit management and corrective action — scheduling, findings, owners, and " +
-      "validation that a fix worked. An audit trail is not an audit.",
-    href: "/toolkits/maturity",
+      "The audit programme's schedule. The product holds what an audit found and what " +
+      "was done about it, not when the next one falls due.",
+    href: "/sms",
   },
   {
     id: "4.1",
-    state: "NOT_BUILT",
-    has: "",
-    missing: "Training records, competency tracking and expiry alerting.",
+    /* PARTIAL. The RECORD is here — who was trained, in what, when, and
+       when it lapses, with a frontline reporter seeing their own row
+       and nobody else's. What is not here is the part that makes a
+       training matrix useful, which is being told before the expiry
+       rather than after it. */
+    state: "PARTIAL",
+    has:
+      "A training matrix: person, course, completion and expiry, with each person's own " +
+      "record visible to them and the whole matrix to those who manage it.",
+    missing:
+      "Alerting. An expired row is visible to somebody who opens the screen; nothing " +
+      "tells an operator a currency is about to lapse.",
+    href: "/sms",
   },
   {
     id: "4.2",
-    state: "NOT_BUILT",
-    has: "",
+    state: "BUILT",
+    has:
+      "Safety communication the operator publishes, and feedback attached to the report " +
+      "that prompted it — refused against an anonymous report, because a row joining " +
+      "feedback to an anonymous filing is the re-identification the product exists to " +
+      "prevent.",
     missing:
-      "The loop back to the reporter. The maturity assessment asks whether people who " +
-      "file hear what happened; the product provides no way to tell them.",
+      "Whether any of it landed. A bulletin is published and nobody has to acknowledge " +
+      "it — the policy counts its readers and this does not. And a reporter who filed " +
+      "anonymously is unreachable by design, so the loop closes for everyone except " +
+      "the people most likely to have needed the protection.",
+    href: "/sms",
   },
 ]);
 
@@ -506,9 +815,10 @@ export interface CoverageSummary {
  *
  * PARTIAL counts as a half and ASSESSED_ONLY counts as nothing, which
  * is the whole point: being able to measure an element is not covering
- * it. That arithmetic is what produces the "one and a half of twelve"
- * the About page states, and it is computed here so the sentence and
- * the table cannot disagree.
+ * it. That arithmetic is what produced the "one and a half of twelve"
+ * the About page once stated and the "nine of twelve" it states now,
+ * and it is computed here so the sentence and the table cannot
+ * disagree — in either direction.
  */
 export function coverageSummary(): CoverageSummary {
   const count = (state: CoverageState) => COVERAGE.filter((c) => c.state === state).length;

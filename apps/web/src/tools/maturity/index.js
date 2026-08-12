@@ -26,31 +26,55 @@ import {
   SMS_COMPONENTS,
   MATURITY_LEVELS,
   MATURITY_SOURCE,
+  OPERATOR_SCALES,
   scoreAssessment,
   levelFor
 } from '../../../../../packages/shared/src/maturity.ts';
 
 const STORE = 'usalamasms.maturity';
 
+const SUIT_VALUES = ['SUITABLE', 'NOT_SUITABLE'];
+const SCALE_IDS = OPERATOR_SCALES.map((s) => s.id);
+
+/**
+ * Read the assessment.
+ *
+ * The store gained two things that are not levels — the operator's
+ * scale and a suitability judgement per element — and they live under
+ * underscore-prefixed keys so the level map stays exactly what it was.
+ * An older store with only levels reads back unchanged, which matters:
+ * somebody halfway through an assessment should not lose it to a
+ * deploy.
+ *
+ * Everything is validated on the way in, for the same reason it always
+ * was — a hand-edited store must not put "4x" into an arithmetic mean,
+ * and must not put an unknown band where a label is looked up.
+ */
 function load() {
   try {
     const raw_ = localStorage.getItem(STORE);
     const parsed = raw_ ? JSON.parse(raw_) : {};
-    // Only numbers in range survive a read. A hand-edited or
-    // half-written store must not put "4x" into an arithmetic mean.
-    return Object.fromEntries(
+    const answers = Object.fromEntries(
       Object.entries(parsed).filter(
-        ([, v]) => Number.isInteger(v) && v >= 0 && v <= 4
+        ([k, v]) => !k.startsWith('_') && Number.isInteger(v) && v >= 0 && v <= 4
       )
     );
+    const suitability = Object.fromEntries(
+      Object.entries(parsed._suitability ?? {}).filter(([, v]) => SUIT_VALUES.includes(v))
+    );
+    const scale = SCALE_IDS.includes(parsed._scale) ? parsed._scale : undefined;
+    return { answers, suitability, scale };
   } catch {
-    return {};
+    return { answers: {}, suitability: {}, scale: undefined };
   }
 }
 
-function save(answers) {
+function save(state) {
   try {
-    localStorage.setItem(STORE, JSON.stringify(answers));
+    localStorage.setItem(
+      STORE,
+      JSON.stringify({ ...state.answers, _suitability: state.suitability, _scale: state.scale })
+    );
   } catch {
     /* Private mode, or a full quota. The assessment still works for
        this sitting; it simply will not survive a reload, and saying so
@@ -58,8 +82,9 @@ function save(answers) {
   }
 }
 
-function Element(element, answers) {
+function Element(element, answers, suitability) {
   const current = answers[element.id];
+  const suit = suitability[element.id];
   return html`
     <fieldset class="mat-element" data-element="${element.id}">
       <legend>
@@ -88,11 +113,34 @@ function Element(element, answers) {
       <p class="mat-element__evidence">
         <strong>Evidence for the top of the scale:</strong> ${element.evidence}
       </p>
+
+      <!-- A SECOND, DIFFERENT QUESTION. The scale above asks how far
+           this element has been taken; this asks whether that is the
+           right amount for THIS operator. SM ICG grades suitability
+           against size, nature, complexity and inherent risk, so the
+           two genuinely come apart — and an element taken a long way
+           and still wrong is the finding a ladder cannot produce.
+           Neither option is preselected: it is a question most
+           operators have never been asked. -->
+      <div class="mat-suit">
+        <span class="mat-suit__q">Is what you have suitable for an operation your size?</span>
+        ${[['SUITABLE', 'Suitable'], ['NOT_SUITABLE', 'Not suitable']].map(
+          ([value, label]) => html`<label class="chip">
+            <input
+              type="radio"
+              name="suit-${element.id}"
+              value="${value}"
+              ${suit === value ? raw('checked') : ''}
+            />
+            <span>${label}</span>
+          </label>`
+        )}
+      </div>
     </fieldset>
   `;
 }
 
-function Result(result) {
+function Result(result, scale) {
   if (result.answered === 0) {
     return html`<p class="mat-empty">
       Answer an element and the position appears here. Nothing is sent anywhere,
@@ -101,18 +149,41 @@ function Result(result) {
   }
 
   const overall = levelFor(result.mean);
+  /* THE HEADLINE IS THE WEAKEST ELEMENT, not the average — see
+     `position` in maturity.ts. The mean stays on screen because the
+     distribution is worth seeing, but it is demoted to context and
+     labelled as an average, because an average of a framework whose
+     pass condition is universal is a number that flatters. */
+  const limiting = result.position !== undefined ? MATURITY_LEVELS[result.position] : null;
 
   return html`
     <div class="mat-summary">
-      <p class="mat-summary__mean">
-        <span class="mat-summary__value">${result.mean.toFixed(1)}</span>
-        <span class="mat-summary__of">of 4 · ${overall.label}</span>
-      </p>
-      <p class="mat-summary__coverage">
-        ${result.answered} of ${result.total} elements answered${result.complete
-          ? ''
-          : ' — the mean covers only what has been answered'}
-      </p>
+      ${limiting
+        ? html`<p class="mat-summary__mean">
+              <span class="mat-summary__value">${limiting.label}</span>
+              <span class="mat-summary__of">is where this SMS stands</span>
+            </p>
+            <p class="mat-summary__coverage">
+              An SMS is only as implemented as its weakest element, and
+              ${result.limitedBy.length === 1 ? 'one element sits' : `${result.limitedBy.length} elements sit`}
+              at ${limiting.label.toLowerCase()}:
+              ${result.limitedBy.map((e) => `${e.id} ${e.name}`).join(', ')}. Work on any other
+              element will move the average and leave this position exactly where it is.
+            </p>
+            <p class="mat-summary__coverage">
+              The average across all twelve is ${result.mean.toFixed(1)} of 4 · ${overall.label}.
+              It is shown for the shape of the spread, not as the position — an average lets a
+              strong element stand in for a missing one, and an audit does not average.
+            </p>`
+        : html`<p class="mat-summary__mean">
+              <span class="mat-summary__value">${result.mean.toFixed(1)}</span>
+              <span class="mat-summary__of">of 4 · ${overall.label} · average so far</span>
+            </p>
+            <p class="mat-summary__coverage">
+              ${result.answered} of ${result.total} elements answered — this is the average of
+              those, not a position. Answer all twelve and this becomes the level of the weakest,
+              which is the one an auditor writes up.
+            </p>`}
     </div>
 
     <ol class="mat-bars">
@@ -137,6 +208,32 @@ function Result(result) {
         </li>`;
       })}
     </ol>
+
+    ${result.unsuitable.length
+      ? html`<div class="mat-gaps mat-gaps--suit">
+          <h3>Built for somebody else</h3>
+          <p class="mat-gaps__lede">
+            ${scale
+              ? html`Judged against an operation you described as
+                  <strong>${(OPERATOR_SCALES.find((s) => s.id === scale) || {}).label}</strong>.`
+              : 'You have not said how big the operation is, so these are your own judgements taken at face value.'}
+            An element can be taken a long way and still be wrong for the operator — a procedure
+            set written for an airline is not followed on six aircraft. That is not a gap and it
+            does not move the position; it is work of a different kind.
+          </p>
+          <ol>
+            ${result.unsuitable.map(
+              (u) => html`<li>
+                <strong>${u.element.id} ${u.element.name}</strong> —
+                ${u.overBuilt
+                  ? `at ${MATURITY_LEVELS[u.level].label.toLowerCase()}, which is more than this operation needs.`
+                  : `at ${MATURITY_LEVELS[u.level].label.toLowerCase()}, and not the right shape either.`}
+                <span class="mat-gaps__evidence">${u.element.evidence}</span>
+              </li>`
+            )}
+          </ol>
+        </div>`
+      : ''}
 
     ${result.gaps.length
       ? html`<div class="mat-gaps">
@@ -163,7 +260,7 @@ function Result(result) {
 }
 
 export function render(outlet) {
-  let answers = load();
+  let { answers, suitability, scale } = load();
 
   outlet.innerHTML = html`
     <section class="band-dark">
@@ -211,6 +308,39 @@ export function render(outlet) {
       </aside>
 
       <form class="doc__body" id="mat-form">
+        <!-- ASKED FIRST, because the suitability question below cannot
+             be answered without it. SM ICG grades suitability against
+             "the size, nature, and complexity of the organisation and
+             the inherent risk in its activity" — so a tool that asks
+             whether an SMS is suitable and never asks whose it is has
+             asked half a question. Bands rather than a headcount box:
+             the judgement is qualitative, and eleven staff is not
+             categorically different from nine. -->
+        <section class="doc-section" id="operator-scale">
+          <h2>First, who is this for?</h2>
+          <p>
+            Suitability is judged against the operation, not against a fixed bar. A
+            one-page emergency plan can be entirely suitable at a single strip; the
+            same plan is not suitable across four bases.
+          </p>
+          <div class="mat-scale">
+            ${OPERATOR_SCALES.map(
+              (s) => html`<label class="mat-option">
+                <input
+                  type="radio"
+                  name="operator-scale"
+                  value="${s.id}"
+                  ${scale === s.id ? raw('checked') : ''}
+                />
+                <span class="mat-option__label">
+                  <span class="mat-option__level">${s.label}</span>
+                  <span class="mat-option__meaning">${s.meaning}</span>
+                </span>
+              </label>`
+            )}
+          </div>
+        </section>
+
         <section class="doc-section">
           <h2>How to answer</h2>
           <p>
@@ -228,13 +358,24 @@ export function render(outlet) {
               ? 'compiled from secondary sources pending a read against Doc 9859 fourth edition, and is marked provisional wherever it appears'
               : 'read against the primary document'}.
           </p>
+          <p class="note">
+            <b>Why the weakest element is the answer, and not the average</b>
+            That rule is not ours. It follows the
+            <a href="${MATURITY_SOURCE.scoringBasisUrl}" rel="noreferrer">SM ICG SMS Evaluation
+            Tool</a>, which Australia's CASA has adopted as Form 1591 — it expects every element
+            to be at least operating, and effectiveness in all of them. A framework whose pass
+            condition applies to all twelve cannot be reported by an average, because an average
+            lets a strong element stand in for a missing one. SM ICG goes further and advises
+            that an SMS not be scored at all; where a number appears here it is shown as the
+            spread, never as a pass mark.
+          </p>
         </section>
 
         ${SMS_COMPONENTS.map(
           (component) => html`<section class="doc-section" id="component-${component.id}">
             <h2>${component.id}. ${component.name}</h2>
             <p class="lede lede--tight">${component.purpose}</p>
-            ${component.elements.map((element) => Element(element, answers))}
+            ${component.elements.map((element) => Element(element, answers, suitability))}
           </section>`
         )}
       </form>
@@ -245,15 +386,23 @@ export function render(outlet) {
   const body = outlet.querySelector('#mat-result-body');
 
   const repaint = () => {
-    body.innerHTML = Result(scoreAssessment(answers)).toString();
+    body.innerHTML = Result(scoreAssessment(answers, 1, suitability), scale).toString();
   };
 
   form.addEventListener('change', (event) => {
     const input = event.target;
     if (!(input instanceof HTMLInputElement) || input.type !== 'radio') return;
-    const id = input.name.replace(/^el-/, '');
-    answers = { ...answers, [id]: Number(input.value) };
-    save(answers);
+
+    if (input.name === 'operator-scale') {
+      scale = input.value;
+    } else if (input.name.startsWith('suit-')) {
+      suitability = { ...suitability, [input.name.slice(5)]: input.value };
+    } else if (input.name.startsWith('el-')) {
+      answers = { ...answers, [input.name.slice(3)]: Number(input.value) };
+    } else {
+      return;
+    }
+    save({ answers, suitability, scale });
     repaint();
   });
 
@@ -261,7 +410,9 @@ export function render(outlet) {
 
   outlet.querySelector('#mat-clear').addEventListener('click', () => {
     answers = {};
-    save(answers);
+    suitability = {};
+    scale = undefined;
+    save({ answers, suitability, scale });
     for (const input of form.querySelectorAll('input[type=radio]')) input.checked = false;
     repaint();
   });

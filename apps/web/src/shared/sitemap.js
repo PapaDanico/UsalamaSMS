@@ -120,6 +120,12 @@ export const SECTIONS = [
         hint: 'Everything filed on this handset, sent or not'
       },
       {
+        href: '/sms',
+        label: 'The SMS record',
+        short: 'SMS record',
+        hint: "Your operator's own evidence against all twelve elements"
+      },
+      {
         href: '/account',
         label: 'Account',
         short: 'Account',

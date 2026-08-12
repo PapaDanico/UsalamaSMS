@@ -115,6 +115,12 @@ function renderSignedIn(outlet) {
          carry a panel one person opens twice a year. The budget caught
          it. -->
     <div id="admin-reset-slot"></div>
+
+    <!-- The operator's own copy. Lazily imported and permission-gated
+         inside that module, for the same reason the reset panel is:
+         this screen is eager, and a button two people press once a
+         quarter must not be weight on a ramp agent's first paint. -->
+    <div id="export-slot"></div>
   `.toString();
 
   outlet.querySelector('#sign-out').addEventListener('click', async () => {
@@ -126,6 +132,9 @@ function renderSignedIn(outlet) {
   if (session.role === 'SYSTEM_ADMIN') {
     import('./admin-reset.js').then((m) => m.mount(outlet.querySelector('#admin-reset-slot')));
   }
+  import('./export-panel.js').then((m) =>
+    m.mount(outlet.querySelector('#export-slot'), session.role)
+  );
 }
 
 function renderForm(outlet) {

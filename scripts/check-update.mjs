@@ -213,6 +213,60 @@ await check('THE PROMPT IS OFFERED, AND ITS BUTTON ACTUALLY APPLIES THE UPDATE',
   );
 });
 
+await check('A DISMISSED UPDATE IS OFFERED AGAIN ON THE NEXT LOAD', async () => {
+  /* THE DEFECT: `updatefound` fires when a new worker STARTS
+     installing. It does not fire for one that finished installing on a
+     previous visit and is sitting in `waiting` — and this worker
+     deliberately does not skipWaiting, so that is exactly where it sits
+     once somebody dismisses the prompt or closes the tab.
+
+     So the prompt appeared once, was ignored, and never appeared again.
+     The handset stayed on the old build permanently, including an old
+     copy of the reporting deadline table. It surfaced as "the font is
+     still the same" from somebody several versions behind, which is the
+     visible half of a much less visible problem.
+
+     A fresh context, because the page above has already accepted the
+     update and is running v2. */
+  const fresh = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const tab = await fresh.newPage();
+  try {
+    ROOT = V1;
+    await tab.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    await tab.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined,
+      { timeout: 20000 });
+
+    ROOT = V2;
+    await tab.evaluate(async () => {
+      const reg = await navigator.serviceWorker.getRegistration();
+      await reg.update();
+      await new Promise((r) => setTimeout(r, 3000));
+    });
+    assert(await tab.locator('#update-prompt').count(), 'no prompt was offered at all');
+
+    // Dismissed, exactly as somebody in a hurry does.
+    await tab.click('#update-prompt [data-act=dismiss]');
+    await tab.waitForTimeout(400);
+    assert(
+      (await tab.locator('#update-prompt').count()) === 0,
+      'dismissing the prompt did not dismiss it'
+    );
+
+    // The next time they open the app. The worker is still waiting;
+    // `updatefound` will not fire again for it.
+    await tab.reload({ waitUntil: 'networkidle' });
+    await tab.waitForTimeout(2500);
+    assert(
+      await tab.locator('#update-prompt').count(),
+      'the waiting update was never offered again — the device is pinned to the old build ' +
+        'for good, and nothing in the app will ever tell the person why'
+    );
+  } finally {
+    await fresh.close();
+    ROOT = V2;
+  }
+});
+
 console.log('\n' + results.join('\n'));
 await browser.close();
 server.close();

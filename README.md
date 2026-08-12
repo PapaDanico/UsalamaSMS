@@ -30,10 +30,14 @@ now verified rather than asserted:
   asserts the batch leaves the browser carrying a bearer token, and that
   a queued report with no session **says so** instead.
 
-Seventeen routes ship. The operational three are the report form, the
-triage queue, and an account screen that signs in — and deliberately
+Eighteen routes ship. The operational four are the report form, the
+triage queue, an account screen that signs in — and deliberately
 does **not** gate the form, because filing must never require a
-password. Six are instruments: the occurrence classifier and risk
+password — and `/sms`, which holds the organisation's own record
+against eight of Annex 19's twelve elements: the signed policy, the
+accountability matrix, the appointments, the emergency exercises, the
+controlled documents, the internal audit findings, the training matrix
+and what reporters were told. Six are instruments: the occurrence classifier and risk
 assessor on `/toolkits`, a risk register, a safety risk assessment in
 ICAO Doc 9859's five steps, safety performance indicators whose alert
 levels are computed from the operator's own history, and the SMS
@@ -44,12 +48,20 @@ its matrix calls `tolerability()` and its deadline table reads
 them — alongside a glossary, tutorials, FAQ, about, privacy and terms.
 
 **`/coverage` is the one to read before adopting anything.** It states,
-element by element against Annex 19's twelve, what is built here, what
-is partial, what can only be assessed, and what is not built at all —
-and the figure it reports, **2.5 of 12**, is computed from the same
-declaration the table renders rather than typed beside it. This is the
-reporting and risk-classification layer of an SMS. It is not an SMS,
-and an operator adopting it as its sole one would fail an audit.
+element by element against Annex 19's twelve, what is built here and
+what is only partial — and the figure it reports, **9 of 12**, is
+computed from the same declaration the table renders rather than typed
+beside it. Six elements are built and six are partial; a partial
+element counts a half, which is where the nine comes from.
+
+That figure moved from 2.5 when `/sms` gave eight elements a
+server-held record, and the six that stayed partial say plainly what
+they still lack: the emergency plan itself, the documents behind the
+document register, expiry alerting on training, and — for the risk
+register, the indicators and the change assessment — distribution,
+because those three live in one browser and the safety office cannot
+see them. An operator adopting this as its sole SMS would still have
+gaps to answer for, and `/coverage` names every one of them.
 
 **Nearly deployable.** The hosted database exists (Supabase, eu-north-1,
 schema applied and baselined, RLS deny-by-default) and the API ships as
@@ -73,13 +85,13 @@ the measurement exists and the organisation's monitoring does not. See
 npm install
 npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 51 assertions that the registries match the docs
+npm run check:claims   # 53 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
-npm test               # 222 unit tests
+npm test               # 230 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
-npm run check:update   # 4 checks across TWO versions — the PWA update path
-npm run test:integration   # 66 checks against a real Postgres
+npm run check:update   # 5 checks across TWO versions — the PWA update path
+npm run test:integration   # 99 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 ```
@@ -102,14 +114,20 @@ appeared after the fact, and its Reload button posted to
 did nothing at all. The worker waits now, the person decides, and four
 checks across two builds keep it that way.
 
-Bundle: **209 KB entry JS + 46 KB CSS**, which is **67 KB over the wire**
+Bundle: **211 KB entry JS + 48 KB CSS**, which is **75 KB over the wire**
 gzipped, against budgets the build enforces and refuses to raise
 silently. Every route past the first paint is lazily loaded, so the
-entry figure is what a person filing a report at a strip actually pays;
-it has not moved across the last eleven screens. Plus 63 KB of self-hosted
-DM Sans — one variable file covering 400 to 700, latin subset, precached by
-the service worker so the second load is offline too. A further 31 KB of
-latin-ext is fetched only if a character needs it.
+entry figure is what a person filing a report at a strip actually pays.
+
+Plus **98 KB of self-hosted type**, latin subset, precached by the
+service worker so the second load is offline too: DM Sans at 61 KB for
+the interface, and Cormorant Garamond at 37 KB for headings — one
+variable file each, covering 400 to 700. A further 64 KB of latin-ext
+across the two is fetched only if a character needs it. Two families is
+a deliberate 37 KB: the display face is the house identity, and it is
+loaded on the same terms as everything else here rather than from a CDN
+that would cost a DNS lookup, a TLS handshake and a third-party
+dependency on the first paint of a page opened at a remote strip.
 
 Two runtime dependencies earn their weight: Dexie holds the outbox, and
 zod validates on the device with the *same schema the server uses* — a

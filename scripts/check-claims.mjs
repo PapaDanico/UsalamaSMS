@@ -436,6 +436,20 @@ assert(
   `README says ${smokeStated}, the suite defines ${smokeCount}`
 );
 
+/* And the two-version gate's own count, which had drifted. It was
+   stated as 4 in the README while the file defined 5 — a hand-typed
+   number about the product on its front page, which is the exact thing
+   charter rule 10 forbids, sitting two lines from three counts that
+   were already derived. */
+const updateGate = read('scripts/check-update.mjs');
+const updateCount = (updateGate.match(/await check\(/g) ?? []).length;
+const updateStated = statedCount(/(\d+) checks across TWO versions/, 'update check count');
+assert(
+  'README update-gate count matches the gate',
+  updateStated === updateCount,
+  `README says ${updateStated}, the gate defines ${updateCount}`
+);
+
 /* Integration checks, counted from the suite. These are the strongest
    assertions in the project — a chain that forks, a verifier that
    accepts an edited row, a join that re-identifies a reporter are all

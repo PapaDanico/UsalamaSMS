@@ -58,6 +58,7 @@ export const TolerabilityEnum = z.enum(["INTOLERABLE", "TOLERABLE", "ACCEPTABLE"
 // sites are unaffected.
 export * from "./risk";
 import { tolerability, type Tolerability } from "./risk";
+import type { Permission } from "./permissions";
 
 /**
  * Who may accept a given risk. Derived from tolerability rather than
@@ -71,66 +72,8 @@ export function acceptanceAuthority(t: Tolerability): Permission | null {
 }
 
 // --------------------------- RBAC matrix -----------------------------
-export type Permission =
-  | "report.create" | "report.read.own" | "report.read.org" | "report.triage"
-  | "report.investigate" | "report.close" | "report.deidentify.review"
-  | "hazard.manage" | "risk.assess" | "risk.accept.tolerable" | "risk.accept.intolerable"
-  | "spi.configure" | "spi.read" | "moc.create" | "moc.approve"
-  | "document.read" | "document.manage" | "training.read.own" | "training.manage"
-  | "org.manage" | "user.manage" | "audit.read" | "regulator.oversight";
+export * from "./permissions";
 
-export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
-  FRONTLINE: new Set<Permission>([
-    "report.create", "report.read.own", "document.read", "training.read.own",
-  ]),
-  SAFETY_OFFICER: new Set<Permission>([
-    "report.create", "report.read.own", "report.read.org", "report.triage",
-    "hazard.manage", "risk.assess", "spi.read", "document.read", "training.read.own",
-  ]),
-  SAFETY_MANAGER: new Set<Permission>([
-    "report.create", "report.read.own", "report.read.org", "report.triage",
-    "report.investigate", "report.close", "report.deidentify.review",
-    "hazard.manage", "risk.assess", "risk.accept.tolerable",
-    "spi.configure", "spi.read", "moc.create", "document.read", "document.manage",
-    "training.read.own", "training.manage", "audit.read",
-  ]),
-  INVESTIGATOR: new Set<Permission>([
-    "report.read.org", "report.investigate", "hazard.manage", "risk.assess",
-    "spi.read", "document.read", "training.read.own",
-  ]),
-  KEY_MANAGEMENT: new Set<Permission>([
-    "report.read.org", "risk.accept.tolerable", "spi.read", "moc.create",
-    "moc.approve", "document.read", "training.read.own", "audit.read",
-  ]),
-  ACCOUNTABLE_EXECUTIVE: new Set<Permission>([
-    "report.read.org", "risk.accept.tolerable", "risk.accept.intolerable",
-    "spi.read", "moc.approve", "document.read", "audit.read", "training.read.own",
-  ]),
-  REGULATOR_INSPECTOR: new Set<Permission>([
-    "regulator.oversight", "audit.read", "spi.read", "document.read",
-  ]),
-  SYSTEM_ADMIN: new Set<Permission>([
-    "org.manage", "user.manage", "audit.read",
-  ]),
-};
-
-export function can(role: Role, p: Permission): boolean {
-  return PERMISSIONS[role].has(p);
-}
-
-/**
- * Permissions that read the content of safety reports.
- *
- * Named as a set rather than checked ad hoc because the confidentiality
- * rules attach to this category, not to individual routes: anything
- * that can reach a narrative is subject to the de-identification and
- * anonymity guarantees. A new route gets the guarantee by joining the
- * set, not by remembering to reimplement it.
- */
-export const NARRATIVE_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
-  "report.read.own", "report.read.org", "report.triage",
-  "report.investigate", "report.deidentify.review",
-]);
 
 /**
  * SYSTEM_ADMIN deliberately holds no narrative permission.

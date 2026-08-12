@@ -34,6 +34,31 @@ export function registerServiceWorker({ onFlush, onUpdateReady } = {}) {
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
         .then((registration) => {
+          /* ============================================================
+             A WORKER THAT IS ALREADY WAITING GETS OFFERED TOO.
+
+             `updatefound` fires when a new worker STARTS installing. It
+             does not fire for one that finished installing on a previous
+             visit and is sitting in `waiting` — and the worker
+             deliberately does not skipWaiting, so that is exactly where
+             it sits after somebody dismisses the prompt or closes the
+             tab.
+
+             The effect: the prompt appeared once, was ignored, and never
+             appeared again. The handset stayed on the old build
+             permanently — including an old copy of the reporting
+             deadline table, on a product whose deadlines are its main
+             claim. Reported as "the font is still the same" by somebody
+             looking at a build three versions behind, which is the
+             visible half of a much less visible problem.
+
+             Checked here, after registration resolves, because that is
+             the one moment we know the registration's current state.
+             ============================================================ */
+          if (registration.waiting && navigator.serviceWorker.controller) {
+            onUpdateReady?.(registration);
+          }
+
           registration.addEventListener('updatefound', () => {
             const installing = registration.installing;
             if (!installing) return;

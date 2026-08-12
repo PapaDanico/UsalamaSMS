@@ -61,6 +61,45 @@ class UsalamaDb extends Dexie {
 }
 export const db = new UsalamaDb();
 
+// ------------------------- Leaving the device -------------------------
+/**
+ * Everything this device holds about reports, gone.
+ *
+ * WHY SIGN-OUT HAS TO DO THIS. A crew-room tablet is a supported
+ * deployment, and until now signing out cleared the session and the
+ * worker's cached API reads and left `db.reports` untouched. The next
+ * person to sign in opened Triage and read the previous person's
+ * narratives — including, before the fix above, anonymous ones.
+ *
+ * WHAT IS DELETED AND WHAT IS NOT. Synced reports go: the organisation
+ * has them, and this device holding a second copy after its user has
+ * left is a liability with no compensating use. UNSENT reports STAY,
+ * with their outbox rows, because deleting those would lose an
+ * occurrence that has reached nobody — the one thing this whole module
+ * exists to prevent. The sync strip already says how many are waiting,
+ * and it keeps saying so to whoever signs in next, which is the
+ * behaviour that gets them sent.
+ *
+ * Returns what it did, so the account screen can say it plainly rather
+ * than implying more than happened.
+ */
+export async function clearSyncedReports(): Promise<{ removed: number; kept: number }> {
+  try {
+    return await db.transaction("rw", db.reports, async () => {
+      const all = await db.reports.toArray();
+      const leaving = all.filter((r) => r.syncState === "synced");
+      const staying = all.length - leaving.length;
+      await db.reports.where("syncState").equals("synced").delete();
+      return { removed: leaving.length, kept: staying };
+    });
+  } catch {
+    /* A store this device cannot read is a store it cannot leak from
+       either, and reporting a failure here would tell somebody signing
+       out that their sign-out failed, which it did not. */
+    return { removed: 0, kept: 0 };
+  }
+}
+
 // --------------------------- Submit offline --------------------------
 export async function submitReportOffline(input: CreateReportInput): Promise<void> {
   // Validate locally with the SAME schema the server uses — the report
@@ -305,8 +344,45 @@ async function runFlush(fetcher: typeof fetch): Promise<FlushOutcome> {
         case "applied":
         case "duplicate": // idempotent — server already has it
           await db.outbox.delete(item.localId);
-          await db.reports.where("clientId").equals(r.clientId)
-            .modify({ syncState: "synced", serverUpdatedAt: r.serverUpdatedAt });
+          // ==========================================================
+          // AN ACKNOWLEDGED ANONYMOUS REPORT LEAVES THE DEVICE.
+          //
+          // The report form goes to real lengths to keep an anonymous
+          // DRAFT off the disk. Then this wrote the whole report —
+          // title, narrative, recommendation, local timestamp — into
+          // IndexedDB and, once the server had it, only marked it
+          // synced. It stayed there. signOut() cleared the session and
+          // the worker's cached reads and never touched this table.
+          //
+          // On a crew-room tablet that is the whole promise gone: the
+          // next person to sign in opens Triage and reads a narrative
+          // filed anonymously about their supervisor, with a
+          // PROTECTED / Anonymous badge advertising that it was filed
+          // from this handset, ordered by a local timestamp that pins
+          // it to a shift. The sign-in screen's own words are "an
+          // anonymous report stores no identifier at all".
+          //
+          // So: once the server has confirmed it, the anonymous copy
+          // goes. The reporter loses the ability to re-read their own
+          // report on this device, and that is the correct trade — it
+          // is the same property that makes the report anonymous.
+          // A NAMED report stays, because its author can be shown it
+          // and because Triage is where they follow it.
+          // ==========================================================
+          //
+          // Read from the STORED row rather than from the outbox
+          // payload: the payload is `unknown` by design, and the row is
+          // the thing being deleted, so it is the honest authority on
+          // whether it is anonymous.
+          {
+            const stored = await db.reports.where("clientId").equals(r.clientId).first();
+            if (stored?.isAnonymous) {
+              await db.reports.where("clientId").equals(r.clientId).delete();
+            } else {
+              await db.reports.where("clientId").equals(r.clientId)
+                .modify({ syncState: "synced", serverUpdatedAt: r.serverUpdatedAt });
+            }
+          }
           outcome.sent++;
           break;
 

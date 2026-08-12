@@ -475,46 +475,106 @@ try {
     );
   });
 
-  await check('EXACTLY ONE navigation is visible at a time', async () => {
-    // The shell renders the destinations twice: inline in the header for
-    // wide screens, and in a menu panel behind a button for handsets.
-    // Only one may be reachable at a width, and the moment both are,
-    // every a[href] selector in this file becomes ambiguous — which is
-    // how this check came to exist, by Playwright picking a display:none
-    // link and timing out.
+  await check('EVERY DESTINATION IS REACHABLE FROM THE HEADER, AT BOTH WIDTHS', async () => {
+    // THIS CHECK USED TO ENFORCE THE DEFECT IT NOW CATCHES.
     //
-    // It is a real defect in its own right: two ways around on one
-    // screen is a person tapping the one that is not where they expect.
-    const at390 = await page.evaluate(() => ({
-      inline: getComputedStyle(document.querySelector('#nav')).display !== 'none',
-      toggle: getComputedStyle(document.querySelector('#menu-toggle')).display !== 'none',
-      panelOpen: !document.querySelector('#menu-panel').hidden,
-    }));
-    assert(!at390.inline, 'the inline header nav is visible at 390px; it should be behind Menu');
-    assert(at390.toggle, 'the Menu button is not visible at 390px, so there is no way around');
-    assert(!at390.panelOpen, 'the menu panel is open before anyone asked for it');
+    // It was "exactly one navigation is visible at a time", and the
+    // reasoning was sound as far as it went: the shell renders the
+    // destinations twice, and two ways around one screen is a person
+    // tapping the one that is not where they expect. So the Menu button
+    // was hidden above 900px and this asserted that it was.
+    //
+    // What nobody checked is what the inline bar actually contains. It
+    // carries four operational shortcuts — Report, Triage, Account,
+    // Toolkits. The menu carries all eight working destinations with
+    // their hints. Hiding the button on desktop therefore made
+    // Methodology, Tutorials, Glossary and Questions unreachable from
+    // the header on the widest screens: the more room the viewport had,
+    // the less navigation it offered, and the page explaining where
+    // every figure in the product comes from was reachable only from
+    // the footer. Reported by the owner as "top menu missing in desktop
+    // mode", which is exactly what it is.
+    //
+    // The rule that expresses what was wanted: the menu must be a
+    // SUPERSET of the inline bar, not a duplicate of it, and every
+    // working destination must be reachable from the header at every
+    // width. Computed from the running page, so a ninth destination
+    // added to the sitemap and not to the header fails here.
+    const destinations = await page.evaluate(() =>
+      [...document.querySelectorAll('#menu-panel a')].map((a) => a.getAttribute('href'))
+    );
+    assert(destinations.length >= 8, `${destinations.length} destinations in the menu`);
 
-    // It opens, it closes on Escape, and it says where each link goes.
+    const reachable = async (width) => {
+      const view = await page.context().newPage();
+      await view.setViewportSize({ width, height: 900 });
+      await view.goto(BASE, { waitUntil: 'networkidle' });
+      const state = await view.evaluate(() => {
+        const shown = (el) => {
+          if (!el) return false;
+          const s = getComputedStyle(el);
+          return s.display !== 'none' && s.visibility !== 'hidden';
+        };
+        const toggle = document.querySelector('#menu-toggle');
+        return {
+          toggle: shown(toggle),
+          inline: [...document.querySelectorAll('#nav a')]
+            .filter((a) => shown(a))
+            .map((a) => a.getAttribute('href')),
+          inlineNavShown: shown(document.querySelector('#nav'))
+        };
+      });
+      if (state.toggle) {
+        await view.click('#menu-toggle');
+        state.panel = await view.evaluate(() =>
+          [...document.querySelectorAll('#menu-panel a')]
+            .filter((a) => getComputedStyle(a).display !== 'none')
+            .map((a) => a.getAttribute('href'))
+        );
+        state.panelVisible = await view.locator('#menu-panel').isVisible();
+      } else {
+        state.panel = [];
+        state.panelVisible = false;
+      }
+      await view.close();
+      return state;
+    };
+
+    for (const width of [390, 1440]) {
+      const at = await reachable(width);
+      const found = new Set([...at.inline, ...at.panel]);
+      const missing = destinations.filter((d) => !found.has(d));
+      assert(
+        missing.length === 0,
+        `at ${width}px the header cannot reach ${missing.join(', ')}. ` +
+          'The widest screen used to be the one with the least navigation.'
+      );
+      // And the menu is a SUPERSET, not a second copy: everything shown
+      // inline is also in it, so there is one canonical list.
+      const notInMenu = at.inline.filter((h) => !at.panel.includes(h));
+      assert(
+        notInMenu.length === 0,
+        `at ${width}px the inline bar offers ${notInMenu.join(', ')} which the menu does not — ` +
+          'two lists that can disagree, which is what the sitemap module exists to prevent'
+      );
+    }
+
+    // The panel still opens and closes like a menu.
     await page.click('#menu-toggle');
     assert(await page.locator('#menu-panel').isVisible(), 'the menu did not open');
     const hints = await page.locator('#menu-panel .nav-item-summary').count();
     const items = await page.locator('#menu-panel .nav-item').count();
-    assert(items >= 3, `${items} destinations in the menu`);
     assert(hints === items, `${items} destinations but ${hints} hints — a label alone is not navigation`);
     await page.keyboard.press('Escape');
     assert(await page.locator('#menu-panel').isHidden(), 'Escape did not close the menu');
 
-    // And the inverse at a desktop width: inline links, no Menu button.
-    const wide = await page.context().newPage();
-    await wide.setViewportSize({ width: 1280, height: 900 });
-    await wide.goto(BASE, { waitUntil: 'networkidle' });
-    const at1280 = await wide.evaluate(() => ({
+    // At 390 the inline bar stays out of the way; the button is the way in.
+    const at390 = await page.evaluate(() => ({
       inline: getComputedStyle(document.querySelector('#nav')).display !== 'none',
-      toggle: getComputedStyle(document.querySelector('#menu-toggle')).display !== 'none',
+      toggle: getComputedStyle(document.querySelector('#menu-toggle')).display !== 'none'
     }));
-    await wide.close();
-    assert(at1280.inline, 'the inline nav is hidden at 1280px');
-    assert(!at1280.toggle, 'the Menu button is still shown at 1280px, beside the inline links');
+    assert(!at390.inline, 'the inline header nav is visible at 390px; it should be behind Menu');
+    assert(at390.toggle, 'the Menu button is not visible at 390px, so there is no way around');
   });
 
   await check('THE FOOTER IS A SITE INDEX, NOT THE HEADER DRAWN TWICE', async () => {
