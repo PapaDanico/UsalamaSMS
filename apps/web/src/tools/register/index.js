@@ -22,7 +22,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
-import { Select } from '../../components/Select.js';
+import { Select, wireSelects } from '../../components/Select.js';
 import {
   tolerability,
   riskScore,
@@ -33,6 +33,10 @@ import {
   registerHealth,
   normaliseEntry
 } from '../../../../../packages/shared/src/maturity.ts';
+import {
+  SAFETY_ROLES,
+  REVIEW_INTERVALS
+} from '../../../../../packages/shared/src/posts.ts';
 
 const STORE = 'usalamasms.register';
 
@@ -40,6 +44,24 @@ const STORE = 'usalamasms.register';
    a severity worded differently from the matrix it is read against is
    an entry an auditor has to reconcile by hand. */
 const options = (scale) => scale.map((p) => ({ value: p.key, label: `${p.code} — ${p.label}` }));
+
+/* The taxonomy lists use { code, label }; the component wants
+   { value, label }. One adapter rather than the same map four times. */
+const toOptions = (list) => list.map((o) => ({ value: o.code, label: o.label }));
+
+const OTHER = '__other__';
+
+/* A date computed from an interval, which is what the dropdown means.
+   Local calendar parts, not toISOString: a review date is a day in the
+   operator's own week, and the UTC reading is wrong for three hours of
+   every Nairobi morning — the same boundary registerHealth() gets
+   right. */
+function dateInDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + Number(days));
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 const STATUSES = [
   ['OPEN', 'Open — assessed, not yet mitigated'],
@@ -205,17 +227,32 @@ export function render(outlet) {
             options: options(LIKELIHOOD_SCALE)
           })}
 
-          <label class="field">
-            <span class="field-label">Owner *</span>
-            <input class="input-field" name="owner" required />
-            <span class="field-hint">
-              A person, not a department. An entry nobody owns is an entry nobody
-              acts on, and it is the commonest defect in a real register.
-            </span>
-          </label>
-          <label class="field">
-            <span class="field-label">Review by *</span>
-            <input class="input-field" type="date" name="reviewBy" required />
+          ${Select({
+            name: 'owner',
+            label: 'Owner *',
+            placeholder: 'Choose the post that owns this',
+            options: toOptions(SAFETY_ROLES),
+            otherValue: OTHER,
+            otherLabel: 'Another post…',
+            otherPlaceholder: 'The post, as your organisation names it',
+            hint:
+              'A post, not a department. Typed owners become "Ops", "ops" and ' +
+              '"Ops dept" — three owners of one hazard, none of which can be counted.'
+          })}
+
+          ${Select({
+            name: 'reviewInterval',
+            label: 'Review by *',
+            value: '90',
+            placeholder: 'Choose when this is looked at again',
+            options: [
+              ...toOptions(REVIEW_INTERVALS),
+              { value: OTHER, label: 'On a specific date…' }
+            ]
+          })}
+          <label class="field" id="reviewby-field" hidden>
+            <span class="field-label">Review date</span>
+            <input class="input-field" type="date" name="reviewBy" />
           </label>
 
           ${Select({
@@ -226,14 +263,18 @@ export function render(outlet) {
             options: STATUSES.map(([value, label]) => ({ value, label }))
           })}
 
-          <label class="field">
-            <span class="field-label">Accepted by</span>
-            <input class="input-field" name="acceptedBy" />
-            <span class="field-hint">
-              Only for an accepted residual risk, and only somebody who can accept
-              it on the operator's behalf.
-            </span>
-          </label>
+          ${Select({
+            name: 'acceptedBy',
+            label: 'Accepted by',
+            placeholder: 'Not accepted yet',
+            options: toOptions(SAFETY_ROLES),
+            otherValue: OTHER,
+            otherLabel: 'Another post…',
+            otherPlaceholder: 'The post that accepted it',
+            hint:
+              "Only for an accepted residual risk, and only a post that can accept " +
+              "it on the operator's behalf."
+          })}
 
           <button type="submit" class="btn btn-primary btn-block">Add to register</button>
           <p class="field-error" id="reg-error" role="status" aria-live="polite"></p>
@@ -299,9 +340,27 @@ export function render(outlet) {
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const f = form.elements;
-    const required = ['hazard', 'consequence', 'owner', 'reviewBy'];
-    const missing = required.filter((n) => !f[n].value.trim());
-    if (missing.length) {
+
+    /* The owner and the acceptor are dropdowns with a free-text escape,
+       so the value is either a post code or OTHER plus what was typed.
+       Resolved once, here, rather than at every read. */
+    const label = (name) => {
+      const picked = f[name]?.value ?? '';
+      if (picked === OTHER) return (f[`${name}Other`]?.value ?? '').trim();
+      const match = SAFETY_ROLES.find((r) => r.code === picked);
+      return match ? match.label : picked;
+    };
+
+    /* The review date is computed from the interval, except where a
+       specific date was asked for. Never both — an entry carrying an
+       interval AND a date is an entry where the two can disagree. */
+    const interval = f.reviewInterval?.value ?? '';
+    const reviewBy = interval === OTHER ? (f.reviewBy?.value ?? '') : interval ? dateInDays(interval) : '';
+
+    const owner = label('owner');
+    const required = { hazard: f.hazard.value.trim(), consequence: f.consequence.value.trim() };
+    const missing = Object.values(required).some((v) => !v) || !owner || !reviewBy;
+    if (missing) {
       error.textContent =
         'An entry needs a hazard, its consequence, an owner and a review date. ' +
         'The last two are what make it a register rather than a list.';
@@ -335,10 +394,10 @@ export function render(outlet) {
         controls: f.controls.value.trim(),
         residualSeverity: f.residualSeverity.value || undefined,
         residualLikelihood: f.residualLikelihood.value || undefined,
-        owner: f.owner.value.trim(),
-        reviewBy: f.reviewBy.value,
+        owner,
+        reviewBy,
         status: f.status.value,
-        acceptedBy: f.acceptedBy.value.trim() || undefined,
+        acceptedBy: label('acceptedBy') || undefined,
         createdAt: new Date().toISOString()
       },
       ...entries
@@ -389,6 +448,28 @@ export function render(outlet) {
       list.focus();
     }
   });
+
+  /* The date input is revealed only by the "on a specific date" option,
+     and required only then. A `required` field that is hidden blocks a
+     submit the person cannot see the cause of. */
+  /* Without this the "Another post…" option selects and nothing
+     appears — a dead escape hatch, which is worse than no escape at
+     all: the person picks the nearest wrong post from the list and the
+     register records an owner who is not the owner. The report form and
+     the triage queue both wire theirs; this screen was added later and
+     did not, and only a check that actually selected the sentinel would
+     ever have noticed. */
+  wireSelects(form);
+
+  const intervalSelect = form.elements.reviewInterval;
+  const reviewByField = outlet.querySelector('#reviewby-field');
+  const syncReviewBy = () => {
+    const specific = intervalSelect.value === OTHER;
+    reviewByField.hidden = !specific;
+    form.elements.reviewBy.required = specific;
+  };
+  intervalSelect.addEventListener('change', syncReviewBy);
+  syncReviewBy();
 
   outlet.querySelector('#reg-print').addEventListener('click', () => window.print());
 

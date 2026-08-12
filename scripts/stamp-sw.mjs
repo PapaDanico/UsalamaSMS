@@ -259,8 +259,38 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    The rule stands, and the test with it: a 40 KB library added to the
    report form still breaks the entry budget, which is the one that
-   protects the person filing. */
-const BUDGET = { entry: 212 * 1024, js: 304 * 1024, css: 46 * 1024 };
+   protects the person filing.
+
+   ---------------------------------------------------------------
+   THE FIFTH RAISE: TOTAL -> 308 KB. And this one is NOT a screen, so
+   the rule as written did not cover it and is extended here rather
+   than quietly bent.
+
+   What was added: the risk register's owner, acceptor and review date
+   became dropdowns instead of free text. No new route, no library —
+   1.4 KB in a chunk nobody loads until they open the register.
+
+   The rule was "a screen earns a raise, a library does not", and this
+   is the third thing: REPLACING FREE TEXT WITH A CONTROLLED
+   VOCABULARY ON A SCREEN THAT ALREADY EXISTS. It earns a raise for the
+   same reason a screen does — it is the product getting better at the
+   job — and taxonomy.ts already carries the argument in full: a typed
+   owner becomes "Ops", "ops", "Ops dept" and "D.K.", which is four
+   owners of one hazard, none of which can be counted and one of which
+   is nobody.
+
+   THE NUMBER THAT DID NOT MOVE, a fifth time: entry is 208.1 KB of
+   212, exactly where the previous commit left it. That is not luck. The
+   first cut of this change put the post list in taxonomy.ts, which the
+   report form imports EAGERLY — 2.2 KB charged to the first paint of a
+   report filed at a strip, to carry data only the lazy register reads.
+   The budget caught it, and the lists moved to their own module.
+
+   That is the whole value of a budget stated in two numbers rather than
+   one: the total said "something grew", and the entry said "and it grew
+   in the wrong place". A single total would have passed the bad version
+   and failed the good one. */
+const BUDGET = { entry: 212 * 1024, js: 308 * 1024, css: 46 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

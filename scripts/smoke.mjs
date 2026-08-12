@@ -1341,8 +1341,8 @@ try {
     await page.fill('textarea[name="consequence"]', 'Engine ingestion on approach');
     await page.selectOption('select[name="severity"]', 'A_CATASTROPHIC');
     await page.selectOption('select[name="likelihood"]', 'FREQUENT');
-    await page.fill('input[name="owner"]', 'Safety manager');
-    await page.fill('input[name="reviewBy"]', '2027-01-31');
+    await page.selectOption('#reg-form select[name="owner"]', 'SAFETY_MANAGER');
+    await page.selectOption('#reg-form select[name="reviewInterval"]', '365');
     await page.click('#reg-form button[type="submit"]');
 
     await page.waitForSelector('.reg-entry', { timeout: 5000 });
@@ -1379,6 +1379,54 @@ try {
       (await page.locator('.reg-entry').count()) === 0,
       'a removed entry came back after a reload'
     );
+  });
+
+  await check('THE REGISTER ASKS FOR A POST, NOT A TYPED NAME', async () => {
+    // A typed owner becomes "Ops", "ops", "Ops dept" and "D.K." — four
+    // owners of one hazard, none countable and one of them nobody. The
+    // escape stays for an organisation the list cannot describe, but it
+    // is the exception rather than the default.
+    await page.goto(BASE + '/toolkits/register', { waitUntil: 'networkidle' });
+    await page.evaluate(() => localStorage.removeItem('usalamasms.register'));
+    await page.reload({ waitUntil: 'networkidle' });
+
+    for (const name of ['owner', 'acceptedBy', 'reviewInterval']) {
+      const tag = await page.locator(`#reg-form [name="${name}"]`).evaluate((el) => el.tagName);
+      assert(tag === 'SELECT', `${name} is a ${tag}, and it has a bounded vocabulary`);
+    }
+
+    // The review DATE is computed from the interval, never typed
+    // alongside it — two fields that can disagree is one field too many.
+    const dateField = page.locator('#reviewby-field');
+    assert(await dateField.isHidden(), 'the specific-date field is shown before it is asked for');
+
+    await page.fill('input[name="hazard"]', 'Owner from the list');
+    await page.fill('textarea[name="consequence"]', 'x');
+    await page.selectOption('#reg-form select[name="owner"]', 'SAFETY_MANAGER');
+    await page.selectOption('#reg-form select[name="reviewInterval"]', '90');
+    await page.click('#reg-form button[type="submit"]');
+    await page.waitForSelector('.reg-entry', { timeout: 5000 });
+
+    const meta = ((await page.locator('.reg-entry__meta').first().textContent()) ?? '').trim();
+    assert(
+      /Safety Manager/.test(meta),
+      `the entry records "${meta.slice(0, 60)}" rather than the post that was chosen`
+    );
+    // 90 days out, so a year that is not this one means the arithmetic
+    // ran on the wrong anchor.
+    const due = new Date(Date.now() + 90 * 864e5).getFullYear();
+    assert(
+      new RegExp(String(due)).test(meta),
+      `the computed review date is not ${due}: "${meta.slice(0, 80)}"`
+    );
+
+    // And the escape still exists for an organisation the list cannot
+    // describe — a vocabulary with no way out sends the real answer
+    // into the narrative, where nothing can count it.
+    await page.selectOption('#reg-form select[name="owner"]', '__other__');
+    await page.waitForSelector('#reg-form [name="ownerOther"]', { timeout: 5000 });
+
+    await page.evaluate(() => localStorage.removeItem('usalamasms.register'));
   });
 
   await check('ONE MALFORMED ROW CANNOT DESTROY THE REGISTER', async () => {
@@ -1440,8 +1488,8 @@ try {
     });
     await page.fill('input[name="hazard"]', 'Quota hazard');
     await page.fill('textarea[name="consequence"]', 'Would be lost silently');
-    await page.fill('input[name="owner"]', 'Safety manager');
-    await page.fill('input[name="reviewBy"]', '2027-01-01');
+    await page.selectOption('#reg-form select[name="owner"]', 'SAFETY_MANAGER');
+    await page.selectOption('#reg-form select[name="reviewInterval"]', '365');
     await page.click('#reg-form button[type="submit"]');
     await page.waitForSelector('.reg-entry', { timeout: 5000 });
 
