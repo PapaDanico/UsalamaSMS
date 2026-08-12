@@ -23,7 +23,6 @@
    ============================================================ */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const SRC = 'apps/web/src';
@@ -103,45 +102,41 @@ function classesDefined() {
    So the parse result is a gate rather than a note. Charter rule 11:
    a check that stops checking must fail.
    ============================================================ */
-function mustParse() {
-  const sheets = [join(SRC, 'style.css'), join(SRC, 'fonts.css')];
+async function mustParse() {
+  /* esbuild's JS API, not `npx esbuild`.
+
+     The first version spawned a subprocess, which added a PATH
+     dependency and a package-resolution step to a gate whose whole job
+     is to be reliable — and it read the wrong stream, so it could not
+     fail at all until that was found. The API returns structured
+     warnings, so there is nothing to regex out of stderr and nothing
+     to resolve at run time. */
+  const esbuild = await import('esbuild');
   const problems = [];
 
-  for (const sheet of sheets) {
-    /* spawnSync, NOT execFileSync — and this is the whole reason the
-       first version of this gate could not fail.
-
-       esbuild prints css-syntax-error as a WARNING, and warnings go to
-       STDERR. execFileSync returns stdout only, so the check ran the
-       compiler, threw the evidence away, and reported success. It was
-       watched failing to fail on the exact defect it exists for, which
-       is the only reason this comment is here rather than a second
-       silent guard.
-
-       --bundle so esbuild names the SOURCE file rather than <stdin>,
-       which is what made the original warning unreadable. The font and
-       icon URLs are public-directory paths rather than resolvable
-       modules, so they are external rather than missing. */
-    const run = spawnSync(
-      'npx',
-      [
-        'esbuild',
-        sheet,
-        '--bundle',
-        '--outfile=/dev/null',
-        '--external:/fonts/*',
-        '--external:/icons/*'
-      ],
-      { encoding: 'utf8' }
-    );
-    const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
-    if (run.status !== 0) problems.push(`${sheet} failed to parse:\n${output.trim()}`);
-    else if (/css-syntax-error|\[ERROR\]|\[WARNING\]/.test(output)) problems.push(output.trim());
+  for (const sheet of [join(SRC, 'style.css'), join(SRC, 'fonts.css')]) {
+    const css = readFileSync(sheet, 'utf8');
+    let result;
+    try {
+      result = await esbuild.transform(css, { loader: 'css', logLevel: 'silent' });
+    } catch (error) {
+      const detail = (error.errors ?? [])
+        .map((e) => `${sheet}:${e.location?.line ?? '?'} ${e.text}`)
+        .join('\n');
+      problems.push(detail || `${sheet}: ${error.message}`);
+      continue;
+    }
+    for (const warning of result.warnings ?? []) {
+      problems.push(
+        `${sheet}:${warning.location?.line ?? '?'}:${warning.location?.column ?? 0} ` +
+          `${warning.text}\n    ${warning.location?.lineText?.trim() ?? ''}`
+      );
+    }
   }
   return problems;
 }
 
-const parseProblems = mustParse();
+const parseProblems = await mustParse();
 if (parseProblems.length) {
   console.error('check:css FAILED — the stylesheet does not parse.\n');
   console.error(parseProblems.join('\n\n'));

@@ -199,8 +199,32 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    component library, or a lazy chunk that turns out to be one screen
    plus a framework. The test the original number was protecting still
    holds exactly: a 40 KB library added to the report form breaks
-   ENTRY, and ENTRY has not moved. */
-const BUDGET = { entry: 212 * 1024, js: 272 * 1024, css: 40 * 1024 };
+   ENTRY, and ENTRY has not moved.
+
+   ---------------------------------------------------------------
+   THE THIRD RAISE: CSS -> 44 KB, TOTAL -> 292 KB.
+
+   Held to the sentence above, which is why it was written. What was
+   added is two screens a person navigates to — /toolkits and
+   /toolkits/maturity — and packages/shared/src/maturity.ts, which is
+   the ICAO SMS framework and a scoring function in plain TypeScript.
+   No dependency, no polyfill, no component library. Both screens are
+   lazily loaded and ENTRY IS 205.6 KB, which is where it was before
+   the landing page and ten screens ago.
+
+   What they buy is the thing Annex 19 Amendment 2 asks an operator to
+   be able to do: state a position on its own SMS and show movement on
+   it. The assessment computes and stores nothing but the answers, in
+   the operator's own browser.
+
+   The CSS is one vocabulary shared by all three tools — a fieldset per
+   question, full-width options because five maturity descriptors side
+   by side is five columns of eight words on a handset, and a result
+   panel that is the same component as the deadline calculator's.
+
+   The stopping rule is unchanged and now has a precedent: a screen
+   earns a raise, a library does not. */
+const BUDGET = { entry: 212 * 1024, js: 292 * 1024, css: 44 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

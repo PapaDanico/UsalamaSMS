@@ -137,9 +137,38 @@ export interface FlushOutcome {
  * Coalesced, so concurrent callers await one flush and get one answer.
  */
 let flushInFlight: Promise<FlushOutcome> | null = null;
+let flushRequestedAgain = false;
 
+/**
+ * Send whatever is due.
+ *
+ * COALESCED, AND RE-RUN IF ASKED DURING. The first half stops fifty
+ * queued items presenting the same refresh token fifty times. The
+ * second half is a defect this had:
+ *
+ *   a flush starts (on resume, say) and reads the outbox;
+ *   a report is filed and enqueued a moment later;
+ *   requestBackgroundSync calls flushOutbox, which hands back the
+ *   IN-FLIGHT promise — a pass that had already chosen its rows;
+ *   that promise resolves having never seen the new report.
+ *
+ * The report then sat until the next online event or reload. It looked
+ * like a flake because it depended on whether a flush happened to be
+ * running in the fifty milliseconds around a submit — which is exactly
+ * when one is most likely to be running, since the app resumes its
+ * session on load and a person files soon after.
+ *
+ * So a request that arrives mid-flight sets a flag, and the flight
+ * schedules one more pass when it lands. One extra pass, not one per
+ * caller: the flag is a boolean, so ten requests during one flight
+ * produce one follow-up.
+ */
 export function flushOutbox(fetcher: typeof fetch = authFetch): Promise<FlushOutcome> {
-  if (flushInFlight) return flushInFlight;
+  if (flushInFlight) {
+    flushRequestedAgain = true;
+    return flushInFlight;
+  }
+
   flushInFlight = runFlush(fetcher)
     .then((outcome) => {
       announce(outcome);
@@ -147,7 +176,15 @@ export function flushOutbox(fetcher: typeof fetch = authFetch): Promise<FlushOut
     })
     .finally(() => {
       flushInFlight = null;
+      if (flushRequestedAgain) {
+        flushRequestedAgain = false;
+        // Not awaited by the original caller — that call has its answer.
+        // This is the pass for the rows that arrived while it was busy,
+        // and it announces itself like any other.
+        void flushOutbox(fetcher);
+      }
     });
+
   return flushInFlight;
 }
 

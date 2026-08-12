@@ -1925,7 +1925,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 @media (min-width: 900px) {
   .doc { grid-template-columns: 15rem minmax(0, 1fr); }
-  .toc { position: sticky; top: calc(var(--us-topbar) + var(--us-space-6)); }
+  /* --us-chrome, not --us-topbar. The sticky header is not the only
+     sticky thing above the content — the sync strip is too — so an
+     offset that clears one clips the panel under the other. Same
+     mistake the anchor scroll-margin had, and the token exists so it
+     is made once. */
+  .toc { position: sticky; top: calc(var(--us-chrome) + var(--us-space-4)); }
 }
 
 .doc__body { min-width: 0; max-width: 68ch; }
@@ -2008,10 +2013,18 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .qa { border-top: 1px solid var(--us-border); margin-top: var(--us-space-3); }
 
 /* Present but quiet: the person who wants to link to an answer is
-   looking for it, and everybody else is reading the answer. */
+   looking for it, and everybody else is reading the answer.
+
+   Quiet is not the same as small. This was 18px tall, which is a
+   standalone target under WCAG 2.2 SC 2.5.8 rather than an inline link
+   in a sentence, so the 24px minimum applies to it and the exception
+   does not. Padded rather than enlarged: the type stays at the size
+   the design wants and the hit area is what grows. */
 .qa__link {
   display: inline-block;
-  margin-top: var(--us-space-2);
+  margin-top: var(--us-space-1);
+  padding: var(--us-space-2) 0;
+  min-height: 24px;
   font-size: var(--us-text-2xs);
   font-weight: var(--us-weight-semi);
   letter-spacing: .06em;
@@ -2190,6 +2203,169 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 
 .calc__out[data-state='ok'] .tag--provisional { background: var(--us-sand); }
+
+/* ---- Toolkits -------------------------------------------------------
+
+   The maturity assessment, the occurrence classifier and the risk
+   assessor. One vocabulary between them: a fieldset per question, a
+   stack of full-width options, and a result panel on ink. */
+
+.tool-card { margin-top: var(--us-space-5); }
+
+.mat-element {
+  margin: 0 0 var(--us-space-6);
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--us-border);
+  padding-top: var(--us-space-5);
+}
+
+.mat-element:first-of-type { border-top: 0; padding-top: 0; }
+
+.mat-element legend {
+  padding: 0;
+  font-weight: var(--us-weight-semi);
+  font-size: var(--us-text-md);
+  line-height: var(--us-leading-snug);
+}
+
+.mat-element__id {
+  display: inline-block;
+  margin-right: var(--us-space-2);
+  font-size: var(--us-text-xs);
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--us-teal);
+  font-variant-numeric: tabular-nums;
+}
+
+.mat-element__name { font-weight: var(--us-weight-semi); }
+.mat-element__q { margin: var(--us-space-2) 0 var(--us-space-4); color: var(--us-ink-600); }
+
+.mat-element__evidence {
+  margin: var(--us-space-3) 0 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-ink-600);
+}
+
+.mat-element__evidence summary {
+  cursor: pointer;
+  min-height: var(--us-tap);
+  display: flex;
+  align-items: center;
+  font-weight: var(--us-weight-semi);
+  color: var(--us-teal);
+}
+
+/* One option per row. Five maturity descriptors side by side would be
+   five columns of eight words on the handset this is designed for. */
+.mat-scale { display: grid; gap: var(--us-space-2); }
+
+.mat-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--us-space-3);
+  min-height: var(--us-tap);
+  padding: var(--us-space-3);
+  border: 1px solid var(--us-border-strong);
+  border-radius: var(--us-radius-md);
+  background: var(--us-surface);
+  cursor: pointer;
+  transition: border-color var(--us-dur-fast) var(--us-ease),
+    background-color var(--us-dur-fast) var(--us-ease);
+}
+
+.mat-option:hover { border-color: var(--us-teal); }
+
+/* The whole row is the target, so the input carries the state and the
+   label carries the hit area — the pattern the HRC chips already use. */
+.mat-option:has(input:checked) {
+  border-color: var(--us-teal);
+  background: rgb(var(--us-teal-rgb) / 0.07);
+}
+
+.mat-option:has(input:focus-visible) {
+  outline: 2px solid var(--us-teal);
+  outline-offset: 2px;
+}
+
+.mat-option input { margin: 3px 0 0; accent-color: var(--us-teal); flex: none; }
+.mat-option__label { display: block; min-width: 0; }
+.mat-option__level { display: block; font-weight: var(--us-weight-semi); font-size: var(--us-text-sm); }
+.mat-option__meaning {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--us-text-xs);
+  line-height: var(--us-leading-snug);
+  color: var(--us-ink-600);
+}
+
+.mat-scale--tight { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); }
+.mat-scale--tight .mat-option__level { font-size: var(--us-text-base); }
+
+/* The running result. Sticky beside the questions on a wide screen,
+   because a score you have to scroll back to is a score nobody watches
+   move. */
+/* Wider than the contents rail it borrows its shell from. 15rem holds
+   a list of links; it does not hold four labelled bars and a work list
+   without every line wrapping twice. */
+.mat-result { align-self: start; }
+
+@media (min-width: 900px) {
+  .doc:has(.mat-result) { grid-template-columns: 20rem minmax(0, 1fr); }
+}
+.mat-empty { margin: 0; font-size: var(--us-text-sm); color: var(--us-text-tertiary); }
+.mat-actions { display: flex; flex-wrap: wrap; gap: var(--us-space-2); margin: var(--us-space-5) 0 0; }
+
+.mat-summary { padding-bottom: var(--us-space-4); border-bottom: 1px solid var(--us-border); }
+.mat-summary__mean { margin: 0; display: flex; align-items: baseline; gap: var(--us-space-2); }
+.mat-summary__value {
+  font-size: 2.1rem;
+  font-weight: var(--us-weight-bold);
+  letter-spacing: -.02em;
+  color: var(--us-teal-text);
+  font-variant-numeric: tabular-nums;
+}
+.mat-summary__of { font-size: var(--us-text-sm); font-weight: var(--us-weight-semi); }
+.mat-summary__coverage {
+  margin: var(--us-space-2) 0 0;
+  font-size: var(--us-text-xs);
+  color: var(--us-text-tertiary);
+}
+
+.mat-bars { list-style: none; margin: var(--us-space-4) 0 0; padding: 0; }
+.mat-bar { margin-bottom: var(--us-space-4); }
+.mat-bar__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--us-space-3);
+  margin: 0 0 var(--us-space-2);
+  font-size: var(--us-text-xs);
+}
+.mat-bar__name { font-weight: var(--us-weight-semi); min-width: 0; }
+.mat-bar__value { flex: none; color: var(--us-text-tertiary); font-variant-numeric: tabular-nums; }
+.mat-bar__track {
+  height: 8px;
+  border-radius: var(--us-radius-pill);
+  background: var(--us-surface-sunk);
+  overflow: hidden;
+}
+.mat-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--us-radius-pill);
+  background: var(--us-teal);
+  transition: width var(--us-dur) var(--us-ease);
+}
+
+.mat-gaps { margin-top: var(--us-space-5); padding-top: var(--us-space-4); border-top: 1px solid var(--us-border); }
+.mat-gaps h3 { font-size: var(--us-text-md); margin: 0 0 var(--us-space-2); }
+.mat-gaps__lede { font-size: var(--us-text-xs); color: var(--us-text-tertiary); margin: 0 0 var(--us-space-3); }
+.mat-gaps ol { margin: 0; padding-left: 1.1rem; font-size: var(--us-text-sm); }
+.mat-gaps li { margin-bottom: var(--us-space-3); }
+.mat-gaps__evidence { display: block; margin-top: 2px; font-size: var(--us-text-xs); color: var(--us-ink-600); }
+.mat-gaps__none { font-size: var(--us-text-sm); color: var(--us-ink-600); margin-top: var(--us-space-4); }
 
 /* ---- The footer, which is the only ink surface carrying body copy ----
 

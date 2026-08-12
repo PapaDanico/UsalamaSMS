@@ -231,6 +231,16 @@ router
     { title: 'Methodology' }
   )
   .register(
+    '/toolkits',
+    (el) => lazy(el, () => import('./tools/toolkits/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Toolkits' }
+  )
+  .register(
+    '/toolkits/maturity',
+    (el) => lazy(el, () => import('./tools/maturity/index.js').then((m) => (o) => m.render(o))),
+    { title: 'SMS maturity assessment' }
+  )
+  .register(
     '/glossary',
     (el) => lazy(el, () => import('./tools/glossary/index.js').then((m) => (o) => m.render(o))),
     { title: 'Glossary' }

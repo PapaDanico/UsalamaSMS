@@ -455,6 +455,52 @@ try {
     }
   });
 
+  await check('WCAG 2.2 SC 2.5.8 — every standalone target is at least 24px', async () => {
+    // The existing 44px check below measures the report form's controls.
+    // This one sweeps EVERY route, because the document pages added a
+    // class of target the form does not have: a small standalone link
+    // at the end of an answer. "Link to this answer" shipped at 18px.
+    //
+    // Two exemptions, both in the success criterion rather than
+    // invented here:
+    //   · a link whose size is constrained by the line-height of the
+    //     sentence around it — an inline link in prose;
+    //   · a control whose hit area is a label wrapping it, which is how
+    //     the HRC chips work: the input is 1px and the label is 48.
+    // A check that ignored those would fail on conformant markup, and a
+    // check that ignored neither would be noise nobody acts on.
+    const routes = ['/', '/report', '/triage', '/account', '/methodology',
+                    '/glossary', '/tutorials', '/faq', '/about', '/privacy', '/terms'];
+    const small = [];
+
+    for (const route of routes) {
+      const probe = await page.context().newPage();
+      await probe.setViewportSize({ width: 390, height: 844 });
+      await probe.goto(BASE + route, { waitUntil: 'networkidle' });
+      const found = await probe.evaluate(() => {
+        const main = document.querySelector('#main');
+        const inlineLink = (el) => el.tagName === 'A' && el.closest('p,li,dd,summary');
+        const wrappedByLabel = (el) => el.closest('label') && el.closest('label') !== el;
+        return [...main.querySelectorAll('a[href],button,summary,input,select,textarea')]
+          .filter((el) => {
+            const box = el.getBoundingClientRect();
+            if (box.width === 0 || box.height === 0) return false;
+            if (inlineLink(el) || wrappedByLabel(el)) return false;
+            return box.width < 24 || box.height < 24;
+          })
+          .map((el) => {
+            const box = el.getBoundingClientRect();
+            return `${el.tagName}.${(el.className || '').toString().split(' ')[0]} ` +
+                   `${Math.round(box.width)}x${Math.round(box.height)}`;
+          });
+      });
+      await probe.close();
+      for (const f of found) small.push(`${route}: ${f}`);
+    }
+
+    assert(small.length === 0, `targets under 24px:\n  ${small.join('\n  ')}`);
+  });
+
   await check('tap targets are at least 44px', async () => {
     // OPEN THE OPTIONAL SECTION FIRST. The HRC chips live inside a
     // collapsed <details>, and a collapsed element's children measure
@@ -851,6 +897,60 @@ try {
     // (so the flush genuinely did not finish) or drove the flush from
     // the sign-in path, which announced itself explicitly.
     await page.context().setOffline(false);
+    /* A CLEAN OUTBOX, because the outbox is shared state.
+
+       The first version of this check waited for outbox.length === 0.
+       Earlier checks in this file deliberately leave reports queued
+       that cannot drain — one filed with the network cut, one filed
+       with no session — so "the outbox is empty" was never a statement
+       about THIS report. It passed or failed on what ran before it,
+       which is a flake rather than a check, and it is what turned CI
+       red.
+
+       Deleting the database is safe here: every check that reads the
+       queue has already run, and the ones below read the registry and
+       the service worker instead. */
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const req = indexedDB.deleteDatabase('usalamasms');
+          req.onsuccess = req.onerror = req.onblocked = () => resolve();
+        })
+    );
+
+    /* ESTABLISHES ITS OWN SESSION rather than inheriting one from an
+       earlier check. flushOutbox bails when isSignedIn() is false, and
+       a check that depends on what the previous check left in
+       localStorage reports "nothing was ever sent" the moment anything
+       above it changes — which is a check that fails for a reason
+       unrelated to what it tests. The same ordering dependency the
+       provisional-jurisdictions check had. */
+    await page.route('**/api/v1/auth/login', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'strip-probe-token',
+          refreshToken: 'strip-probe-refresh-token-long-enough',
+          role: 'FRONTLINE',
+          orgId: 'org'
+        })
+      })
+    );
+    await page.route('**/api/v1/auth/refresh', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'strip-probe-token',
+          refreshToken: 'strip-probe-refresh-token-long-enough',
+          role: 'FRONTLINE',
+          orgId: 'org'
+        })
+      })
+    );
+
     let batches = 0;
     await page.route('**/api/v1/sync/batch', async (route) => {
       batches++;
@@ -867,6 +967,14 @@ try {
         })
       });
     });
+
+    await page.goto(BASE + '/account', { waitUntil: 'networkidle' });
+    if (await page.locator('#login-form').count()) {
+      await page.fill('#login-email', 'ramp@example.test');
+      await page.fill('#login-password', 'a-sufficiently-long-test-password');
+      await page.click('#login-form button[type=submit]');
+      await page.waitForSelector('#login-panel', { timeout: 8000 });
+    }
 
     await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
     const typeValue = await page.locator('select[name=type] option').nth(1).getAttribute('value');
@@ -898,7 +1006,16 @@ try {
       undefined,
       { timeout: 8000 }
     );
-    assert(batches > 0, 'nothing was ever sent, so this check proved nothing');
+    if (batches === 0) {
+      const why = await page.evaluate(() => ({
+        online: navigator.onLine,
+        session: localStorage.getItem('usalamasms.session'),
+        refresh: Boolean(localStorage.getItem('usalamasms.refresh')),
+        strip: document.querySelector('#sync-strip')?.dataset.state,
+        text: document.querySelector('#sync-text')?.textContent?.trim()
+      }));
+      assert(false, `nothing was ever sent: ${JSON.stringify(why)}`);
+    }
 
     // ...and the strip says so, without waiting for another event.
     await page.waitForFunction(
@@ -915,6 +1032,8 @@ try {
     );
 
     await page.unroute('**/api/v1/sync/batch');
+    await page.unroute('**/api/v1/auth/login');
+    await page.unroute('**/api/v1/auth/refresh');
   });
 
   await check('TRY AGAIN REPAINTS THE STRIP IT WAS SENT TO FIX', async () => {
@@ -930,6 +1049,40 @@ try {
     // retry, telling the person the report still failed while it sits
     // in the database.
     await page.context().setOffline(false);
+    /* A CLEAN OUTBOX, because the outbox is shared state.
+
+       The first version of this check waited for outbox.length === 0.
+       Earlier checks in this file deliberately leave reports queued
+       that cannot drain — one filed with the network cut, one filed
+       with no session — so "the outbox is empty" was never a statement
+       about THIS report. It passed or failed on what ran before it,
+       which is a flake rather than a check, and it is what turned CI
+       red.
+
+       Deleting the database is safe here: every check that reads the
+       queue has already run, and the ones below read the registry and
+       the service worker instead. */
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const req = indexedDB.deleteDatabase('usalamasms');
+          req.onsuccess = req.onerror = req.onblocked = () => resolve();
+        })
+    );
+
+    await page.route('**/api/v1/auth/refresh', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'retry-probe-token',
+          refreshToken: 'retry-probe-refresh-token-long-enough',
+          role: 'FRONTLINE',
+          orgId: 'org'
+        })
+      })
+    );
 
     // REJECT the item rather than failing the request. A 5xx is
     // retryable, so the report stays pending and backs off — and the
@@ -964,6 +1117,27 @@ try {
       });
     });
 
+    await page.goto(BASE + '/account', { waitUntil: 'networkidle' });
+    if (await page.locator('#login-form').count()) {
+      await page.route('**/api/v1/auth/login', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'retry-probe-token',
+            refreshToken: 'retry-probe-refresh-token-long-enough',
+            role: 'FRONTLINE',
+            orgId: 'org'
+          })
+        })
+      );
+      await page.fill('#login-email', 'ramp@example.test');
+      await page.fill('#login-password', 'a-sufficiently-long-test-password');
+      await page.click('#login-form button[type=submit]');
+      await page.waitForSelector('#login-panel', { timeout: 8000 });
+      await page.unroute('**/api/v1/auth/login');
+    }
+
     await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
     const typeValue = await page.locator('select[name=type] option').nth(1).getAttribute('value');
     await page.selectOption('select[name=type]', typeValue);
@@ -971,9 +1145,20 @@ try {
     await page.fill('textarea[name=narrative]', 'Filed to prove Try again clears the strip it was sent to fix.');
     await page.click('#report-form button[type=submit]');
 
+    /* Wait for the REFUSAL to land before going looking for the button
+       it produces. Navigating on a timer meant racing the flush: if it
+       had not finished, the report was still pending, there was no
+       error state and therefore no Try again, and the check failed on
+       timing rather than on behaviour. */
+    await page.waitForFunction(
+      () => document.querySelector('#sync-strip')?.dataset.state === 'error',
+      undefined,
+      { timeout: 10000 }
+    );
+
     await navigateTo(page, '/triage');
     const retry = page.locator('[data-retry]').first();
-    await retry.waitFor({ timeout: 8000 });
+    await retry.waitFor({ timeout: 10000 });
 
     allow = true;
     await retry.click();
@@ -985,6 +1170,7 @@ try {
     );
 
     await page.unroute('**/api/v1/sync/batch');
+    await page.unroute('**/api/v1/auth/refresh');
   });
 
   await check('METHODOLOGY renders both tables from the real modules', async () => {

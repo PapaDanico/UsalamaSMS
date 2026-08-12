@@ -60,6 +60,12 @@ export const SECTIONS = [
     working: true,
     items: [
       {
+        href: '/toolkits',
+        label: 'Toolkits',
+        short: 'Toolkits',
+        hint: 'Maturity assessment, occurrence classifier, risk tolerability'
+      },
+      {
         href: '/methodology',
         label: 'Methodology',
         short: 'Methodology',
