@@ -92,10 +92,12 @@ function Hero() {
         <span class="eyebrow">Aviation safety management</span>
         <h1>Safety intelligence for African skies</h1>
         <p class="lede">
-          A safety management system for operators of three to fifteen
-          aircraft. It records a report without a connection, computes the
-          reporting window the operator's own authority sets, and keeps every
-          narrative inside that operator's organisation.
+          The reporting and risk-classification layer of an SMS, for operators
+          of three to fifteen aircraft. It records a report without a
+          connection, computes the reporting window the operator's own authority
+          sets, and keeps every narrative inside that operator's organisation.
+          It is not a complete safety management system, and
+          <a href="/about#notyet">says what it is not</a>.
         </p>
 
         <div class="hero-actions">
