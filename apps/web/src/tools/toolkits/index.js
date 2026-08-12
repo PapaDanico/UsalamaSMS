@@ -3,9 +3,14 @@
 
    Self-serve instruments, in the benchmark's pattern: a question an
    operator actually has, answered by the same code the product runs
-   on, with the source named. Two of them live here because they are
-   compact; the maturity assessment has its own route because it is
-   twelve questions long.
+   on, with the source named.
+
+   THIS PAGE IS THE INDEX AND TWO OF THE INSTRUMENTS. The two below are
+   here because they are one question and one answer. The three that
+   have their own route — the safety risk assessment, the risk register
+   and the maturity assessment — are sittings rather than calculations,
+   and they carry state. The split, and the list, live in
+   shared/sitemap.js so the menu hint cannot disagree with this page.
 
    Both tools on this page compute from modules that already existed
    and were shown to nobody:
@@ -40,6 +45,11 @@ import {
   JURISDICTIONS,
   isProvisional
 } from '../../../../../packages/shared/src/regulations.ts';
+/* The toolkit list is declared once, in shared/sitemap.js, because the
+   menu hint is computed from it. This page renders the same list rather
+   than keeping a second copy that goes stale the next time one is
+   added — which is exactly how the SRA came to be invisible. */
+import { TOOLKITS, ROUTED_TOOLKITS } from '../../shared/sitemap.js';
 
 /* The scale is declared once, in risk.ts, alongside the matrix that
    scores it. Rendering it into a menu is presentation, so it happens
@@ -176,9 +186,14 @@ export function render(outlet) {
           Nothing is stored and nothing is sent.
         </p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="/toolkits/sra">Safety risk assessment</a>
-          <a class="btn btn-ghost-lt" href="/toolkits/register">Risk register</a>
-          <a class="btn btn-ghost-lt" href="/toolkits/maturity">SMS maturity assessment</a>
+          ${/* The class attribute stays a literal on both branches:
+                check:css reads these files as text, and a class built by
+                interpolation is a class the gate cannot see. */
+          ROUTED_TOOLKITS.map((t, i) =>
+            i === 0
+              ? html`<a class="btn btn-primary" href="${t.href}">${t.label}</a>`
+              : html`<a class="btn btn-ghost-lt" href="${t.href}">${t.label}</a>`
+          )}
         </div>
       </div>
     </section>
@@ -187,12 +202,18 @@ export function render(outlet) {
       <nav class="toc" aria-labelledby="toc-title">
         <h2 class="section-title" id="toc-title">On this page</h2>
         <ol>
-          <li><a href="#classifier">Occurrence classifier</a></li>
-          <li><a href="#risk">Risk tolerability</a></li>
-          <li><a href="/toolkits/sra">Safety risk assessment</a></li>
-          <li><a href="/toolkits/register">Risk register</a></li>
-          <li><a href="/toolkits/maturity">SMS maturity assessment</a></li>
-          <li><a href="/methodology#windows">Reporting deadline calculator</a></li>
+          ${TOOLKITS.map(
+            (t) => html`<li>
+              <a href="${t.href.startsWith('/toolkits#') ? t.href.slice('/toolkits'.length) : t.href}"
+                >${t.label}</a
+              >
+              <span class="toc-summary">${t.blurb}</span>
+            </li>`
+          )}
+          <li>
+            <a href="/methodology#windows">Reporting deadline calculator</a>
+            <span class="toc-summary">Which clock a given occurrence starts, and when it runs out</span>
+          </li>
         </ol>
       </nav>
       <div class="doc__body">${Classifier()} ${RiskAssessor()}</div>

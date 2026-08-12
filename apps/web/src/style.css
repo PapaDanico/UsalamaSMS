@@ -1982,6 +1982,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .toc li { margin-bottom: var(--us-space-2); font-size: var(--us-text-sm); }
 .toc a { color: var(--us-charcoal); }
 .toc a:hover { color: var(--us-teal); }
+/* A contents list that is only titles asks the reader to open each one
+   to find out which is theirs. One line each, in the menu's pattern. */
+.toc-summary {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+  color: var(--us-text-tertiary);
+}
 .toc__count {
   margin-left: var(--us-space-2);
   font-size: var(--us-text-2xs);
