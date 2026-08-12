@@ -1813,6 +1813,9 @@ html { scroll-padding-top: var(--us-chrome); }
   border-top: 1px solid var(--us-border);
 }
 .spi-period .field { flex: 1 1 7rem; margin: 0; }
+/* Full width, so a refusal sits under the row that caused it rather
+   than being squeezed between two buttons. */
+.spi-period__error { flex: 1 0 100%; margin: 0; }
 
 /* The two tables on the design screen. `table` is already styled; these
    carry only what makes a regulatory obligation and a 5x5 matrix

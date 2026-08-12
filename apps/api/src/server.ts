@@ -17,12 +17,33 @@ import {
 } from "./core";
 import { syncRoutes } from "./routes.sync";
 import { authRoutes } from "./routes.auth";
+import { rateLimitKey } from "./rate-limit-key";
 
 export async function build(): Promise<FastifyInstance> {
   const app = Fastify({
-    // Trust the proxy for client IPs — rate limiting is per-IP and every
-    // deployment of this sits behind one.
-    trustProxy: true,
+    // ==================================================================
+    // ONE HOP, not `true`. The difference is the whole rate limit.
+    //
+    // `trustProxy: true` makes Fastify resolve req.ip as the LEFTMOST
+    // X-Forwarded-For entry, which is the one the caller writes. The
+    // comment that used to sit here asserted the opposite — that a
+    // caller could not forge their way into a fresh bucket. Booting a
+    // Fastify instance with that exact configuration says otherwise:
+    //
+    //   trustProxy: true   XFF "FORGED, 9.9.9.9, 8.8.8.8" -> FORGED
+    //   trustProxy: 1      XFF "FORGED, 9.9.9.9, 8.8.8.8" -> 8.8.8.8
+    //
+    // A number trusts that many hops from the right, so what survives is
+    // what the immediate proxy appended rather than what arrived with
+    // the request. One hop, because there is one proxy.
+    //
+    // This alone is not sufficient — a caller sending a SINGLE forged
+    // entry is still the rightmost — which is why rateLimitKey() below
+    // prefers the platform's own header over the IP entirely. Both are
+    // here on purpose: the header is the control, the hop count is what
+    // stops the fallback being free to forge.
+    // ==================================================================
+    trustProxy: 1,
     logger: {
       level: process.env["LOG_LEVEL"] ?? "info",
       // ==============================================================
@@ -103,7 +124,7 @@ export async function build(): Promise<FastifyInstance> {
     // X-Forwarded-For rather than the edge's — behind Netlify the header
     // is set by the platform, so a caller cannot forge their way into a
     // fresh bucket by sending their own.
-    keyGenerator: (req) => req.ip,
+    keyGenerator: (req) => rateLimitKey(req.headers, req.ip),
     // In-memory, which means PER INSTANCE. On a container host that is
     // the whole limit. On Lambda each warm instance keeps its own
     // counter, so the effective limit is the configured one times the

@@ -312,6 +312,115 @@ describe.skipIf(!hasDatabase)("audit chain against Postgres", () => {
     expect(verdict.rowsChecked).toBe(1000);
   });
 
+  it("REPORTS TAMPERING OVER HTTP, not as a 500", async () => {
+    /* Every other test in this file calls verifyAuditChain() directly,
+       and that is exactly how the defect survived. `seq` is a Postgres
+       BigInt, so the verdict carried a JavaScript `bigint`; the route
+       has no response schema, so Fastify serialised it with
+       JSON.stringify, which throws on a bigint; the error handler
+       turned the throw into 500 internal_error.
+
+       So the endpoint a regulator is invited to call answered 200 for an
+       intact chain and 500 — indistinguishable from a database outage —
+       for an altered one. The one verdict the control exists to deliver
+       was the one it could not deliver.
+
+       This test goes through the real route. It is the only place that
+       does. */
+    const jwtMod = await import("jsonwebtoken");
+    const { build } = await import("../../apps/api/src/server");
+    const app = await build();
+    await app.ready();
+    try {
+      const inspector = await prisma().user.create({
+        data: {
+          orgId, email: `inspector+${orgId}@example.test`, passwordHash: "unused",
+          name: "Inspector", role: "REGULATOR_INSPECTOR",
+        },
+      });
+      const token = jwtMod.default.sign(
+        { sub: inspector.id, org: orgId, role: "REGULATOR_INSPECTOR", typ: "access" },
+        process.env["JWT_SECRET"]!,
+        { algorithm: "HS256", expiresIn: "15m", issuer: "usalamasms" },
+      );
+      const verify = () =>
+        app.inject({
+          method: "GET",
+          url: `/api/v1/orgs/${orgId}/audit/verify`,
+          headers: { authorization: `Bearer ${token}` },
+        });
+
+      await appendAudit({
+        orgId, action: "risk.accept.intolerable", entityType: "RiskAssessment", entityId: "http-1",
+      });
+      await appendAudit({ orgId, action: "report.close", entityType: "SafetyReport", entityId: "http-2" });
+
+      const clean = await verify();
+      expect(clean.statusCode).toBe(200);
+      expect(clean.json().ok).toBe(true);
+
+      await prisma().$executeRawUnsafe(
+        `UPDATE "AuditLog" SET action = 'risk.accept.tolerable' WHERE "entityId" = 'http-1'`,
+      );
+
+      const tampered = await verify();
+      expect(
+        tampered.statusCode,
+        "the endpoint returned an error status for a chain it had successfully checked",
+      ).toBe(200);
+      expect(tampered.json().ok).toBe(false);
+      // And the row is NAMED, so somebody can go and look at it.
+      expect(typeof tampered.json().contentAlteredAtSeq).toBe("string");
+      expect(Number(tampered.json().contentAlteredAtSeq)).toBeGreaterThan(0);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("REFUSES TO DELETE A USER THE CHAIN NAMES", async () => {
+    /* Reproduced during the audit, before this guard existed:
+
+         chain BEFORE offboarding: {"ok":true,"rowsChecked":3}
+         chain AFTER  offboarding: {"ok":false,"contentAlteredAtSeq":"4"}
+         userId column now: [null,null,null]
+
+       The hash commits to userId; the foreign key was ON DELETE SET
+       NULL. So an ordinary staff departure rewrote the hashed content
+       of every row naming that person and the chain reported itself
+       tampered with — a verdict a regulator cannot tell apart from real
+       tampering, produced by an administrative act nobody would think
+       to log.
+
+       RESTRICT now refuses the delete. Offboarding sets `active` false,
+       which is what that column is for. */
+    const leaver = await prisma().user.create({
+      data: {
+        orgId, email: `leaver+${orgId}@example.test`, passwordHash: "unused",
+        name: "Departing Employee", role: "SAFETY_MANAGER",
+      },
+    });
+    for (let i = 0; i < 3; i++) {
+      await appendAudit({
+        orgId, userId: leaver.id, action: "report.create",
+        entityType: "SafetyReport", entityId: `leaver-${i}`,
+      });
+    }
+    expect((await verifyAuditChain(orgId)).ok).toBe(true);
+
+    await expect(
+      prisma().user.delete({ where: { id: leaver.id } }),
+      "a user the audit chain names was deleted, which rewrites the hashed rows",
+    ).rejects.toThrow();
+
+    const after = await verifyAuditChain(orgId);
+    expect(after.ok, "the chain did not survive the attempted delete").toBe(true);
+    expect(after.rowsChecked).toBe(3);
+
+    // And the supported route out is still open.
+    await prisma().user.update({ where: { id: leaver.id }, data: { active: false } });
+    expect((await verifyAuditChain(orgId)).ok).toBe(true);
+  });
+
   it("keeps each org's chain independent", async () => {
     const { orgId: second } = await seedOrg("Second Operator");
     await appendAudit({ orgId, action: "a", entityType: "T", entityId: "1" });

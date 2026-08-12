@@ -12,6 +12,8 @@
 // is the entire security property.
 // =====================================================================
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import argon2 from "argon2";
 import type { FastifyInstance } from "fastify";
 import { prisma, reset, migrate, disconnect, hasDatabase } from "./db.setup";
@@ -70,13 +72,16 @@ describe.skipIf(!hasDatabase)("auth routes against Postgres", () => {
     });
   });
 
+  /* The limiter keys on the PLATFORM's view of the caller, not on
+     X-Forwarded-For — see rateLimitKey() in server.ts, and the test
+     below that proves a forged header no longer buys a fresh bucket.
+     So an isolated caller here sends the platform header, exactly as
+     Netlify's edge does in front of the deployed function. */
   const login = (email: string, password: string, ip: string = clientIp) =>
     app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
-      // trustProxy is on, so this is what the limiter keys on — the same
-      // header Netlify's edge sets in front of the deployed function.
-      headers: { "x-forwarded-for": ip },
+      headers: { "x-nf-client-connection-ip": ip },
       payload: { email, password },
     });
 
@@ -238,6 +243,89 @@ describe.skipIf(!hasDatabase)("auth routes against Postgres", () => {
     // fixed. A different address must be unaffected.
     const bystander = await login("safety@example.test", PASSWORD, "198.51.100.4");
     expect(bystander.statusCode, "a second address was caught by another's limit").toBe(200);
+  });
+
+  it("BURNS A REFRESH TOKEN ATOMICALLY — two racers, one winner", async () => {
+    /* The reuse check read `revokedAt`, and the burn several statements
+       later wrote it unconditionally. Two requests presenting the same
+       token concurrently could both read null, both pass the check, and
+       both mint a fresh pair — two live chains, no reuse_detected, and
+       nothing revoked, at the exact moment a stolen token is being used.
+
+       This asserts the property the fix rests on, at the level where it
+       is actually decided: the guarded UPDATE must be won by exactly one
+       of two genuinely concurrent transactions. Driving two HTTP
+       requests instead would not do it — inject() plus a single-threaded
+       runtime lets the first finish its burn before the second reads,
+       so that test passes with the defect restored, which makes it no
+       test at all. */
+    const { refreshToken } = (await login("safety@example.test", PASSWORD, "10.5.0.1")).json();
+    const row = await prisma().refreshToken.findFirstOrThrow({
+      where: { user: { email: "safety@example.test" }, revokedAt: null },
+      orderBy: { id: "desc" },
+    });
+    expect(refreshToken).toBeTruthy();
+
+    const burn = () =>
+      prisma().refreshToken.updateMany({
+        where: { id: row.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    const [a, b] = await Promise.all([burn(), burn()]);
+
+    expect(
+      a.count + b.count,
+      "both racers burned the same refresh token, so neither is detectable as reuse",
+    ).toBe(1);
+  });
+
+  it("uses a CONDITIONAL burn, so losing the race is detectable", () => {
+    // Charter rule 11: the assertion above is about the database's
+    // behaviour and would keep passing if the route stopped using the
+    // guarded form. This names the form.
+    const source = readFileSync(
+      resolve(__dirname, "../../apps/api/src/routes.auth.ts"),
+      "utf8",
+    );
+    const refreshBlock = source.slice(source.indexOf("/api/v1/auth/refresh"));
+    expect(refreshBlock).toMatch(
+      /updateMany\(\{\s*where:\s*\{\s*id:\s*existing\.id,\s*revokedAt:\s*null\s*\}/,
+    );
+    expect(refreshBlock).toMatch(/burned\.count === 0/);
+    expect(refreshBlock, "the unconditional burn is back").not.toMatch(
+      /refreshToken\.update\(\{\s*where:\s*\{\s*id:\s*existing\.id\s*\}/,
+    );
+  });
+
+  it("A FORGED HEADER DOES NOT BUY A FRESH BUCKET", async () => {
+    // Found by audit. The limiter keyed on req.ip, and `trustProxy: true`
+    // resolves that to the LEFTMOST X-Forwarded-For entry — the one the
+    // caller writes. A random header per request therefore reset the
+    // count every time, against the endpoint this file calls the one
+    // worth brute-forcing. The comment above the setting asserted the
+    // opposite, and this suite had been using the trick itself to get
+    // clean buckets, so the exploit was committed as a test helper.
+    const edge = "203.0.113.99";
+    const attempt = (i: number) =>
+      app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        headers: {
+          "x-nf-client-connection-ip": edge,
+          // What an attacker controls. Different on every request.
+          "x-forwarded-for": `10.0.0.${i}, 172.16.0.${i}`,
+        },
+        payload: { email: "safety@example.test", password: `wrong-password-${i}` },
+      });
+
+    for (let i = 0; i < 10; i++) {
+      expect((await attempt(i)).statusCode, `attempt ${i + 1} should be allowed`).toBe(401);
+    }
+    const blocked = await attempt(10);
+    expect(
+      blocked.statusCode,
+      "a rotating X-Forwarded-For reset the login limiter — the bypass is back",
+    ).toBe(429);
   });
 
   it("rejects a token signed with the wrong secret", async () => {
