@@ -35,6 +35,27 @@
 import { SMS_ELEMENTS, MATURITY_LEVELS, type SmsElement, type MaturityLevel } from "./maturity";
 import type { Suitability, OperatorScale } from "./maturity";
 
+/**
+ * Who is doing a step, and by when.
+ *
+ * NOT derived — this is the one part of the plan the operator supplies
+ * rather than the assessment producing. CASA's gap-analysis and
+ * implementation-planning tool records, against every element found
+ * partially or not present, "the responsible individuals for actioning
+ * these by a set due date". A plan without those two fields is the
+ * thing this module's own header calls a wish.
+ *
+ * Both are optional and stay optional. A half-filled plan is a real
+ * position an operator can be in, and the plan reports it as such
+ * rather than refusing to render.
+ */
+export interface Assignment {
+  /** A name, as typed. Not a user id — the person may not have a login. */
+  readonly owner?: string;
+  /** ISO `YYYY-MM-DD`. A date, not a duration: durations never expire. */
+  readonly due?: string;
+}
+
 export interface PlanStep {
   readonly element: SmsElement;
   /** Where the operator says this element is now. */
@@ -45,6 +66,10 @@ export interface PlanStep {
   readonly action: string;
   /** What finishing it looks like, so "done" is not a matter of opinion. */
   readonly evidence: string;
+  /** Whoever owns it, if anybody has been named. */
+  readonly owner?: string;
+  /** The date it is owed by, if one has been set. */
+  readonly due?: string;
 }
 
 export interface PlanPhase {
@@ -62,6 +87,15 @@ export interface ImplementationPlan {
   readonly settled: ReadonlyArray<SmsElement>;
   /** True when every element has been answered. */
   readonly complete: boolean;
+  /**
+   * Steps carrying no owner, no date, or neither.
+   *
+   * Reported rather than left for the reader to notice. A plan is
+   * submitted to a regulator; the questions asked of it are who and by
+   * when, and an operator should meet those questions here rather than
+   * across a table.
+   */
+  readonly unassigned: ReadonlyArray<PlanStep>;
   readonly scale?: OperatorScale;
 }
 
@@ -146,9 +180,11 @@ export function implementationPlan(
   options: {
     readonly suitability?: Readonly<Record<string, Suitability>>;
     readonly scale?: OperatorScale;
+    readonly assignments?: Readonly<Record<string, Assignment | undefined>>;
   } = {},
 ): ImplementationPlan {
   const suitability = options.suitability ?? {};
+  const assignments = options.assignments ?? {};
   const settled: SmsElement[] = [];
   const buckets: PlanStep[][] = [[], [], [], []];
 
@@ -161,11 +197,19 @@ export function implementationPlan(
     }
     const transition = TRANSITIONS[level];
     if (!transition) continue;
+    /* An empty string is not an owner. It is what a text box holds
+       after somebody clears it, and carrying it through would let a
+       plan report itself assigned to nobody at all. */
+    const assigned = assignments[element.id];
+    const owner = assigned?.owner?.trim();
+    const due = assigned?.due?.trim();
     buckets[level]!.push({
       element,
       from: MATURITY_LEVELS[level]!,
       to: MATURITY_LEVELS[level + 1]!,
       action: transition.action,
+      ...(owner ? { owner } : {}),
+      ...(due ? { due } : {}),
       /* The element's OWN evidence descriptor wins where it has one —
          it is specific to this element and the generic line is not. The
          generic line covers the rungs below the top, where the element
@@ -194,6 +238,11 @@ export function implementationPlan(
     rightSize,
     settled,
     complete: SMS_ELEMENTS.every((e) => typeof answers[e.id] === "number"),
+    /* Read back off the phases rather than off the assignments map, so
+       an assignment against an element that produced no step — one at
+       the top of the scale, or never answered — cannot make the count
+       disagree with what is on the page. */
+    unassigned: phases.flatMap((p) => p.steps).filter((s) => !s.owner || !s.due),
     ...(options.scale ? { scale: options.scale } : {}),
   };
 }

@@ -116,3 +116,98 @@ describe('the implementation plan', () => {
     }
   });
 });
+
+/* ============================================================
+   OWNER AND DUE DATE.
+
+   CASA's gap-analysis and implementation-planning tool records, for
+   every element found partially or not present, the responsible
+   individual and a set due date. The plan produced everything except
+   those two, which is the difference between a work list and a
+   submittable plan — and this module's own header already calls a step
+   with neither a wish.
+
+   The assignments are the ONE part of this module that is not derived.
+   So the tests here are mostly about what happens when the input is
+   junk, which is the state a hand-editable browser store is routinely
+   in.
+   ============================================================ */
+describe('implementationPlan — who, and by when', () => {
+  it('threads an owner and a date onto the step they belong to', () => {
+    const plan = implementationPlan(all(0), {
+      assignments: { '1.1': { owner: 'A. Mwangi', due: '2026-11-26' } }
+    });
+    const steps = plan.phases.flatMap((p) => p.steps);
+    const mine = steps.find((s) => s.element.id === '1.1')!;
+    expect(mine.owner).toBe('A. Mwangi');
+    expect(mine.due).toBe('2026-11-26');
+    // and nothing else picked them up
+    expect(steps.filter((s) => s.owner).length).toBe(1);
+  });
+
+  it('COUNTS A STEP AS UNASSIGNED UNTIL IT HAS BOTH', () => {
+    // The failure this guards: reporting a plan as assigned because
+    // somebody typed a name, with no date anywhere in it. A regulator
+    // asks both questions.
+    const owned = implementationPlan(all(0), { assignments: { '1.1': { owner: 'A. Mwangi' } } });
+    expect(owned.unassigned.map((s) => s.element.id)).toContain('1.1');
+
+    const dated = implementationPlan(all(0), { assignments: { '1.1': { due: '2026-11-26' } } });
+    expect(dated.unassigned.map((s) => s.element.id)).toContain('1.1');
+
+    const both = implementationPlan(all(0), {
+      assignments: { '1.1': { owner: 'A. Mwangi', due: '2026-11-26' } }
+    });
+    expect(both.unassigned.map((s) => s.element.id)).not.toContain('1.1');
+  });
+
+  it('treats a blank or whitespace owner as nobody', () => {
+    // What a text box holds after somebody clears it. Carrying it
+    // through would let a plan report itself assigned to "".
+    const plan = implementationPlan(all(0), {
+      assignments: { '1.1': { owner: '   ', due: '2026-11-26' } }
+    });
+    const mine = plan.phases.flatMap((p) => p.steps).find((s) => s.element.id === '1.1')!;
+    expect(mine.owner).toBeUndefined();
+    expect(plan.unassigned.map((s) => s.element.id)).toContain('1.1');
+  });
+
+  it('reports every step unassigned when nothing has been assigned at all', () => {
+    const plan = implementationPlan(all(0));
+    const total = plan.phases.reduce((n, p) => n + p.steps.length, 0);
+    expect(total).toBeGreaterThan(0);
+    expect(plan.unassigned.length).toBe(total);
+  });
+
+  it('REPORTS THE STEPS THEMSELVES, NOT A PARALLEL LIST OF THEM', () => {
+    /* The line on screen says "N of M steps", and the list under it is
+       the phases. If `unassigned` were rebuilt from the element list
+       rather than read back off the phases, the two could disagree
+       while both looked right — a count that describes a plan the
+       reader is not looking at. Identity, not equality, is what makes
+       that impossible.
+
+       An assignment against an element that produced no step (1.1 is
+       settled at rung 4 here) has nowhere to land, and this is what
+       says so. */
+    const answers = { ...all(0), '1.1': 4 };
+    const plan = implementationPlan(answers, {
+      assignments: { '1.1': { owner: 'A. Mwangi', due: '2026-11-26' } }
+    });
+    const steps = plan.phases.flatMap((p) => p.steps);
+    expect(plan.unassigned.length).toBeGreaterThan(0);
+    for (const entry of plan.unassigned) {
+      expect(steps, `${entry.element.id} is not one of the steps on the page`).toContain(entry);
+    }
+    expect(steps.map((s) => s.element.id)).not.toContain('1.1');
+    expect(plan.unassigned.map((s) => s.element.id)).not.toContain('1.1');
+  });
+
+  it('leaves owner and due absent rather than empty when unassigned', () => {
+    // `'owner' in step` is how the print path decides whether to render
+    // a name; a present-but-empty key would print an empty name.
+    const step = implementationPlan(all(0)).phases[0]!.steps[0]!;
+    expect('owner' in step).toBe(false);
+    expect('due' in step).toBe(false);
+  });
+});

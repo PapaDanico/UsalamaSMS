@@ -64,9 +64,27 @@ function load() {
       Object.entries(parsed._suitability ?? {}).filter(([, v]) => SUIT_VALUES.includes(v))
     );
     const scale = SCALE_IDS.includes(parsed._scale) ? parsed._scale : undefined;
-    return { answers, suitability, scale };
+    /* Owners and dates, validated as hard as the levels are. A name is
+       capped rather than trusted — the store is hand-editable and this
+       string is rendered — and a date must be an actual ISO day, not
+       whatever the box was left holding. */
+    const assignments = Object.fromEntries(
+      Object.entries(parsed._assignments ?? {})
+        .filter(([, v]) => v && typeof v === 'object')
+        .map(([k, v]) => [
+          k,
+          {
+            ...(typeof v.owner === 'string' && v.owner.trim()
+              ? { owner: v.owner.trim().slice(0, 120) }
+              : {}),
+            ...(typeof v.due === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.due) ? { due: v.due } : {})
+          }
+        ])
+        .filter(([, v]) => v.owner || v.due)
+    );
+    return { answers, suitability, scale, assignments };
   } catch {
-    return { answers: {}, suitability: {}, scale: undefined };
+    return { answers: {}, suitability: {}, scale: undefined, assignments: {} };
   }
 }
 
@@ -74,7 +92,12 @@ function save(state) {
   try {
     localStorage.setItem(
       STORE,
-      JSON.stringify({ ...state.answers, _suitability: state.suitability, _scale: state.scale })
+      JSON.stringify({
+        ...state.answers,
+        _suitability: state.suitability,
+        _scale: state.scale,
+        _assignments: state.assignments
+      })
     );
   } catch {
     /* Private mode, or a full quota. The assessment still works for
@@ -139,6 +162,26 @@ function Element(element, answers, suitability) {
       </div>
     </fieldset>
   `;
+}
+
+/**
+ * How much of the plan has a name and a date against it.
+ *
+ * Its own function because it is refreshed on its own: typing an owner
+ * repaints this one line rather than the panel, since rebuilding the
+ * panel would destroy the input the person is tabbing out of.
+ */
+function unassignedLine(plan) {
+  const total = plan.phases.reduce((n, p) => n + p.steps.length, 0);
+  const open = plan.unassigned.length;
+  if (total === 0) return '';
+  if (open === 0) {
+    return html`Every step has an owner and a date. That is what makes this a plan rather
+      than a list of findings.`;
+  }
+  return html`<strong>${open} of ${total}</strong> ${open === 1 ? 'step is' : 'steps are'}
+    missing an owner, a date, or both. A regulator reading a submitted plan asks who and
+    by when before it asks anything else.`;
 }
 
 function Result(result, scale, plan) {
@@ -286,11 +329,39 @@ function Result(result, scale, plan) {
                     ${step.from.label.toLowerCase()} to ${step.to.label.toLowerCase()}.
                     <span class="mat-gaps__evidence">${step.action}</span>
                     <span class="mat-phase__done"><strong>Done when:</strong> ${step.evidence}</span>
+                    <!-- WHO, AND BY WHEN. The two questions a regulator
+                         asks of a submitted implementation plan, and the
+                         two this tool used to leave the operator to
+                         answer somewhere else. Typed here, printed with
+                         the plan. -->
+                    <span class="mat-assign">
+                      <label>
+                        <span class="mat-assign__label">Owner</span>
+                        <input
+                          type="text"
+                          class="mat-assign__owner"
+                          data-element="${step.element.id}"
+                          maxlength="120"
+                          autocomplete="off"
+                          placeholder="Nobody yet"
+                          value="${step.owner ?? ''}"
+                        />
+                      </label>
+                      <label>
+                        <span class="mat-assign__label">Due</span>
+                        <input
+                          type="date"
+                          data-element="${step.element.id}"
+                          value="${step.due ?? ''}"
+                        />
+                      </label>
+                    </span>
                   </li>`
                 )}
               </ol>
             </section>`
           )}
+          <p class="mat-phase__assign" id="mat-unassigned">${unassignedLine(plan)}</p>
           ${plan.settled.length
             ? html`<p class="mat-phase__settled">
                 Already at the top of the scale, and carried here so the plan shows the
@@ -311,7 +382,7 @@ function Result(result, scale, plan) {
 }
 
 export function render(outlet) {
-  let { answers, suitability, scale } = load();
+  let { answers, suitability, scale, assignments } = load();
 
   outlet.innerHTML = html`
     <section class="band-dark">
@@ -436,9 +507,15 @@ export function render(outlet) {
   const form = outlet.querySelector('#mat-form');
   const body = outlet.querySelector('#mat-result-body');
 
+  const currentPlan = () =>
+    implementationPlan(answers, { suitability, assignments, ...(scale ? { scale } : {}) });
+
   const repaint = () => {
-    const plan = implementationPlan(answers, { suitability, ...(scale ? { scale } : {}) });
-    body.innerHTML = Result(scoreAssessment(answers, 1, suitability), scale, plan).toString();
+    body.innerHTML = Result(
+      scoreAssessment(answers, 1, suitability),
+      scale,
+      currentPlan()
+    ).toString();
   };
 
   form.addEventListener('change', (event) => {
@@ -454,8 +531,36 @@ export function render(outlet) {
     } else {
       return;
     }
-    save({ answers, suitability, scale });
+    save({ answers, suitability, scale, assignments });
     repaint();
+  });
+
+  /* Owners and dates live in the result panel, which the radios above
+     rebuild wholesale. So they are handled separately and DELIBERATELY
+     do not repaint it: a full rebuild here would destroy the input the
+     person is tabbing out of, mid-tab. Only the one line that changed
+     is refreshed. */
+  body.addEventListener('change', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const id = input.dataset.element;
+    if (!id) return;
+    /* The input's own type, not a class. A class used purely to find an
+       element in JS is a class the CSS gate then has to be told to
+       ignore; the type is already the thing that distinguishes them. */
+    const field = input.type === 'text' ? 'owner' : input.type === 'date' ? 'due' : null;
+    if (!field) return;
+
+    const value = input.value.trim();
+    const next = { ...(assignments[id] ?? {}), [field]: value };
+    if (!next.owner) delete next.owner;
+    if (!next.due) delete next.due;
+    assignments = { ...assignments, [id]: next };
+    if (!next.owner && !next.due) delete assignments[id];
+
+    save({ answers, suitability, scale, assignments });
+    const line = body.querySelector('#mat-unassigned');
+    if (line) line.innerHTML = unassignedLine(currentPlan()).toString();
   });
 
   outlet.querySelector('#mat-print').addEventListener('click', () => window.print());
@@ -464,7 +569,8 @@ export function render(outlet) {
     answers = {};
     suitability = {};
     scale = undefined;
-    save({ answers, suitability, scale });
+    assignments = {};
+    save({ answers, suitability, scale, assignments });
     for (const input of form.querySelectorAll('input[type=radio]')) input.checked = false;
     repaint();
   });

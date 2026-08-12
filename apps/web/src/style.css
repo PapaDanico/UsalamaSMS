@@ -2824,9 +2824,25 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .mat-phase__settled,
 .mat-phase__partial { margin-top: var(--us-space-4); font-size: var(--us-text-sm); color: var(--us-text-tertiary); max-width: 62ch; }
 
+/* Who owns the step, and by when. Two small fields rather than a form:
+   they sit inside a list item an assessor reads down, and a full-width
+   input there would read as the point of the item rather than as an
+   annotation on it. They wrap on a narrow screen instead of shrinking,
+   because a date box narrower than a date is not a date box. */
+.mat-assign { display: flex; flex-wrap: wrap; gap: var(--us-space-3); margin-top: var(--us-space-2); }
+.mat-assign label { display: flex; align-items: baseline; gap: var(--us-space-2); }
+.mat-assign__label { font-size: var(--us-text-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--us-text-tertiary); }
+.mat-assign input { font: inherit; font-size: var(--us-text-sm); padding: 4px 8px; border: 1px solid var(--us-border); border-radius: var(--us-radius-sm); background: var(--us-surface); color: var(--us-text-primary); min-width: 0; }
+.mat-assign__owner { width: 14ch; }
+.mat-phase__assign { margin-top: var(--us-space-4); font-size: var(--us-text-sm); color: var(--us-text-secondary); max-width: 62ch; }
+
 @media print {
   /* A phase that breaks across a page is one an assessor loses. */
   .mat-phase { break-inside: avoid; }
+  /* The fields print as what they hold, not as boxes. An empty one
+     still prints its rule, so a blank owner is visible on paper as a
+     blank rather than as nothing at all. */
+  .mat-assign input { border: 0; border-bottom: 1px solid var(--us-border); border-radius: 0; padding: 0 4px; background: none; }
 }
 
 /* ── The assessment, on paper ────────────────────────────────────────
