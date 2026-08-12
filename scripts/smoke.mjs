@@ -966,6 +966,49 @@ try {
       `the heading is ${Math.round(landing.clearance)}px below the chrome; the anchor ` +
         'overshot the section it names'
     );
+
+    // THE CROSS-PAGE CASE, which is the footer's most important link and
+    // had never once worked. "/#deadlines" starts with a slash, so the
+    // router claimed it; normalise() strips the fragment to get a route,
+    // and the fragment went with it. Every press landed on the top of
+    // the landing page instead of on the regulatory basis.
+    await page.click('.footer a[href="/#deadlines"]');
+    await page.waitForFunction(
+      () => {
+        if (!document.querySelector('#deadlines')) return false;
+        const y = window.scrollY;
+        if (window.__lastY2 === y) return true;
+        window.__lastY2 = y;
+        return false;
+      },
+      undefined,
+      { timeout: 5000, polling: 250 }
+    );
+
+    const crossPage = await page.evaluate(() => {
+      const heading = document.querySelector('#deadlines h2').getBoundingClientRect();
+      const chromeBottom = Math.max(
+        document.querySelector('.nav').getBoundingClientRect().bottom,
+        document.querySelector('#sync-strip').getBoundingClientRect().bottom
+      );
+      return {
+        path: window.location.pathname,
+        hash: window.location.hash,
+        scrollY: window.scrollY,
+        clearance: heading.top - chromeBottom
+      };
+    });
+
+    assert(crossPage.path === '/', `the deadlines link went to ${crossPage.path}`);
+    assert(crossPage.hash === '#deadlines', `the fragment was dropped: "${crossPage.hash}"`);
+    assert(
+      crossPage.scrollY > 0,
+      'the deadlines link landed on the top of the landing page rather than on the deadlines'
+    );
+    assert(
+      crossPage.clearance >= 0 && crossPage.clearance < 200,
+      `the deadlines heading is ${Math.round(crossPage.clearance)}px from the sticky chrome`
+    );
   });
 
   await check('THE GLOSSARY RENDERS THE MODULE, NOT A COPY OF IT', async () => {
