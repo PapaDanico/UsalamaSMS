@@ -61,7 +61,7 @@ function show({ id, text, actionLabel, onAction, dismissLabel = 'Not now', onDis
       <button type="button" class="btn btn-secondary btn-sm" data-act="dismiss">
         ${dismissLabel}
       </button>
-      <button type="button" class="btn btn--primary btn--sm" data-act="go">${actionLabel}</button>
+      <button type="button" class="btn btn-primary btn-sm" data-act="go">${actionLabel}</button>
     </div>
   `.toString();
 

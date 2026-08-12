@@ -1,12 +1,22 @@
 /* ============================================================
    App shell.
 
-   Three routes, one outlet, and the sync strip above all of them.
+   Five routes, one outlet, and the sync strip above all of them.
 
-     /          the report form — the screen the product lives or dies by
+     /          the landing page — what this is, and what its numbers
+                are based on
+     /report    the report form — the screen the product lives or dies by
      /triage    what is on this device and what has not been sent
+     /account   sign in, so the queue can send
      /design    the brand system rendering itself against the real
                 modules, so docs/04-BRAND.md can be checked by looking
+
+   The form moved off `/` and the manifest's start_url moved onto
+   /report with it. An installed app opens on the form because somebody
+   who installed this installed it to file; a browser visitor opens on
+   the landing page because they arrived to find out what it is. The
+   constraint that put the form first is kept — it is just kept by
+   start_url rather than by having no front door.
 
    The strip is deliberately OUTSIDE the outlet. It is chrome, not a
    page: charter rule 8 extended says an unsynced report has not been
@@ -26,6 +36,7 @@ import {
   isProvisional
 } from '../../../packages/shared/src/regulations.ts';
 import { watchForInstall, offerUpdate } from './shared/prompts.js';
+import { render as renderHome } from './tools/home/index.js';
 import { render as renderReport } from './tools/report/index.js';
 import { render as renderTriage } from './tools/triage/index.js';
 import { render as renderLogin } from './tools/login/index.js';
@@ -40,7 +51,7 @@ document.getElementById('footer-logo-slot').innerHTML = Lockup({ height: 30 }).t
    inline in the top bar. Two lists would drift, and the one that
    drifted would be the one nobody was looking at. */
 const DESTINATIONS = [
-  { href: '/', label: 'File a report', hint: 'Two fields, thirty seconds, works with no signal' },
+  { href: '/report', label: 'File a report', hint: 'Three fields, thirty seconds, works with no signal' },
   { href: '/triage', label: 'Triage', hint: 'Everything filed on this device, sent or not' },
   { href: '/account', label: 'Account', hint: 'Sign in so queued reports can send' },
   { href: '/design', label: 'Design system', hint: 'The brand rendered against the real modules' }
@@ -59,8 +70,13 @@ document.getElementById('nav').innerHTML = DESTINATIONS.map(
    cannot reach the top of a 6.7-inch screen. That argument is real and
    it lost to a plainer one: the header is where a person looks for the
    way around, the footer was repeating the same four links as a second
-   menu, and neither was telling them anything. Kanda puts Menu in the
-   header; so does this now, and the footer becomes information.
+   menu, and neither was telling them anything. The benchmark puts Menu
+   in the header; so does this now, and the footer becomes information.
+
+   The lockup is the way home. It is an <a href="/"> in every header on
+   every screen, which is why the landing page is not also a
+   destination in this list — a menu that offers "Home" beside a logo
+   that already goes there is a list padded to look fuller.
 
    The panel carries a HINT per destination, which the tab bar could
    never have shown. "Triage" means nothing to somebody on their first
@@ -104,43 +120,28 @@ document.addEventListener('keydown', (event) => {
 });
 
 /* ============================================================
-   THE FOOTER'S REGULATORY ROWS, COMPUTED.
+   THE FOOTER'S ONE COMPUTED LINE.
 
-   Charter rule 10: counts and claims about the product are derived, not
-   typed. A footer that stated "Kenya: 24 hours" as prose would be a
-   fifth place the number lives, and the one nobody would think to
-   update — which is precisely how the original 72-hour error survived.
-   These rows read MOR_OBLIGATIONS, the same registry the countdown on
-   the report form reads.
+   The five regulatory rows moved to the landing page, which is where a
+   person checking a deadline can be sent with a URL. What stays here is
+   the one fact the footer of every screen owes a reader: how many
+   jurisdictions the figures cover, and how many of those are still
+   provisional.
+
+   Charter rule 10 applies to it exactly as it applied to the rows.
+   Typing "five jurisdictions" here would be a second place the count
+   lives, and the one nobody updates when a sixth is added — so it is
+   counted from MOR_OBLIGATIONS, which is also what decides whether the
+   sentence needs a caveat at all.
    ============================================================ */
-const regList = document.getElementById('footer-regulations');
 const jurisdictions = Object.keys(MOR_OBLIGATIONS);
-
-regList.innerHTML = jurisdictions
-  .map((code) => {
-    const o = MOR_OBLIGATIONS[code];
-    return html`<div class="reg-list__row">
-        <dt>
-          ${o.authority}
-          ${isProvisional(code) ? html`<span class="tag tag--provisional">Provisional</span>` : ''}
-        </dt>
-        <dd>
-          <strong>${o.hours} hours</strong> from
-          ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·
-          <span class="reg-list__source">${o.instrument}</span>
-        </dd>
-      </div>`;
-  })
-  .join('');
-
-/* Named rather than left for someone to notice. A provisional row is
-   the highest-risk claim in the product — switch 1 — and the footer is
-   where a safety manager checking a deadline would look for the caveat. */
 const provisional = jurisdictions.filter(isProvisional);
-document.getElementById('footer-provisional').textContent = provisional.length
-  ? `${provisional.join(', ')} carry the ICAO-common figure pending a read of the ` +
-    `primary instrument, and are marked provisional wherever they appear.`
-  : 'Every row above has been read against its primary instrument.';
+
+document.getElementById('footer-jurisdictions').textContent =
+  `${jurisdictions.length} jurisdiction${jurisdictions.length === 1 ? '' : 's'}` +
+  (provisional.length
+    ? `, of which ${provisional.length} are provisional pending a read of the primary instrument.`
+    : ', every one read against its primary instrument.');
 
 /* Reveal the shell and retire the boot screen. Done here rather than in
    CSS so the swap happens when the app can actually render, not when
@@ -153,7 +154,8 @@ document.getElementById('boot')?.remove();
 const outlet = document.getElementById('main');
 
 router
-  .register('/', (el) => renderReport(el), { title: 'File a report' })
+  .register('/', (el) => renderHome(el), { title: 'Safety intelligence for African skies' })
+  .register('/report', (el) => renderReport(el), { title: 'File a report' })
   .register('/triage', (el) => void renderTriage(el), { title: 'Triage' })
   // NOT a guard in front of the report form, deliberately. Filing must
   // never require a password — see the header of tools/login. This route
@@ -189,7 +191,7 @@ router
       <section class="panel">
         <h1>Not found</h1>
         <p class="lede">
-          That page does not exist. <a href="/">File a report</a> instead.
+          That page does not exist. <a href="/report">File a report</a> instead.
         </p>
       </section>
     `.toString();

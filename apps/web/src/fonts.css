@@ -28,7 +28,7 @@
    SELF-HOSTED AND SAME-ORIGIN, which is the mechanism rather than a
    preference. netlify.toml's CSP sets `font-src 'self'` with no CDN
    exception, so a font served from anywhere else fails to load rather
-   than quietly working — the same discipline Kanda applies, for the same
+   than quietly working — the same discipline the benchmark applies, for the same
    reason: this product promises a safety narrative reaches the safety
    office and nobody else, and a font request is a request.
 

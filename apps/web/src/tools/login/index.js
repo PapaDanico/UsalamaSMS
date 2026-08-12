@@ -58,12 +58,12 @@ const TRUST = [
 
 function Banner(headline, lede) {
   return html`
-    <section class="band band-ink">
-      <div class="container">
-        <!-- No lockup here. Kanda's hero carries one because its nav
-             lockup is small and a hundred pixels of scroll away; ours is
-             the same size and sits directly above, so a second copy
-             reads as a rendering mistake rather than as a statement. -->
+    <section class="band-dark">
+      <div class="wrap">
+        <!-- No lockup here. A hero carries one when the nav lockup is
+             small and a hundred pixels of scroll away; ours is the same
+             size and sits directly above, so a second copy reads as a
+             rendering mistake rather than as a statement. -->
         <span class="eyebrow">Account</span>
         <h1>${headline}</h1>
         <p class="lede">${lede}</p>
@@ -98,7 +98,7 @@ function renderSignedIn(outlet) {
         ? html` You are signed in as <strong>${labelForRole(session.role)}</strong>.`
         : ''}`
     )}
-    <section class="panel container" id="login-panel">
+    <section class="panel wrap" id="login-panel">
       <button type="button" class="btn btn-secondary" id="sign-out">Sign out</button>
       <p class="hint">
         Signing out does not delete anything you have filed. Reports still
@@ -121,7 +121,7 @@ function renderForm(outlet) {
       html`Reports are held on this device until someone signs in, so the safety
         office knows which organisation they belong to.`
     )}
-    <section class="panel container">
+    <section class="panel wrap">
       <p class="lede lede--tight">
         <strong>You do not need to sign in to file a report.</strong> Filing
         works with no account and no signal; signing in is what sends what is

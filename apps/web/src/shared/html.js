@@ -1,10 +1,10 @@
 /* ============================================================
    Safe HTML templating
 
-   Ported verbatim from Kanda, where it was written to close audit
-   finding A-10. It matters more here than it did there. Kanda's
-   free-text surface was a company name and a note; this product's is a
-   safety narrative — up to 20,000 characters, typed by a frontline
+   Ported verbatim from the sibling product, where it was written to
+   close an audit finding. It matters more here than it did there: that
+   product's free-text surface was a company name and a note, and this
+   one's is a safety narrative — up to 20,000 characters, typed by a frontline
    reporter, rendered in a triage queue, an investigation view, a
    de-identified bulletin circulated to other operators, and a PDF sent
    to the regulator. One unescaped interpolation is stored XSS with five

@@ -139,13 +139,72 @@ try {
   await page.goto(BASE, { waitUntil: 'networkidle' });
 
   await check('the app renders', async () => {
-    assert(await page.locator('#report-form').isVisible(), 'the report form did not render');
+    assert(await page.locator('.band-dark h1').isVisible(), 'the landing page did not render');
     assert(await page.locator('.us-mark').first().isVisible(), 'the mark did not render');
   });
 
   await check('no uncaught page errors on load', async () => {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
   });
+
+  await check('THE LANDING PAGE CARRIES THE DEADLINES, AND THEY ARE COMPUTED', async () => {
+    // The five regulatory rows were the footer of every screen, which
+    // made the most consequential claim in the product into the thing a
+    // person scrolled past. They are a section here, at an anchor a
+    // safety manager can be sent a link to.
+    //
+    // Rendered from MOR_OBLIGATIONS rather than written into the page —
+    // charter rule 10, and the only way a page citing a 24-hour
+    // obligation cannot drift from the engine that computes the
+    // countdown.
+    const section = await page.evaluate(() => {
+      const el = document.querySelector('#deadlines');
+      if (!el) return null;
+      return {
+        rows: el.querySelectorAll('.reg-list__row').length,
+        text: el.textContent ?? ''
+      };
+    });
+
+    assert(section, 'there is no #deadlines section on the landing page to link to');
+    assert(
+      section.rows >= 5,
+      `${section.rows} regulatory rows; the registry defines five jurisdictions`
+    );
+    // The Kenyan figure is the one that was wrong for most of this
+    // project's life. If this ever prints 72 for KCAA again, that is the
+    // original defect resurfacing on a new surface.
+    assert(/24 hours/.test(section.text), 'the 24-hour KCAA obligation is not stated');
+    assert(/becoming aware/.test(section.text), 'when the clock starts is not stated');
+    assert(
+      /provisional/i.test(section.text),
+      'which jurisdictions are provisional is not stated — switch 1 is the highest-risk ' +
+        'claim in the product and this is the surface someone checking a deadline lands on'
+    );
+  });
+
+  await check('THE FRONT DOOR REACHES THE FORM IN ONE TAP', async () => {
+    // A landing page in front of a thirty-second form is a tax on the
+    // person the form was designed for. It is only acceptable because
+    // the form is one visible, unscrolled tap away here — and because
+    // the manifest's start_url is /report, so nobody who INSTALLED this
+    // ever sees this page at all.
+    const cta = page.locator('.hero-actions a[href="/report"]');
+    assert(await cta.isVisible(), 'the landing page has no visible link to the report form');
+    const box = await cta.boundingBox();
+    assert(box && box.y < 844, `the "File a report" action is ${Math.round(box?.y ?? 0)}px down, below the first screen`);
+
+    const manifest = JSON.parse(readFileSync(join(DIST, 'manifest.json'), 'utf8'));
+    assert(
+      manifest.start_url === '/report',
+      `the manifest starts an installed app at ${manifest.start_url}, not on the form`
+    );
+  });
+
+  /* Everything below drives the report form, which is no longer at the
+     root. Navigating once here rather than per check keeps the run at
+     one page load. */
+  await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
 
   await check('the report form has exactly three required fields', async () => {
     // The thirty-second target is a design constraint and the whole
@@ -162,6 +221,28 @@ try {
     // Raising this number again needs the same kind of argument.
     const required = await page.locator('#report-form [required]').count();
     assert(required === 3, `${required} required fields; the form is designed for 3`);
+  });
+
+  await check('the form STATES the number of required fields it actually has', async () => {
+    // It said "Two required fields" while the form asked for three, from
+    // the day report type stopped being pre-answered. Nobody re-read the
+    // sentence because nothing pointed at it, and the one number a
+    // thirty-second form makes a promise about was wrong on the screen
+    // that makes the promise.
+    //
+    // The fix was to count it from the DOM. This is what stops someone
+    // typing it back in — charter rule 11: a claim that can drift needs
+    // something that fails when it does.
+    const WORDS = { No: 0, One: 1, Two: 2, Three: 3, Four: 4, Five: 5 };
+    const lede = (await page.locator('.page-head .lede').textContent()) ?? '';
+    const stated = /^\s*(\w+)\s+required fields?/i.exec(lede.trim());
+    assert(stated, `the form does not state how many fields are required: "${lede.trim()}"`);
+    const claimed = WORDS[stated[1]] ?? Number(stated[1]);
+    const actual = await page.locator('#report-form [required]').count();
+    assert(
+      claimed === actual,
+      `the form says ${stated[1]} required fields and has ${actual}`
+    );
   });
 
   await check('the anonymity control is visible without opening anything', async () => {
@@ -213,40 +294,62 @@ try {
     assert(!at1280.toggle, 'the Menu button is still shown at 1280px, beside the inline links');
   });
 
-  await check('THE FOOTER IS INFORMATION, NOT A SECOND MENU', async () => {
-    // It used to repeat the four destinations already in the header —
-    // a menu drawn twice that told nobody anything. What belongs at the
-    // bottom of a compliance tool is the BASIS of its numbers.
+  await check('THE FOOTER IS INFORMATION, AND IT IS SHORT', async () => {
+    // Two failures, one rule. It must not be the header drawn twice —
+    // that is what it was originally, four links telling nobody
+    // anything. And it must not be the tallest thing on the screen —
+    // that is what it became when the five regulatory rows lived in it,
+    // and a person on a handset scrolled two thousand pixels of
+    // citation to reach a copyright line.
     //
-    // And those rows are rendered from MOR_OBLIGATIONS rather than
-    // written into the HTML, so a footer citing 24 hours cannot drift
-    // from the engine that computes the countdown. Charter rule 10.
+    // The rows moved to /#deadlines. The footer keeps a link to them,
+    // which is the difference between a reference and a wall.
     const footer = await page.evaluate(() => {
       const el = document.querySelector('.footer');
+      const menu = document.querySelectorAll('#menu-panel a').length;
       return {
-        navLinks: el.querySelectorAll('nav a').length,
+        links: el.querySelectorAll('a').length,
+        menuLinks: menu,
         regRows: el.querySelectorAll('.reg-list__row').length,
-        text: el.textContent ?? '',
+        height: el.getBoundingClientRect().height,
+        viewport: window.innerHeight,
+        text: el.textContent ?? ''
       };
     });
 
     assert(
-      footer.navLinks === 0,
-      `the footer carries ${footer.navLinks} navigation links — that is the header's job`
+      footer.links < footer.menuLinks,
+      `the footer carries ${footer.links} links against the menu's ${footer.menuLinks} — ` +
+        'at parity it is the navigation drawn twice, which is what it was before'
     );
     assert(
-      footer.regRows >= 5,
-      `${footer.regRows} regulatory rows in the footer; the registry defines five jurisdictions`
+      footer.regRows === 0,
+      `${footer.regRows} regulatory rows are still in the footer; they belong at /#deadlines`
     );
-    // The Kenyan figure is the one that was wrong for most of this
-    // project's life. If the footer ever prints 72 for KCAA again, that
-    // is the original defect resurfacing on a new surface.
-    assert(/24 hours/.test(footer.text), 'the footer does not state the 24-hour KCAA obligation');
-    assert(/becoming aware/.test(footer.text), 'the footer does not state when the clock starts');
+    assert(
+      footer.height < footer.viewport * 1.5,
+      `the footer is ${Math.round(footer.height)}px tall against a ${footer.viewport}px ` +
+        'viewport — a footer longer than a screen and a half is a page of its own'
+    );
+    // What it must still say. The count is computed from the registry
+    // rather than typed, so a sixth jurisdiction changes this sentence
+    // without anyone editing the HTML — charter rule 10, applied to the
+    // one line that survived the move.
+    assert(
+      /jurisdictions/.test(footer.text),
+      'the footer does not say how many jurisdictions the figures cover'
+    );
     assert(
       /provisional/i.test(footer.text),
-      'the footer does not say which jurisdictions are provisional — switch 1 is the ' +
-        'highest-risk claim in the product and this is where someone checking a deadline looks'
+      'the footer does not carry the provisional caveat'
+    );
+    assert(
+      /Annex 19 Amendment 2/.test(footer.text),
+      'the footer does not name the standard the product is built against'
+    );
+    assert(
+      await page.locator('.footer a[href="/#deadlines"]').count() === 1,
+      'the footer does not link to the deadlines it used to contain'
     );
   });
 
@@ -406,7 +509,7 @@ try {
     // The raw Zod message for this is
     //   "Invalid enum value. Expected 'MOR' | 'VCR' | 'HAZARD' | ..."
     // and it reached the screen until this check existed.
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
     await page.fill('input[name=title]', 'Something happened on the ramp');
     await page.fill('textarea[name=narrative]', 'A description long enough to pass validation.');
     await page.click('button[type=submit]');
@@ -423,7 +526,7 @@ try {
     // next person to pick up a shared crew-room handset, with no
     // authentication, and it would make the server's irreversible
     // anonymity irrelevant.
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
 
     await page.fill('input[name=title]', 'Ordinary draft that should persist');
     await page.fill('textarea[name=narrative]', 'A named report may be drafted to disk.');

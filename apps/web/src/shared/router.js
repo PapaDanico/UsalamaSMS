@@ -90,9 +90,9 @@ class Router {
     const match = this.routes.get(path);
     this.current = path;
 
-    /* HANDLER CONTRACT — changed from Kanda's, deliberately.
+    /* HANDLER CONTRACT — changed from the one this was ported from.
 
-       Kanda's handlers take no arguments and RETURN a DOM node, which
+       There, handlers take no arguments and RETURN a DOM node, which
        the router appends. That works when every screen is synchronous.
        This product's triage queue reads IndexedDB, so its render is
        async, and a returned promise would have been appended as the

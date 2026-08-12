@@ -1,25 +1,23 @@
 /* ============================================================
    UsalamaSMS — design tokens
 
-   Ported from the Kanda stylesheet's discipline, not its palette:
-   component rules reference tokens, never raw values. If you find
-   yourself typing a pixel or a hex below the token block, the token is
-   missing — add it rather than inlining it.
+   One discipline, inherited from the benchmark: component rules
+   reference tokens, never raw values. If you find yourself typing a
+   pixel or a hex below the token block, the token is missing — add it
+   rather than inlining it.
 
-   ONE DELIBERATE DIVERGENCE FROM KANDA: there is no dark scheme. Kanda
-   resolves every brand colour through a light/dark pair because it is
-   read on a phone at a border post at night. UsalamaSMS is read in a
-   cockpit, a hangar office and a regulator's meeting room, and a safety
-   report that renders differently depending on an OS setting is a
-   safety report two people can describe differently. One scheme, one
+   NO DARK SCHEME, deliberately. UsalamaSMS is read in a cockpit, a
+   hangar office and a regulator's meeting room, and a safety report
+   that renders differently depending on an OS setting is a safety
+   report two people can describe differently. One scheme, one
    rendering, one printed output. See docs/04-BRAND.md.
    ============================================================ */
 
 :root {
   /* ---- Type ------------------------------------------------ */
   /* Inter is the stand-in for the brand's geometric sans, chosen for
-     the same reason Kanda chose DM Sans: open licence, the documented
-     weights, and self-hosted so the CSP can forbid every off-origin
+     the usual reasons: open licence, the documented weights, and
+     self-hosted so the CSP can forbid every off-origin
      request. No call site names a family directly — when the licensed
      face arrives, replace the @font-face sources and nothing else. */
   --us-font: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -103,9 +101,9 @@
   --us-sand: #f5f0e8;       /* Warm Sand        — ground, sunk surfaces   */
   --us-ochre: #bb321a;      /* Ochre Red        — alert, intolerable risk */
 
-  /* Channel triplets, for brand colour at partial alpha. Kanda learned
-     this the expensive way: a hardcoded rgba() is invisible to a token
-     sweep, so ten hairlines carried a stale cream through a repaint. */
+  /* Channel triplets, for brand colour at partial alpha. A hardcoded
+     rgba() is invisible to a token sweep, which is how ten hairlines
+     carried a stale cream through a repaint on the sibling product. */
   --us-sand-rgb: 245 240 232;
   --us-charcoal-rgb: 44 44 44;
   --us-teal-rgb: 42 122 123;
@@ -267,8 +265,9 @@
   /* ---- Categorical -------------------------------------------
      For distinguishing series in a chart — HRC categories, report types,
      departments. Carries NO semantic meaning and must never signal good
-     or bad. Kanda shipped that exact defect: the worst finding rendered
-     green because its category happened to be green. Here the rule is
+     or bad. The sibling product shipped that exact defect: the worst
+     finding rendered green because its category happened to be green.
+     Here the rule is
      enforced by name — anything reading --us-cat-* to express severity
      is wrong by construction. */
   --us-cat-1: #2a7a7b;
@@ -280,991 +279,389 @@
 }
 
 /* ============================================================
-   KANDA'S COMPONENT LAYER, ported rather than imitated.
+   JK & ASSOCIATES' COMPONENT LAYER, ported.
 
-   This was being re-derived one component at a time — a card here, a
-   button system there — while a mature, contrast-checked version of
-   exactly it sat two directories away and is the stated benchmark.
+   JK & Associates (jkassociates.enterprises) is the benchmark, and it
+   is the right one by temperature: its ramp runs oxblood -> terracotta
+   -> ember -> amber -> sand over warm ink and parchment, and its
+   stylesheet says outright that "nothing here is cool-toned; the whole
+   system is deliberately one temperature". That is Usalama's palette
+   described in another product's words.
 
-   Every --ca-* token renamed to --us-*, which works because the scale,
-   spacing, radius and motion tokens are the same shape in both. Every
-   Kanda brand token mapped onto Usalama's six:
+   THE MAPPING, and every line of it is a decision:
 
-     --brand-primary     -> --us-charcoal    the ink the wordmark sets in
-     --brand-accent      -> --us-teal        action, focus, links
-     --kanda-indigo*     -> --us-charcoal    the ink band ground
-     --kanda-amber       -> --us-terracotta
-     --kanda-amber-light -> --us-gold
-     --kanda-mint        -> --us-teal / --us-teal-text
-     --kanda-sand        -> --us-sand
+     --jk-ink        -> --us-charcoal      warm near-black, the ink
+     --jk-terracotta -> --us-teal          JK's PRIMARY accent becomes
+                                           Usalama's action colour, which
+                                           the brand book assigns to
+                                           Aviation Teal. This is the one
+                                           place the port refuses JK's
+                                           own choice: teal is where
+                                           Usalama puts its buttons,
+                                           links and focus rings.
+     --jk-ember      -> --us-terracotta    Deep Terracotta keeps its
+                                           decorative role
+     --jk-amber      -> --us-gold          Savannah Gold
+     --jk-parchment  -> --us-surface-muted
+     --jk-sand       -> --us-sand          Warm Sand
+     --jk-red        -> --us-ochre         Ochre Red, alert only
+     --jk-muted      -> --us-ink-600
 
-   Kanda's DARK SCHEME is deliberately not ported. Charter deviation 3:
-   this product has one rendering, because a safety report that looks
-   different depending on an OS setting is a safety report two people
-   can describe differently.
+   TYPOGRAPHY IS NOT PORTED. JK sets its headings in Cormorant Garamond
+   over DM Sans, and that serif IS its identity. Usalama's wordmark is a
+   geometric sans; a Garamond headline above it reads as two companies
+   on one screen. Both --serif and --sans resolve to --us-font here, so
+   the structure ports and the voice does not.
    ============================================================ */
 
-body {
-  background: var(--us-surface);
-  color: var(--us-text-primary);
-  min-height: 100dvh;
-  font-size: var(--us-text-base);
-  line-height: var(--us-leading-normal);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  /* Cormorant ships OLD-STYLE figures: "11" renders as "II" and the 3
-     in "1.3" drops below the baseline. Set lining at the root so it is
-     inherited everywhere, including markup generated at runtime — an
-     opt-in allow-list silently misses exactly those surfaces. */
-  font-variant-numeric: lining-nums;
-}
 
-/* Headlines: Bold, title case, slightly tight tracking — the wordmark's
-   own specification, applied to the whole display hierarchy. */
-h1,
-h2 {
-  font-family: var(--us-font-display);
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.028em;
-  text-wrap: balance;
-}
 
-h3,
-h4 {
-  line-height: var(--us-leading-tight);
-  letter-spacing: var(--us-tracking-snug);
-  font-weight: var(--us-weight-semi);
-  text-wrap: balance;
-}
+/* ============================================================
+   FIGURES — read this before touching numeric type.
 
-.band-ink .slogan,
-.hero .slogan,
-.footer .slogan {
-  color: var(--us-teal);
-}
+   Cormorant Garamond ships OLD-STYLE (text) figures by default: "11"
+   renders as "II", the 3 in "$1.3" drops below the baseline, and the 0
+   in "110+" sits at x-height. That is correct for running prose and
+   actively wrong for data — in the venture tools it made "12–24" read
+   as "I2–24" and financial totals look broken.
 
-.eyebrow {
-  display: block;
-  font-family: var(--us-font);
-  font-size: var(--us-text-2xs);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--us-teal-text);
-  margin-bottom: var(--us-space-3);
-}
+   LINING is set at the root and inherited, rather than enumerated per
+   selector. An allow-list is the wrong shape here: it silently misses
+   inline-styled and JS-generated markup — which is exactly what happened
+   to the hero stat figures on the first attempt — and every new numeric
+   surface would have to remember to opt in. DM Sans carries only lining
+   figures, so this is a no-op for body copy and corrects Cormorant
+   everywhere it is used, including markup that does not exist yet.
+   ============================================================ */
+body { font-variant-numeric: lining-nums; }
 
-p {
-  text-wrap: pretty;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
-
-svg {
-  display: block;
-  flex-shrink: 0;
-}
-
-/* Tabular on top of lining, for figures in columns or updating in
-   place, so digits keep a constant advance width. */
-.num,
-td,
-th,
-input[type='number'],
-.stat-figure,
-.score-figure {
+/* Tabular on top, for figures that sit in columns or update in place, so
+   digits keep a constant advance width and numbers do not jitter as they
+   change under the cursor. */
+.tnum, .kpi .kv, .meter-val, .pg-meter, .stack-row .sv, .metrics .m .v,
+.field input[type="number"],
+.holder-row input[type="number"], #lookthrough td {
   font-variant-numeric: lining-nums tabular-nums;
-  font-feature-settings: 'tnum' 1;
 }
 
-/* Doubled deliberately, not by accident. :focus-visible on its own is
-   one class worth of specificity, so ANY later single-class rule that
-   sets box-shadow silently wins and the focus ring never appears —
-   .card does exactly that a thousand lines below, which left the
-   clickable tool cards on the home page with no keyboard cursor at all.
-   Nothing was broken and nothing errored: the ring simply lost on
-   source order.
-
-   Repeating the pseudo-class raises this to two classes without
-   changing a single element it matches. It now outranks any one-class
-   component rule wherever that rule sits in the file.
-
-   It still loses to the two rules that deliberately override it —
-   .input-field:focus, which gives fields their own border-and-glow
-   treatment, and .band-ink :focus-visible, which lightens the ring on
-   ink. Both are two classes and both come later, so both still win.
-   That is the intent. */
-:focus-visible:focus-visible {
-  outline: none;
-  box-shadow: var(--us-focus);
-  border-radius: var(--us-radius-sm);
-}
-
-::selection {
-  background: color-mix(in srgb, var(--us-teal) 22%, transparent);
-}
-
-/* ============================================================
-   Layout
-   ============================================================ */
-
-#app {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* The nav is sticky, so anything scrolled to programmatically needs to
-   clear it — otherwise scrollIntoView tucks the headline underneath. */
-[id] {
-  scroll-margin-top: calc(56px + var(--us-space-4));
-}
-
-.container {
-  width: 100%;
-  max-width: var(--us-container);
-  margin-inline: auto;
-  padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-10));
-}
-
-/* Long-form and single-flow tool pages want a reading measure, not the
-   full grid width. */
-.container-narrow {
-  width: 100%;
-  max-width: var(--us-container);
-  margin-inline: auto;
-  padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-10));
-}
-
-.page {
-  padding-block: var(--us-section-tight) var(--us-section);
-  flex: 1;
-}
-
-/* Rendered as <h2> so the document outline is navigable. margin-top is
-   pinned because a bare h2 brings its own, and this used to be a div —
-   the whole point is that promoting it changes the outline and nothing
-   else. */
-.section-title {
-  margin-top: 0;
-  font-size: var(--us-text-2xs);
-  font-weight: var(--us-weight-semi);
-  text-transform: uppercase;
-  letter-spacing: var(--us-tracking-wide);
-  color: var(--us-ink-400);
-  margin-bottom: var(--us-space-3);
-}
-
-.page-head {
-  margin-bottom: var(--us-section-tight);
-  max-width: 34ch;
-}
-
-.page-head h1 {
-  font-size: var(--us-text-2xl);
-  margin-bottom: var(--us-space-3);
+/* ---------- reset / base ---------- */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--us-font);
   color: var(--us-charcoal);
-}
-
-.page-head p {
-  font-size: var(--us-text-md);
-  line-height: var(--us-leading-snug);
-  color: var(--us-text-tertiary);
-  max-width: 52ch;
-}
-
-/* ============================================================
-   Navigation
-   ============================================================ */
-
-.nav-bar {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--us-space-3);
-  min-height: 56px;
-  padding: var(--us-space-2) var(--us-space-4);
-  padding-top: max(var(--us-space-2), env(safe-area-inset-top));
-  background: color-mix(in srgb, var(--us-surface) 82%, transparent);
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
-  border-bottom: 1px solid var(--us-border);
-}
-
-.nav-logo {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-  color: var(--us-charcoal);
-}
-
-/* ---- Primary nav ----
-   Inline links on a wide screen, one labelled Menu below 900px. The
-   breakpoint is where "Move Build Learn Saved" plus the lockup stops
-   fitting without the two crowding each other. */
-
-.nav-right {
-  display: flex;
-  align-items: center;
-  gap: var(--us-space-2);
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: var(--us-space-1);
-}
-
-/* Below the breakpoint the inline links go and Menu carries everything;
-   above it, Menu would duplicate what is already on screen.
-   Scoped to .nav-right so it outranks .btn, which is declared later in
-   this file and would otherwise win on source order and leave Menu
-   showing next to the links it is meant to replace. */
-.nav-right .nav-menu-toggle {
-  display: none;
-}
-
-@media (max-width: 900px) {
-  .nav-right .nav-links {
-    display: none;
-  }
-
-  .nav-right .nav-menu-toggle {
-    display: inline-flex;
-  }
-}
-
-/* ---- Menu panel ---- */
-
-.nav-panel {
-  position: absolute;
-  z-index: 100;
-  min-width: 300px;
-  max-width: min(420px, calc(100vw - 16px));
-  max-height: calc(100dvh - 84px);
-  overflow: hidden auto;
-  overscroll-behavior: contain;
-  padding: var(--us-space-3);
-  background: var(--us-surface);
-  border: 1px solid var(--us-border);
-  border-radius: var(--us-radius-lg);
-  box-shadow: var(--us-shadow-lg);
-  animation: nav-panel-in var(--us-dur) var(--us-ease-out);
-}
-
-@media (max-width: 640px) {
-  .nav-panel,
-  .nav-panel-full,
-  .nav-panel-wide {
-    right: 8px !important;
-    left: 8px;
-    min-width: 0;
-    max-width: none;
-  }
-
-  .nav-panel-wide .nav-group {
-    grid-template-columns: 1fr;
-  }
-
-  /* One column plus a summary under every entry puts Build and Learn
-     two screens down inside a scrolling panel. The titles carry enough
-     on their own at this width; the summaries return on the desktop
-     panel, where there is room for them. */
-  .nav-panel .nav-item-summary {
-    display: none;
-  }
-
-  .nav-panel .nav-item {
-    min-height: var(--us-tap);
-    justify-content: center;
-  }
-}
-
-@keyframes nav-panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  width: 100%;
-  padding: var(--us-space-2) var(--us-space-3);
-  border: none;
-  background: transparent;
-  border-radius: var(--us-radius-sm);
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background var(--us-dur-fast) var(--us-ease);
-}
-
-.nav-item:hover {
-  background: var(--us-surface-muted);
-}
-
-.nav-item-title {
-  display: flex;
-  align-items: center;
-  gap: var(--us-space-2);
-  font-size: var(--us-text-sm);
-  font-weight: var(--us-weight-medium);
-  color: var(--us-text-primary);
-}
-
-.nav-item-summary {
-  font-size: var(--us-text-2xs);
-  line-height: 1.45;
-  color: var(--us-text-tertiary);
-}
-
-.nav-item[aria-current='page'] .nav-item-title,
-.nav-item[aria-current='true'] .nav-item-title {
-  color: var(--us-teal-text);
-}
-
-/* ============================================================
-   Footer
-   ============================================================ */
-
-.footer {
-  margin-top: var(--us-space-16);
-  padding-block: var(--us-space-10) var(--us-space-8);
-  padding-bottom: calc(var(--us-space-8) + env(safe-area-inset-bottom));
-  background: var(--us-charcoal);
-  color: #d7dbe6;
-  font-size: var(--us-text-sm);
-}
-
-.footer a {
-  color: #d7dbe6;
-  text-decoration: none;
-  transition: color var(--us-dur) var(--us-ease);
-}
-
-.footer a:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-/* h2, not h4. These are the footer's own section headings; as h4 they
-   made every page in the app end on an h2 -> h4 jump. margin-top is
-   pinned because a real h2 brings its own and these used to be h4. */
-.footer h2 {
-  margin-top: 0;
-  font-size: var(--us-text-2xs);
-  font-weight: var(--us-weight-semi);
-  text-transform: uppercase;
-  letter-spacing: var(--us-tracking-wide);
-  color: var(--us-teal);
-  margin-bottom: var(--us-space-3);
-}
-
-.footer ul {
-  list-style: none;
-}
-
-.footer li {
-  margin-bottom: var(--us-space-2);
-  line-height: var(--us-leading-snug);
-}
-
-.footer [aria-current='page'] {
-  color: #8e97ac;
-}
-
-@media (max-width: 720px) {
-  .footer-cols {
-    grid-template-columns: 1fr 1fr;
-    gap: var(--us-space-6);
-  }
-  .footer-brand {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 400px) {
-  .footer-cols {
-    grid-template-columns: 1fr;
-  }
-}
-
-.footer-brand {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--us-space-1) var(--us-space-3);
-  align-items: center;
-  color: var(--us-sand);
-}
-
-.footer-brand p {
-  grid-column: 1 / -1;
-  margin-top: var(--us-space-3);
-  max-width: 34ch;
-  font-size: var(--us-text-xs);
-  color: #a8b0c2;
-  line-height: var(--us-leading-normal);
-}
-
-/* Underlined, both here and in the legal strip below.
-
-   WCAG 1.4.1 says colour cannot be the only way a link is distinguished
-   from the text around it, and the escape hatch — 3:1 against the
-   surrounding text — is not met by either: the sister-site link measured
-   1.12:1 against its own sentence and the legal links 2.11:1. Neither is
-   a contrast problem in the usual sense; both colours are perfectly
-   legible. The failure is that someone who cannot separate mint from
-   grey has nothing else to go on, and the underline is that something. */
-.footer-sister a,
-.footer-legal a {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.footer-legal {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--us-space-2) var(--us-space-4);
-  justify-content: space-between;
-  padding-top: var(--us-space-5);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: var(--us-text-2xs);
-  color: #8e97ac;
-}
-
-.prose .lede {
-  font-size: var(--us-text-base);
-  color: var(--us-text-primary);
-}
-
-.band-ink {
-  background: var(--us-charcoal);
-  color: var(--us-sand);
-}
-
-.band-ink h1,
-.band-ink h2,
-.band-ink h3,
-.band-ink h4 {
-  color: var(--us-sand);
-}
-
-/* An ink band is dark whatever the page scheme is, so the mark cannot
-   take its colours from the scheme: in light mode the upper half
-   resolved to Midnight Indigo and disappeared into the hero, leaving a
-   headless amber lobe. Pin the ink treatment — Warm Sand over Safiri
-   Amber — which is the same pairing the app icon uses on its indigo
-   field. */
-.hero,
-.band-ink,
-.footer {
-  --logo-strand-a: var(--us-sand);
-  --logo-strand-b: var(--us-gold);
-}
-
-.band-ink .slogan {
-  display: block;
-  font-weight: var(--us-weight-medium);
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--us-teal-text);
-  font-size: var(--us-text-xs);
-}
-
-.band-ink .slogan,
-.hero .slogan,
-.footer .slogan {
-  color: var(--us-teal);
-}
-
-/* Scoped, like every one of its neighbours in this block. Unscoped, it
-   painted Fresh Mint onto white pages at 1.93:1 — "Two tracks" and
-   "Build" on the landing page were mint on white — because a rule
-   written for ink surfaces was never given the surface. */
-.band-ink .eyebrow,
-.hero .eyebrow,
-.footer .eyebrow {
-  color: var(--us-teal);
-}
-
-/* Not .nav-bar — the bar is white in light mode and ink in dark, so it
-   takes the scheme-aware token rather than a pinned one. Only surfaces
-   that are ink in BOTH schemes belong here. */
-.band-ink .logo-descriptor,
-.hero .logo-descriptor,
-.footer .logo-descriptor {
-  color: var(--us-teal);
-}
-
-.band-ink :focus-visible {
-  box-shadow: 0 0 0 2px var(--us-charcoal), 0 0 0 4px var(--us-teal);
-}
-
-@media (max-width: 860px) {
-  .hero-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.hero .lede {
-  font-size: clamp(16px, 1.5vw, 19px);
-  line-height: var(--us-leading-snug);
-  color: rgb(var(--us-sand-rgb) / 0.78);
-  max-width: 46ch;
-}
-
-.band-ink .slogan,
-.hero .slogan,
-.footer .slogan {
-  color: var(--us-teal);
-}
-
-.band-ink .eyebrow,
-.hero .eyebrow,
-.footer .eyebrow {
-  color: var(--us-teal);
-}
-
-@media (max-width: 720px) {
-  .doors {
-    grid-template-columns: 1fr;
-  }
-}
-
-.tool-grid .card {
-  margin-bottom: 0 !important;
-  height: 100%;
-  display: flex;
-  align-items: center;
-}
-
-/* ============================================================
-   Buttons
-   ============================================================ */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--us-space-2);
-  min-height: var(--us-tap);
-  padding: var(--us-space-3) var(--us-space-5);
-  border: 1px solid transparent;
-  border-radius: var(--us-radius-md);
-  font-size: var(--us-text-sm);
-  font-weight: var(--us-weight-medium);
-  cursor: pointer;
-  user-select: none;
-  transition: background var(--us-dur) var(--us-ease),
-    border-color var(--us-dur) var(--us-ease), transform var(--us-dur-fast) var(--us-ease),
-    opacity var(--us-dur) var(--us-ease);
-}
-
-.btn:active:not(:disabled) {
-  transform: scale(0.985);
-}
-
-.btn:disabled {
-  opacity: 0.42;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--us-charcoal);
-  color: var(--us-surface);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--us-charcoal) 88%, var(--us-teal));
-}
-
-.btn-secondary {
-  background: var(--us-surface);
-  border-color: var(--us-border-strong);
-  color: var(--us-text-secondary);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--us-surface-muted);
-  border-color: var(--us-ink-400);
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--us-text-tertiary);
-  padding-inline: var(--us-space-3);
-}
-
-.btn-ghost:hover:not(:disabled) {
-  background: var(--us-surface-muted);
-  color: var(--us-text-primary);
-}
-
-.btn-sm {
-  min-height: 34px;
-  padding: var(--us-space-2) var(--us-space-3);
-  font-size: var(--us-text-xs);
-}
-
-.btn-block {
-  width: 100%;
-}
-
-/* ============================================================
-   Cards
-   ============================================================ */
-
-.card {
-  background: var(--us-surface);
-  border: 1px solid var(--us-border);
-  border-radius: var(--us-radius-lg);
-  padding: var(--us-space-4);
-  box-shadow: var(--us-shadow-sm);
-}
-
-/* ============================================================
-   Badges & pills
-   ============================================================ */
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--us-space-1);
-  padding: 3px var(--us-space-2);
-  border-radius: var(--us-radius-pill);
-  font-size: var(--us-text-2xs);
-  font-weight: var(--us-weight-medium);
-  line-height: 1.5;
-  white-space: nowrap;
-}
-
-.chip {
-  display: inline-flex;
-  padding: var(--us-space-1) var(--us-space-3);
-  border-radius: var(--us-radius-pill);
-  background: var(--us-surface-sunk);
-  color: var(--us-text-secondary);
-  font-size: var(--us-text-xs);
-}
-
-/* ============================================================
-   Forms
-   ============================================================ */
-
-.field {
-  display: block;
-  margin-bottom: var(--us-space-3);
-}
-
-.field-label {
-  display: block;
-  font-size: var(--us-text-sm);
-  font-weight: var(--us-weight-medium);
-  margin-bottom: var(--us-space-2);
-}
-
-.field-hint {
-  font-size: var(--us-text-xs);
-  color: var(--us-ink-400);
-  margin-top: var(--us-space-1);
-}
-
-.input-field {
-  width: 100%;
-  min-height: var(--us-tap);
-  padding: var(--us-space-3);
-  background: var(--us-surface);
-  border: 1px solid var(--us-border-strong);
-  border-radius: var(--us-radius-md);
-  font-size: var(--us-text-base);
-  transition: border-color var(--us-dur) var(--us-ease),
-    box-shadow var(--us-dur) var(--us-ease);
-}
-
-.input-field:hover {
-  border-color: var(--us-ink-400);
-}
-
-.input-field:focus {
-  outline: none;
-  border-color: var(--us-teal);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--us-teal) 16%, transparent);
-}
-
-.input-field[aria-invalid='true'] {
-  border-color: var(--us-ochre-text);
-}
-
-.field-error {
-  font-size: var(--us-text-xs);
-  color: var(--us-ochre-text);
-  margin-top: var(--us-space-1);
-}
-
-@media (max-width: 400px) {
-  .grid-2 {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 400px) {
-  .domain-bar-row {
-    grid-template-columns: 1fr 64px 36px;
-  }
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--us-text-xs);
-}
-
-th,
-td {
-  padding: var(--us-space-2);
-  text-align: left;
-  border-bottom: 1px solid var(--us-border);
-}
-
-th {
-  font-weight: var(--us-weight-medium);
-  color: var(--us-text-tertiary);
-}
-
-tbody tr:last-child td {
-  border-bottom: none;
-}
-
-/* ============================================================
-   States
-   ============================================================ */
-
-.empty-state {
-  padding: var(--us-space-10) var(--us-space-4);
-  text-align: center;
-  color: var(--us-text-tertiary);
-}
-
-/* h1 as well as h3: the roadmap and not-found screens ARE the page, so
-   their heading is the page's h1 semantically — but it should still be
-   the size of a card heading, not a hero. Elsewhere (Saved, for one) an
-   empty state sits below a real page h1 and correctly stays an h3. */
-.empty-state h1,
-.empty-state h3 {
-  font-size: var(--us-text-md);
-  color: var(--us-text-primary);
-  margin-bottom: var(--us-space-2);
-}
-
-.empty-state p {
-  font-size: var(--us-text-sm);
-  max-width: 44ch;
-  margin-inline: auto;
-  margin-bottom: var(--us-space-5);
-}
-
-.notice {
-  display: flex;
-  gap: var(--us-space-3);
-  padding: var(--us-space-3) var(--us-space-4);
-  border-radius: var(--us-radius-md);
-  font-size: var(--us-text-sm);
-  line-height: var(--us-leading-snug);
-  border: 1px solid transparent;
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 8px);
-  }
-}
-
-/* .dropdown / .dropdown-item are gone with the brand-only switcher they
-   served. The menu uses .nav-panel / .nav-item, which carry a summary
-   line — a bare list of fourteen tool names is not navigation you can
-   choose from. */
-
-/* Keyboard users land here first. Without it, every route change means
-   tabbing through the entire header before reaching the content. */
+  background: var(--us-paper);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+/* Tracking is optical, not fixed: a display face set at 3.6rem needs to be
+   pulled tighter than the same face at 1.3rem, where negative tracking just
+   makes it muddy. Line-height tightens as size grows for the same reason.
+   text-wrap:balance stops a headline stranding one word on its own line. */
+h1, h2, h3, h4 { font-family: var(--us-font); font-weight: 700; margin: 0 0 .4em; text-wrap: balance; }
+h1 { font-size: clamp(2.2rem, 5vw, 3.6rem);   line-height: 1.06; letter-spacing: -.022em; }
+h2 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); line-height: 1.12; letter-spacing: -.016em; }
+/* Component heading rules below are written :is(h2, h3, h4) rather than
+   pinned to one tag. Appearance belongs to the component; the LEVEL
+   belongs to the document, and the two were fused here — a footer
+   column heading was an h4 because h4 looked right, on pages whose
+   deepest content heading was h2. That skips a level, and 26 of 28
+   pages did it.
+
+   Pinning the selector to a tag makes fixing the level a visual
+   regression, which is why it stays broken. Matching a range costs
+   nothing — :is() takes the specificity of its most specific argument,
+   and these are all type selectors, so (0,0,1) either way — and it
+   means a heading can be renumbered for the outline without anyone
+   having to re-style it. */
+h3 { font-size: clamp(1.25rem, 2vw, 1.6rem);  line-height: 1.18; letter-spacing: -.008em; }
+h4 { line-height: 1.25; letter-spacing: 0; }
+/* Body copy wants a sane measure and no orphans. */
+p { text-wrap: pretty; }
+p { margin: 0 0 1rem; }
+a { color: var(--us-teal); text-decoration: none; }
+a:hover { text-decoration: underline; }
+img { max-width: 100%; display: block; }
+.eyebrow { font-family: var(--us-font); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: .72rem; color: var(--us-teal); margin: 0 0 .8rem; }
+section { padding: var(--us-section) 0; }
+:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 3px; border-radius: 2px; }
+/* On the ink surfaces a terracotta ring disappears into the background; the
+   focus indicator has to be visible against whatever it lands on. */
+.band-dark :focus-visible,
+.footer :focus-visible { outline-color: var(--us-gold); }
+
+/* Selection picks up the brand rather than the browser's default blue. */
+::selection { background: var(--us-sand); color: var(--us-charcoal); }
+.band-dark ::selection, .footer ::selection { background: var(--us-gold); color: var(--us-charcoal); }
+
+/* Anchored jumps must clear the sticky header instead of hiding the
+   heading behind it. */
+:target { scroll-margin-top: 88px; }
+[id] { scroll-margin-top: 88px; }
+
+/* skip link — keyboard users land here first */
 .skip-link {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  z-index: 300;
-  padding: var(--us-space-3) var(--us-space-5);
-  background: var(--us-charcoal);
-  color: var(--us-sand);
-  border-radius: 0 0 var(--us-radius-md) 0;
-  font-size: var(--us-text-sm);
-  font-weight: var(--us-weight-medium);
-  text-decoration: none;
+  position: absolute; left: -9999px; top: 0; z-index: 200;
+  background: var(--us-charcoal); color: #fff; padding: .8rem 1.2rem;
+  border-radius: 0 0 var(--us-radius-sm) 0; font-weight: 700; font-size: .9rem;
+}
+.skip-link:focus { left: 0; text-decoration: none; }
+
+/* Present to assistive technology, absent from the visual composition —
+   for things a screen reader needs and a sighted reader already has from
+   the surrounding layout, such as a data table's caption. Clipped rather
+   than display:none, which would remove it from the accessibility tree
+   as well and defeat the purpose. */
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
 }
 
-.skip-link:focus {
-  left: 0;
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-family: var(--us-font); font-weight: 700; font-size: .98rem;
+  padding: .85rem 1.5rem; border-radius: var(--us-radius-sm);
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform var(--us-dur-fast) var(--us-ease),
+              background-color var(--us-dur-fast) var(--us-ease),
+              border-color var(--us-dur-fast) var(--us-ease),
+              box-shadow var(--us-dur-fast) var(--us-ease),
+              color var(--us-dur-fast) var(--us-ease);
+  text-decoration: none; will-change: transform;
+}
+.btn:hover { text-decoration: none; transform: translateY(-2px); }
+.btn:active { transform: translateY(0) scale(.98); transition-duration: .05s; }
+.btn:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 3px; border-radius: 2px; }
+.btn-primary { background: var(--us-teal); color: #fff; }
+.btn-primary:hover { background: var(--us-teal-text); box-shadow: 0 8px 22px rgba(158,49,22,.34); }
+.btn-primary:disabled { background: var(--us-ink-600); cursor: not-allowed; opacity: .65; transform: none; box-shadow: none; }
+.btn-ghost { background: transparent; color: var(--us-charcoal); border-color: var(--us-border-strong); }
+.btn-ghost:hover { border-color: var(--us-teal); color: var(--us-teal); }
+.btn-ghost:disabled { border-color: var(--us-border); color: var(--us-ink-600); cursor: not-allowed; transform: none; }
+.btn-sm { padding: .55rem 1rem; font-size: .86rem; }
+.nav-links { display: flex; align-items: center; gap: 1.3rem; }
+/* :not(.btn) is load-bearing, not tidiness. The nav carries one button —
+   the "Start free" CTA, which appears on all 28 pages and is the most
+   clicked element on the site — and `.nav-links a` (0,1,1) outranks
+   `.btn-primary` (0,1,0), so without the exclusion the CTA is painted
+   ink-on-rust at 2.61:1 and the button's own `color: #fff` never lands.
+   The same applies to the :hover rule below, which was pushing it to
+   1.87:1. A button dropped into the nav later should look like a button,
+   not like a nav link that happens to have a background. */
+.nav-links a:not(.btn) { color: var(--us-charcoal); font-weight: 600; font-size: .93rem; transition: color var(--us-dur-fast) var(--us-ease); }
+.nav-links a:not(.btn):hover { color: var(--us-teal); text-decoration: none; }
+.nav-links a:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 4px; border-radius: 3px; }
+.nav-links a.nav-section { color: var(--us-teal); font-weight: 700; position: relative; }
+.nav-links a.nav-section::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 2px; background: var(--us-teal); opacity: .45; border-radius: 2px; }
+@media (max-width: 980px) { .nav-current::after, .nav-links a.nav-section::after { display: none; } }
+@media (max-width: 980px) {
+  .dropdown-menu { position: static; opacity: 1; visibility: visible; transform: none; box-shadow: none; border: 0; background: transparent; padding: 0 0 0 1rem; min-width: 0; }
 }
 
-#outlet:focus {
-  outline: none;
+/* trust strip */
+.trust-strip { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 2rem; padding-top: 1.6rem; border-top: 1px solid var(--us-border); }
+.card { background: #fff; color: var(--us-charcoal); border: 1px solid var(--us-border); border-radius: var(--us-radius-md); padding: 28px; box-shadow: var(--us-shadow-md);
+  transition: transform var(--us-dur) var(--us-ease), box-shadow var(--us-dur) var(--us-ease), border-color var(--us-dur) var(--us-ease); }
+.card:hover { transform: translateY(-4px); box-shadow: var(--us-shadow-hover); border-color: var(--us-border-strong); }
+.card :is(h2, h3) { margin-top: 0; }
+.card .ref { font-family: var(--us-font); font-weight: 700; font-size: .72rem; letter-spacing: .1em; color: var(--us-teal); }
+
+/* ...except inside something that paints its own light surface.
+
+   The rule above is more specific than a component's own `color`, so a
+   .tile inside a dark band got cream from itself and white headings
+   from the band. Five headings on the tutorial shipped at 1.08:1 — the
+   paragraphs read because .tile p sets a colour, the headings did not
+   because .tile h4 never did. Nothing in the suite could see it:
+   textContent has no colour.
+
+   :is() carries the specificity of its heaviest argument, so this lands
+   at 0,2,1 and beats .band-dark h4 at 0,1,1. Listed rather than
+   inherited because a component that paints a background owes the
+   reader a matching foreground, and saying so once here is cheaper than
+   auditing every future band. */
+.band-dark :is(.tile, .card, .note, .phase, .guarantee),
+.band-dark :is(.tile, .card, .note, .phase, .guarantee)
+  :is(h1, h2, h3, h4, h5, h6, p, li, dt, dd, strong, b, span) {
+  color: var(--us-charcoal);
+}
+.band-dark :is(.tile, .card, .note, .phase, .guarantee) p { color: var(--us-ink-600); }
+/* .score-hero is a dark surface too — it just isn't named .band-dark, so
+   it was missed when the dark-surface eyebrow colour was set. The base
+   .eyebrow is rust, which on ink is 2.61:1: the "Sample strategic gap
+   report" label above every scorecard result. Grouped here rather than
+   given its own rule so the next dark band added has one list to join. */
+.band-dark .eyebrow { color: var(--us-gold); }
+.band-ember .eyebrow { color: var(--us-sand); }
+
+/* ---------- footer ---------- */
+.footer { background: var(--us-charcoal); color: #cbbfb8; padding: 54px 0 28px; }
+.footer :is(h2, h3, h4) { color: #fff; font-family: var(--us-font); font-size: .88rem; letter-spacing: .06em; text-transform: uppercase; }
+/* On ink, at 0.78 alpha sand, a link was the exact colour of the
+   sentence around it — colour as the sole signal, which WCAG 1.4.1
+   asks 3:1 for and this gave 1.0:1. Underlined instead, which works
+   for a reader who cannot separate the two hues at all. */
+.footer a { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.footer a:hover { color: var(--us-gold); }
+/* The lockup is an <a> and it is a logo. Underlining a wordmark makes
+   it look like a broken link rather than like the way home. */
+.footer .us-lockup { text-decoration: none; }
+
+/* The legal strip's links are inline inside a sentence, and colour was
+   the only thing separating them from it: #cbbfb8 link on #9a8c85 text
+   is 1.8:1, against the 3:1 that WCAG 1.4.1 asks when colour is the
+   sole distinguishing signal. Both colours are perfectly legible on
+   their own — the failure is that someone who cannot separate the two
+   hues has nothing else to go on.
+
+   Scoped to .ver rather than .footer: the column links above sit one
+   per line with no surrounding prose, so they are not links "in a text
+   block" and underlining them would be noise. */
+.footer .ver a { text-decoration: underline; text-underline-offset: 2px; }
+.footer .cols { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 32px; }
+.footer .ver { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: .77rem; color: #9a8c85; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+
+
+.footer p { font-size: .89rem; margin-bottom: .45rem; }
+
+
+/* Embedded mode (?embed=1) — the content, without JK's furniture.
+   The attribution line is the exception and is not optional: a corpus
+   inside someone else's page still has to say whose it is. */
+body.is-embed .nav, body.is-embed .footer, body.is-embed .skip-link { display: none !important; }
+
+
+
+/* gap table */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+
+
+/* form fields */
+/* 18px in the port. A hint under one control sat 18px from the LABEL
+   of the next, and a label reads as belonging to whatever is nearest —
+   so "Tell us more" looked like part of the field above it. */
+.field { margin-bottom: 26px; }
+.field label { display: block; font-weight: 600; font-size: .91rem; margin-bottom: .35rem; }
+.field .hint { font-size: .78rem; color: var(--us-ink-600); margin-top: .25rem; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: .78rem 1rem; border: 1px solid var(--us-border-strong);
+  border-radius: var(--us-radius-sm); font-size: 1rem; font-family: var(--us-font);
+  background: #fff; color: var(--us-charcoal);
+  transition: border-color var(--us-dur-fast) var(--us-ease), box-shadow var(--us-dur-fast) var(--us-ease);
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--us-teal); box-shadow: 0 0 0 3px rgb(var(--us-teal-rgb) / 0.08); }
+.field input[type="number"] { font-variant-numeric: tabular-nums; }
+
+
+
+
+
+/* regulatory citation chip */
+.cite {
+  display: inline-flex; align-items: center; gap: .35rem; font-size: .7rem; font-weight: 700;
+  padding: .16rem .55rem; border-radius: 99px; letter-spacing: .02em;
+  background: rgb(var(--us-teal-rgb) / 0.08); color: var(--us-teal-text); border: 1px solid transparent;
+  white-space: nowrap; margin: .3rem .3rem 0 0;
+}
+.cite.unverified { background: var(--us-surface-muted); color: #8a5a06; border-color: rgba(184,117,3,.4); }
+.cite.unverified::before { content: "?"; font-weight: 800; }
+.cite a { color: inherit; text-decoration: underline; }
+
+
+.tag { font-size: .66rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: .16rem .5rem; border-radius: 4px; background: var(--us-sand); color: var(--us-ink-600); }
+.tag.kcaa { background: rgb(var(--us-teal-rgb) / 0.08); color: var(--us-teal-text); }
+.tag.dep  { background: rgb(8 48 28 / 0.1); color: var(--us-risk-acceptable); }
+.tag.gap  { background: #fdecec; color: var(--us-ochre-text); }
+
+@media (max-width: 980px) {
+  .footer .cols { grid-template-columns: 1fr; }
+  
+  .footer .cols { grid-template-columns: 1fr 1fr; }
+  .nav-links { display: none; position: absolute; top: 72px; left: 0; right: 0; background: #fff; flex-direction: column; align-items: stretch; padding: 1rem 24px; border-bottom: 1px solid var(--us-border); gap: .5rem; box-shadow: var(--us-shadow-md); max-height: calc(100vh - 72px); overflow-y: auto; }
+  .nav-links.open { display: flex; }
+  .nav-toggle { display: block; }
+  
+  
+}
+@media (max-width: 620px) {
+  .g4, .metrics, .footer .cols { grid-template-columns: 1fr; }
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+/* The printed pack — a regulator's copy, and this app's own screens
+   rather than the benchmark's. The ported rule listed nineteen
+   selectors for a scorecard, an email capture and a share bar, none of
+   which exist here; what does exist is a report, a queue and a dark
+   band that has to arrive as ink on white. */
+@media print {
+  @page { margin: 14mm; }
+  html, body { background: #fff !important; }
+  body { color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .nav, .dropdown-menu, .footer, .btn, .nav-toggle, .skip-link,
+  .sync-strip, .prompt-dock, .no-print { display: none !important; }
+  .band-dark, .band-parchment { background: #fff !important; color: #000 !important; padding: 0 0 10px !important; }
+  .band-dark *, .band-parchment * { color: var(--us-charcoal) !important; }
+  section { padding: 12px 0 !important; }
+  h1, h2 { page-break-after: avoid; }
+  .table-scroll { overflow: visible !important; }
+  /* Every collapsed disclosure prints expanded — a printed pack that
+     omits the optional section is a pack that omits the aerodrome. */
+  details { display: block !important; }
+  details > summary { display: none !important; }
+  .card { box-shadow: none !important; }
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-
+/* ============================================================
+   Reduced motion — everything above is progressive polish. A
+   visitor who asks for less motion gets a calm, instant interface
+   with every hover/focus state still legible.
+   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: .001ms !important;
     scroll-behavior: auto !important;
   }
+  .btn:hover, .card:hover, .tile:hover, .phase:hover, .door:hover,
+
+  /* Belt and braces: mountReveal() bails out under reduced motion, but if
+     it ever ran anyway, content must still be visible rather than stuck
+     at opacity 0. */
+  
 }
+
+/* A range input has no border to recolour, so the rule above leaves it
+   with nothing but a 10%-alpha terracotta glow — 1.18:1 on the white
+   card, which is no indicator at all. Text inputs are fine: the
+   border-colour change carries them. Sliders get a real ring instead,
+   terracotta on white at 7.23:1. Specificity (0,3,1) beats the
+   `.field input:focus` rule that sets `outline: none`. */
+.field input[type="range"]:focus-visible {
+  outline: 2px solid var(--us-teal);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+
 
 /* ============================================================
-   Print — the PDF is a board deliverable, not a screenshot
-   ============================================================ */
-
-@media print {
-  :root {
-    --us-surface: #fff;
-    --us-surface-muted: #fff;
-    --us-surface-sunk: #eee;
-    --us-text-primary: #000;
-    --us-text-secondary: #222;
-    --us-text-tertiary: #444;
-    --us-text-quaternary: #666;
-    --us-border: #ccc;
-    --us-shadow-sm: none;
-    --us-shadow-md: none;
-    --us-shadow-lg: none;
-  }
-
-  @page {
-    size: A4;
-    margin: 18mm 16mm;
-  }
-
-  body {
-    background: #fff;
-    font-size: 10.5pt;
-  }
-
-  .nav-bar,
-  .btn,
-  .no-print,
-  .toast,
-  .nav-panel {
-    display: none !important;
-  }
-
-  .print-only {
-    display: block !important;
-  }
-
-  .container {
-    max-width: none;
-    padding: 0;
-  }
-
-  .page {
-    padding: 0;
-  }
-
-  .card,
-  .finding-card {
-    border: 1px solid #ccc;
-    box-shadow: none;
-  }
-
-  .avoid-break,
-  .card,
-  .finding-card,
-  .domain-bar-row,
-  table {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  h1,
-  h2,
-  h3 {
-    break-after: avoid;
-    page-break-after: avoid;
-  }
-
-  a[href^='http']::after {
-    content: ' (' attr(href) ')';
-    font-size: 8pt;
-    color: #666;
-  }
-
-  .animate-fade-in {
-    animation: none;
-  }
-
-  .domain-bar-fill,
-  .score-ring-value,
-  .progress-fill {
-    transition: none;
-  }
-}
-
-.board-table .num {
-  font-variant-numeric: tabular-nums;
-}
-
-/* ============================================================
-   USALAMA'S OWN LAYER — what Kanda has no concept of.
+   USALAMA'S OWN LAYER — what neither benchmark has a concept of.
 
    The sync strip, the Doc 9859 risk matrix, the triage queue, the
    shared dropdown, the report form's anonymity control, the mark, the
-   provisional tag, the status badges and the print rules. Everything
-   structural above this line is Kanda's.
+   provisional tag and the print rules. Everything structural above this
+   line is JK's.
    ============================================================ */
 
 /* ============================================================
    Sync strip — the most important six words on the screen
 
-   Kanda's charter rule 8: a refused storage write is reported to the
-   user. UsalamaSMS extends it — an unsynced report is reported too,
+   Charter rule 8: a refused storage write is reported to the user.
+   UsalamaSMS extends it — an unsynced report is reported too,
    with a count, because the person who filed it needs to know it has
    not reached anyone yet.
 
@@ -1445,8 +842,11 @@ tbody tr:last-child td {
   white-space: nowrap;
 }
 
-.site-footer .us-lockup__descriptor {
-  color: var(--us-text-tertiary);
+/* The footer's lockup sits on ink. `.site-footer` was JK's element and
+   this app's footer is `.footer`, so this rule matched nothing and the
+   descriptor rendered in the light-surface gold-text at 1.9:1. */
+.footer .us-lockup__descriptor {
+  color: var(--us-gold);
 }
 
 .us-logo {
@@ -2096,15 +1496,18 @@ tbody tr:last-child td {
   gap: var(--us-space-3);
 }
 /* ============================================================
-   SHELL BRIDGE — where this app's chrome meets Kanda's layer.
+   SHELL BRIDGE — where this app's chrome meets JK's layer.
 
-   Kanda pads horizontally with .container and lets .page own only the
-   vertical rhythm, because every one of its screens wraps its content.
-   This app writes screens straight into #main through a router, so the
-   outlet takes the container's job. Without this the port rendered
-   every screen flush to the left edge of the phone.
+   JK is a multi-page site: every page wraps its own content in .wrap,
+   and .nav .wrap does the header's layout. This app writes screens into
+   one outlet through a router, so the outlet takes the container's job.
+   Without this every screen rendered flush to the left edge.
+
+   Keyed on .page rather than on #main: the id is the router's handle
+   and the class is the role, and a second outlet (a print view, a
+   dialog) should get the layout by naming the role.
    ============================================================ */
-#main {
+.page {
   width: 100%;
   max-width: var(--us-container);
   margin-inline: auto;
@@ -2112,172 +1515,404 @@ tbody tr:last-child td {
   padding-block: var(--us-section-tight) var(--us-section);
 }
 
-/* A screen that supplies its own full-bleed band takes the padding back
-   — an ink band inset by the page gutter is a card, not a band. */
-#main:has(> .band-ink) {
+/* A screen supplying its own full-bleed band takes the gutter back — a
+   band inset by the page padding is a card, not a band. */
+.page:has(> .band-dark) {
   max-width: none;
   padding-inline: 0;
   padding-top: 0;
 }
 
-#main > .band-ink + .container,
-#main > .container {
-  max-width: var(--us-container);
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--us-space-4);
+  min-height: var(--us-topbar);
+  padding: var(--us-space-2) clamp(var(--us-space-4), 4vw, var(--us-space-8));
+  padding-top: max(var(--us-space-2), env(safe-area-inset-top));
+  background: rgb(var(--us-sand-rgb) / 0.82);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--us-border);
 }
 
-/* The hamburger, sized. Kanda's .btn does not constrain its icon and
-   Usalama's rule for it was pruned with the class it named. */
-.nav-menu-toggle svg {
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nav { background: var(--us-sand); }
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--us-space-2);
+}
+
+.nav-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--us-space-2);
+  font-size: var(--us-text-sm);
+}
+
+.nav-toggle svg {
   width: 18px;
   height: 18px;
   stroke-width: 2;
 }
 
-.nav-menu-toggle {
-  position: relative;
-}
-
-/* The panel is fixed to the viewport rather than positioned against the
-   bar, because this shell has a sticky status strip under the header
-   and an absolutely positioned panel lands behind it. */
-.nav-panel {
+/* JK opens its dropdowns on hover, which is not available to a thumb.
+   This one is a button-controlled panel, fixed under the bar. */
+.dropdown-menu {
   position: fixed;
   top: calc(var(--us-topbar) + env(safe-area-inset-top));
   right: clamp(var(--us-space-3), 3vw, var(--us-space-6));
   left: auto;
+  visibility: visible;
+  opacity: 1;
+  transform: none;
   min-width: min(22rem, calc(100vw - 2 * var(--us-space-4)));
+  padding: var(--us-space-2);
+  background: var(--us-paper);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-lg);
+  box-shadow: var(--us-shadow-lg);
+  z-index: 70;
 }
 
-.nav-panel[hidden] {
-  display: none;
+.dropdown-menu[hidden] { display: none; }
+
+.nav-item {
+  display: block;
+  padding: var(--us-space-3) var(--us-space-4);
+  border-radius: var(--us-radius-md);
+  text-decoration: none;
+  color: inherit;
+}
+
+.nav-item:hover { background: var(--us-surface-muted); }
+.nav-item[data-current] { background: rgb(var(--us-teal-rgb) / 0.1); }
+
+.nav-item-title {
+  display: block;
+  font-size: var(--us-text-md);
+  font-weight: var(--us-weight-semi);
+  line-height: var(--us-leading-snug);
+}
+
+.nav-item[data-current] .nav-item-title { color: var(--us-teal-text); }
+
+.nav-item-summary {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+  color: var(--us-text-tertiary);
 }
 
 @media (min-width: 900px) {
-  .nav-menu-toggle {
-    display: none;
-  }
+  .nav-toggle { display: none; }
 }
 
 @media (max-width: 899px) {
-  .nav-links {
-    display: none;
-  }
+  .nav-links { display: none; }
 }
 
-
-/* Kanda's trust strip, restored: the account screen renders it and
-   the prune had dropped it while the markup still used other names. */
-.trust-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--us-space-5);
-  margin-top: var(--us-space-8);
-  padding-top: var(--us-space-5);
-  border-top: 1px solid rgb(var(--us-sand-rgb) / 0.16);
+/* JK's ink band, carrying Usalama's washes. */
+.band-dark {
+  position: relative;
+  overflow: hidden;
+  padding-block: clamp(2rem, 6vw, 3.25rem);
+  background:
+    radial-gradient(760px 460px at 6% 8%, rgb(var(--us-teal-rgb) / 0.36) 0%, transparent 62%),
+    radial-gradient(640px 420px at 92% 0%, rgb(198 93 59 / 0.3) 0%, transparent 58%),
+    var(--us-charcoal);
+  color: var(--us-sand);
 }
 
-.trust-item {
-  display: flex;
-  align-items: center;
-  gap: var(--us-space-2);
-  font-size: var(--us-text-xs);
-  font-weight: var(--us-weight-medium);
-  color: rgb(var(--us-sand-rgb) / 0.88);
-}
+.band-dark h1,
+.band-dark h2 { color: var(--us-sand); }
+.band-dark .lede { color: rgb(var(--us-sand-rgb) / 0.86); }
+.band-dark .eyebrow { color: var(--us-gold); }
+.band-dark .trust-item { color: rgb(var(--us-sand-rgb) / 0.9); }
 
 .trust-item svg {
-  color: var(--us-gold);
-  /* Kanda sizes these in the markup; this app renders them from a data
-     table with no width attribute, so an unsized SVG filled its column
-     and the strip became four full-width line drawings. */
   flex: none;
   width: 18px;
   height: 18px;
   margin-top: 1px;
+  color: var(--us-gold);
   stroke-width: 1.9;
 }
 
-/* On ink the strip's rule is inverted from Kanda's light default. */
-.band-ink .trust-item {
-  color: rgb(var(--us-sand-rgb) / 0.9);
-}
-
-
 /* ============================================================
-   TWO OVERRIDES ON THE PORTED LAYER, both about what a colour MEANS.
+   APP VOCABULARY — the class names this app's markup emits that JK
+   has no page to have needed.
 
-   Kanda's --brand-primary is Midnight Indigo: simultaneously its ink,
-   its headline colour and its primary button fill, because one colour
-   plays all three roles in that identity. Usalama splits them — Dusty
-   Charcoal is the ink the wordmark sets in, and AVIATION TEAL is the
-   action colour, on every button, link and focus ring in the brand
-   book. Mapping --brand-primary to charcoal is right for headlines and
-   wrong for buttons, so the button says so here rather than by bending
-   the token and turning every heading teal.
+   HOW THIS SECTION CAME TO BE MISSING, because the mechanism matters
+   more than the list. Porting JK's sheet meant dropping the 404 rules
+   for pages this app does not render, and the tool that did the
+   dropping worked from the class names JK's own HTML uses. Every class
+   only OUR markup emits therefore read as dead and went with them —
+   including `.wrap`, which is JK's page container and the reason the
+   account screen shipped its heading flush against the left edge with
+   the lede running off the right.
+
+   Nothing caught it. The smoke suite reads text and geometry it asked
+   for by selector; an element with no styling still has textContent, a
+   bounding box, and a passing assertion. The check that would have
+   seen it is the one added below it: every class the markup emits must
+   resolve to at least one rule. That check now runs in the gate, and
+   it is what this section is answerable to.
    ============================================================ */
-.btn-primary {
-  background: var(--us-teal);
-  color: #ffffff;
-  box-shadow: 0 1px 2px rgb(var(--us-charcoal-rgb) / 0.12),
-    0 6px 18px rgb(var(--us-teal-rgb) / 0.22);
+
+/* JK's page container, at JK's width. Wider than --us-container on
+   purpose: that token is the READING measure the report form and the
+   triage queue are set to, and a form field 1,000px wide is a worse
+   form. .wrap is the other kind of container — a landing page, a
+   footer, anything laid out in columns — and at 46rem those columns
+   were 150px wide with three words a line. Text inside still caps its
+   own measure; .lede and .footer-line both do. */
+.wrap { width: 100%; max-width: var(--us-container-wide); margin-inline: auto; padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-6)); }
+
+/* THE LEDE HAD NO RULE. It is the paragraph directly under every h1 in
+   this app — the one sentence that says what a screen is for — and the
+   port left it with only a colour inside .band-dark. It rendered at
+   body size, at whatever measure its container happened to be, on
+   every screen. */
+.lede {
+  max-width: 62ch;
+  font-size: clamp(1.02rem, 1.4vw, 1.15rem);
+  line-height: var(--us-leading-normal);
+  color: var(--us-ink-600);
+}
+.band-dark .lede,
+.band-parchment .lede { max-width: 58ch; }
+
+/* `section` already carries JK's vertical rhythm. A panel is a screen's
+   own content block, one step tighter, because it follows a band that
+   has just spent that space. */
+.panel { padding-block: clamp(1.5rem, 4.5vw, 2.5rem); }
+.panel + .panel { padding-top: 0; }
+.page-head { margin-bottom: var(--us-space-6); }
+.page-head h1 { margin: 0 0 var(--us-space-2); }
+.page-head p { margin: 0; max-width: 62ch; color: var(--us-ink-600); }
+.section-title { font-size: var(--us-text-md); letter-spacing: -.01em; margin: 0 0 var(--us-space-3); }
+.footnote { margin-top: var(--us-space-3); font-size: var(--us-text-xs); color: var(--us-ink-600); }
+.lede--tight { max-width: 62ch; font-size: var(--us-text-base); }
+/* A form is a reading measure, not a page width — .panel .wrap is now
+   JK's 68rem and a sign-in field stretched the whole way across it. */
+.panel > .card,
+.panel > form.card { max-width: var(--us-container); }
+.empty-state { padding: var(--us-space-8) var(--us-space-4); text-align: center; color: var(--us-text-tertiary); }
+.empty-state :is(h1, h3) { font-size: var(--us-text-md); color: var(--us-charcoal); margin-bottom: var(--us-space-2); }
+.empty-state p { max-width: 44ch; margin-inline: auto; font-size: var(--us-text-sm); }
+
+/* Buttons the app names that JK's set does not. Secondary is JK's
+   .btn-ghost with a surface behind it — a paired action beside a
+   primary, which on a phone needs its own edge to be hittable. */
+.btn-secondary { background: var(--us-surface); color: var(--us-charcoal); border-color: var(--us-border-strong); }
+.btn-secondary:hover:not(:disabled) { background: var(--us-surface-muted); border-color: var(--us-teal); color: var(--us-teal); }
+.btn-secondary:disabled { color: var(--us-ink-600); border-color: var(--us-border); cursor: not-allowed; transform: none; }
+.btn-block { width: 100%; justify-content: center; }
+
+/* The form. JK styles `.field input`; this app labels with a <span>
+   and classes its controls, because a screen reader on a report form
+   is not a nice-to-have and `.field label` cannot carry an error. */
+.field-label { display: block; font-weight: 600; font-size: .91rem; margin-bottom: .35rem; }
+.field-hint { font-size: .78rem; color: var(--us-ink-600); margin-top: .25rem; }
+.field-error { font-size: .78rem; color: var(--us-ochre-text); margin-top: .3rem; min-height: 1.1em; }
+.input-field {
+  width: 100%; min-height: var(--us-tap); padding: .78rem 1rem;
+  border: 1px solid var(--us-border-strong); border-radius: var(--us-radius-sm);
+  font-size: 1rem; font-family: var(--us-font); background: #fff; color: var(--us-charcoal);
+  transition: border-color var(--us-dur-fast) var(--us-ease), box-shadow var(--us-dur-fast) var(--us-ease);
+}
+.input-field:hover { border-color: var(--us-ink-400); }
+.input-field:focus { outline: none; border-color: var(--us-teal); box-shadow: 0 0 0 3px rgb(var(--us-teal-rgb) / 0.16); }
+.input-field[aria-invalid='true'] { border-color: var(--us-ochre-text); }
+
+/* Status badges. The six are defined once in components/Status.js and
+   the six colour pairs are the identity's, checked by the brand gate —
+   so these rules read tokens and never a literal. */
+.badge {
+  display: inline-flex; align-items: center; gap: var(--us-space-1);
+  padding: 3px var(--us-space-2); border-radius: var(--us-radius-pill);
+  font-size: var(--us-text-2xs); font-weight: 700; line-height: 1.5;
+  letter-spacing: .02em; white-space: nowrap;
+}
+.badge__glyph { width: 13px; height: 13px; flex: none; }
+/* The pill sets white-space: nowrap so a two-word status never breaks
+   into two lines and doubles a queue row's height; the label is what
+   gives way instead when the row is 320px wide. */
+.badge__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* An <svg> is inline by default, so the mark sat on a text baseline and
+   carried a descender's worth of gap under it inside the lockup. */
+.us-mark { display: block; }
+.badge[data-status='SAFE'] { background: rgb(24 107 67 / 0.12); color: var(--us-risk-acceptable-text); }
+.badge[data-status='CAUTION'] { background: rgb(var(--us-gold-rgb) / 0.2); color: var(--us-gold-text); }
+.badge[data-status='ALERT'] { background: rgb(187 50 26 / 0.12); color: var(--us-ochre-text); }
+.badge[data-status='OFFLINE'] { background: var(--us-surface-muted); color: var(--us-ink-600); }
+.badge[data-status='SYNCING'] { background: rgb(var(--us-teal-rgb) / 0.12); color: var(--us-teal-text); }
+.badge[data-status='PROTECTED'] { background: rgb(var(--us-teal-rgb) / 0.12); color: var(--us-teal-text); }
+
+/* The two tables on the design screen. `table` is already styled; these
+   carry only what makes a regulatory obligation and a 5x5 matrix
+   readable on a 320px screen. */
+.oblig-table th { font-size: var(--us-text-2xs); text-transform: uppercase; letter-spacing: .08em; }
+.oblig-table td:first-child { font-weight: 600; }
+.risk-matrix { table-layout: fixed; }
+.risk-matrix td { text-align: center; font-variant-numeric: tabular-nums; }
+/* A numeric column reads as a column only when the digits line up. */
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.risk-matrix__code { font-weight: 700; font-size: var(--us-text-xs); }
+.verified { font-size: var(--us-text-2xs); color: var(--us-risk-acceptable-text); font-weight: 600; }
+
+/* Trust strip. JK's markup calls each item .ti; this app's calls it
+   .trust-item, and an <li> that is a flex item still paints its marker
+   in Chrome — which is why four bullets sat in the middle of the ink
+   band. The reset is the fix; the rest is JK's rule. */
+.trust-strip { list-style: none; padding-left: 0; }
+.trust-item { display: flex; align-items: flex-start; gap: .55rem; flex: 1 1 20rem; font-size: .89rem; font-weight: 600; line-height: var(--us-leading-snug); }
+.band-dark .trust-strip { border-top-color: rgb(var(--us-sand-rgb) / 0.18); }
+
+/* Shell chrome. #app-shell is the router's host and the boot splash is
+   what stands in front of it until the first screen paints. */
+.app-shell { display: flex; flex-direction: column; min-height: 100dvh; }
+.app-shell > .page { flex: 1 0 auto; }
+
+/* ---- The landing page ----------------------------------------------
+
+   Four bands alternating ink / paper / parchment / paper, which is the
+   benchmark's whole page rhythm: a reader scrolling knows a new claim
+   has started because the ground changed under it. */
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-3);
+  margin: var(--us-space-6) 0 0;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: var(--us-teal-text);
+/* The secondary hero action sits on ink, where .btn-ghost's charcoal
+   border and charcoal label are both invisible. */
+.btn-ghost-lt { background: transparent; color: #fff; border-color: rgb(255 255 255 / 0.34); }
+.btn-ghost-lt:hover { border-color: #fff; background: rgb(255 255 255 / 0.08); color: #fff; }
+
+/* A warm ground between two paper sections. This is where the
+   regulatory rows live, and they are the one thing on the page a
+   person may have been sent a link to — so they get their own surface
+   rather than being a heading in the middle of a scroll. */
+.band-parchment {
+  background: var(--us-surface-muted);
+  border-block: 1px solid var(--us-border);
 }
 
-/* The eyebrow on an ink band. Kanda resolves this to mint; Usalama's
-   is Savannah Gold, which is 7.4:1 on Dusty Charcoal — the darkened
-   sibling exists for white grounds and is the wrong direction here. */
-.band-ink .eyebrow {
-  color: var(--us-gold);
+.step-grid {
+  display: grid;
+  gap: var(--us-space-4);
+  margin-top: var(--us-space-6);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
 }
 
-/* Kanda splits spacing (.band) from colour (.band-ink); this app only
-   ever uses the ink variant, so the spacing lives with it. Without it
-   the eyebrow sat flush against the sticky status strip above and was
-   clipped by its border. */
-.band-ink {
-  padding-block: clamp(2rem, 6vw, 3.25rem);
+.step { position: relative; }
+
+.step__n {
+  display: block;
+  margin-bottom: var(--us-space-2);
+  font-size: var(--us-text-xs);
+  font-weight: 700;
+  letter-spacing: .14em;
+  color: var(--us-teal);
+  font-variant-numeric: tabular-nums;
 }
 
-/* 2px of overflow at 320px came back with the ported nav bar: Kanda's
-   .nav-bar has more horizontal padding than this shell's header did,
-   and the lockup plus a Menu button is already the tightest row in the
-   app. min-width:0 lets the lockup shrink instead of forcing the row
-   wider than the viewport. */
+.step h3 { font-size: var(--us-text-md); margin: 0 0 var(--us-space-2); }
+.step p { margin: 0; font-size: var(--us-text-sm); color: var(--us-ink-600); }
+
+/* The deadline rows, on their own surface rather than in a footer. */
+.band-parchment .reg-list { margin-top: var(--us-space-5); }
+.band-parchment .reg-list dt { font-size: var(--us-text-md); }
+
+/* ---- The footer, which is the only ink surface carrying body copy ----
+
+   THE DEFECT: the regulatory rows are the footer's whole reason for
+   existing — the instrument behind every deadline this product
+   computes — and they shipped in --us-text-secondary on #2c2c2c. That
+   is 1.5:1. On the screenshot the words "Kenya Civil Aviation
+   Authority" were legible only because I knew they were there.
+
+   It happened because .reg-list was drawn for a light panel and the
+   footer moved underneath it. Colour is the one property a component
+   cannot own alone: it is a contract with whatever is behind it, and
+   the surface changed without the component hearing about it. So the
+   surface restates it, once, for everything it contains — the same
+   pattern .band-dark already uses two screens up. */
+.footer { color: rgb(var(--us-sand-rgb) / 0.78); }
+.footer .section-title { color: #fff; }
+.footer .footer-line,
+.footer .footer-brand p { color: rgb(var(--us-sand-rgb) / 0.78); }
+.footer .footer-note,
+.footer .footer-legal { color: rgb(var(--us-sand-rgb) / 0.6); }
+.footer .us-lockup,
+.footer .us-lockup__descriptor { color: var(--us-gold); }
+.footer .reg-list dt { color: #fff; }
+.footer .reg-list dd { color: rgb(var(--us-sand-rgb) / 0.78); }
+.footer .reg-list__source { color: rgb(var(--us-sand-rgb) / 0.6); }
+.footer .reg-list__row + .reg-list__row { border-top-color: rgb(255 255 255 / 0.12); }
+.footer strong { color: #fff; }
+/* The provisional tag is a light pill on ink and stays that way: it is
+   the one thing in the footer a reader is meant to stop on. */
+.footer .tag { background: var(--us-sand); border-color: var(--us-ochre-text); }
+
+.footer-brand p { margin: var(--us-space-3) 0 0; font-size: var(--us-text-sm); max-width: 46ch; }
+.footer-col p { margin: 0 0 var(--us-space-2); font-size: var(--us-text-sm); }
+.footer-col .section-title { margin-bottom: var(--us-space-3); }
+.footer .footer-note { margin-top: var(--us-space-2); font-size: var(--us-text-xs); color: rgb(var(--us-sand-rgb) / 0.7); }
+
+
+/* JK's four-column footer is a desktop grid. On a handset four columns
+   at 1.5fr/1fr/1fr/1fr are four columns eighty pixels wide, so the grid
+   collapses — but to TWO, not to one: these blocks are two or three
+   lines each, and stacking them makes the footer tall again, which is
+   the thing this rebuild was for. */
+@media (max-width: 900px) {
+  .footer .cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--us-space-6); }
+  .footer .footer-brand { grid-column: 1 / -1; }
+}
+
+@media (max-width: 420px) {
+  .footer .cols { grid-template-columns: 1fr; gap: var(--us-space-5); }
+}
+
+.footer-line { margin: 0; max-width: 52ch; line-height: var(--us-leading-normal); }
+.footer-note { margin: var(--us-space-4) 0 0; font-size: var(--us-text-sm); color: var(--us-text-tertiary); }
+
+/* The tightest row in the app is the lockup beside a Menu button, and
+   JK's .nav padding is wider than this shell's was. Let the lockup
+   shrink rather than push the row past the viewport. */
 @media (max-width: 359px) {
-  .nav-bar {
+  .nav {
     padding-inline: var(--us-space-3);
     gap: var(--us-space-2);
   }
 
-  .nav-logo,
-  .us-lockup {
-    min-width: 0;
-  }
-
-  .us-lockup__text {
-    min-width: 0;
-    overflow: hidden;
-  }
-}
-
-/* 2px of overflow at 320px arrived with the ported nav bar: Kanda's
-   .nav-bar carries more horizontal padding than this shell's header
-   did, and the lockup beside a Menu button is already the tightest row
-   in the app. Letting the lockup shrink is the fix; widening the
-   viewport is not available. */
-@media (max-width: 359px) {
-  .nav-bar {
-    padding-inline: var(--us-space-3);
-    gap: var(--us-space-2);
-  }
-
-  .nav-logo,
+  .brand,
   .us-lockup,
   .us-lockup__text {
     min-width: 0;
     overflow: hidden;
+  }
+
+  .us-lockup__descriptor { display: none; }
+  .nav-toggle span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 }

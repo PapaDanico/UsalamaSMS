@@ -8,7 +8,8 @@
 
    GEOMETRY LIVES HERE AND ONLY HERE. `SHIELD_PATH` and the element
    paths below are read by the in-app mark AND by scripts/build-icons.mjs,
-   so the favicon cannot disagree with the header. Kanda learned this by
+   so the favicon cannot disagree with the header. The sibling product
+   learned this by
    having two sources; never hand-edit a generated icon.
 
    COLOUR. The mark is Savannah Gold on a dark ground, or Dusty Charcoal
@@ -21,7 +22,7 @@
    contrail dashes are drawn only above 40px. Below that they collapse
    into a smudge and cost legibility — the 32px favicon relies on the
    shield silhouette and the crane's body alone. This is the same
-   threshold Kanda applies to its topographic texture, for the same
+   threshold the sibling product applies to its texture, for the same
    reason, and it was measured rather than assumed.
    ============================================================ */
 
@@ -187,8 +188,8 @@ export function Mark({
   /* An empty title means decorative: aria-hidden, no <title> element,
      and no role. A mark that announces "UsalamaSMS" immediately before
      a wordmark that also says "UsalamaSMS" is a screen reader saying it
-     twice — which is the accessible-name defect Kanda's Lighthouse run
-     found on its own logo. */
+     twice — which is the accessible-name defect a Lighthouse run found
+     on the sibling product's own logo. */
   const labelling = title
     ? `role="img" aria-labelledby="${id}-t"`
     : 'aria-hidden="true" focusable="false"';
@@ -246,7 +247,8 @@ export function Mark({
  * crisp at any size, reflows, selectable, searchable, and it inherits
  * the licensed face the day it replaces the stand-in.
  *
- * The accessible name covers the WHOLE lockup. Kanda shipped a logo
+ * The accessible name covers the WHOLE lockup. The sibling product
+ * shipped a logo
  * whose accessible name omitted half its visible text and only found it
  * under Lighthouse; the mark here is explicitly decorative and the text
  * beside it does the naming.

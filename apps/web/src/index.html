@@ -102,11 +102,11 @@
     <a class="skip-link" href="#main">Skip to content</a>
 
     <div class="app-shell" id="app-shell" hidden>
-      <header class="nav-bar" id="topbar">
+      <header class="nav" id="topbar">
         <!-- The Logo component renders its own <a href="/">, so this is
              a plain wrapper. Nesting anchors is invalid and Chromium
              silently un-nests them, which moves the click target. -->
-        <div class="nav-logo" id="logo-slot"></div>
+        <div class="brand" id="logo-slot"></div>
 
         <div class="nav-right">
           <!-- Inline on a wide screen; behind Menu on a handset. -->
@@ -114,7 +114,7 @@
 
           <button
             type="button"
-            class="btn btn-secondary btn-sm nav-menu-toggle"
+            class="btn btn-ghost btn-sm nav-toggle"
             id="menu-toggle"
             aria-expanded="false"
             aria-controls="menu-panel"
@@ -129,7 +129,7 @@
       </header>
 
       <!-- Written by the shell, closed until asked for. -->
-      <nav class="nav-panel" id="menu-panel" aria-label="Primary" hidden></nav>
+      <nav class="dropdown-menu" id="menu-panel" aria-label="Primary" hidden></nav>
 
       <!-- Charter rule 8, extended: the sync state is chrome, not a
            notification. A report that has not reached anyone has not been
@@ -153,53 +153,70 @@
       <main id="main" class="page" tabindex="-1"></main>
 
       <!-- ============================================================
-           THE FOOTER IS INFORMATION, NOT A SECOND NAVIGATION.
+           THE FOOTER, REBUILT AS COLUMNS.
 
-           It used to repeat the four destinations that are already in
-           the header, which is a menu drawn twice and told nobody
-           anything. What belongs at the bottom of a compliance tool is
-           the basis of its numbers: which instrument each deadline comes
-           from, when that instrument was last read, and which rows are
-           still provisional.
+           It held the five regulatory rows in full, which made it the
+           tallest thing on every screen in the app — a person on a
+           handset scrolled through two thousand pixels of citation to
+           reach a copyright line. The rows were also the most important
+           claim the product makes, set in footnote type below the fold.
 
-           The regulatory rows are RENDERED FROM MOR_OBLIGATIONS by the
-           shell rather than written here — charter rule 10, and the only
-           way a footer citing a 24-hour obligation cannot drift from the
-           engine that computes it.
+           They are a SECTION on the landing page now, with a heading
+           and an anchor, and the footer is what a footer is for: where
+           you are, what else there is, and what the numbers are based
+           on. Four short columns and a version line.
+
+           Still not a second menu. The header carries the four
+           destinations with a hint each; these columns carry the two
+           that are not destinations at all — the basis of the figures,
+           and the standard they are built to — plus one link each to
+           the places a person actually asks for from the bottom of a
+           page. The check in scripts/smoke.mjs holds the line at
+           "fewer links than the header, and none of them duplicating
+           the whole menu".
            ============================================================ -->
       <footer class="footer">
-        <div class="container">
-          <div class="footer-brand">
-            <span id="footer-logo-slot"></span>
-            <p class="footer-line">
-              Aviation safety management for the operators the incumbents
-              priced out. Reports are held on the device that files them and
-              reach the safety office of that operator and nobody else.
-            </p>
+        <div class="wrap">
+          <div class="cols">
+            <div class="footer-brand">
+              <span id="footer-logo-slot"></span>
+              <p class="footer-line">
+                Aviation safety management for the operators the incumbents
+                priced out. Reports are held on the device that files them
+                and reach the safety office of that operator and nobody else.
+              </p>
+            </div>
+
+            <div class="footer-col">
+              <h2 class="section-title">The basis</h2>
+              <p><a href="/#deadlines">Reporting deadlines in force</a></p>
+              <p id="footer-jurisdictions" class="footer-note"></p>
+            </div>
+
+            <div class="footer-col">
+              <h2 class="section-title">The standard</h2>
+              <p class="footer-line">
+                <strong>ICAO Annex 19 Amendment 2</strong>, applicable
+                <time datetime="2026-11-26">26 November 2026</time>, with
+                Doc 10159 and the Doc 9859 risk classification.
+              </p>
+            </div>
+
+            <div class="footer-col">
+              <h2 class="section-title">This device</h2>
+              <p class="footer-line">
+                Reports are held in this browser until they send.
+              </p>
+            </div>
           </div>
 
-          <section class="footer-block">
-            <h2 class="section-title">Reporting deadlines in force</h2>
-            <!-- Filled from the regulatory registry at runtime. -->
-            <dl class="reg-list" id="footer-regulations"></dl>
-            <p class="footer-note" id="footer-provisional"></p>
-          </section>
-
-          <section class="footer-block">
-            <h2 class="section-title">Standard</h2>
-            <p class="footer-line">
-              Built against <strong>ICAO Annex 19 Amendment 2</strong>, applicable
-              <time datetime="2026-11-26">26 November 2026</time>, with Doc 10159
-              on safety intelligence and the Doc 9859 risk classification behind
-              the matrix.
-            </p>
-          </section>
-
-          <p class="footer-legal">
-            UsalamaSMS · Safety intelligence for African skies ·
-            Regulatory figures verified
-            <time datetime="2026-08-11">11 August 2026</time>
-          </p>
+          <div class="ver">
+            <span>UsalamaSMS · Safety intelligence for African skies</span>
+            <span>
+              Regulatory figures verified
+              <time datetime="2026-08-11">11 August 2026</time>
+            </span>
+          </div>
         </div>
       </footer>
 

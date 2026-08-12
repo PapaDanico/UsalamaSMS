@@ -47,12 +47,13 @@ type**:
 
 Every one clears 5.3:1 on **both** grounds, so a token cannot be moved
 from a white card to a sand panel and quietly drop under the floor. This
-is the trap Kanda fell into and fixed the same way.
+is the trap the sibling product fell into and fixed the same way.
 
 Brand colour at partial alpha goes through `--us-sand-rgb`,
 `--us-charcoal-rgb`, `--us-teal-rgb` and `--us-gold-rgb` rather than a
 literal `rgba()` — a hardcoded `rgba()` is invisible to a token sweep,
-which is how ten hairlines carried a stale cream through Kanda's last
+which is how ten hairlines carried a stale cream through the sibling
+product's last
 repaint.
 
 ---
@@ -85,7 +86,7 @@ intolerable".
 ## The risk scale, and why the green is almost black
 
 The tolerability scale is three steps and it is **not a brand palette**.
-Kanda's rule is that categorical colours must never signal good or bad;
+The benchmark's rule is that categorical colours must never signal good or bad;
 this product needs the inverse rule, because here the colours do mean
 something and the six-colour system cannot express it.
 
@@ -139,10 +140,10 @@ still says what it is.
 
 ## Light only — the deviation from both sibling products
 
-Kanda and JK & Associates resolve every brand colour through a
+JK & Associates resolves every brand colour through a
 light/dark pair. This product ships one scheme.
 
-Kanda is read on a phone at a border post at night and needs dark mode.
+It is read on a phone at a border post at night and needs dark mode.
 UsalamaSMS is read in a cockpit, a hangar office and a regulator's
 meeting room — and a safety report that renders differently depending on
 an OS setting is a safety report two people can describe differently.
@@ -208,7 +209,7 @@ from the artwork looks like at size.
 - **Detail threshold at 40px.** The crest, the runway, the legs, the
   wing, the eye and both arcs are drawn only above it. Below that they
   collapse into a smudge; the 32px favicon relies on the shield
-  silhouette and the crane's body. Same threshold Kanda applies to its
+  silhouette and the crane's body. Same threshold the benchmark applies to its
   topographic texture, for the same reason — and it is now applied to
   the GENERATED ICONS too, which previously drew the reduced set at
   every size including 512.
@@ -229,7 +230,7 @@ from the artwork looks like at size.
 - **The lockup's accessible name covers the whole thing.** The mark is
   explicitly `aria-hidden` and the adjacent text does the naming — a
   screen reader announcing "UsalamaSMS" twice is the accessible-name
-  defect Kanda's first Lighthouse run found on its own logo.
+  defect a first Lighthouse run found on the sibling product's own logo.
 
 ---
 
@@ -285,7 +286,7 @@ sunlight; the native control wins on every axis that matters here.
 categories, report types, departments. They carry **no semantic meaning**
 and must never signal good or bad.
 
-This was a live defect in Kanda, worth restating because this product has
+This was a live defect in the sibling product, worth restating because this product has
 more opportunities to repeat it: the priority-findings chip took the
 domain's categorical colour, so the single worst finding rendered green
 whenever its category happened to be green. Here, anything reading

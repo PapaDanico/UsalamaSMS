@@ -52,8 +52,14 @@ export function render(outlet) {
       <header class="page-head">
         <span class="eyebrow">Safety report</span>
         <h1>File a report</h1>
+        <!-- The number is COUNTED from the form below, not typed here.
+             It said "two" while the form asked for three, from the day
+             report type stopped being pre-answered — a sentence nobody
+             re-read because nothing pointed at it. Charter rule 10: a
+             count printed on a surface is derived. -->
         <p class="lede">
-          Two required fields. It sends itself when there is signal.
+          <span id="report-required-count">Three</span> required fields. It
+          sends itself when there is signal.
         </p>
       </header>
 
@@ -237,6 +243,14 @@ export function render(outlet) {
 
 function wire(outlet) {
   const form = outlet.querySelector('#report-form');
+
+  /* Written from the DOM the moment it exists, so the claim and the
+     form cannot disagree again. Words rather than digits up to five:
+     "3 required fields" reads like a validation error. */
+  const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five'];
+  const requiredCount = form.querySelectorAll('[required]').length;
+  outlet.querySelector('#report-required-count').textContent =
+    WORDS[requiredCount] ?? String(requiredCount);
   // One delegated listener for every dropdown on the screen, present or
   // future — see wireSelects().
   wireSelects(form);

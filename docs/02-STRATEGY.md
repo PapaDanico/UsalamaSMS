@@ -8,8 +8,8 @@
 
 | Fork | Decision |
 |---|---|
-| **Architecture** | **Charter, not stack.** The Kanda discipline — dated figures, computed counts, guards that fail loudly, offline-first, honest empty states — on a real Fastify + Prisma + Postgres backend. Kanda's zero-backend doctrine is a mechanism, not the principle; see the charter's version-2 note. |
-| **Front end** | **Vanilla JS at Kanda parity.** Same component, router and token patterns. Dexie is the only runtime dependency. |
+| **Architecture** | **Charter, not stack.** The benchmark discipline — dated figures, computed counts, guards that fail loudly, offline-first, honest empty states — on a real Fastify + Prisma + Postgres backend. JK & Associates' zero-backend doctrine is a mechanism, not the principle; see the charter's version-2 note. |
+| **Front end** | **Vanilla JS at benchmark parity.** Same component, router and token patterns. Dexie is the only runtime dependency. |
 | **Regulatory model** | **Date-aware, multi-jurisdiction, computed never stored.** KE authoritative; UG/TZ/RW provisional and marked as such. |
 | **Colour scheme** | **Light only.** No dark mode, deliberately. |
 | **Primary user** | The part-time safety manager at a 3–15 aircraft AOC — and, as the design target that actually decides things, the frontline person filing from a ramp with no signal. |
@@ -54,7 +54,7 @@ an operator who never speaks to us.
 
 ## 2. The one strategic fork
 
-Kanda's fork was *should there ever be a backend*. This product's is
+The benchmark's fork was *should there ever be a backend*. This product's is
 different and sharper:
 
 **Does the platform ever aggregate safety data across operators?**
@@ -70,7 +70,7 @@ different and sharper:
 ### What it costs you
 
 - The 1,000th operator makes the product no better than the 10th. This
-  is exactly the ceiling Kanda's research identified and resolved.
+  is exactly the ceiling the benchmark's research identified and resolved.
 - **It forfeits the Amendment 2 opportunity.** Safety intelligence, as
   Doc 10159 frames it, is the pipeline from data to decision. A single
   operator with 40 reports a year does not have enough data for
@@ -82,7 +82,7 @@ different and sharper:
 
 ### The resolution: tenant-isolated by default, contribution opt-in and k-anonymised
 
-The same shape as Kanda's, arrived at independently and for stronger
+The same shape as JK & Associates', arrived at independently and for stronger
 reasons:
 
 ```
@@ -127,7 +127,7 @@ the single-tenant product for a year.
 
 ## 3. Module suite
 
-Structured the way Kanda structures its tracks — a registry, so nothing
+Structured the way JK & Associates structures its tracks — a registry, so nothing
 can appear on a marketing page without a route behind it (charter rule
 10).
 
@@ -164,7 +164,7 @@ can appear on a marketing page without a route behind it (charter rule
 ### Frozen
 
 Training records and competency tracking. Adjacent, genuinely wanted,
-and a different product. Kanda froze its Build track for the same
+and a different product. JK & Associates froze its Build track for the same
 reason; the discipline is what kept it at 114 KB.
 
 ---
@@ -193,7 +193,7 @@ incumbents' list prices.
 |---|---|
 | **Per-aircraft subscription** | The unit that scales with the operator's actual size and with regulatory burden. A six-aircraft AOC pays six units, not an enterprise seat count |
 | **Regulator / authority** | The oversight view, licensed to the CAA. Aligned with the AFI Plan and with the investigation-completion problem |
-| **Association / group** | Operator associations as the distribution channel, exactly as Kanda reaches SMEs through KIFWA |
+| **Association / group** | Operator associations as the distribution channel, exactly as the sibling product reaches SMEs through its trade association |
 | **DFI / donor** | Aviation safety in Africa is a public good with existing funding instruments. Long procurement — start early, land it against Tier 3 |
 
 **Deliberately excluded: consultancy bundled into the licence.** It
@@ -208,7 +208,7 @@ incentive to leave gaps.
 | Question | Verdict | Reason |
 |---|---|---|
 | Backend? | Yes, and the charter's rule 7 is restated to say what it always meant | An audit chain the operator can edit is not an audit chain |
-| Front-end framework? | None. Vanilla JS at Kanda parity | The design target is a mid-range Android at a remote strip. Kanda ships 18 tools in 114 KB |
+| Front-end framework? | None. Vanilla JS at benchmark parity | The design target is a mid-range Android at a remote strip. JK & Associates ships 18 tools in 114 KB |
 | Offline? | Device-first, IndexedDB as local truth, Background Sync, shared validation schema | A report rejected server-side after three days offline is unfixable |
 | Dark mode? | No | A safety report that renders differently by OS setting is one two people can describe differently |
 | Multi-jurisdiction at launch? | Yes, with provisional rows marked | The corridor is flown from day one |

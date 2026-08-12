@@ -2,7 +2,7 @@
   "name": "UsalamaSMS \u2014 Aviation Safety Management",
   "short_name": "UsalamaSMS",
   "description": "File a safety report in thirty seconds, with or without signal.",
-  "start_url": "/",
+  "start_url": "/report",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

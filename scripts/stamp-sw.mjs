@@ -88,8 +88,8 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    The design target is a mid-range Android on a patchy connection at a
    remote strip, and the sibling product ships eighteen tools in 114 KB.
-   That number is not a boast — it is the reason Kanda works where it
-   works, and it survives only because something fails when it stops
+   That number is not a boast — it is the reason that product works where
+   it works, and it survives only because something fails when it stops
    being true.
 
    This page went from 8.8 KB to 165 KB the moment the real offline
@@ -156,7 +156,30 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    For scale, the entry is 64.6 KB over the wire gzipped. The raw ceiling
    is kept because parse time on a mid-range Android is charged on raw
    bytes, and that phone is the target device. */
-const BUDGET = { entry: 212 * 1024, js: 240 * 1024, css: 32 * 1024 };
+/* CSS 32 -> 34 KB, and this is the receipt.
+
+   The 32 KB was set against a stylesheet this app wrote for itself. It
+   now carries a design system ported wholesale from a sibling product,
+   and the port is the point: it is why a screen has a band, a card, a
+   trust strip and a nav that look like they were drawn by one hand
+   rather than assembled per screen.
+
+   1.8 KB of the port was given back first — thirty-nine rules for
+   pages this app does not render (the diagnostic radar, the partner
+   bar, the booking CTA), removed rather than budgeted for. The 2 KB
+   above the old ceiling is what remains after that, and it is spent on
+   the twenty-four classes this app's own markup emits: the page
+   container, the form controls, the six status badges, the two
+   regulatory tables. Those had no rules at all — which is the defect
+   check:css now guards, and the reason the account screen once
+   rendered flush against the left edge.
+
+   The number still bites. Over the wire this is 8.1 KB gzipped; the
+   raw ceiling stands because a mid-range Android is charged style
+   recalculation on raw bytes, and that phone is the target device. A
+   second component library dropped in here would break this, which is
+   what the ceiling is for. */
+const BUDGET = { entry: 212 * 1024, js: 240 * 1024, css: 34 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {
