@@ -193,6 +193,45 @@ DEIDENT_SALT   # openssl rand -base64 48
 Set them as **secret** environment variables so they are write-only in
 the Netlify UI afterwards.
 
+### The short way: `npm run setup:env`
+
+`scripts/setup-env.mjs` does all three in one pass, from a machine
+where you are already logged in. It prompts for the connection string
+with the terminal echo off, applies the same scheme check the API
+applies at boot, generates `JWT_SECRET` and `DEIDENT_SALT`, sets all
+three as secret values across `production`, `deploy-preview` and
+`branch-deploy`, and then **reads the project back** to confirm.
+
+```
+npm run setup:env
+npm run setup:env -- --dry-run    # validate a connection string, write nothing
+```
+
+It refuses the three pastes that have actually gone wrong — the REST
+base instead of a connection string, `[YOUR-PASSWORD]` left in place,
+and an empty paste — warns when given the direct connection, and
+appends `?pgbouncer=true&connection_limit=1` to a pooler URI that
+lacks it.
+
+**Why it reads the project back.** `netlify env:set` exits `0` and
+prints nothing when the CLI session has expired, having written
+nothing at all. A zero exit from that command is not evidence that a
+variable was set; this was found by trusting it and then discovering
+the project unchanged. The script therefore preflights the session
+before it asks for a password, and verifies every write afterwards —
+the read-back, not the exit code, decides whether it succeeded.
+
+This does not remove the human from the loop, and is not meant to. The
+password still passes through a person exactly once. What it removes
+is the silent-failure surface around that paste.
+
+`tests/setup-env.test.ts` holds the connection-string guard in place —
+every refusal, the pooler parameters, and the direct-connection
+warnings. Writing that suite is what found the last hole in it: a
+paste truncated to `postgresql://` satisfies both the scheme regex and
+the WHATWG URL parser, which accepts it with an empty hostname, so it
+was being written to the project unchallenged.
+
 Until all three exist the function answers `503 not_configured` and
 names what is missing — deliberately, because a Lambda that crashes on
 a missing variable produces a platform error that says nothing about
@@ -200,15 +239,36 @@ which one.
 
 ### Direct connection versus the pooler
 
-Supabase → Connect offers both. The **direct** connection (port 5432) is
-correct for a long-lived process and wrong for a serverless one: each
-warm Lambda holds its own pool, and enough concurrency exhausts
-Supabase's connection limit. The symptom is random timeouts that look
-like a network fault.
+Supabase → Connect offers both, and it offers the **direct** connection
+(port 5432) first, pre-selected. It is correct for a long-lived process
+and wrong for a serverless one, for two independent reasons. The
+second is the one usually cited; the first is the one that actually
+bites, and it bites immediately.
+
+1. **IPv6.** Supabase direct connections resolve to IPv6 by default —
+   the Connect panel says so, in a banner above the connection string.
+   Netlify Functions run on Lambda, which egresses IPv4-only. So the
+   direct connection does not degrade under load: it never opens at
+   all, and the error names a hostname, which reads like DNS trouble
+   rather than like the wrong tab. Supabase sells a dedicated-IPv4
+   add-on to work around this. The pooler does not need it.
+2. **Pool exhaustion.** Each warm Lambda holds its own pool, and enough
+   concurrency exhausts Supabase's connection limit. The symptom is
+   random timeouts that look like a network fault.
 
 This ships as a Netlify Function, so use the **transaction pooler**
 (port 6543) with `?pgbouncer=true&connection_limit=1`. Take the direct
 connection only if the API is later moved to a container host.
+
+**Changing the port is not enough.** The pooler is a different endpoint
+in three places at once: the host becomes
+`aws-<n>-<region>.pooler.supabase.com` rather than
+`db.<project-ref>.supabase.co`, the username becomes
+`postgres.<project-ref>` rather than `postgres`, and only then does the
+port become 6543. Editing `5432` to `6543` in a direct-connection
+string produces something that looks right and resolves to nothing.
+Re-copy from the Transaction pooler tab. `scripts/setup-env.mjs` warns
+on both the port and the host for exactly this reason.
 
 `DATABASE_URL` takes precedence over `SUPABASE_DATABASE_URL` in both
 `core.ts` and the function, so setting it explicitly overrides whatever
