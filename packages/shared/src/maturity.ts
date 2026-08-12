@@ -545,6 +545,64 @@ export interface RiskEntry {
  * function that reads the clock cannot be tested at a boundary — and
  * "overdue" is entirely a boundary.
  */
+/* ---------------------------------------------------------------
+   A REGISTER ENTRY THAT CAME BACK WRONG.
+
+   Entries live in a browser's localStorage, which is a place other
+   code, other tabs, a half-finished migration and a person with the
+   dev tools open can all write to. A pre-flight probe put one entry
+   with no `owner` into that store and the whole register went blank:
+   `owner.trim()` threw, the repaint died, and the twelve good entries
+   beside it disappeared with it. Nothing in the UI could bring them
+   back, because the bad entry was persisted and crashed the page again
+   on every load.
+
+   That is the worst available failure for a register — silent, total,
+   and permanent — and it was caused by trusting the shape of data that
+   had left our hands. So every entry is normalised on the way in, and
+   the fields the arithmetic touches are guaranteed to exist. An entry
+   missing a field renders with that field blank and STILL COUNTS in
+   the health figures, because an entry with no owner is exactly the
+   entry the unowned count exists to surface.
+   --------------------------------------------------------------- */
+export function normaliseEntry(raw: unknown): RiskEntry | null {
+  if (!raw || typeof raw !== "object") return null;
+  const e = raw as Record<string, unknown>;
+  if (typeof e.id !== "string" || !e.id) return null;
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const opt = (v: unknown) => (typeof v === "string" && v ? v : undefined);
+  const status = STATUSES.includes(e.status as RiskStatus)
+    ? (e.status as RiskStatus)
+    : "OPEN";
+  return {
+    id: e.id,
+    hazard: str(e.hazard),
+    consequence: str(e.consequence),
+    severity: str(e.severity),
+    likelihood: str(e.likelihood),
+    controls: str(e.controls),
+    residualSeverity: opt(e.residualSeverity),
+    residualLikelihood: opt(e.residualLikelihood),
+    owner: str(e.owner),
+    reviewBy: str(e.reviewBy),
+    status,
+    acceptedBy: opt(e.acceptedBy),
+    createdAt: str(e.createdAt),
+  };
+}
+
+const STATUSES: readonly RiskStatus[] = ["OPEN", "MITIGATED", "ACCEPTED", "CLOSED"];
+
+/* A review date is a calendar date in the operator's own week, not an
+   instant. Read as UTC it is wrong for three hours of every Nairobi
+   morning — and wrong in the flattering direction, reporting an
+   overdue review as still in hand. The stamp is therefore built from
+   the local calendar parts of `today`. */
+export function localDayStamp(today: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+}
+
 export function registerHealth(
   entries: ReadonlyArray<RiskEntry>,
   today: Date,
@@ -556,7 +614,7 @@ export function registerHealth(
   unowned: number;
   intolerableOpen: number;
 } {
-  const stamp = today.toISOString().slice(0, 10);
+  const stamp = localDayStamp(today);
   const live = entries.filter((e) => e.status !== "CLOSED");
   return {
     total: entries.length,
@@ -565,7 +623,7 @@ export function registerHealth(
     overdue: live.filter((e) => e.reviewBy && e.reviewBy < stamp).length,
     // An entry nobody owns is an entry nobody will do anything about,
     // and it is the most common defect in a real operator's register.
-    unowned: live.filter((e) => !e.owner.trim()).length,
+    unowned: live.filter((e) => !(e.owner ?? "").trim()).length,
     /* Intolerable AFTER controls, still not accepted. This is the line
        an inspector goes to first, and it is computed from the same
        tolerability() the matrix and the assessor use — never stored,

@@ -13,7 +13,7 @@
        level better than the evidence behind it.
    ============================================================ */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   SMS_COMPONENTS,
   SMS_ELEMENTS,
@@ -181,7 +181,12 @@ describe('coverage', () => {
    the boundary is tested on both sides.
    ============================================================ */
 
-import { registerHealth, type RiskEntry } from '../packages/shared/src/maturity';
+import {
+  registerHealth,
+  normaliseEntry,
+  localDayStamp,
+  type RiskEntry
+} from '../packages/shared/src/maturity';
 
 const entry = (over: Partial<RiskEntry> = {}): RiskEntry => ({
   id: 'r1',
@@ -259,5 +264,103 @@ describe('register health', () => {
     const bad = entry({ severity: 'NOT_A_SEVERITY', likelihood: 'FREQUENT' });
     expect(() => registerHealth([bad], today)).not.toThrow();
     expect(registerHealth([bad], today).intolerableOpen).toBe(0);
+  });
+
+  it('SURVIVES AN ENTRY WITH NO OWNER FIELD AT ALL', () => {
+    // The defect a pre-flight probe found: `owner.trim()` threw on an
+    // entry that had never had an owner, the repaint died, and every
+    // OTHER entry on the register vanished with it — permanently,
+    // because the bad row was saved and crashed the page again on
+    // every load. One malformed row must never be able to destroy a
+    // register.
+    const missing = { ...entry(), owner: undefined } as unknown as RiskEntry;
+    expect(() => registerHealth([missing], today)).not.toThrow();
+    expect(registerHealth([missing], today).unowned).toBe(1);
+  });
+});
+
+/* ============================================================
+   The register's storage boundary.
+
+   Entries live in a browser's localStorage — a place other tabs, other
+   code, a half-finished migration and anyone with the dev tools can
+   write to. Whatever comes back is not trusted to have a shape.
+   ============================================================ */
+
+describe('normalising an entry that came back from storage', () => {
+  it('refuses anything without an id, which is all it truly requires', () => {
+    expect(normaliseEntry(null)).toBeNull();
+    expect(normaliseEntry('a string')).toBeNull();
+    expect(normaliseEntry({})).toBeNull();
+    expect(normaliseEntry({ id: '' })).toBeNull();
+    expect(normaliseEntry({ id: 'r1' })).not.toBeNull();
+  });
+
+  it('fills every field the arithmetic touches, so nothing downstream throws', () => {
+    const e = normaliseEntry({ id: 'r1' })!;
+    expect(e.owner).toBe('');
+    expect(e.hazard).toBe('');
+    expect(e.reviewBy).toBe('');
+    expect(() => registerHealth([e], new Date('2026-08-12'))).not.toThrow();
+  });
+
+  it('keeps a bad entry ON the register rather than dropping it silently', () => {
+    // The tempting fix was to discard malformed rows. That is a second
+    // silent data loss: an entry somebody typed disappears and nothing
+    // says why. It is kept, blank fields and all, and it counts as
+    // unowned — which is exactly the column that exists to surface it.
+    const e = normaliseEntry({ id: 'r1', hazard: 'Bird strike' })!;
+    expect(e.hazard).toBe('Bird strike');
+    expect(registerHealth([e], new Date('2026-08-12')).unowned).toBe(1);
+  });
+
+  it('falls back to OPEN for an unrecognised status rather than trusting it', () => {
+    // An unknown status must not read as CLOSED, because CLOSED is
+    // excluded from every health count — the flattering direction.
+    expect(normaliseEntry({ id: 'r1', status: 'DEFINITELY_FINE' })!.status).toBe('OPEN');
+    expect(normaliseEntry({ id: 'r1', status: 'CLOSED' })!.status).toBe('CLOSED');
+  });
+
+  it('drops an empty residual half rather than storing it', () => {
+    const e = normaliseEntry({ id: 'r1', residualSeverity: '', residualLikelihood: null })!;
+    expect(e.residualSeverity).toBeUndefined();
+    expect(e.residualLikelihood).toBeUndefined();
+  });
+});
+
+describe('the day a review falls due', () => {
+  /* This suite runs in UTC, where the local day and the UTC day are
+     the same and a test cannot tell a correct implementation from the
+     broken one. It is therefore pinned to the timezone of the operator
+     this product is designed for. Without the pin, restoring
+     `toISOString().slice(0, 10)` passes every assertion below — which
+     is a check that cannot fail on the defect it exists for. */
+  const TZ = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = 'Africa/Nairobi';
+  });
+  afterAll(() => {
+    process.env.TZ = TZ;
+  });
+
+  it('is the operator\'s local calendar day, not UTC', () => {
+    // 22:00 UTC is 01:00 the NEXT morning in Nairobi. Read as UTC, a
+    // review due on the 13th is not yet due at 01:00 on the 13th —
+    // wrong in the direction that reports an overdue review as still
+    // in hand, which is the direction that gets an operator through an
+    // audit believing it was covered.
+    const nairobiEarlyMorning = new Date('2026-08-12T22:00:00Z');
+    expect(nairobiEarlyMorning.toISOString().slice(0, 10)).toBe('2026-08-12');
+    expect(localDayStamp(nairobiEarlyMorning)).toBe('2026-08-13');
+  });
+
+  it('counts a review due yesterday as overdue at one in the morning', () => {
+    const nairobiEarlyMorning = new Date('2026-08-12T22:00:00Z');
+    const due = entry({ reviewBy: '2026-08-12' });
+    expect(registerHealth([due], nairobiEarlyMorning).overdue).toBe(1);
+  });
+
+  it('pads a single-digit month and day', () => {
+    expect(localDayStamp(new Date(2026, 0, 5))).toBe('2026-01-05');
   });
 });
