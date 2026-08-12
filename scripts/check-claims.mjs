@@ -173,6 +173,37 @@ if (prefixBlock) {
   );
 }
 
+/* ---------------- The corporate banner ----------------
+
+   UsalamaSMS is published under the JK & Associates banner, and an
+   operator entrusting its safety reports to a product is entitled to
+   know which organisation stands behind it. Stated on three documents
+   and in the footer of every screen — so it is checked in all four
+   places rather than in whichever one somebody remembers to edit. */
+
+const pageContent = read('apps/web/src/content/pages.js');
+const BANNER = /JK &amp; Associates|JK & Associates/;
+
+for (const [name, marker] of [
+  ['About', 'export const ABOUT'],
+  ['the privacy notice', 'export const PRIVACY'],
+  ['the terms of use', 'export const TERMS']
+]) {
+  const start = pageContent.indexOf(marker);
+  const rest = pageContent.slice(start, pageContent.indexOf('export const', start + 10));
+  assert(
+    `${name} names the corporate banner`,
+    start !== -1 && BANNER.test(rest),
+    `${name} does not say who publishes this product`
+  );
+}
+
+assert(
+  'the footer of every screen names the corporate banner',
+  BANNER.test(read('apps/web/src/index.html')),
+  'the shell footer does not carry the publisher'
+);
+
 /* ---------------- Documents that make dated claims ---------------- */
 
 const switches = read('docs/05-SWITCHES.md');

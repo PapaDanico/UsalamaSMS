@@ -191,19 +191,28 @@ describe("regulatory reporting deadlines", () => {
   });
 
   it("scales DUE_SOON to the jurisdiction's own window", () => {
-    // Six flat hours is a nudge inside the EU's 72 and a quarter of
-    // Kenya's 24. Proportional puts the warning at the same point in the
-    // obligation wherever it was filed.
+    // Six flat hours is a quarter of Kenya's 24 and a nudge inside a
+    // 72-hour one. Proportional puts the warning at the same point in
+    // the obligation wherever it was filed.
+    //
+    // The second window is SYNTHETIC. It used to be the EU row, and
+    // that row was removed when the product scoped itself to the State
+    // of Registry — leaving only one numeric obligation, against which
+    // a scaling test cannot fail. A rule about proportion needs two
+    // proportions, so the second is constructed here rather than
+    // borrowed from whichever jurisdiction happens to be in the
+    // registry this month.
     const ke = reportingDeadline("KE", { occurredAt, awareAt: occurredAt });
-    const eu = reportingDeadline("EU", { occurredAt, awareAt: occurredAt });
+    const long = { ...MOR_OBLIGATIONS.KE, hours: 72 };
+    const longDue = new Date(occurredAt.getTime() + 72 * 3_600_000);
 
     // Kenya: 24h window, due 12 Aug 10:00Z, so it warns from 04:00Z.
     expect(deadlineStatus(ke.due, new Date("2026-08-12T03:00:00Z"), { obligation: ke.obligation })).toBe("PENDING");
     expect(deadlineStatus(ke.due, new Date("2026-08-12T05:00:00Z"), { obligation: ke.obligation })).toBe("DUE_SOON");
 
-    // EU: 72h window, warns with 18h left — not 6.
-    expect(deadlineStatus(eu.due, new Date("2026-08-13T20:00:00Z"), { obligation: eu.obligation })).toBe("DUE_SOON");
-    expect(deadlineStatus(eu.due, new Date("2026-08-13T14:00:00Z"), { obligation: eu.obligation })).toBe("PENDING");
+    // 72h window: warns with 18 hours left, not 6.
+    expect(deadlineStatus(longDue, new Date("2026-08-13T20:00:00Z"), { obligation: long })).toBe("DUE_SOON");
+    expect(deadlineStatus(longDue, new Date("2026-08-13T14:00:00Z"), { obligation: long })).toBe("PENDING");
   });
 
   it("treats a late submission as OVERDUE, not retroactively met", () => {

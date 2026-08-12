@@ -44,9 +44,20 @@ export const OTHER = "__OTHER__";
 /**
  * Aerodromes, by ICAO code.
  *
- * Scoped to the corridor this product serves rather than to the world:
- * a Kenyan operator's dropdown should not open on 40,000 entries. The
- * escape hatch covers everything else.
+ * SCOPED TO THE STATE OF REGISTRY, which is Kenya for now. The list
+ * once reached across the East African corridor — Entebbe, Dar es
+ * Salaam, Kilimanjaro, Zanzibar, Kigali and further — on the reasoning
+ * that a Kenyan operator flies there. It does, and the escape hatch
+ * carries it: the aerodromes that get a code in the dropdown are the
+ * ones whose reporting this product actually maintains a standard for,
+ * and a list that reaches past that implies a coverage that is not
+ * there.
+ *
+ * A Kenyan operator filing about a sector into Entebbe uses "Somewhere
+ * else…" and types it. That is one aerodrome in free text rather than
+ * a dropdown entry implying the product knows Uganda's obligations.
+ * Restoring a field is one line, and should follow a customer rather
+ * than precede one.
  */
 export const AERODROMES = [
   { code: 'HKJK', label: 'Nairobi / Jomo Kenyatta (HKJK)', country: 'KE' },
@@ -77,16 +88,7 @@ export const AERODROMES = [
   { code: 'HKLK', label: 'Lokichogio (HKLK)', country: 'KE' },
   { code: 'HKKT', label: 'Kitale (HKKT)', country: 'KE' },
   { code: 'HKNY', label: 'Nanyuki (HKNY)', country: 'KE' },
-  { code: 'HKAM', label: 'Amboseli (HKAM)', country: 'KE' },
-  { code: 'HUEN', label: 'Entebbe (HUEN)', country: 'UG' },
-  { code: 'HTDA', label: 'Dar es Salaam / Julius Nyerere (HTDA)', country: 'TZ' },
-  { code: 'HTKJ', label: 'Kilimanjaro (HTKJ)', country: 'TZ' },
-  { code: 'HTZA', label: 'Zanzibar (HTZA)', country: 'TZ' },
-  { code: 'HRYR', label: 'Kigali (HRYR)', country: 'RW' },
-  { code: 'HBBA', label: 'Bujumbura (HBBA)', country: 'BI' },
-  { code: 'HAAB', label: 'Addis Ababa / Bole (HAAB)', country: 'ET' },
-  { code: 'HCMM', label: 'Mogadishu (HCMM)', country: 'SO' },
-  { code: 'HSSJ', label: 'Juba (HSSJ)', country: 'SS' }
+  { code: 'HKAM', label: 'Amboseli (HKAM)', country: 'KE' }
 ];
 
 /**
@@ -180,16 +182,20 @@ export const FLIGHT_PHASES = [
 
 /* Jurisdictions, labelled by authority rather than by code.
 
-   ICAO is first because it is the answer for every operator whose own
-   authority is not one of the other two — and that is most of them.
-   It carries no hour figure: Annex 13 asks for notification with a
-   minimum of delay and names no period. The list once held Uganda,
-   Tanzania and Rwanda at 72 hours apiece, borrowed from the EU and
-   labelled ICAO-common. It is not common and it is not ICAO's. */
+   Kenya first, because a reporting obligation follows the STATE OF
+   REGISTRY and Kenya is the one whose standard this product maintains.
+   ICAO second, carrying no hour figure, for every other State: Annex 13
+   asks for notification with a minimum of delay and names no period.
+
+   The list once held Uganda, Tanzania and Rwanda at 72 hours apiece,
+   borrowed from the EU and labelled ICAO-common — it is neither common
+   nor ICAO's — and then the EU itself, which was correct and cited and
+   still implied a coverage that does not exist. Two entries is the
+   honest width: one State done properly, and a baseline that declines
+   to guess at the rest. */
 export const JURISDICTION_OPTIONS = [
-  { code: 'ICAO', label: 'ICAO baseline — my authority is not listed' },
   { code: 'KE', label: 'Kenya — KCAA' },
-  { code: 'EU', label: 'European Union — EASA' }
+  { code: 'ICAO', label: 'ICAO baseline — another State of Registry' }
 ];
 
 /** Sync states, for the triage filter. */

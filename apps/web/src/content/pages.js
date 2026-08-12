@@ -33,6 +33,22 @@ export const ABOUT = {
          earns. It is not a complete SMS, and it says which parts it is not.`,
   sections: [
     {
+      id: 'publisher',
+      title: 'Who publishes this',
+      body: `
+        <p><strong>UsalamaSMS is a product of JK &amp; Associates</strong>, and
+        operates under that corporate banner. The consultancy practice is the
+        reason this product exists in the shape it does: the questions it
+        answers are the ones operators bring to an advisory engagement, and the
+        instruments it cites are the ones that engagement works from.</p>
+        <p>That relationship is stated here, on the
+        <a href="/privacy">privacy notice</a> and in the
+        <a href="/terms">terms of use</a> rather than left to be inferred,
+        because an operator entrusting its safety reports to a product is
+        entitled to know which organisation stands behind it before it files
+        the first one.</p>`
+    },
+    {
       id: 'what',
       title: 'What this is',
       body: `
@@ -443,6 +459,19 @@ export const PRIVACY = {
          corresponds to a mechanism in the software.`,
   sections: [
     {
+      id: 'who',
+      title: 'Who this notice is given by',
+      body: `
+        <p>UsalamaSMS is a product of <strong>JK &amp; Associates</strong> and is
+        operated under that corporate banner. Where this notice says what the
+        product does with information, JK &amp; Associates is the organisation
+        answerable for it.</p>
+        <p>An operator using UsalamaSMS remains responsible for the safety
+        information of its own people: the reports in a tenant belong to that
+        operator, are readable by that operator's safety office, and are not
+        aggregated across operators or shared between them.</p>`
+    },
+    {
       id: 'reports',
       title: 'Safety reports',
       body: `
@@ -505,6 +534,16 @@ export const TERMS = {
          information. The judgement stays with the operator.`,
   sections: [
     {
+      id: 'parties',
+      title: 'Who these terms are with',
+      body: `
+        <p>UsalamaSMS is a product of <strong>JK &amp; Associates</strong> and is
+        supplied under that corporate banner. These terms describe how the
+        product may be used; where an operator holds a written agreement with
+        JK &amp; Associates, that agreement governs and these terms do not
+        displace it.</p>`
+    },
+    {
       id: 'purpose',
       title: 'What the product does and does not decide',
       body: `
@@ -514,8 +553,10 @@ export const TERMS = {
         hazard is acceptable, or whether an operator is compliant. Those are
         the accountable manager's decisions and the authority's to review.</p>
         <p>Regulatory figures are recorded with the date they were checked
-        against their primary instrument, and figures not yet so checked are
-        marked provisional wherever they appear. An operator relying on any
+        against their primary instrument. The product maintains the reporting
+        standard of one State of Registry &mdash; Kenya &mdash; and offers the
+        ICAO baseline for every other: notification without delay, with no
+        period stated, because ICAO states none. An operator relying on any
         figure here remains responsible for its own regulatory position.</p>`
     },
     {
