@@ -211,3 +211,78 @@ describe('implementationPlan — who, and by when', () => {
     expect('due' in step).toBe(false);
   });
 });
+
+/* ============================================================
+   WHERE IS IT WRITTEN DOWN?
+
+   CASA's gap analysis carries a Document reference column against
+   every indicator, and instructs: "If you have identified an element
+   is already present, you should identify where this is already
+   documented within your current organisational documents."
+
+   This closes a hole that was open in this codebase from the start.
+   maturity.ts and plan.ts both state SM ICG's prerequisite rule —
+   nothing counts as present before it is documented — and neither ever
+   asked which document. An element placed at Documented or above IS a
+   claim that one exists.
+   ============================================================ */
+describe('implementationPlan — the document behind the claim', () => {
+  it('finds nothing to report when no element is answered', () => {
+    expect(implementationPlan({}).undocumented).toEqual([]);
+  });
+
+  it('does not ask an ABSENT element to name a document', () => {
+    // Rung 0 is the operator saying there is nothing. Demanding a
+    // reference for it would be asking them to document the absence.
+    expect(implementationPlan(all(0)).undocumented).toEqual([]);
+  });
+
+  it('REPORTS EVERY ELEMENT AT DOCUMENTED OR ABOVE THAT NAMES NOTHING', () => {
+    const plan = implementationPlan(all(1));
+    expect(plan.undocumented.length).toBe(12);
+  });
+
+  it('LOOKS AT THE SETTLED ELEMENTS TOO, NOT ONLY THE ONES WITH STEPS', () => {
+    /* The defect this is written against: computing the finding from
+       the plan's steps, which would exempt exactly the elements making
+       the strongest claim — an element at the top of the scale
+       produces no step at all. */
+    const plan = implementationPlan(all(4));
+    expect(plan.phases.flatMap((p) => p.steps)).toEqual([]);
+    expect(plan.undocumented.length).toBe(12);
+  });
+
+  it('clears an element once a reference is named', () => {
+    const plan = implementationPlan(all(2), { references: { '1.1': 'Ops Manual s.3.2 rev 7' } });
+    expect(plan.undocumented.map((e) => e.id)).not.toContain('1.1');
+    expect(plan.undocumented.length).toBe(11);
+  });
+
+  it('does not accept whitespace as a document reference', () => {
+    // The same defect as a whitespace owner, in the place where it
+    // would silently retire a finding rather than create one.
+    const plan = implementationPlan(all(2), { references: { '1.1': '   ' } });
+    expect(plan.undocumented.map((e) => e.id)).toContain('1.1');
+  });
+
+  it('carries resources onto the step, trimmed, and omits an empty one', () => {
+    const plan = implementationPlan(all(0), {
+      assignments: {
+        '1.1': { resources: '  Four hours of the chief pilot  ' },
+        '1.2': { resources: '  ' }
+      }
+    });
+    const steps = plan.phases.flatMap((p) => p.steps);
+    expect(steps.find((s) => s.element.id === '1.1')!.resources).toBe(
+      'Four hours of the chief pilot'
+    );
+    expect('resources' in steps.find((s) => s.element.id === '1.2')!).toBe(false);
+  });
+
+  it('DOES NOT LET RESOURCES ALONE COUNT AS ASSIGNED', () => {
+    // Who and by when are the two questions. A resource note is not an
+    // answer to either, and must not retire the unassigned finding.
+    const plan = implementationPlan(all(0), { assignments: { '1.1': { resources: 'Nothing new' } } });
+    expect(plan.unassigned.map((s) => s.element.id)).toContain('1.1');
+  });
+});

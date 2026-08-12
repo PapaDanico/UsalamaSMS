@@ -54,6 +54,15 @@ export interface Assignment {
   readonly owner?: string;
   /** ISO `YYYY-MM-DD`. A date, not a duration: durations never expire. */
   readonly due?: string;
+  /**
+   * What it will take — CASA's "Resources required" column.
+   *
+   * Not scored, not validated, and deliberately free text. The answer
+   * is usually "four hours of the chief pilot" or "nothing we do not
+   * already have", and the value of asking is that an operator who
+   * cannot answer it has not planned the step, only named it.
+   */
+  readonly resources?: string;
 }
 
 export interface PlanStep {
@@ -70,6 +79,8 @@ export interface PlanStep {
   readonly owner?: string;
   /** The date it is owed by, if one has been set. */
   readonly due?: string;
+  /** What it will take, if the operator has said. */
+  readonly resources?: string;
 }
 
 export interface PlanPhase {
@@ -96,8 +107,34 @@ export interface ImplementationPlan {
    * across a table.
    */
   readonly unassigned: ReadonlyArray<PlanStep>;
+  /**
+   * Elements the operator says are documented, that name no document.
+   *
+   * CASA's gap analysis carries a "Document reference" column against
+   * every indicator, and its instructions are explicit: if an element
+   * is already present, "you should identify where this is already
+   * documented within your current organisational documents."
+   *
+   * This is the finding that follows from a rule already stated twice
+   * in this codebase and never enforced. SM ICG: nothing counts as
+   * Present until it is documented. So an element placed at rung 1 or
+   * above IS a claim that a document exists — and an operator who
+   * cannot name it is not at rung 1, whatever the radio button says.
+   * Naming it is also the cheapest audit preparation available: the
+   * question an assessor asks next is "show me", and the answer is
+   * either on this page already or it is being invented across a
+   * table.
+   *
+   * A finding, deliberately, and not a correction. This tool does not
+   * overrule an operator about its own operation; it says what an
+   * assessor will ask and leaves the answering to them.
+   */
+  readonly undocumented: ReadonlyArray<SmsElement>;
   readonly scale?: OperatorScale;
 }
+
+/** The rung at and above which a document is being claimed to exist. */
+export const DOCUMENTED_AT = 1;
 
 /**
  * What moving from one rung to the next actually asks of an operator.
@@ -181,10 +218,13 @@ export function implementationPlan(
     readonly suitability?: Readonly<Record<string, Suitability>>;
     readonly scale?: OperatorScale;
     readonly assignments?: Readonly<Record<string, Assignment | undefined>>;
+    /** Where each element is already written down, in the operator's words. */
+    readonly references?: Readonly<Record<string, string | undefined>>;
   } = {},
 ): ImplementationPlan {
   const suitability = options.suitability ?? {};
   const assignments = options.assignments ?? {};
+  const references = options.references ?? {};
   const settled: SmsElement[] = [];
   const buckets: PlanStep[][] = [[], [], [], []];
 
@@ -203,6 +243,7 @@ export function implementationPlan(
     const assigned = assignments[element.id];
     const owner = assigned?.owner?.trim();
     const due = assigned?.due?.trim();
+    const resources = assigned?.resources?.trim();
     buckets[level]!.push({
       element,
       from: MATURITY_LEVELS[level]!,
@@ -210,6 +251,7 @@ export function implementationPlan(
       action: transition.action,
       ...(owner ? { owner } : {}),
       ...(due ? { due } : {}),
+      ...(resources ? { resources } : {}),
       /* The element's OWN evidence descriptor wins where it has one —
          it is specific to this element and the generic line is not. The
          generic line covers the rungs below the top, where the element
@@ -243,6 +285,13 @@ export function implementationPlan(
        the top of the scale, or never answered — cannot make the count
        disagree with what is on the page. */
     unassigned: phases.flatMap((p) => p.steps).filter((s) => !s.owner || !s.due),
+    /* Over ALL elements, not only the ones with steps: an element at
+       the top of the scale is making the strongest documentation claim
+       on the page, and is exactly the one nobody thinks to check. */
+    undocumented: SMS_ELEMENTS.filter((e) => {
+      const level = answers[e.id];
+      return typeof level === "number" && level >= DOCUMENTED_AT && !references[e.id]?.trim();
+    }),
     ...(options.scale ? { scale: options.scale } : {}),
   };
 }

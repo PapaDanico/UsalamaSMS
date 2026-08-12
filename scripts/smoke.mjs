@@ -1595,6 +1595,62 @@ try {
     page.off('request', watchName);
   });
 
+  await check('AN ELEMENT CLAIMING A DOCUMENT IS ASKED WHICH ONE', async () => {
+    /* The finding that follows from a rule this codebase has stated
+       from the beginning and never enforced: nothing counts as being
+       in place before it is documented. So an element placed at
+       Documented or above is a claim that a document exists, and the
+       operator who cannot name it is not there.
+
+       Driven rather than unit-tested because the failure mode is the
+       one this repository keeps meeting: a field added to the data and
+       rendered nowhere, or rendered and wired to nothing. Element 4.1
+       is answered at the TOP of the scale on purpose — it produces no
+       plan step, and a finding computed from the steps would exempt
+       exactly the strongest claim on the page. */
+    await page.goto(BASE + '/toolkits/maturity', { waitUntil: 'networkidle' });
+    await page.check('input[name="el-4.1"][value="4"]');
+
+    const line = () =>
+      page
+        .locator('#mat-undocumented')
+        .textContent()
+        .then((t) => (t ?? '').replace(/\s+/g, ' ').trim());
+
+    await page.waitForFunction(
+      () => (document.querySelector('#mat-undocumented')?.textContent ?? '').includes('4.1'),
+      undefined,
+      { timeout: 5000 }
+    );
+    const before = await line();
+    assert(/1 element is/.test(before), `the finding reads "${before}"`);
+
+    await page.fill('input[name="ref-4.1"]', 'Ops Manual s.9.4 rev 12');
+    await page.locator('#mat-undocumented').click();
+    await page.waitForFunction(
+      () => (document.querySelector('#mat-undocumented')?.textContent ?? '').trim() === '',
+      undefined,
+      { timeout: 5000 }
+    );
+
+    await page.reload({ waitUntil: 'networkidle' });
+    assert(
+      (await page.locator('input[name="ref-4.1"]').inputValue()) === 'Ops Manual s.9.4 rev 12',
+      'the document reference did not survive a reload'
+    );
+    assert(
+      (await line()) === '',
+      'the finding came back after a reload, with the reference still in the box'
+    );
+
+    await page.click('#mat-clear');
+    await page.reload({ waitUntil: 'networkidle' });
+    assert(
+      (await page.locator('input[name="ref-4.1"]').inputValue()) === '',
+      'Clear answers left a document reference behind'
+    );
+  });
+
   await check('COVERAGE STATES A POSITION AN OPERATOR WOULD ADOPT ON', async () => {
     // The highest-consequence sentence in the product. An independent
     // review found it describing itself as a safety management system

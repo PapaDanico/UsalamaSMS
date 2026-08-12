@@ -2834,6 +2834,17 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .mat-assign__label { font-size: var(--us-text-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--us-text-tertiary); }
 .mat-assign input { font: inherit; font-size: var(--us-text-sm); padding: 4px 8px; border: 1px solid var(--us-border); border-radius: var(--us-radius-sm); background: var(--us-surface); color: var(--us-text-primary); min-width: 0; }
 .mat-assign__owner { width: 14ch; }
+.mat-assign__resources { width: 22ch; }
+/* The resources field takes a phrase, not a word, so on a narrow screen
+   it gets the whole row rather than being squeezed beside a date. */
+.mat-assign__wide { flex-basis: 100%; }
+
+/* WHERE IS IT WRITTEN DOWN — asked on the element itself, beside the
+   ladder, because it is part of answering rather than part of planning. */
+.mat-ref { margin: var(--us-space-3) 0 0; }
+.mat-ref label { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--us-space-2); }
+.mat-ref__q { font-size: var(--us-text-sm); color: var(--us-text-secondary); }
+.mat-ref input { flex: 1 1 24ch; font: inherit; font-size: var(--us-text-sm); padding: 4px 8px; border: 1px solid var(--us-border); border-radius: var(--us-radius-sm); background: var(--us-surface); color: var(--us-text-primary); min-width: 0; }
 .mat-phase__assign { margin-top: var(--us-space-4); font-size: var(--us-text-sm); color: var(--us-text-secondary); max-width: 62ch; }
 
 @media print {
@@ -2842,7 +2853,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   /* The fields print as what they hold, not as boxes. An empty one
      still prints its rule, so a blank owner is visible on paper as a
      blank rather than as nothing at all. */
-  .mat-assign input { border: 0; border-bottom: 1px solid var(--us-border); border-radius: 0; padding: 0 4px; background: none; }
+  .mat-assign input,
+  .mat-ref input { border: 0; border-bottom: 1px solid var(--us-border); border-radius: 0; padding: 0 4px; background: none; }
 }
 
 /* ── The assessment, on paper ────────────────────────────────────────
