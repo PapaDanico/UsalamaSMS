@@ -1,0 +1,226 @@
+/* ============================================================
+   The update path — the one thing a PWA does that a website does not.
+
+   WHY THIS FILE EXISTS. Every other check drives one version of the
+   app. The failure this catches needs two, and it is the failure a
+   long-lived installed app hits most: a new version is published while
+   somebody has the old one open.
+
+   What was found by driving it, all three parts of one defect:
+
+     · the worker called skipWaiting() on install, so it took over
+       without asking — overriding a decision prompts.js states in
+       words: an update is "NEVER applied automatically";
+     · activate then deleted the previous version's cache while a page
+       was still running that version's JavaScript, so the next route
+       that page opened fetched a chunk whose hash had moved and got a
+       404 — and the reader, on full signal, was told "This page needs
+       a connection";
+     · the prompt's Reload button posted to registration.waiting, which
+       is null once the worker has skipped. It did nothing.
+
+   The two-version dance is simulated rather than built twice: v2 is v1
+   with a new worker VERSION and one lazily-loaded chunk removed, which
+   is exactly what a real deploy does to a chunk whose contents changed.
+   ============================================================ */
+
+import { createServer } from 'node:http';
+import { readFile, cp, rm, readdir, writeFile } from 'node:fs/promises';
+import { extname, join } from 'node:path';
+import { chromium } from 'playwright';
+
+const PORT = 4399;
+const BASE = `http://127.0.0.1:${PORT}`;
+const DIST = new URL('../dist/', import.meta.url).pathname;
+const V1 = '/tmp/usalamasms-update-v1';
+const V2 = '/tmp/usalamasms-update-v2';
+
+const TYPES = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.json': 'application/json',
+  '.woff2': 'font/woff2'
+};
+
+const results = [];
+let failed = 0;
+const check = async (name, fn) => {
+  try {
+    await fn();
+    results.push(`  ok   ${name}`);
+  } catch (err) {
+    failed++;
+    results.push(`  FAIL ${name}\n         ${err.message.split('\n')[0]}`);
+  }
+};
+const assert = (c, m) => {
+  if (!c) throw new Error(m);
+};
+
+// ---- Build the two versions -----------------------------------------
+await rm(V1, { recursive: true, force: true });
+await rm(V2, { recursive: true, force: true });
+await cp(DIST, V1, { recursive: true });
+await cp(DIST, V2, { recursive: true });
+
+const sw = await readFile(join(V2, 'sw.js'), 'utf8');
+const version = sw.match(/const VERSION = '([^']+)'/)?.[1];
+if (!version) {
+  console.error('check:update — could not read VERSION out of the built sw.js.');
+  process.exit(1);
+}
+
+/* One lazily-loaded chunk disappears from v2, which is what a deploy
+   does to any chunk whose contents changed.
+
+   It has to leave v2's PRECACHE list as well as the directory. The
+   first run of this harness retired the file but left it named in the
+   worker's manifest, so cache.addAll() rejected, install failed, and
+   there was never a waiting worker at all — a harness that reported
+   "the new version did not wait" about a version it had itself
+   prevented from installing. The same shape of mistake as an earlier
+   check in this repo that deleted the database it was measuring. */
+const assets = await readdir(join(V2, 'assets'));
+const victim = assets.find((f) => f.startsWith('index-') && f.endsWith('.js') && f !== assets[0]);
+assert(victim, 'no lazily-loaded chunk found to retire');
+await rm(join(V2, 'assets', victim));
+
+const patched = sw
+  .replace(version, 'deadbeefcafe')
+  .replace(new RegExp(`["']/assets/${victim}["'],?`), '');
+assert(!patched.includes(victim), `could not take ${victim} out of v2's precache manifest`);
+await writeFile(join(V2, 'sw.js'), patched);
+
+let ROOT = V1;
+const gone = [];
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url, BASE);
+  const path = join(ROOT, url.pathname === '/' ? 'index.html' : url.pathname.slice(1));
+  try {
+    const body = await readFile(path);
+    res.writeHead(200, {
+      'content-type': TYPES[extname(path)] ?? 'application/octet-stream',
+      'cache-control': 'no-cache'
+    });
+    res.end(body);
+  } catch {
+    if (extname(url.pathname)) {
+      gone.push(url.pathname);
+      res.writeHead(404);
+      res.end('gone');
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end(await readFile(join(ROOT, 'index.html')));
+  }
+});
+await new Promise((r) => server.listen(PORT, r));
+
+const browser = await chromium.launch({
+  executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium'
+});
+const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const page = await context.newPage();
+
+await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
+  timeout: 20000
+});
+
+// A new version is published while this person has the app open.
+ROOT = V2;
+const seen = await page.evaluate(async () => {
+  const reg = await navigator.serviceWorker.getRegistration();
+  let controllerChanged = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    controllerChanged = true;
+  });
+  await reg.update();
+  await new Promise((r) => setTimeout(r, 3000));
+  return {
+    waiting: Boolean(reg.waiting),
+    controllerChanged,
+    caches: await caches.keys()
+  };
+});
+
+await check('A NEW VERSION WAITS TO BE ASKED, RATHER THAN TAKING OVER', async () => {
+  assert(seen.waiting, 'the new worker did not wait — it activated without being asked');
+  assert(
+    !seen.controllerChanged,
+    'the new worker claimed the open page before the person accepted it'
+  );
+});
+
+await check('THE OPEN PAGE KEEPS THE ASSETS IT IS STILL RUNNING ON', async () => {
+  assert(
+    seen.caches.some((k) => k.includes(version)),
+    `the cache for the running version was purged under it — caches: ${seen.caches.join(', ')}`
+  );
+});
+
+await check('AND A ROUTE STILL OPENS FROM THE VERSION IT IS ON', async () => {
+  // The whole point of not purging: this navigation used to 404 and
+  // put "This page needs a connection" in front of an online reader.
+  await page.evaluate(() => {
+    const a = document.createElement('a');
+    a.href = '/toolkits/register';
+    document.body.appendChild(a);
+    a.click();
+  });
+  await page.waitForSelector('#reg-form', { timeout: 8000 });
+  const heading = ((await page.locator('#main h1').first().textContent()) ?? '').trim();
+  assert(heading === 'Risk register', `the route rendered "${heading}" instead of the register`);
+});
+
+await check('THE PROMPT IS OFFERED, AND ITS BUTTON ACTUALLY APPLIES THE UPDATE', async () => {
+  // Reload used to post to registration.waiting, which is null once the
+  // worker has skipped — so the button did nothing, twice over.
+  const dock = page.locator('#update-prompt');
+  assert(await dock.count(), 'no update prompt was shown to the person');
+
+  /* Accepting must actually reload the page. Waiting on the navigation
+     itself rather than on a condition that is true the moment it is
+     asked — the first version of this waited for
+     `performance.getEntriesByType('navigation').length > 0`, which is
+     true on any loaded page, so it measured the caches before the
+     reload had begun and failed the fix it was written to prove. */
+  const reloaded = page.waitForNavigation({ timeout: 20000 });
+  // [data-act=go], not the first button: dismiss is rendered first, so
+  // `#update-prompt button` clicks "Later" and then waits forever for
+  // a reload nobody asked for.
+  await page.click('#update-prompt [data-act=go]');
+  await reloaded;
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForFunction(
+    () => caches.keys().then((k) => k.some((n) => n.includes('deadbeefcafe'))),
+    undefined,
+    { timeout: 15000 }
+  );
+
+  const caches_ = await page.evaluate(() => caches.keys());
+  assert(
+    caches_.some((k) => k.includes('deadbeefcafe')),
+    `after accepting, the new version is not the cached one: ${caches_.join(', ')}`
+  );
+  assert(
+    !caches_.some((k) => k.includes(version)),
+    `the old cache survived an accepted update, so it will never be reclaimed: ${caches_.join(', ')}`
+  );
+});
+
+console.log('\n' + results.join('\n'));
+await browser.close();
+server.close();
+await rm(V1, { recursive: true, force: true });
+await rm(V2, { recursive: true, force: true });
+
+if (failed) {
+  console.error(`\n${failed} update check(s) failed.\n`);
+  process.exit(1);
+}
+console.log(`\ncheck:update passed — ${results.length} checks across two versions.\n`);

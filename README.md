@@ -72,6 +72,7 @@ npm run check:claims   # 52 assertions that the registries match the docs
 npm test               # 138 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
+npm run check:update   # 4 checks across TWO versions — the PWA update path
 npm run test:integration   # 52 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 ```
@@ -81,6 +82,18 @@ npm run seed               # first org + users; prints passwords once
 — 46 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
+
+`npm run check:update` is the only check that needs **two** versions, and
+it exists because the failure it catches needs two. The worker used to
+call `skipWaiting()` on install: it took over without asking, its
+activate handler deleted the previous version's cache while a page was
+still running that version's JavaScript, and the next route that page
+opened fetched a chunk whose hash had moved. The reader — on full
+signal — was told *"This page needs a connection"*. The update prompt
+appeared after the fact, and its Reload button posted to
+`registration.waiting`, which is null once a worker has skipped, so it
+did nothing at all. The worker waits now, the person decides, and four
+checks across two builds keep it that way.
 
 Bundle: **207 KB entry JS + 45 KB CSS**, which is **66 KB over the wire**
 gzipped, against budgets the build enforces and refuses to raise
