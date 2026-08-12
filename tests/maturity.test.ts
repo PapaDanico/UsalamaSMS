@@ -20,6 +20,7 @@ import {
   MATURITY_LEVELS,
   MATURITY_SOURCE,
   scoreAssessment,
+  OPERATOR_SCALES,
   levelFor
 } from '../packages/shared/src/maturity';
 
@@ -121,6 +122,70 @@ describe('scoring', () => {
     expect(partial.complete).toBe(false);
     expect(partial.position).toBeUndefined();
     expect(partial.limitedBy).toHaveLength(0);
+  });
+
+  it('SEPARATES SUITABILITY FROM MATURITY, because they come apart both ways', () => {
+    /* SM ICG grades Suitable against "the size, nature, and complexity
+       of the organisation and the inherent risk in its activity" — not
+       against a fixed bar. That makes it a different question from how
+       far an element has been taken, and the two genuinely diverge.
+
+       The case a maturity ladder cannot express, and the reason this is
+       not just another rung: an element taken a long way and still
+       wrong for the operator. A six-aircraft charter running an
+       airline's procedure set scores well and is followed by nobody. */
+    const answers: Record<string, number> = {};
+    for (const e of SMS_ELEMENTS) answers[e.id] = 3;
+
+    const result = scoreAssessment(answers, 1, { '1.5': 'NOT_SUITABLE' });
+    expect(result.unsuitable.map((u) => u.element.id)).toEqual(['1.5']);
+    expect(result.unsuitable[0]!.overBuilt, 'a well-developed unsuitable element was not flagged as over-built').toBe(true);
+
+    // And it is NOT a gap: gaps are elements that are behind, which
+    // this one is not. Merging the two loses the finding.
+    expect(result.gaps.map((g) => g.element.id)).not.toContain('1.5');
+  });
+
+  it('does not let suitability move the score, in either direction', () => {
+    // Scoring it would collapse the distinction the split exists to
+    // make — and SM ICG advises this evaluation not be scored at all.
+    const answers: Record<string, number> = {};
+    for (const e of SMS_ELEMENTS) answers[e.id] = 3;
+
+    const clean = scoreAssessment(answers);
+    const judged = scoreAssessment(answers, 1, { '1.5': 'NOT_SUITABLE', '2.1': 'SUITABLE' });
+    expect(judged.mean).toBe(clean.mean);
+    expect(judged.position).toBe(clean.position);
+    expect(judged.limitedBy.map((e) => e.id)).toEqual(clean.limitedBy.map((e) => e.id));
+  });
+
+  it('treats an unanswered suitability question as unanswered, not as suitable', () => {
+    // It is the question most operators have never been asked. A
+    // default in either direction invents an answer they did not give.
+    const answers: Record<string, number> = {};
+    for (const e of SMS_ELEMENTS) answers[e.id] = 3;
+    expect(scoreAssessment(answers).unsuitable).toHaveLength(0);
+    expect(scoreAssessment(answers, 1, { '1.5': undefined }).unsuitable).toHaveLength(0);
+  });
+
+  it('names an unsuitable element that is also barely started, without calling it over-built', () => {
+    const answers: Record<string, number> = {};
+    for (const e of SMS_ELEMENTS) answers[e.id] = 3;
+    answers['1.4'] = 1;
+    const r = scoreAssessment(answers, 1, { '1.4': 'NOT_SUITABLE' });
+    expect(r.unsuitable.map((u) => u.element.id)).toEqual(['1.4']);
+    expect(r.unsuitable[0]!.overBuilt).toBe(false);
+  });
+
+  it('offers an operator scale to judge suitability against', () => {
+    // Asking whether an SMS is suitable without asking who it belongs
+    // to is asking half the question. CASA's Book 7 puts the small,
+    // non-complex band at ten or fewer people — this product's market.
+    expect(OPERATOR_SCALES.length).toBeGreaterThanOrEqual(3);
+    const ids = OPERATOR_SCALES.map((s) => s.id);
+    expect(new Set(ids).size, 'operator scale ids are not unique').toBe(ids.length);
+    expect(ids).toContain('SMALL_NON_COMPLEX');
+    for (const s of OPERATOR_SCALES) expect(s.meaning.length).toBeGreaterThan(30);
   });
 
   it('means each component over its own answered elements', () => {

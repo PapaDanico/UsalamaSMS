@@ -369,6 +369,15 @@ export interface MaturityResult {
    * it. Improving anything else changes the mean and not the position.
    */
   readonly limitedBy: ReadonlyArray<SmsElement>;
+
+  /**
+   * Elements the operator judged NOT SUITABLE for its operation,
+   * whatever level they sit at. Never scored and never counted as gaps
+   * — suitability is a different question from maturity, and merging
+   * them would lose the only case a maturity ladder cannot express: an
+   * element taken a long way and still wrong for this operator.
+   */
+  readonly unsuitable: ReadonlyArray<SuitabilityFinding>;
 }
 
 /**
@@ -389,9 +398,78 @@ export interface MaturityResult {
  * half-finished assessment that reports 1.4 out of 4 is telling the
  * user about their progress through the form, not about their SMS.
  */
+/**
+ * How big and how complicated the operator is.
+ *
+ * SM ICG grades SUITABLE against "the size, nature, and complexity of
+ * the organisation and the inherent risk in its activity" — so a
+ * product that asks whether an SMS is suitable and never asks who it
+ * belongs to is asking half a question. CASA's SMS Book 7 (Scaling for
+ * size and complexity) puts the small, non-complex band at ten or fewer
+ * people, which is not a rounding of the market this product is for; it
+ * IS the market.
+ *
+ * Bands rather than a headcount box, because the judgement this feeds
+ * is qualitative and a number invites false precision — an operator
+ * with eleven staff is not categorically different from one with nine.
+ */
+export const OPERATOR_SCALES = Object.freeze([
+  {
+    id: "SMALL_NON_COMPLEX",
+    label: "Small and non-complex",
+    meaning:
+      "Around ten people or fewer, one operating model, and a safety manager who holds " +
+      "the post alongside another job.",
+  },
+  {
+    id: "SMALL",
+    label: "Small",
+    meaning: "Under about fifty people, a single certificate, and a settled route or task mix.",
+  },
+  {
+    id: "MEDIUM",
+    label: "Medium",
+    meaning:
+      "Several operating models or certificates, or a fleet mixed enough that one procedure " +
+      "does not cover it.",
+  },
+  {
+    id: "COMPLEX",
+    label: "Large or complex",
+    meaning:
+      "Multiple bases or certificates, contracted operations, or an activity whose inherent " +
+      "risk is high regardless of headcount.",
+  },
+]);
+export type OperatorScale = (typeof OPERATOR_SCALES)[number]["id"];
+
+/**
+ * Whether what the operator holds is SUITABLE for the operator.
+ *
+ * Deliberately separate from the level. A level says how far an element
+ * has been taken; suitability says whether that is the right amount for
+ * this operation — and the two genuinely come apart in both directions.
+ * A six-aircraft charter running an airline's procedure set is at a
+ * high level and unsuitable, because nobody follows it. A one-page
+ * emergency plan at a small strip can be entirely suitable.
+ *
+ * Recorded per element, and unanswered is a real third state: it is the
+ * question most operators have never been asked, and defaulting it
+ * either way would invent an answer.
+ */
+export type Suitability = "SUITABLE" | "NOT_SUITABLE" | undefined;
+
+export interface SuitabilityFinding {
+  readonly element: SmsElement;
+  readonly level: number;
+  /** True when the element is well developed AND judged unsuitable. */
+  readonly overBuilt: boolean;
+}
+
 export function scoreAssessment(
   answers: Readonly<Record<string, number | undefined>>,
   gapAtOrBelow = 1,
+  suitability: Readonly<Record<string, Suitability>> = {},
 ): MaturityResult {
   const components = SMS_COMPONENTS.map((component) => {
     const levels = component.elements
@@ -423,6 +501,28 @@ export function scoreAssessment(
     ? SMS_ELEMENTS.filter((e) => answers[e.id] === position)
     : [];
 
+  /* Suitability findings, which are NOT gaps and are not scored.
+     Scoring them would collapse the distinction the split exists to
+     make — and SM ICG's own guidance is that this evaluation should not
+     be scored at all. They are reported as findings an operator can act
+     on, which is what the guidance uses them for.
+
+     `overBuilt` marks the case worth naming: an element taken to
+     Practised or beyond and judged unsuitable. That is not an operator
+     behind on its SMS; it is one carrying a system built for somebody
+     else, which is the failure mode this product exists to argue
+     against and the one a maturity ladder alone cannot see. */
+  const unsuitable: SuitabilityFinding[] = SMS_ELEMENTS
+    .filter((e) => suitability[e.id] === "NOT_SUITABLE")
+    .map((element) => {
+      const level = answers[element.id];
+      return {
+        element,
+        level: typeof level === "number" ? level : 0,
+        overBuilt: typeof level === "number" && level >= 2,
+      };
+    });
+
   return {
     components,
     mean: all.length ? all.reduce((a, b) => a + b, 0) / all.length : undefined,
@@ -432,6 +532,7 @@ export function scoreAssessment(
     complete,
     position,
     limitedBy,
+    unsuitable,
   };
 }
 
