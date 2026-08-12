@@ -28,6 +28,72 @@
    footer link is a paragraph in a column eighty pixels wide.
    ============================================================ */
 
+/* ------------------------------------------------------------
+   THE TOOLKITS, declared here for the same reason the sections are.
+
+   A toolkit that gets built and never named is a toolkit nobody
+   opens. The safety risk assessment shipped, was linked from the
+   coverage page, and was invisible to anyone navigating: the menu
+   carried "Toolkits" with a hint listing the three instruments that
+   happened to exist when the hint was typed. A hint typed once is a
+   hint that goes stale the next time something is added, and the
+   person it goes stale for is the one looking for the thing that was
+   added.
+
+   So the hint is COMPUTED from this list, and the toolkits page
+   renders its hero and its contents from the same list. Adding a
+   toolkit in one place adds it in all three.
+
+   Three of them have their own route because they are long enough to
+   need one. The rest are calculators on the index page — short enough
+   to answer in place, and counted rather than listed so the hint stays
+   the width of a menu.
+   ------------------------------------------------------------ */
+export const TOOLKITS = [
+  {
+    href: '/toolkits/sra',
+    label: 'Safety risk assessment',
+    short: 'risk assessment',
+    routed: true,
+    blurb: 'The five ICAO steps, for a change before it is made'
+  },
+  {
+    href: '/toolkits/register',
+    label: 'Risk register',
+    short: 'risk register',
+    routed: true,
+    blurb: 'The standing hazards, with an owner and a review date'
+  },
+  {
+    href: '/toolkits/maturity',
+    label: 'SMS maturity assessment',
+    short: 'maturity assessment',
+    routed: true,
+    blurb: 'Twelve elements of Annex 19, scored against evidence'
+  },
+  {
+    href: '/toolkits#classifier',
+    label: 'Occurrence classifier',
+    short: 'occurrence classifier',
+    blurb: 'Accident, serious incident or incident — and the clock it starts'
+  },
+  {
+    href: '/toolkits#risk',
+    label: 'Risk tolerability',
+    short: 'risk tolerability',
+    blurb: 'One cell of the Doc 9859 matrix, and what it obliges'
+  }
+];
+
+/** The ones with a route of their own, named; the rest, counted. */
+export const ROUTED_TOOLKITS = TOOLKITS.filter((t) => t.routed);
+const CALCULATORS = TOOLKITS.length - ROUTED_TOOLKITS.length;
+
+const TOOLKITS_HINT = `${ROUTED_TOOLKITS.map((t) => t.short).join(', ')} and ${CALCULATORS} calculators`.replace(
+  /^./,
+  (c) => c.toUpperCase()
+);
+
 export const SECTIONS = [
   {
     id: 'platform',
@@ -63,7 +129,7 @@ export const SECTIONS = [
         href: '/toolkits',
         label: 'Toolkits',
         short: 'Toolkits',
-        hint: 'Maturity assessment, occurrence classifier, risk tolerability'
+        hint: TOOLKITS_HINT
       },
       {
         href: '/methodology',

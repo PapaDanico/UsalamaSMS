@@ -205,7 +205,12 @@ export function render(outlet) {
             from the same Doc 9859 scale the matrix uses and is never stored.
           </p>
 
-          <form class="card" id="sra-hazard" novalidate>
+          <!-- no-print, for the register's reason: what goes to the
+               meeting is the assessment — the change, the hazards, the
+               bands and the verdict. A blank entry form printed above
+               them is two pages of nothing before the reader reaches
+               anything that was assessed. -->
+          <form class="card no-print" id="sra-hazard" novalidate>
             <label class="field">
               <span class="field-label">The hazard *</span>
               <input class="input-field" name="hazard" required

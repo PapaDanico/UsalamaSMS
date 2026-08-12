@@ -394,8 +394,8 @@ try {
     // It opens, it closes on Escape, and it says where each link goes.
     await page.click('#menu-toggle');
     assert(await page.locator('#menu-panel').isVisible(), 'the menu did not open');
-    const hints = await page.locator('.nav-item-summary').count();
-    const items = await page.locator('.nav-item').count();
+    const hints = await page.locator('#menu-panel .nav-item-summary').count();
+    const items = await page.locator('#menu-panel .nav-item').count();
     assert(items >= 3, `${items} destinations in the menu`);
     assert(hints === items, `${items} destinations but ${hints} hints — a label alone is not navigation`);
     await page.keyboard.press('Escape');
@@ -1406,6 +1406,62 @@ try {
     );
   });
 
+  await check('A TOOLKIT NOBODY CAN FIND IN THE MENU IS NOT SHIPPED', async () => {
+    // Found by a probe, not by a test. The safety risk assessment was
+    // built, routed, linked from the coverage page and reachable by
+    // typing the URL — and invisible to anybody navigating. The menu
+    // carried "Toolkits" with a hint listing the three instruments that
+    // existed on the day the hint was typed, and a hint typed once goes
+    // stale for exactly the person looking for the thing that was added
+    // last.
+    //
+    // The rule, and it is not "the SRA is in the hint": every toolkit
+    // that is big enough to have a route of its own must be NAMED in
+    // the hint of the menu item that leads to it. Both sides are read
+    // from the running page, so this fails whenever a fourth is added
+    // and the hint is not — which is the failure that actually happened.
+    //
+    // It lives down here among the toolkit checks rather than beside the
+    // navigation ones because the checks up there share one page that is
+    // sitting on the report form. Written there, it navigated away and
+    // took nine of them down with it. The suite's page is already 390
+    // wide, which is where the header keeps its destinations behind the
+    // Menu button, so no resize is needed either.
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.click('#menu-toggle');
+    const hint = (
+      await page
+        .locator('#menu-panel a[href="/toolkits"] .nav-item-summary')
+        .textContent()
+    )?.toLowerCase().replace(/\s+/g, ' ').trim() ?? '';
+    await page.keyboard.press('Escape');
+    assert(hint.length > 0, 'the Toolkits menu item carries no hint at all');
+
+    await page.goto(BASE + '/toolkits', { waitUntil: 'networkidle' });
+    const toolkits = await page.evaluate(() =>
+      [...document.querySelectorAll('.hero-actions a')]
+        .map((a) => ({ href: a.getAttribute('href'), label: (a.textContent ?? '').trim() }))
+        .filter((t) => t.href && t.href.startsWith('/toolkits/'))
+    );
+    assert(
+      toolkits.length >= 3,
+      `${toolkits.length} routed toolkits offered on the index; the product ships at least 3`
+    );
+
+    for (const t of toolkits) {
+      // The toolkit's own last two words — "risk assessment", "risk
+      // register", "maturity assessment". A hint that names it in
+      // different words is a hint that names something else.
+      const name = t.label.toLowerCase().split(/\s+/).slice(-2).join(' ');
+      assert(
+        hint.includes(name),
+        `the menu hint for Toolkits does not name "${t.label}" (${t.href}). ` +
+          `It reads "${hint}". A toolkit absent from the hint is a toolkit a ` +
+          'person navigating never learns exists.'
+      );
+    }
+  });
+
   await check('AN SRA REFUSES TO BE ACCEPTED WITH A RED RISK ON IT', async () => {
     // The claim with the highest consequence on this screen. Doc 9859's
     // red band is not "acceptable with sign-off from somebody
@@ -1457,6 +1513,38 @@ try {
     // The count is computed, not typed.
     const stillRed = (await page.locator('#sra-strip .stat__value').nth(2).textContent()) ?? '';
     assert(stillRed.trim() === '1', `"still intolerable" reads ${stillRed.trim()}, expected 1`);
+
+    // AND WHAT COMES OUT OF THE PRINTER IS THE ASSESSMENT. An SRA is
+    // printed to be taken into the room where the change is accepted.
+    // The blank entry form printed above it — nine empty fields and a
+    // submit button — is two pages the reader turns past before
+    // reaching anything that was assessed, and it is the first thing
+    // they see. Same reasoning as the register, which learned it first.
+    await page.emulateMedia({ media: 'print' });
+    const printed = await page.evaluate(() => {
+      const shown = (sel) => {
+        const el = document.querySelector(sel);
+        return Boolean(el && getComputedStyle(el).display !== 'none');
+      };
+      return {
+        entryForm: shown('#sra-hazard'),
+        hazards: [...document.querySelectorAll('.reg-entry')].filter(
+          (el) => getComputedStyle(el).display !== 'none'
+        ).length,
+        verdict: shown('#sra-verdict'),
+        system: shown('#sra-system')
+      };
+    });
+    await page.emulateMedia({ media: 'screen' });
+
+    assert(!printed.entryForm, 'the blank hazard-entry form prints above the assessment');
+    assert(
+      printed.hazards === 2,
+      `${printed.hazards} of 2 hazards survive the print stylesheet — hiding the ` +
+        'form must not hide what was assessed'
+    );
+    assert(printed.verdict, 'the acceptance verdict does not print');
+    assert(printed.system, 'the system description does not print');
 
     await page.evaluate(() => localStorage.removeItem('usalamasms.sra'));
   });
