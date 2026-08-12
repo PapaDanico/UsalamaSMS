@@ -245,6 +245,85 @@ export const MATURITY_SOURCE = Object.freeze({
   scoringBasisUrl: "https://www.casa.gov.au/safety-management-system-sms-evaluation-tool-and-guidance",
 });
 
+/**
+ * SM ICG's four levels, quoted rather than paraphrased.
+ *
+ * Read from the primary document — CASA Safety Management System (SMS)
+ * Evaluation Tool and Guidance, V 3.0, CASA-04-1388, October 2024,
+ * published under Creative Commons Attribution 4.0 International, which
+ * is why it can be quoted here with the attribution below.
+ *
+ * NOT YET THIS PRODUCT'S SCALE, and the gap is deliberate. Ours has
+ * five levels and this has four, and they do not correspond one to one
+ * — see SUITABLE below, which is not a rung on a maturity ladder at
+ * all. Adopting PSOE is a decision about what the assessment IS, not a
+ * relabelling, and it changes a customer-facing figure. Held here as
+ * the authority the scoring rule already cites, so that decision is
+ * made against the real text and not against a summary of it.
+ */
+export const SM_ICG_LEVELS = Object.freeze([
+  {
+    code: "P",
+    label: "Present",
+    definition:
+      "There is evidence that the relevant indicator is documented within the " +
+      "organisation's SMS documentation.",
+  },
+  {
+    code: "S",
+    label: "Suitable",
+    /* THE ONE THAT IS NOT A MATURITY RUNG.
+       Suitability is graded against the operator — its size, nature,
+       complexity and inherent risk — not against a fixed bar. A
+       six-turboprop AOC and a widebody carrier can both be Suitable
+       while holding visibly different things, which is this product's
+       entire market thesis written into a regulator's grading scheme
+       rather than into our marketing. It pairs with the scaling
+       guidance in CASA's SMS Book 7, and it is why PSOE cannot simply
+       be mapped onto a five-point ladder. */
+    definition:
+      "The relevant indicator is suitable based on the size, nature, and complexity of " +
+      "the organisation and the inherent risk in its activity.",
+  },
+  {
+    code: "O",
+    label: "Operating",
+    definition:
+      "There is evidence that the relevant indicator is in use and an output is being produced.",
+  },
+  {
+    code: "E",
+    label: "Effective",
+    definition:
+      "There is evidence that the relevant indicator is achieving the desired outcome and " +
+      "has a positive safety impact.",
+  },
+]);
+
+/**
+ * The prerequisite rule, and the reason the assessment reports its
+ * weakest element rather than an average. Quoted for the same reason
+ * the levels are: this is the sentence the scoring rule rests on.
+ */
+export const SM_ICG_PREREQUISITE =
+  "An item cannot be considered Operating or Effective if it is not Present and it cannot " +
+  "be considered as Present if it is not documented — documentation ensures consistent " +
+  "repeatable and systematic outcomes.";
+
+/** When each half of the scale applies, per the same guidance. */
+export const SM_ICG_STAGES =
+  "Present and Suitable are generally used for initial approval or certification. " +
+  "Operating and Effective are expected to be found in a functioning SMS.";
+
+export const SM_ICG_ATTRIBUTION = Object.freeze({
+  title: "CASA Safety Management System (SMS) Evaluation Tool and Guidance",
+  version: "V 3.0",
+  reference: "CASA-04-1388",
+  issued: "2024-10",
+  licence: "CC BY 4.0",
+  readOn: "2026-08-12",
+});
+
 export interface ComponentScore {
   readonly component: SmsComponent;
   /** Mean level across the component's answered elements, 0–4. */
