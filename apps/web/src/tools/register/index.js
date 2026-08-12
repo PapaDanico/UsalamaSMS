@@ -29,7 +29,10 @@ import {
   SEVERITY_SCALE,
   LIKELIHOOD_SCALE
 } from '../../../../../packages/shared/src/risk.ts';
-import { registerHealth } from '../../../../../packages/shared/src/maturity.ts';
+import {
+  registerHealth,
+  normaliseEntry
+} from '../../../../../packages/shared/src/maturity.ts';
 
 const STORE = 'usalamasms.register';
 
@@ -47,22 +50,33 @@ const STATUSES = [
 
 const BADGE = { OPEN: 'ALERT', MITIGATED: 'CAUTION', ACCEPTED: 'SAFE', CLOSED: 'OFFLINE' };
 
+/* Every entry is normalised on the way in. A probe put a single
+   field-less entry in this store and the register rendered nothing at
+   all — one bad row took twelve good ones with it, permanently, since
+   the bad row was saved and crashed the page again on every load. A
+   register that can be destroyed by one malformed row is not a
+   register. See normaliseEntry(). */
 function load() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORE) ?? '[]');
-    return Array.isArray(parsed) ? parsed.filter((e) => e && typeof e.id === 'string') : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(normaliseEntry).filter(Boolean);
   } catch {
     return [];
   }
 }
 
+/* Charter rule 8: a refused write is reported, never swallowed.
+   Before this returned a boolean, a full quota or a private window
+   meant the entry appeared on the register, looked filed, and was gone
+   on the next load. Silently losing an assessed hazard is worse than
+   refusing to accept it, because only one of the two is noticed. */
 function save(entries) {
   try {
     localStorage.setItem(STORE, JSON.stringify(entries));
+    return true;
   } catch {
-    /* Private mode or a full quota. The register still works for this
-       sitting and the page says where it lives, which is better than
-       failing the keystroke. */
+    return false;
   }
 }
 
@@ -138,7 +152,11 @@ export function render(outlet) {
     </section>
 
     <div class="panel wrap doc">
-      <aside class="toc mat-result">
+      <!-- no-print: a register taken to a safety meeting is the
+           entries, the title and the health figures. A blank input
+           form printed above them is a page of nothing that makes the
+           reader turn over to find the register. -->
+      <aside class="toc mat-result no-print">
         <h2 class="section-title">Add an entry</h2>
         <form id="reg-form" novalidate>
           <label class="field">
@@ -291,6 +309,22 @@ export function render(outlet) {
     }
     error.textContent = '';
 
+    /* A residual severity without its likelihood, or the reverse, is
+       half an assessment. It used to be stored and then silently
+       ignored by the arithmetic, so the entry displayed "no controls
+       assessed yet" while carrying a residual severity nobody could
+       see. Ask for the other half instead. */
+    const rs = f.residualSeverity.value;
+    const rl = f.residualLikelihood.value;
+    if (Boolean(rs) !== Boolean(rl)) {
+      error.textContent =
+        'A residual risk needs both a severity and a likelihood. One without ' +
+        'the other cannot be placed on the matrix, so it would be stored and ' +
+        'never counted.';
+      (rs ? f.residualLikelihood : f.residualSeverity).focus();
+      return;
+    }
+
     entries = [
       {
         id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -309,17 +343,51 @@ export function render(outlet) {
       },
       ...entries
     ];
-    save(entries);
+    const stored = save(entries);
     form.reset();
     repaint();
+    if (!stored) {
+      error.textContent =
+        'This entry is on the register for this sitting, but it could NOT be ' +
+        'saved to this browser — private browsing, or the storage is full. It ' +
+        'will be gone when you leave the page. Print it before you do.';
+    }
   });
 
   list.addEventListener('click', (event) => {
-    const id = event.target.closest?.('[data-remove]')?.dataset.remove;
+    const button = event.target.closest?.('[data-remove]');
+    const id = button?.dataset.remove;
     if (!id) return;
+
+    // Removing an assessed hazard is not undoable and there is no copy
+    // anywhere else. Ask.
+    const entry = entries.find((e) => e.id === id);
+    const confirmed = window.confirm(
+      `Remove "${entry?.hazard || 'this entry'}" from the register?\n\n` +
+        'This cannot be undone, and the entry exists nowhere else.'
+    );
+    if (!confirmed) return;
+
     entries = entries.filter((e) => e.id !== id);
-    save(entries);
+    const stored = save(entries);
     repaint();
+    if (!stored) {
+      error.textContent =
+        'The entry was removed from this view, but the change could not be ' +
+        'saved to this browser. It may come back when you reload.';
+    }
+
+    /* The list is rebuilt wholesale, so the button that was just
+       activated no longer exists and focus falls to <body> — a
+       keyboard or screen-reader user loses their place in the
+       register entirely. Put them on the next entry's control, or on
+       the list itself when that was the last one. */
+    const next = list.querySelector('[data-remove]');
+    if (next) next.focus();
+    else {
+      list.setAttribute('tabindex', '-1');
+      list.focus();
+    }
   });
 
   outlet.querySelector('#reg-print').addEventListener('click', () => window.print());

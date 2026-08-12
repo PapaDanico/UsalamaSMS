@@ -2225,7 +2225,18 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* An entry is a .cov card with a risk row; the class exists so the
    list can be addressed without reaching for .cov, which belongs to
    the coverage page. */
+/* A hazard pasted out of a maintenance log arrives as one unbroken
+   token — a part number, a URL, a 300-character run with no space in
+   it. Without this the card refuses to narrow and the whole page
+   scrolls sideways: measured at 3886px against a 390px handset, which
+   pushes every other control off-screen. `anywhere` rather than
+   `break-word` because only `anywhere` also shrinks the card's
+   min-content width, which is what was actually forcing the page. */
 .reg-entry { break-inside: avoid; }
+.reg-entry,
+.reg-entry h3,
+.cov__has,
+.cov__missing { overflow-wrap: anywhere; }
 
 .reg-entry__risk {
   display: flex;

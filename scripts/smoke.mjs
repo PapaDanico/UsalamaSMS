@@ -1325,13 +1325,170 @@ try {
     assert(kept === 1, `${kept} entries survived a reload, and the page promises they do`);
 
     // Removing one removes it for good, or a register nobody can
-    // correct is a register nobody keeps.
+    // correct is a register nobody keeps. It asks first — see
+    // REMOVING AN ENTRY ASKS FIRST for why, and for the dismissal case.
+    page.once('dialog', (d) => d.accept());
     await page.click('[data-remove]');
     await page.reload({ waitUntil: 'networkidle' });
     assert(
       (await page.locator('.reg-entry').count()) === 0,
       'a removed entry came back after a reload'
     );
+  });
+
+  await check('ONE MALFORMED ROW CANNOT DESTROY THE REGISTER', async () => {
+    // Found by a pre-flight probe, not by a test: a single entry with
+    // no `owner` threw inside the health arithmetic, killed the
+    // repaint, and took every OTHER entry on the register down with
+    // it. Permanently — the bad row was saved, so it crashed the page
+    // again on every load, and nothing in the UI could recover it.
+    //
+    // localStorage is written to by other tabs, other code and anyone
+    // with the dev tools open. Whatever comes back is not trusted.
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.evaluate(() =>
+      localStorage.setItem(
+        'usalamasms.register',
+        JSON.stringify([
+          { id: 'r-broken' },
+          {
+            id: 'r-good',
+            hazard: 'Bird activity on short final',
+            consequence: 'Ingestion',
+            severity: 'C_MAJOR',
+            likelihood: 'REMOTE',
+            controls: '',
+            owner: 'Safety manager',
+            reviewBy: '2027-01-01',
+            status: 'OPEN'
+          }
+        ])
+      )
+    );
+    await page.goto(BASE + '/toolkits/register', { waitUntil: 'networkidle' });
+    await page.waitForSelector('.reg-entry', { timeout: 5000 });
+
+    const rows = await page.locator('.reg-entry').count();
+    assert(rows === 2, `${rows} rows rendered — the good entry must survive the bad one`);
+
+    const good = await page.locator('.reg-entry:has-text("Bird activity")').count();
+    assert(good === 1, 'the intact entry did not render beside the malformed one');
+
+    // And the malformed one is SURFACED, not silently dropped: an
+    // entry with no owner is exactly what the unowned count is for.
+    const unowned = (await page.locator('#reg-health .stat__value').nth(3).textContent()) ?? '';
+    assert(unowned.trim() === '1', `unowned reads ${unowned.trim()}, expected 1`);
+
+    await page.evaluate(() => localStorage.removeItem('usalamasms.register'));
+  });
+
+  await check('A REFUSED WRITE IS REPORTED, NOT SWALLOWED', async () => {
+    // Charter rule 8. In a private window or against a full quota the
+    // entry used to appear on the register, look filed, and be gone on
+    // the next load. Losing an assessed hazard silently is worse than
+    // refusing it, because only one of the two is noticed.
+    await page.goto(BASE + '/toolkits/register', { waitUntil: 'networkidle' });
+    await page.evaluate(() => {
+      Storage.prototype.setItem = function () {
+        throw new DOMException('QuotaExceededError', 'QuotaExceededError');
+      };
+    });
+    await page.fill('input[name="hazard"]', 'Quota hazard');
+    await page.fill('textarea[name="consequence"]', 'Would be lost silently');
+    await page.fill('input[name="owner"]', 'Safety manager');
+    await page.fill('input[name="reviewBy"]', '2027-01-01');
+    await page.click('#reg-form button[type="submit"]');
+    await page.waitForSelector('.reg-entry', { timeout: 5000 });
+
+    const warning = ((await page.locator('#reg-error').textContent()) ?? '').trim();
+    assert(warning.length > 0, 'the entry could not be saved and the page said nothing');
+    assert(
+      /could not be saved|not be saved/i.test(warning),
+      `the warning does not say the entry was not saved: "${warning}"`
+    );
+    await page.reload({ waitUntil: 'networkidle' });
+  });
+
+  await check('REMOVING AN ENTRY ASKS FIRST, AND KEEPS THE KEYBOARD SOMEWHERE', async () => {
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.evaluate(() =>
+      localStorage.setItem(
+        'usalamasms.register',
+        JSON.stringify(
+          ['a', 'b'].map((k) => ({
+            id: k,
+            hazard: `Hazard ${k}`,
+            consequence: 'x',
+            severity: 'C_MAJOR',
+            likelihood: 'REMOTE',
+            controls: '',
+            owner: 'Safety manager',
+            reviewBy: '2027-01-01',
+            status: 'OPEN'
+          }))
+        )
+      )
+    );
+    await page.goto(BASE + '/toolkits/register', { waitUntil: 'networkidle' });
+    await page.waitForSelector('.reg-entry', { timeout: 5000 });
+
+    // Dismissed: the entry stays. An assessed hazard is not deleted by
+    // a mis-tap on a handset.
+    page.once('dialog', (d) => d.dismiss());
+    await page.click('[data-remove]');
+    await page.waitForTimeout(200);
+    assert(
+      (await page.locator('.reg-entry').count()) === 2,
+      'dismissing the confirmation still removed the entry'
+    );
+
+    // Accepted: it goes, and focus lands somewhere usable rather than
+    // on <body>, which is where a keyboard user loses the register.
+    page.once('dialog', (d) => d.accept());
+    await page.locator('[data-remove]').first().focus();
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    assert(
+      (await page.locator('.reg-entry').count()) === 1,
+      'accepting the confirmation did not remove the entry'
+    );
+    const active = await page.evaluate(() => document.activeElement?.tagName ?? 'NONE');
+    assert(active !== 'BODY', `focus fell to ${active} after the list was rebuilt`);
+
+    await page.evaluate(() => localStorage.removeItem('usalamasms.register'));
+  });
+
+  await check('A LONG HAZARD DOES NOT PUSH THE PAGE SIDEWAYS', async () => {
+    // A hazard pasted out of a maintenance log arrives as one unbroken
+    // token. Measured at 3886px against a 390px handset before the
+    // fix, which puts every other control off-screen.
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await page.evaluate(() =>
+      localStorage.setItem(
+        'usalamasms.register',
+        JSON.stringify([
+          {
+            id: 'long',
+            hazard: 'A'.repeat(300),
+            consequence: 'B'.repeat(300),
+            severity: 'C_MAJOR',
+            likelihood: 'REMOTE',
+            controls: '',
+            owner: 'Safety manager',
+            reviewBy: '2027-01-01',
+            status: 'OPEN'
+          }
+        ])
+      )
+    );
+    await page.goto(BASE + '/toolkits/register', { waitUntil: 'networkidle' });
+    await page.waitForSelector('.reg-entry', { timeout: 5000 });
+    const { sw, cw } = await page.evaluate(() => ({
+      sw: document.documentElement.scrollWidth,
+      cw: document.documentElement.clientWidth
+    }));
+    assert(sw <= cw + 1, `the page is ${sw}px wide in a ${cw}px viewport`);
+    await page.evaluate(() => localStorage.removeItem('usalamasms.register'));
   });
 
   await check('METHODOLOGY renders both tables from the real modules', async () => {
