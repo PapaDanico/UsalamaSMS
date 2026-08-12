@@ -65,6 +65,13 @@ export const TOOLKITS = [
     blurb: 'The standing hazards, with an owner and a review date'
   },
   {
+    href: '/toolkits/spi',
+    label: 'Safety performance indicators',
+    short: 'performance indicators',
+    routed: true,
+    blurb: 'Alert levels computed from your own history, not picked'
+  },
+  {
     href: '/toolkits/maturity',
     label: 'SMS maturity assessment',
     short: 'maturity assessment',

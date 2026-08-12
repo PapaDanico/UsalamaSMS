@@ -30,12 +30,14 @@ now verified rather than asserted:
   asserts the batch leaves the browser carrying a bearer token, and that
   a queued report with no session **says so** instead.
 
-Fifteen routes ship. The operational three are the report form, the
+Seventeen routes ship. The operational three are the report form, the
 triage queue, and an account screen that signs in — and deliberately
 does **not** gate the form, because filing must never require a
-password. Four are instruments: the occurrence classifier and risk
-assessor on `/toolkits`, the SMS maturity assessment, and a risk
-register. The rest carry the reasoning: `/methodology` renders the Doc
+password. Six are instruments: the occurrence classifier and risk
+assessor on `/toolkits`, a risk register, a safety risk assessment in
+ICAO Doc 9859's five steps, safety performance indicators whose alert
+levels are computed from the operator's own history, and the SMS
+maturity assessment. The rest carry the reasoning: `/methodology` renders the Doc
 9859 matrix and the deadline table from the modules that compute them —
 its matrix calls `tolerability()` and its deadline table reads
 `MOR_OBLIGATIONS`, so neither can drift from the documents describing
@@ -44,7 +46,7 @@ them — alongside a glossary, tutorials, FAQ, about, privacy and terms.
 **`/coverage` is the one to read before adopting anything.** It states,
 element by element against Annex 19's twelve, what is built here, what
 is partial, what can only be assessed, and what is not built at all —
-and the figure it reports, **2 of 12**, is computed from the same
+and the figure it reports, **2.5 of 12**, is computed from the same
 declaration the table renders rather than typed beside it. This is the
 reporting and risk-classification layer of an SMS. It is not an SMS,
 and an operator adopting it as its sole one would fail an audit.
@@ -61,15 +63,18 @@ is the REST API base, not a connection string, so both `core.ts` and
 the function check the scheme rather than trusting the name. See
 [`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md), which also carries the
 one-time Prisma baseline the hosted schema needs. The triage queue reads
-this device rather than the organisation, and there is no investigation,
-CAPA or SPI workflow. See `docs/02-STRATEGY.md`.
+this device rather than the organisation, and there is no investigation
+or CAPA workflow. `/toolkits/spi` computes indicators and alert levels
+but is not fed from the reporting queue and is held in one browser, so
+the measurement exists and the organisation's monitoring does not. See
+`docs/02-STRATEGY.md`.
 
 ```bash
 npm install
 npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 48 assertions that the registries match the docs
-npm test               # 183 unit tests
+npm run check:claims   # 51 assertions that the registries match the docs
+npm test               # 211 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 4 checks across TWO versions — the PWA update path
@@ -80,7 +85,7 @@ npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 50 checks, including filing a report with the network cut and
+— 51 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 
@@ -96,7 +101,7 @@ appeared after the fact, and its Reload button posted to
 did nothing at all. The worker waits now, the person decides, and four
 checks across two builds keep it that way.
 
-Bundle: **207 KB entry JS + 45 KB CSS**, which is **66 KB over the wire**
+Bundle: **209 KB entry JS + 46 KB CSS**, which is **67 KB over the wire**
 gzipped, against budgets the build enforces and refuses to raise
 silently. Every route past the first paint is lazily loaded, so the
 entry figure is what a person filing a report at a strip actually pays;

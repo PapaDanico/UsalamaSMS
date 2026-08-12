@@ -407,10 +407,30 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
     href: "/toolkits/register",
   },
   {
+    /* PARTIAL, on the same test the register and the SRA are held to.
+       /toolkits/spi does the measurement half of the element properly:
+       indicators with a consequence class, a rate on a stated basis, a
+       target, and alert levels computed from the operator's own history
+       rather than picked — with every period judged against the periods
+       that preceded it and never against a baseline containing itself.
+
+       What it is not is monitoring BY THE ORGANISATION. The indicators
+       live in one browser, they are not fed from the reporting queue
+       that sits in the same product, and element 3.1's second half —
+       "a record of what happened the last time an alert level was
+       crossed" — has nowhere to live. An operator can watch an
+       indicator; the organisation cannot yet be shown to have. */
     id: "3.1",
-    state: "ASSESSED_ONLY",
-    has: "The data model carries indicators with targets and alert levels.",
-    missing: "Any way to define, record or watch one. No dashboard, no trend, no alert.",
+    state: "PARTIAL",
+    has:
+      "Safety performance indicators with targets, and alert levels computed from " +
+      "the operator's own baseline at one, two and three standard deviations, with " +
+      "the three crossing criteria evaluated per period.",
+    missing:
+      "The organisation's half: indicators fed from the reporting queue rather than " +
+      "typed, held somewhere the safety office can see, and a record of the action " +
+      "taken the last time a level was crossed.",
+    href: "/toolkits/spi",
   },
   {
     /* PARTIAL, not BUILT, and the distinction is the same one the
