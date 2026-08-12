@@ -27,6 +27,7 @@
     "verify": "npm run build && npm run smoke && npm run check:update",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:up": "bash scripts/local-db.sh",
+    "setup:env": "node scripts/setup-env.mjs",
     "seed": "node scripts/seed.mjs",
     "check:update": "node scripts/check-update.mjs",
     "seed:demo": "node scripts/seed-demo.mjs"
