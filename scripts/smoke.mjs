@@ -1011,6 +1011,38 @@ try {
     );
   });
 
+  await check('A LINKED ANSWER OPENS ITSELF', async () => {
+    // Every question has a URL, derived from its own text so the id
+    // cannot drift from the sentence above it. Landing on one has to
+    // OPEN it: the browser scrolls to a closed disclosure perfectly
+    // happily, and the reader arrives at the question they already
+    // clicked and none of the answer.
+    await navigateTo(page, '/faq');
+    const id = await page.locator('.qa__item').first().getAttribute('id');
+    assert(id && id.startsWith('q-'), `a question has no linkable id: "${id}"`);
+
+    await page.goto(`${BASE}/faq#${id}`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(
+      (target) => document.getElementById(target)?.hasAttribute('open'),
+      id,
+      { timeout: 5000 }
+    );
+    assert(
+      await page.locator(`#${id} .qa__answer`).isVisible(),
+      'the linked question is open but its answer is not visible'
+    );
+
+    // Expand all / collapse all, which is the affordance somebody
+    // printing the page reaches for first.
+    await page.click('[data-qa="close"]');
+    const closed = await page.locator('.qa__item[open]').count();
+    await page.click('[data-qa="open"]');
+    const opened = await page.locator('.qa__item[open]').count();
+    const total = await page.locator('.qa__item').count();
+    assert(closed === 0, `${closed} questions stayed open after Collapse all`);
+    assert(opened > 0 && opened < total, 'Expand all opened every group, not just its own');
+  });
+
   await check('THE GLOSSARY RENDERS THE MODULE, NOT A COPY OF IT', async () => {
     // 186 lines of vocabulary transcribed from the KCAA course glossary
     // existed in the repository so the de-identifier would not scrub

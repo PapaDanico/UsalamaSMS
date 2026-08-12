@@ -59,6 +59,20 @@ function Contents(page) {
   `;
 }
 
+/* A slug per question, so an answer has a URL.
+
+   Derived from the question text rather than authored, because an
+   authored id is one more thing to keep in step with the sentence above
+   it — and a support reply that links to the wrong answer is worse than
+   one that links to the page. */
+function slug(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60);
+}
+
 /* A question list is a run of <details>. Native disclosure rather than
    a scripted accordion: it is keyboard-operable, it is searchable by
    the browser's own find-in-page in current Chrome and Safari, and it
@@ -66,11 +80,18 @@ function Contents(page) {
    that omits half its answers is not a pack. */
 function Questions(section) {
   return html`
+    <div class="qa-controls">
+      <button type="button" class="btn btn-ghost btn-sm" data-qa="open">Expand all</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-qa="close">Collapse all</button>
+    </div>
     <div class="qa">
       ${section.items.map(
-        (q) => html`<details class="qa__item">
+        (q) => html`<details class="qa__item" id="q-${slug(q.q)}">
           <summary><span>${q.q}</span></summary>
-          <div class="qa__answer">${raw(q.a)}</div>
+          <div class="qa__answer">
+            ${raw(q.a)}
+            <a class="qa__link" href="#q-${slug(q.q)}">Link to this answer</a>
+          </div>
         </details>`
       )}
     </div>
@@ -114,7 +135,48 @@ export function renderPage(outlet, page) {
     ${Head(page)}
     <div class="panel wrap doc">
       ${Contents(page)}
-      <div class="doc__body">${page.sections.map(Section)}</div>
+      <div class="doc__body">
+        ${page.sections.map(Section)}
+        <!-- A compliance document that cannot be put in a binder or
+             attached to an inspector's email is a document that gets
+             retyped. The print stylesheet already drops the chrome and
+             opens every disclosure; this is the affordance that says
+             so. -->
+        <p class="doc-actions no-print">
+          <button type="button" class="btn btn-secondary btn-sm" id="print-page">
+            Print or save as PDF
+          </button>
+        </p>
+      </div>
     </div>
   `.toString();
+
+  outlet.querySelector('#print-page')?.addEventListener('click', () => window.print());
+
+  /* Expand and collapse all, per question group. Two buttons rather
+     than one toggle: a toggle whose label depends on state is a label
+     somebody reads after they have already pressed it. */
+  for (const button of outlet.querySelectorAll('[data-qa]')) {
+    button.addEventListener('click', () => {
+      const open = button.dataset.qa === 'open';
+      const list = button.closest('.doc-section')?.querySelectorAll('.qa__item') ?? [];
+      for (const item of list) item.open = open;
+    });
+  }
+
+  /* A question linked to from elsewhere opens itself. Without this the
+     browser scrolls to a closed disclosure and the reader sees the
+     question they already clicked and none of the answer. */
+  openFragmentTarget(outlet);
+  window.addEventListener('hashchange', () => openFragmentTarget(outlet), { once: false });
+}
+
+function openFragmentTarget(outlet) {
+  const id = window.location.hash.replace(/^#/, '');
+  if (!id) return;
+  const target = outlet.querySelector(`#${CSS.escape(id)}`);
+  if (target instanceof HTMLDetailsElement) {
+    target.open = true;
+    target.scrollIntoView();
+  }
 }

@@ -1995,7 +1995,21 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* Questions. Native <details> rather than a scripted accordion: it is
    keyboard-operable without a line of JS, and it prints expanded,
    which the print rule depends on. */
-.qa { border-top: 1px solid var(--us-border); margin-top: var(--us-space-5); }
+.qa-controls { display: flex; gap: var(--us-space-2); margin-top: var(--us-space-5); }
+.qa { border-top: 1px solid var(--us-border); margin-top: var(--us-space-3); }
+
+/* Present but quiet: the person who wants to link to an answer is
+   looking for it, and everybody else is reading the answer. */
+.qa__link {
+  display: inline-block;
+  margin-top: var(--us-space-2);
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+}
+.qa__link:hover { color: var(--us-teal); }
 
 .qa__item {
   border-bottom: 1px solid var(--us-border);
