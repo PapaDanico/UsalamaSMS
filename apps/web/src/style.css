@@ -2103,19 +2103,25 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    the three occurrence classes on one side, reportingDeadline() on the
    other. */
 
-/* An occurrence class: the label, whether it is reportable, the legal
-   test, and the note that is usually the thing somebody needed. */
-.class-card { margin-bottom: var(--us-space-4); }
+/* A card whose heading carries a status badge beside it: an occurrence
+   class on the glossary, an element on the coverage page. Written once
+   because they are the same component with different contents, and two
+   copies is two gap values to keep in step. */
+.class-card,
+.cov { margin-bottom: var(--us-space-4); }
 
-.class-card__head {
+.class-card__head,
+.cov__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
+  justify-content: space-between;
   gap: var(--us-space-3);
   margin-bottom: var(--us-space-3);
 }
 
-.class-card__head h3 { margin: 0; }
+.class-card__head h3,
+.cov__head h3 { margin: 0; font-size: var(--us-text-md); }
 
 /* Any ONE of these is enough, which is why they are a list of
    thresholds and not a paragraph. Marked so it reads as a test. */
@@ -2211,6 +2217,70 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    stack of full-width options, and a result panel on ink. */
 
 .tool-card { margin-top: var(--us-space-5); }
+
+/* A register entry. The two bands sit side by side because the whole
+   value of a residual figure is the comparison with the initial one —
+   a register that showed only the number after controls would be
+   asserting the controls work. */
+/* An entry is a .cov card with a risk row; the class exists so the
+   list can be addressed without reaching for .cov, which belongs to
+   the coverage page. */
+.reg-entry { break-inside: avoid; }
+
+.reg-entry__risk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-2);
+  margin: 0 0 var(--us-space-3);
+}
+
+.risk-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--us-space-3);
+  border-radius: var(--us-radius-pill);
+  font-size: var(--us-text-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.risk-chip[data-tolerability='INTOLERABLE'] {
+  background: var(--us-risk-intolerable);
+  color: var(--us-risk-intolerable-on);
+}
+.risk-chip[data-tolerability='TOLERABLE'] {
+  background: var(--us-risk-tolerable);
+  color: var(--us-risk-tolerable-on);
+}
+.risk-chip[data-tolerability='ACCEPTABLE'] {
+  background: var(--us-risk-acceptable);
+  color: var(--us-risk-acceptable-on);
+}
+
+.reg-entry__nores { font-size: var(--us-text-xs); color: var(--us-text-tertiary); }
+
+/* Never colour alone: the flag says it in words, which is what
+   survives a monochrome print to a regulator. */
+.reg-entry__flag { font-size: var(--us-text-xs); color: var(--us-ochre-text); }
+
+.reg-entry__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-3);
+  margin: var(--us-space-3) 0 0;
+  padding-top: var(--us-space-3);
+  border-top: 1px solid var(--us-border);
+  font-size: var(--us-text-xs);
+  color: var(--us-text-tertiary);
+}
+
+/* What is here and what is not, in the SAME weight, so the page cannot
+   be skimmed for only the good half. */
+.cov__has, .cov__missing { margin: 0 0 var(--us-space-2); font-size: var(--us-text-sm); }
+.cov__missing { color: var(--us-ink-600); }
+.cov__go { margin: var(--us-space-2) 0 0; font-size: var(--us-text-sm); }
 
 .mat-element {
   margin: 0 0 var(--us-space-6);

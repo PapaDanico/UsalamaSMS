@@ -236,9 +236,19 @@ router
     { title: 'Toolkits' }
   )
   .register(
+    '/toolkits/register',
+    (el) => lazy(el, () => import('./tools/register/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Risk register' }
+  )
+  .register(
     '/toolkits/maturity',
     (el) => lazy(el, () => import('./tools/maturity/index.js').then((m) => (o) => m.render(o))),
     { title: 'SMS maturity assessment' }
+  )
+  .register(
+    '/coverage',
+    (el) => lazy(el, () => import('./tools/coverage/index.js').then((m) => (o) => m.render(o))),
+    { title: 'What this covers' }
   )
   .register(
     '/glossary',

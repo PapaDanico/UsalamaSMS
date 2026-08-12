@@ -34,6 +34,38 @@ export const LIKELIHOOD_VALUE: Record<Likelihood, 1 | 2 | 3 | 4 | 5> = {
   FREQUENT: 5, OCCASIONAL: 4, REMOTE: 3, IMPROBABLE: 2, EXTREMELY_IMPROBABLE: 1,
 };
 
+/* ---------------------------------------------------------------
+   The scale, named once.
+
+   The matrix, the assessor, the register and the methodology page all
+   render the same five severities and five likelihoods. Until this
+   existed they each carried their own copy of the labels, which is
+   four places for the wording of a safety scale to drift apart —
+   and a register whose severity reads differently from the matrix it
+   was scored against is a register an auditor stops trusting.
+
+   `code` is the manual's own notation: a letter for severity, a digit
+   for likelihood, so "3A" in a Doc 9859 citation lands on the same
+   cell here.
+   --------------------------------------------------------------- */
+export interface ScalePoint<K> { readonly key: K; readonly code: string; readonly label: string }
+
+export const SEVERITY_SCALE: ReadonlyArray<ScalePoint<Severity>> = [
+  { key: "A_CATASTROPHIC", code: "A", label: "Catastrophic" },
+  { key: "B_HAZARDOUS", code: "B", label: "Hazardous" },
+  { key: "C_MAJOR", code: "C", label: "Major" },
+  { key: "D_MINOR", code: "D", label: "Minor" },
+  { key: "E_NEGLIGIBLE", code: "E", label: "Negligible" },
+];
+
+export const LIKELIHOOD_SCALE: ReadonlyArray<ScalePoint<Likelihood>> = [
+  { key: "FREQUENT", code: "5", label: "Frequent" },
+  { key: "OCCASIONAL", code: "4", label: "Occasional" },
+  { key: "REMOTE", code: "3", label: "Remote" },
+  { key: "IMPROBABLE", code: "2", label: "Improbable" },
+  { key: "EXTREMELY_IMPROBABLE", code: "1", label: "Extremely improbable" },
+];
+
 /** Risk index score = severity × likelihood (1..25). */
 export function riskScore(sev: Severity, lik: Likelihood): number {
   return SEVERITY_VALUE[sev] * LIKELIHOOD_VALUE[lik];

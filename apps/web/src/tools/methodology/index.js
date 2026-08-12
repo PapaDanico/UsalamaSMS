@@ -22,29 +22,18 @@
 
 import { html } from '../../shared/html.js';
 import { Select } from '../../components/Select.js';
-import { tolerability, riskScore } from '../../../../../packages/shared/src/risk.ts';
+import {
+  tolerability,
+  riskScore,
+  SEVERITY_SCALE,
+  LIKELIHOOD_SCALE
+} from '../../../../../packages/shared/src/risk.ts';
 import {
   MOR_OBLIGATIONS,
   JURISDICTIONS,
   isProvisional,
   reportingDeadline
 } from '../../../../../packages/shared/src/regulations.ts';
-
-const SEVERITIES = [
-  ['A_CATASTROPHIC', 'A', 'Catastrophic'],
-  ['B_HAZARDOUS', 'B', 'Hazardous'],
-  ['C_MAJOR', 'C', 'Major'],
-  ['D_MINOR', 'D', 'Minor'],
-  ['E_NEGLIGIBLE', 'E', 'Negligible']
-];
-
-const LIKELIHOODS = [
-  ['FREQUENT', '5', 'Frequent'],
-  ['OCCASIONAL', '4', 'Occasional'],
-  ['REMOTE', '3', 'Remote'],
-  ['IMPROBABLE', '2', 'Improbable'],
-  ['EXTREMELY_IMPROBABLE', '1', 'Extremely improbable']
-];
 
 /* One letter per tolerability. This is the channel that carries the
    meaning when colour cannot — greyscale, dichromacy, a bad projector,
@@ -56,17 +45,17 @@ function Matrix() {
     <thead>
       <tr>
         <th scope="col"><span class="visually-hidden">Severity</span></th>
-        ${LIKELIHOODS.map(
-          ([, digit, label]) => html`<th scope="col" title="${label}">${digit} ${label}</th>`
+        ${LIKELIHOOD_SCALE.map(
+          ({ code, label }) => html`<th scope="col" title="${label}">${code} ${label}</th>`
         )}
       </tr>
     </thead>
     <tbody>
-      ${SEVERITIES.map(
-        ([sev, letter, sevLabel]) => html`
+      ${SEVERITY_SCALE.map(
+        ({ key: sev, code: letter, label: sevLabel }) => html`
           <tr>
             <th scope="row" title="${sevLabel}">${letter} ${sevLabel}</th>
-            ${LIKELIHOODS.map(([lik, digit, likLabel]) => {
+            ${LIKELIHOOD_SCALE.map(({ key: lik, label: likLabel }) => {
               const t = tolerability(sev, lik);
               const score = riskScore(sev, lik);
               return html`<td>

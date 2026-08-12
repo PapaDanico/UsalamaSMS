@@ -26,19 +26,23 @@
 
 export const ABOUT = {
   eyebrow: 'About us',
-  title: 'Safety management for the operators the incumbents priced out',
-  lede: `A safety management system built for the 3-to-15 aircraft operator in East
-         and Central Africa — the one running an SMS on paper because the software
-         market starts above what the operation earns.`,
+  title: 'Safety reporting for the operators the incumbents priced out',
+  lede: `The reporting and risk-classification layer of an SMS, built for the
+         3-to-15 aircraft operator in East and Central Africa — the one running an
+         SMS on paper because the software market starts above what the operation
+         earns. It is not a complete SMS, and it says which parts it is not.`,
   sections: [
     {
       id: 'what',
       title: 'What this is',
       body: `
-        <p>UsalamaSMS is a safety management system: a place for a frontline
-        report to be filed, classified, given a regulatory clock, risk-assessed
-        against ICAO Doc 9859, and held on a record that can be shown to an
-        auditor. It is built around one observation about small operators, which
+        <p>UsalamaSMS is the <strong>reporting and risk-classification layer of
+        an SMS</strong>, not a whole one — and the distinction matters enough to
+        make on the first screen rather than in a footnote. What it does is take
+        a frontline report, classify it, give it the regulatory clock its
+        jurisdiction actually sets, put it against the ICAO Doc 9859 scale, and
+        hold it on a record an auditor can verify. It is built around one
+        observation about small operators, which
         is that the binding constraint is not analysis but <em>report
         volume</em> — an SMS with no reports is a folder, and every hour of
         friction between a person on a ramp and a filed report costs more than
@@ -86,6 +90,39 @@ export const ABOUT = {
         Advisory Circular CAA-AC-SMS004A, which sets <strong>24 hours from
         awareness</strong> — not the 72 hours that the ICAO-common figure would
         suggest, and not from the occurrence.</p>`
+    },
+    {
+      id: 'notyet',
+      title: 'What it is not, and what you still need',
+      body: `
+        <p>ICAO Annex 19 defines a safety management system as four components
+        and twelve elements. This product substantially covers <strong>one and a
+        half of them</strong>: hazard identification through reporting, and risk
+        classification. It also assesses all twelve, which is a different thing
+        from managing them.</p>
+
+        <p>An operator adopting it still needs, and will not find here: a signed
+        safety policy and accountability structure; an appointed safety manager
+        with documented authority; an emergency response plan and its exercises;
+        a controlled SMS manual; a risk register with mitigations tracked to
+        closure; safety performance indicators with targets and alert levels; a
+        management-of-change process; internal audit and corrective action; SMS
+        training records; and a safety communication loop back to the people who
+        file reports.</p>
+
+        <p><a href="/coverage">The coverage page</a> states every element, its
+        status, and what is missing from it — computed from the same declaration
+        the figure above comes from, so the two cannot drift apart.</p>
+
+        <p>Several of those are on the way and some are closer than they look —
+        the data model already carries hazards, risk assessments and performance
+        indicators. But a page that let an operator believe its regulatory
+        position was covered by an app that files reports would be doing the
+        opposite of what a safety product is for. The
+        <a href="/toolkits/maturity">maturity assessment</a> is the honest
+        instrument here: it will tell you where the other ten and a half
+        elements stand in your operation, including the ones no software can
+        stand in for.</p>`
     },
     {
       id: 'position',
@@ -229,11 +266,18 @@ export const FAQ = {
       items: [
         {
           q: 'What is this, precisely?',
-          a: `<p>A safety management system for small and mid-sized aircraft
-              operators: occurrence and hazard reporting, a computed regulatory
-              deadline per jurisdiction, ICAO Doc 9859 risk classification, and
-              an append-only record with a verifiable hash chain. It installs
-              as an app on a phone and works with the network off.</p>`
+          a: `<p>The reporting and risk-classification layer of an SMS, for
+              small and mid-sized aircraft operators: occurrence and hazard
+              reporting, a computed regulatory deadline per jurisdiction, ICAO
+              Doc 9859 risk classification, and an append-only record with a
+              verifiable hash chain. It installs as an app on a phone and works
+              with the network off.</p>
+              <p>It is deliberately <strong>not</strong> a complete SMS. Annex 19
+              defines twelve elements; this substantially covers one and a half.
+              <a href="/about#notyet">What it is not, and what you still
+              need</a> lists the rest, and the
+              <a href="/toolkits/maturity">maturity assessment</a> measures where
+              your operation stands on them.</p>`
         },
         {
           q: 'Who is it for?',

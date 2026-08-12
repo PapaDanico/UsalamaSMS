@@ -30,12 +30,24 @@ now verified rather than asserted:
   asserts the batch leaves the browser carrying a bearer token, and that
   a queued report with no session **says so** instead.
 
-Four routes ship: the report form, the triage queue, an account screen
-that signs in (and deliberately does **not** gate the form — filing must
-never require a password), and a design route where the brand system
-renders itself against the real modules — its matrix calls
-`tolerability()` and its deadline table reads `MOR_OBLIGATIONS`, so
-neither can drift from the documents describing them.
+Fifteen routes ship. The operational three are the report form, the
+triage queue, and an account screen that signs in — and deliberately
+does **not** gate the form, because filing must never require a
+password. Four are instruments: the occurrence classifier and risk
+assessor on `/toolkits`, the SMS maturity assessment, and a risk
+register. The rest carry the reasoning: `/methodology` renders the Doc
+9859 matrix and the deadline table from the modules that compute them —
+its matrix calls `tolerability()` and its deadline table reads
+`MOR_OBLIGATIONS`, so neither can drift from the documents describing
+them — alongside a glossary, tutorials, FAQ, about, privacy and terms.
+
+**`/coverage` is the one to read before adopting anything.** It states,
+element by element against Annex 19's twelve, what is built here, what
+is partial, what can only be assessed, and what is not built at all —
+and the figure it reports, **1.5 of 12**, is computed from the same
+declaration the table renders rather than typed beside it. This is the
+reporting and risk-classification layer of an SMS. It is not an SMS,
+and an operator adopting it as its sole one would fail an audit.
 
 **Nearly deployable.** The hosted database exists (Supabase, eu-north-1,
 schema applied and baselined, RLS deny-by-default) and the API ships as
@@ -56,8 +68,8 @@ CAPA or SPI workflow. See `docs/02-STRATEGY.md`.
 npm install
 npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 50 assertions that the registries match the docs
-npm test               # 117 unit tests
+npm run check:claims   # 52 assertions that the registries match the docs
+npm test               # 129 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run test:integration   # 52 checks against a real Postgres
@@ -66,13 +78,15 @@ npm run seed               # first org + users; prints passwords once
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 40 checks, including filing a report with the network cut and
+— 42 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 
-Bundle: **202 KB entry JS + 30 KB CSS**, which is **65 KB over the wire**
+Bundle: **207 KB entry JS + 45 KB CSS**, which is **66 KB over the wire**
 gzipped, against budgets the build enforces and refuses to raise
-silently. Plus 96 KB of self-hosted Inter — four weights, latin subset,
+silently. Every route past the first paint is lazily loaded, so the
+entry figure is what a person filing a report at a strip actually pays;
+it has not moved across the last eleven screens. Plus 96 KB of self-hosted Inter — four weights, latin subset,
 precached by the service worker so the second load is offline too.
 
 Two runtime dependencies earn their weight: Dexie holds the outbox, and

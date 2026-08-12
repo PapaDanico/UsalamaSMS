@@ -1244,6 +1244,96 @@ try {
     page.off('request', watchBody);
   });
 
+  await check('COVERAGE STATES A POSITION AN OPERATOR WOULD ADOPT ON', async () => {
+    // The highest-consequence sentence in the product. An independent
+    // review found it describing itself as a safety management system
+    // while covering one and a half of Annex 19's twelve elements, and
+    // rated an operator adopting it as its sole SMS a Critical risk:
+    // they would fail an audit believing they were covered.
+    //
+    // The unit test already asserts the arithmetic. What it cannot see
+    // is whether the page a buyer actually reads renders that figure,
+    // or a stale number typed beside it. Charter rule 10 — a count is
+    // computed, never typed — is only kept if the computed one is the
+    // one on screen.
+    await page.goto(BASE + '/coverage', { waitUntil: 'networkidle' });
+    await page.waitForSelector('.cov', { timeout: 5000 });
+
+    const cards = await page.locator('.cov').count();
+    assert(cards === 12, `${cards} elements declared, and Annex 19 has 12`);
+
+    const covered = (await page.locator('.stat__value').first().textContent()) ?? '';
+    assert(
+      covered.trim() === '1.5',
+      `the coverage figure reads "${covered.trim()}" — the arithmetic says 1.5`
+    );
+
+    // Every element says what is NOT here, including the built ones.
+    const missing = await page.locator('.cov__missing').count();
+    assert(missing === 12, `${missing} of 12 elements say what they do not cover`);
+
+    // And the disclaimer is on the page itself, not only in a footer
+    // somebody scrolls past.
+    const warning = (await page.locator('.doc__body .note').first().textContent()) ?? '';
+    assert(
+      /not a complete SMS/i.test(warning),
+      'the coverage page does not say, on the page, that this is not a complete SMS'
+    );
+  });
+
+  await check('THE RISK REGISTER COMPUTES ITS BANDS AND KEEPS ITS ENTRIES', async () => {
+    // Element 2.2, and two promises made in the page's own words: the
+    // bands are "computed by the same ICAO Doc 9859 scale as the
+    // matrix, never stored", and entries "live in this browser".
+    //
+    // The second is the one worth checking hardest, because the page
+    // is honest about its limit — on this device only — and a limit
+    // stated but not kept is worse than one not stated.
+    await page.goto(BASE + '/toolkits/register', { waitUntil: 'networkidle' });
+    await page.waitForSelector('#reg-form', { timeout: 5000 });
+
+    await page.fill('input[name="hazard"]', 'Bird activity on short final');
+    await page.fill('textarea[name="consequence"]', 'Engine ingestion on approach');
+    await page.selectOption('select[name="severity"]', 'A_CATASTROPHIC');
+    await page.selectOption('select[name="likelihood"]', 'FREQUENT');
+    await page.fill('input[name="owner"]', 'Safety manager');
+    await page.fill('input[name="reviewBy"]', '2027-01-31');
+    await page.click('#reg-form button[type="submit"]');
+
+    await page.waitForSelector('.reg-entry', { timeout: 5000 });
+
+    // 5 x 5 is 25 and red. The number and the band both come from
+    // risk.ts; neither is stored on the entry.
+    const chip = (await page.locator('.risk-chip').first().textContent()) ?? '';
+    assert(/25 initial/.test(chip), `the initial band reads "${chip.trim()}", expected 25`);
+    const tol = await page.locator('.risk-chip').first().getAttribute('data-tolerability');
+    assert(tol === 'INTOLERABLE', `5x5 came back ${tol}, and Doc 9859 calls it red`);
+
+    // An intolerable risk nobody has accepted is the one an inspector
+    // opens the register to find. It is named in words, not colour.
+    assert(
+      await page.locator('.reg-entry__flag').first().isVisible(),
+      'an intolerable, unaccepted entry is not flagged as one'
+    );
+    const health = (await page.locator('#reg-health .stat__value').nth(1).textContent()) ?? '';
+    assert(health.trim() === '1', `the health strip counts ${health.trim()} intolerable, expected 1`);
+
+    // Kept across a reload — the page says entries live here.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForSelector('.reg-entry', { timeout: 5000 });
+    const kept = await page.locator('.reg-entry').count();
+    assert(kept === 1, `${kept} entries survived a reload, and the page promises they do`);
+
+    // Removing one removes it for good, or a register nobody can
+    // correct is a register nobody keeps.
+    await page.click('[data-remove]');
+    await page.reload({ waitUntil: 'networkidle' });
+    assert(
+      (await page.locator('.reg-entry').count()) === 0,
+      'a removed entry came back after a reload'
+    );
+  });
+
   await check('METHODOLOGY renders both tables from the real modules', async () => {
     // The route was called "design system", which described the screen
     // to the people who built it and to nobody else. What is behind it

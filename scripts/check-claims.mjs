@@ -219,6 +219,42 @@ assert(
     'on a device that HAS Background Sync, filing would queue the report and send nothing'
 );
 
+/* ============================================================
+   THE PRODUCT MUST NOT CLAIM TO BE A WHOLE SMS.
+
+   An independent audit put it plainly: ICAO Annex 19 defines twelve
+   elements and this product substantially covers one and a half —
+   hazard identification through reporting, and risk classification. It
+   ASSESSES all twelve, which is a different thing from managing them.
+   Three surfaces said "UsalamaSMS is a safety management system".
+
+   That is the exact failure charter rule 7 exists to prevent: a claim
+   on a surface a customer reads, kept by no mechanism. Worse than
+   usual here, because the customer is an operator deciding whether its
+   regulatory position is covered — and a safety product that lets
+   somebody believe that has done the opposite of its job.
+
+   So the copy now names the layer it is, and a section lists what an
+   operator still needs and will not find. This assertion stops the
+   shorter, better-sounding sentence from coming back.
+   ============================================================ */
+const pages = read('apps/web/src/content/pages.js');
+const home = read('apps/web/src/tools/home/index.js');
+const overclaim = /\bis a safety management system\b/i;
+assert(
+  'the product does not claim to BE a safety management system',
+  !overclaim.test(pages) && !overclaim.test(home),
+  'a surface claims this product is a safety management system; it is the reporting ' +
+    'and risk-classification layer of one, and Annex 19 defines eleven more elements'
+);
+assert(
+  'and it says what an operator still needs elsewhere',
+  /What it is not, and what you still need/.test(pages) &&
+    /risk register/.test(pages) &&
+    /safety performance indicators/i.test(pages),
+  'the About page must list the elements this product does not cover'
+);
+
 const charter = read('docs/DIAGNOSTIC-CHARTER.md');
 assert(
   'the charter is the three-product version',

@@ -95,6 +95,7 @@ export const SECTIONS = [
     id: 'practice',
     title: 'The practice',
     items: [
+      { href: '/coverage', label: 'What this covers' },
       { href: '/about', label: 'About us' },
       { href: '/#deadlines', label: 'Regulatory basis' }
     ]
