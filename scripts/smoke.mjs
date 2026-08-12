@@ -1382,7 +1382,7 @@ try {
   });
 
   await check('THE REGISTER ASKS FOR A POST, NOT A TYPED NAME', async () => {
-    // A typed owner becomes "Ops", "ops", "Ops dept" and "D.K." — four
+    // A typed owner becomes "Ops", "ops", "Ops dept" and "S.K." — four
     // owners of one hazard, none countable and one of them nobody. The
     // escape stays for an organisation the list cannot describe, but it
     // is the exception rather than the default.
