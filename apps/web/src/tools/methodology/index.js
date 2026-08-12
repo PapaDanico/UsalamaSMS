@@ -106,11 +106,15 @@ function Obligations() {
               ${o.authority}
               ${isProvisional(j) ? html`<span class="tag tag--provisional">provisional</span>` : ''}
             </th>
-            <td class="num" data-label="Window">${o.hours} h</td>
+            <td class="num" data-label="Window">
+              ${o.hours === null ? html`<span class="cell-none">no fixed period</span>` : `${o.hours} h`}
+            </td>
             <td data-label="Clock starts">
               ${o.clockStart === 'AWARENESS' ? 'awareness' : 'occurrence'}
             </td>
-            <td class="num" data-label="Due">${fmt(due)}</td>
+            <td class="num" data-label="Due">
+              ${due ? fmt(due) : html`<span class="cell-none">without delay</span>`}
+            </td>
             <td class="cite" data-label="Instrument">
               ${o.instrument}
               <span class="verified">verified ${o.verifiedOn}</span>
@@ -157,16 +161,28 @@ function bindCalculator(outlet) {
       const { due, obligation } = reportingDeadline(jurisdiction, { occurredAt, awareAt });
       const anchor = obligation.clockStart === 'AWARENESS' ? 'awareness' : 'the occurrence';
       out.dataset.state = 'ok';
-      out.innerHTML = html`
-        <strong>${fmt(due)}</strong>
-        <span class="calc__detail">
-          ${obligation.hours} hours from ${anchor} &middot; ${obligation.authority}${isProvisional(
-            jurisdiction
-          )
-            ? html` &middot; <span class="tag tag--provisional">provisional</span>`
-            : ''}
-        </span>
-      `.toString();
+      out.innerHTML = due
+        ? html`
+            <strong>${fmt(due)}</strong>
+            <span class="calc__detail">
+              ${obligation.hours} hours from ${anchor} &middot; ${obligation.authority}${isProvisional(
+                jurisdiction
+              )
+                ? html` &middot; <span class="tag tag--provisional">provisional</span>`
+                : ''}
+            </span>
+          `.toString()
+        : /* No instrument names a period, so no date is shown. Putting
+             one here — even a generous one — would be the confident
+             wrong deadline this whole module exists to prevent. */
+          html`
+            <strong>Without delay</strong>
+            <span class="calc__detail">
+              ${obligation.authority} sets no fixed period. Notify by the quickest
+              means available, then obtain the reporting window from the authority
+              of the State of the operator and file within it.
+            </span>
+          `.toString();
     } catch (error) {
       out.dataset.state = 'error';
       out.textContent = /precedes/.test(String(error.message))

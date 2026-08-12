@@ -368,12 +368,18 @@ export const FAQ = {
               <a href="/#deadlines">regulatory basis</a> section.</p>`
         },
         {
-          q: 'Why are some jurisdictions marked provisional?',
-          a: `<p>Because they carry the ICAO-common 72-hour figure pending a
-              reading of the primary instrument, and an operator relying on a
-              number deserves to know which kind it is. Uganda, Tanzania and
-              Rwanda are provisional today. They are marked as such everywhere
-              they appear, including inside a live countdown.</p>`
+          q: 'My authority is not listed. What does the product tell me?',
+          a: `<p>The ICAO baseline, which is the honest answer rather than a
+              placeholder: notify without delay, by the quickest means
+              available, and obtain the reporting window from your own
+              authority. No countdown is shown, because ICAO Annex 13 names no
+              period and Annex 19 leaves it to the State.</p>
+              <p>Three jurisdictions were once listed at 72 hours as an
+              &ldquo;ICAO-common&rdquo; figure. There is no such figure &mdash;
+              72 hours is the EU&rsquo;s own, from Regulation (EU) No 376/2014.
+              Those rows were removed rather than relabelled, because a
+              deadline no document supports is worse than none: an operator
+              without the tool at least knows it does not know.</p>`
         },
         {
           q: 'The clock starts from awareness, not from the occurrence. Why?',

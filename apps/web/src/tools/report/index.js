@@ -286,9 +286,15 @@ function wire(outlet) {
     const jurisdiction = 'KE';
     const { due, obligation } = reportingDeadline(jurisdiction, { occurredAt: occurred, awareAt });
     const hours = obligation.hours;
-    deadlineHint.textContent = isProvisional(jurisdiction)
-      ? `Around ${hours} hours to report — this jurisdiction's rule is not yet verified.`
-      : `${obligation.authority} expects this within ${hours} hours — by ${due.toUTCString()}.`;
+    /* No due date means the instrument names no period. Saying "without
+       delay" is not vaguer than a number here — it is the obligation,
+       and a number invented to fill the gap would read as permission to
+       take that long. */
+    deadlineHint.textContent = !due
+      ? `${obligation.authority} sets no fixed period — notify without delay, and file within the window your authority sets.`
+      : isProvisional(jurisdiction)
+        ? `Around ${hours} hours to report — this jurisdiction's rule is not yet verified.`
+        : `${obligation.authority} expects this within ${hours} hours — by ${due.toUTCString()}.`;
   }
 
   narrative.addEventListener('input', () => {

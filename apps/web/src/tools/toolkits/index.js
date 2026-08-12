@@ -224,8 +224,11 @@ function bindClassifier(outlet) {
       <strong>${klass.label}</strong>
       <span class="calc__detail">
         ${klass.reportable
-          ? html`Reportable as an occurrence · <strong>${obligation.hours} hours</strong> from
-              ${obligation.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·
+          ? html`Reportable as an occurrence ·
+              ${obligation.hours === null
+                ? html`<strong>without delay</strong> — no fixed period is set ·`
+                : html`<strong>${obligation.hours} hours</strong> from
+                    ${obligation.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`}
               ${obligation.authority}${isProvisional(jurisdiction)
                 ? html` · <span class="tag tag--provisional">provisional</span>`
                 : ''}`

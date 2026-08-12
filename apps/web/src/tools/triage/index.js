@@ -242,7 +242,7 @@ function decorate(report, now) {
 function compare(a, b) {
   const rank = (r) =>
     r.deadline?.status === 'OVERDUE' ? 0
-      : r.deadline?.status === 'DUE_SOON' ? 1
+      : r.deadline?.status === 'DUE_SOON' || r.deadline?.status === 'WITHOUT_DELAY' ? 1
         : r.syncState !== 'synced' ? 2
           : 3;
   const d = rank(a) - rank(b);
@@ -320,6 +320,12 @@ function row(r) {
 }
 
 function deadlineText(d) {
+  /* WITHOUT_DELAY has no date to print. It is ranked with DUE_SOON
+     rather than with the comfortable end of the queue, because an
+     obligation with no window is not an obligation with a long one. */
+  if (d.status === 'WITHOUT_DELAY' || !d.due) {
+    return `Report without delay — ${d.obligation.authority} sets no fixed period`;
+  }
   const when = d.due.toUTCString();
   switch (d.status) {
     case 'OVERDUE':

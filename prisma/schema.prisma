@@ -90,11 +90,14 @@ enum FlightPhase {
   MAINTENANCE
 }
 
+// ICAO is the baseline for an operator whose State instrument has not
+// been read: Annex 13 requires notification with a minimum of delay and
+// names no period, so no deadline is computed for it. UG, TZ and RW were
+// removed — all three carried the EU's 72 hours as an "ICAO-common"
+// default, and there is no such default. See regulations.ts.
 enum Jurisdiction {
+  ICAO
   KE
-  UG
-  TZ
-  RW
   EU
 }
 

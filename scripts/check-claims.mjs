@@ -60,7 +60,11 @@ assert(
 );
 
 if (jurisdictionMatch) {
-  const jurisdictions = [...jurisdictionMatch[1].matchAll(/"([A-Z]{2})"/g)].map((m) => m[1]);
+  /* {2,4}: ICAO is four letters. The old {2} silently skipped it, so the
+     gate counted two jurisdictions against three instrument rows and
+     reported the mismatch as a defect in the registry rather than in
+     itself. */
+  const jurisdictions = [...jurisdictionMatch[1].matchAll(/"([A-Z]{2,4})"/g)].map((m) => m[1]);
   assert('at least two jurisdictions are encoded', jurisdictions.length >= 2);
 
   /* Every jurisdiction in the list must have a row in MOR_OBLIGATIONS.
@@ -173,18 +177,55 @@ if (prefixBlock) {
 
 const switches = read('docs/05-SWITCHES.md');
 assert(
-  'the switches document still lists the provisional jurisdictions',
-  /PROVISIONAL/.test(switches) && /Uganda, Tanzania and Rwanda/.test(switches),
+  'the switches document still carries the jurisdiction-coverage entry',
+  /PROVISIONAL/.test(switches) && /ICAO Annex 13/.test(switches),
   'the highest-risk claim in the product lost its entry'
 );
 
+/* The three removed rows must not creep back in anywhere. They asserted
+   a 72-hour deadline that no instrument publishes, and the only reason
+   they lasted was that a placeholder looked like a citation. */
+for (const [file, text] of [
+  ['packages/shared/src/regulations.ts', regulations],
+  ['docs/05-SWITCHES.md', switches]
+]) {
+  assert(
+    `${file} does not reinstate a deadline for UG, TZ or RW`,
+    !/^\s*(UG|TZ|RW):\s*\{/m.test(text),
+    'a jurisdiction row returned without an instrument to cite'
+  );
+}
+
 /* The provisional flag in the code and the entry in the document have to
-   agree. Either alone is a claim nobody is checking. */
-const provisionalInCode = (regulations.match(/PROVISIONAL/g) ?? []).length;
+   agree. Either alone is a claim nobody is checking.
+
+   This used to assert "at least three", which was true only while three
+   rows carried a deadline no instrument publishes. It now compares the
+   ROW COUNT against the figure the document states, so it fails in both
+   directions: adding an unverified row without documenting it, and
+   documenting one that the code does not actually mark. */
+const provisionalRows = (regulations.match(/note:\s*\n?\s*"PROVISIONAL/g) ?? []).length;
+const declared = /Provisional rows today:\s*\*\*(\d+)\*\*/.exec(switches);
 assert(
-  'the code still marks provisional rows',
-  provisionalInCode >= 3,
-  `${provisionalInCode} PROVISIONAL markers found; the document claims three jurisdictions are unverified`
+  'the switches document states how many rows are provisional',
+  Boolean(declared),
+  'the count the code is checked against is missing from the document'
+);
+if (declared) {
+  assert(
+    'the provisional row count matches the document',
+    provisionalRows === Number(declared[1]),
+    `the code marks ${provisionalRows} provisional row(s); the document declares ${declared[1]}`
+  );
+}
+
+/* And the guard itself must still be reachable, because it has no
+   instances today — which is exactly when one quietly gets deleted as
+   dead code. */
+assert(
+  'the provisional predicate is still exported',
+  /export function isProvisionalObligation/.test(regulations),
+  'the mechanism that marks an unverified row has gone'
 );
 
 /* ============================================================

@@ -143,6 +143,35 @@ async function navigateTo(page, href) {
   await page.click(`#menu-panel a[href="${href}"]`);
 }
 
+/* ============================================================
+   THE REGISTRY'S SHAPE, READ FROM THE REGISTRY.
+
+   Four checks below used to hardcode "five jurisdictions, three of them
+   provisional". When the three provisional rows were removed — they
+   carried a 72-hour deadline no instrument publishes — all four failed
+   with messages asserting a registry that no longer existed, and the
+   only thing wrong was the numbers typed here.
+
+   Charter rule 10 applies to a test suite as much as to a screen: a
+   count about the product is computed, not typed. These are parsed from
+   the source so the next change to the list moves the expectation with
+   it, and a row added without a UI row still fails.
+   ============================================================ */
+const REGULATIONS = readFileSync(
+  new URL('../packages/shared/src/regulations.ts', import.meta.url),
+  'utf8'
+);
+const JURISDICTION_COUNT = [
+  ...(/export const JURISDICTIONS = \[([^\]]+)\]/.exec(REGULATIONS)?.[1] ?? '').matchAll(
+    /"([A-Z]{2,4})"/g
+  )
+].length;
+const PROVISIONAL_COUNT = (REGULATIONS.match(/note:\s*\n?\s*"PROVISIONAL/g) ?? []).length;
+if (JURISDICTION_COUNT < 2) {
+  console.error('smoke: could not read JURISDICTIONS out of the registry.');
+  process.exit(1);
+}
+
 const results = [];
 let failed = 0;
 
@@ -226,18 +255,26 @@ try {
 
     assert(section, 'there is no #deadlines section on the landing page to link to');
     assert(
-      section.rows >= 5,
-      `${section.rows} regulatory rows; the registry defines five jurisdictions`
+      section.rows === JURISDICTION_COUNT,
+      `${section.rows} regulatory rows; the registry defines ${JURISDICTION_COUNT}`
     );
     // The Kenyan figure is the one that was wrong for most of this
     // project's life. If this ever prints 72 for KCAA again, that is the
     // original defect resurfacing on a new surface.
     assert(/24 hours/.test(section.text), 'the 24-hour KCAA obligation is not stated');
     assert(/becoming aware/.test(section.text), 'when the clock starts is not stated');
+    /* Switch 1 is the highest-risk claim in the product and this is the
+       surface somebody checking a deadline lands on. What it has to say
+       depends on what is true: which rows are provisional when any are,
+       and — when none are — that an unlisted authority gets ICAO's
+       "without delay" rather than a borrowed number. */
     assert(
-      /provisional/i.test(section.text),
-      'which jurisdictions are provisional is not stated — switch 1 is the highest-risk ' +
-        'claim in the product and this is the surface someone checking a deadline lands on'
+      PROVISIONAL_COUNT
+        ? /provisional/i.test(section.text)
+        : /without delay/i.test(section.text),
+      PROVISIONAL_COUNT
+        ? 'which jurisdictions are provisional is not stated'
+        : 'the page does not tell an operator outside the listed authorities what applies'
     );
   });
 
@@ -409,9 +446,17 @@ try {
       /jurisdictions/.test(links.text),
       'the footer does not say how many jurisdictions the figures cover'
     );
+    /* The caveat is conditional on there being something to caveat. With
+       no provisional row the footer says every figure was read against
+       its primary instrument, and asserting the word "provisional"
+       regardless would demand a warning about nothing. */
     assert(
-      /provisional/i.test(links.text),
-      'the footer does not carry the provisional caveat'
+      PROVISIONAL_COUNT
+        ? /provisional/i.test(links.text)
+        : /primary instrument/i.test(links.text),
+      PROVISIONAL_COUNT
+        ? 'the footer does not carry the provisional caveat'
+        : 'the footer does not say the figures were read against their instruments'
     );
     assert(
       /Annex 19 Amendment 2/.test(links.text),
@@ -1513,9 +1558,15 @@ try {
     // enter the registry, and a page that dropped the dates would be
     // making the claim without the evidence.
     const rows = await page.locator('.oblig-table tbody tr').count();
-    assert(rows === 5, `${rows} obligation rows, expected 5`);
+    assert(
+      rows === JURISDICTION_COUNT,
+      `${rows} obligation rows, expected ${JURISDICTION_COUNT}`
+    );
     const verified = await page.locator('.oblig-table .verified').count();
-    assert(verified === 5, `${verified} rows carry a verification date, expected 5`);
+    assert(
+      verified === JURISDICTION_COUNT,
+      `${verified} rows carry a verification date, expected ${JURISDICTION_COUNT}`
+    );
   });
 
   await check('THE DEADLINE CALCULATOR COMPUTES, AND REFUSES THE UNSAFE INPUT', async () => {
@@ -1779,6 +1830,38 @@ try {
     await page.fill('#glossary-filter', '');
   });
 
+  await check('THE BASELINE JURISDICTION SHOWS NO DEADLINE IT CANNOT CITE', async () => {
+    // ICAO Annex 13 requires notification with a minimum of delay and
+    // names no period; Annex 19 leaves it to the State. Three rows once
+    // carried the EU's 72 hours as an "ICAO-common" figure, which is not
+    // a figure ICAO publishes. The table must show the absence rather
+    // than fill it — a plausible number here is the exact failure the
+    // regulatory engine was written to remove.
+    await navigateTo(page, '/methodology');
+    await page.waitForSelector('.oblig-table', { timeout: 5000 });
+
+    const icaoRow = page.locator('.oblig-table tbody tr', { hasText: 'ICAO' }).first();
+    assert(await icaoRow.count(), 'the ICAO baseline is not in the obligation table');
+
+    const text = ((await icaoRow.textContent()) ?? '').replace(/\s+/g, ' ');
+    assert(
+      /no fixed period/i.test(text) && /without delay/i.test(text),
+      `the ICAO row does not state the absence of a period: "${text.slice(0, 120)}"`
+    );
+    assert(
+      !/\b\d+ h\b/.test(text),
+      `the ICAO row shows an hour figure no instrument publishes: "${text.slice(0, 120)}"`
+    );
+
+    // And the calculator agrees with the table.
+    await page.selectOption('#deadline-calc select[name="jurisdiction"]', 'ICAO');
+    await page.waitForFunction(
+      () => /without delay/i.test(document.querySelector('#deadline-result')?.textContent ?? ''),
+      undefined,
+      { timeout: 5000 }
+    );
+  });
+
   await check('provisional jurisdictions are marked as provisional', async () => {
     // Navigates itself. It used to read whatever the previous check had
     // left on screen, which meant inserting a check above it silently
@@ -1787,7 +1870,10 @@ try {
     await navigateTo(page, '/methodology');
     await page.waitForSelector('.oblig-table', { timeout: 5000 });
     const tags = await page.locator('#main .tag--provisional').count();
-    assert(tags === 3, `${tags} provisional tags, expected 3 (UG, TZ, RW)`);
+    assert(
+      tags === PROVISIONAL_COUNT,
+      `${tags} provisional tags on the page; the registry marks ${PROVISIONAL_COUNT} row(s)`
+    );
   });
 
   await check('IS INSTALLABLE — the manifest advertises raster icons that exist', async () => {

@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import {
   riskScore, tolerability, can, acceptanceAuthority,
-  reportingDeadline, deadlineStatus, isStale, isProvisional,
+  reportingDeadline, deadlineStatus, isStale, isProvisional, isProvisionalObligation,
   MOR_OBLIGATIONS, JURISDICTIONS, PERMISSIONS, NARRATIVE_PERMISSIONS,
   RiskAssessInputSchema, CreateReportSchema,
   type Severity, type Likelihood, type Role,
@@ -82,7 +82,7 @@ describe("regulatory reporting deadlines", () => {
     // after going non-compliant.
     expect(MOR_OBLIGATIONS.KE.hours).toBe(24);
     const { due } = reportingDeadline("KE", { occurredAt, awareAt: occurredAt });
-    expect(due.toISOString()).toBe("2026-08-12T10:00:00.000Z");
+    expect(due!.toISOString()).toBe("2026-08-12T10:00:00.000Z");
   });
 
   it("runs from AWARENESS, not from the occurrence", () => {
@@ -92,10 +92,10 @@ describe("regulatory reporting deadlines", () => {
     // where the deadline is hardest to meet.
     const awareAt = new Date("2026-08-14T08:00:00Z"); // three days later
     const { due } = reportingDeadline("KE", { occurredAt, awareAt });
-    expect(due.toISOString()).toBe("2026-08-15T08:00:00.000Z");
+    expect(due!.toISOString()).toBe("2026-08-15T08:00:00.000Z");
     // Under the old occurrence-anchored rule this deadline had already
     // passed two days before the operator knew anything had happened.
-    expect(due.getTime()).toBeGreaterThan(occurredAt.getTime() + 72 * 3600 * 1000);
+    expect(due!.getTime()).toBeGreaterThan(occurredAt.getTime() + 72 * 3600 * 1000);
   });
 
   it("refuses an awareness time that precedes the occurrence", () => {
@@ -111,19 +111,62 @@ describe("regulatory reporting deadlines", () => {
       const o = MOR_OBLIGATIONS[j];
       expect(o.instrument.length).toBeGreaterThan(10);
       expect(o.verifiedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(o.hours).toBeGreaterThan(0);
+      // Null is allowed and means the instrument sets no period. A
+      // ZERO or a negative would be an arithmetic accident, and a
+      // deadline in the past is the one direction that matters.
+      if (o.hours !== null) expect(o.hours).toBeGreaterThan(0);
     }
   });
 
-  it("marks unverified jurisdictions as provisional rather than as fact", () => {
-    expect(isProvisional("KE")).toBe(false);
-    expect(isProvisional("EU")).toBe(false);
-    // These are carried at the ICAO-common figure pending a read of the
-    // primary instrument, and the product must say so rather than
-    // present a guess in the same typeface as a citation.
-    expect(isProvisional("UG")).toBe(true);
-    expect(isProvisional("TZ")).toBe(true);
-    expect(isProvisional("RW")).toBe(true);
+  it("carries NO provisional row — the three that were are gone", () => {
+    // Uganda, Tanzania and Rwanda were carried at 72 hours as an
+    // "ICAO-common" default. There is no such default: ICAO names no
+    // period at all. Three rows of a compliance tool therefore stated a
+    // deadline no instrument anywhere supports, and a provisional label
+    // made that visible without making it true.
+    for (const j of JURISDICTIONS) expect(isProvisional(j)).toBe(false);
+  });
+
+  it("still MARKS a provisional row, now that no real one trips it", () => {
+    // The guard has no instances today, which is exactly when a guard
+    // quietly stops working. Exercised against a synthetic row so this
+    // can still fail — a test that only asserts `false` five times
+    // would pass just as happily if isProvisional always returned it.
+    const synthetic = {
+      ...MOR_OBLIGATIONS.KE,
+      note: "PROVISIONAL — a secondary source, pending a read of the instrument.",
+    };
+    expect(isProvisionalObligation(synthetic)).toBe(true);
+    expect(isProvisionalObligation(MOR_OBLIGATIONS.KE)).toBe(false);
+  });
+
+  it("gives ICAO NO deadline, because ICAO publishes none", () => {
+    // The whole reason this jurisdiction exists. Annex 13 requires
+    // notification with a minimum of delay and names no hour figure;
+    // Annex 19 leaves the period to the State. Returning a date here —
+    // any date — would be the confident wrong deadline this module was
+    // written to remove, reintroduced under a more respectable citation.
+    expect(MOR_OBLIGATIONS.ICAO.hours).toBeNull();
+    const { due } = reportingDeadline("ICAO", { occurredAt, awareAt: occurredAt });
+    expect(due).toBeNull();
+  });
+
+  it("reports an undischarged ICAO obligation as WITHOUT_DELAY, never PENDING", () => {
+    // PENDING says there is time left. Under a minimum-of-delay
+    // obligation there is no window to be inside, so PENDING would tell
+    // an operator it was comfortable when the instrument asks it to
+    // file now.
+    const { due, obligation } = reportingDeadline("ICAO", { occurredAt, awareAt: occurredAt });
+    expect(deadlineStatus(due, new Date("2027-01-01T00:00:00Z"), { obligation })).toBe(
+      "WITHOUT_DELAY",
+    );
+    // Filing discharges it: there was never a window to have missed.
+    expect(
+      deadlineStatus(due, new Date("2027-01-01T00:00:00Z"), {
+        obligation,
+        submittedAt: new Date("2026-12-01T00:00:00Z"),
+      }),
+    ).toBe("MET");
   });
 
   it("NEVER reports MET for an obligation nobody has discharged", () => {
