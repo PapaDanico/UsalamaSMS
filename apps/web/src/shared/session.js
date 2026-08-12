@@ -219,6 +219,37 @@ export async function authFetch(input, init = {}, fetcher = fetch) {
       }
     });
 
+  /* ============================================================
+     ASK FOR A TOKEN BEFORE SENDING, not after being refused.
+
+     The access token is held in memory on purpose, so a page load
+     starts without one and resumeSession() fetches a fresh one from
+     the refresh token. That restore is async, and nothing made the
+     screens wait for it — so every protected screen sent its first
+     requests bare, collected a 401, refreshed, and sent them again.
+
+     On most screens that is one wasted round trip. On /sms it is
+     SEVEN, fired in parallel: seven unauthenticated requests, seven
+     401s, and a burst of refreshes against a token the server ROTATES
+     on every use, whose reuse detector exists to revoke the session.
+     The single-flight guard below could not help, because these
+     requests were not refreshing — they were being refused.
+
+     Doubling the requests on the heaviest screen in the product is
+     the part a reporter on a metered connection at a strip pays for.
+     Seven 401s in the console on every visit is the part that hides
+     a real authentication failure when one happens.
+
+     So: if there is no token in hand but a refresh token on the
+     device, wait for the restore — joining the in-flight one rather
+     than starting a second — and only then send. A failed restore
+     still falls through and sends bare, because the 401 that comes
+     back is the honest answer and the caller handles it.
+     ============================================================ */
+  if (!accessToken && localStorage.getItem(REFRESH_KEY)) {
+    await refresh(fetcher);
+  }
+
   let res = await send();
   if (res.status !== 401) return res;
 
