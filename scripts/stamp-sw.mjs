@@ -509,7 +509,50 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    The stopping rule gains a second precedent alongside "a screen earns
    a raise": so does a correctness fix on the target device. What still
    does not is a dependency, a polyfill or a component library. */
-const BUDGET = { entry: 212 * 1024, js: 404 * 1024, css: 54 * 1024 };
+/* ENTRY 212 -> 214 KB. The first time this number has moved since the
+   session layer landed, across fourteen screens, and it is not moving
+   for a screen now either.
+
+   WHAT IT BOUGHT. The landing page's "Reporting deadlines in force"
+   section now renders two things the registry already held and only
+   /methodology printed: whether an instrument is past its review
+   cycle, and what now governs it. That section is the one the footer
+   names as the regulatory basis and links to by name, and it was
+   citing KCAA Advisory Circular CAA-AC-SMS004A of January 2023 with no
+   indication that the Civil Aviation (Safety Management) Regulations,
+   L.N. 32 of 2026, gazetted 3 March 2026, now sits above it.
+
+   That is not decoration on the first paint. It is the same class of
+   defect as the 72-hour deadline this whole product was corrected
+   from: a confident figure, correctly computed, presented without the
+   one fact that qualifies it. A reader is owed the figure, its source,
+   and whether that source is still the top of the stack; two of the
+   three is the combination that misleads. check-claims.mjs now fails
+   the build if either surface lists a deadline without both, so this
+   cannot quietly regress on one screen again — which is exactly how it
+   got here.
+
+   WEIGHT WAS GIVEN BACK FIRST, and nearly all of it. Two rounds of the
+   same finding: shared/sitemap.js is imported by main.js, so every
+   string in it lands in the entry chunk, and both the six toolkit
+   blurbs AND the six full toolkit labels were rendered by nothing but
+   the lazily-loaded toolkits index. Roughly half a kilobyte a reporter
+   at a strip was downloading to file a report on a screen that never
+   showed it. Both moved to the surface that prints them; `short` stays
+   because the menu hint is computed from it and the menu is the entry.
+   tests/sitemap.test.ts keeps the guarantee proximity used to give.
+
+   After giving that back the overage was under fifty bytes, which is
+   the honest shape of this raise: the cleanup paid for almost all of
+   it and the remainder is the sentence itself.
+
+   WHAT WOULD MAKE THE ANSWER NO. Anything that is not a correction to
+   a claim on a customer surface. A screen does not earn an ENTRY
+   raise — it earns a TOTAL one, and the record above shows seven of
+   those. A dependency, a polyfill or a component library earns
+   neither. The test the original number protects is intact: a 40 KB
+   library added to the report form still breaks this. */
+const BUDGET = { entry: 214 * 1024, js: 404 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

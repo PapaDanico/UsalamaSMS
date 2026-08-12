@@ -31,6 +31,7 @@
 import { html, raw } from '../../shared/html.js';
 import {
   MOR_OBLIGATIONS,
+  isStale,
   isProvisional
 } from '../../../../../packages/shared/src/regulations.ts';
 
@@ -148,6 +149,20 @@ function Steps() {
    exactly how the original 72-hour error survived for most of this
    project's life. These rows read MOR_OBLIGATIONS, the same registry
    the countdown on the report form reads.
+
+   AND THEY RENDER THE INSTRUMENT'S AGE, which for a while only
+   /methodology did. That was the same defect four times over in one
+   week: a field added to the registry, travelling correctly through
+   the code, and printed by one surface while the surface people
+   actually land on showed the old picture. Here it was the worst
+   version of it — the footer routes the reader to this section by
+   name as "the regulatory basis", and this section cited a January
+   2023 advisory circular without mentioning that a gazetted regulation
+   now sits above it.
+
+   A reader is owed the figure, where it comes from, and whether that
+   source is still the top of the stack. Two of three is the one that
+   misleads.
    ============================================================ */
 function Deadlines() {
   const codes = Object.keys(MOR_OBLIGATIONS);
@@ -179,6 +194,15 @@ function Deadlines() {
                   : html`<strong>${o.hours} hours</strong> from
                       ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`}
                 <span class="reg-list__source">${o.instrument}</span>
+                ${isStale(o, new Date())
+                  ? html`<span class="tag tag--stale">Past its review cycle</span>`
+                  : ''}
+                ${o.governedByUnread
+                  ? html`<span class="cite__governs">
+                      Now governed by ${o.governedByUnread}, not yet read against this
+                      figure &mdash; confirm with your authority.
+                    </span>`
+                  : ''}
               </dd>
             </div>`;
           })}

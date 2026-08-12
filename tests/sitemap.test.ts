@@ -41,7 +41,7 @@ const toolkitHrefs = (): string[] => {
 function blurbKeys(): string[] {
   const block = /const BLURBS = \{([\s\S]*?)\n\};/.exec(toolkitsPage);
   if (!block) return [];
-  return [...block[1]!.matchAll(/'([^']+)':/g)].map((m) => m[1]!);
+  return [...block[1]!.matchAll(/^  '([^']+)':/gm)].map((m) => m[1]!);
 }
 
 describe('the toolkit list', () => {
@@ -50,11 +50,17 @@ describe('the toolkit list', () => {
     expect(blurbKeys().length).toBeGreaterThan(3);
   });
 
-  it('GIVES EVERY TOOLKIT A BLURB, so one cannot ship without copy', () => {
+  it('GIVES EVERY TOOLKIT A TITLE AND A BLURB, so one cannot ship without copy', () => {
     const keys = blurbKeys();
     for (const href of toolkitHrefs()) {
-      expect(keys, `${href} has no blurb on the toolkits page`).toContain(href);
+      expect(keys, `${href} has no copy on the toolkits page`).toContain(href);
     }
+    /* Both halves, not just the key. An entry with a title and an empty
+       blurb renders a heading over a blank line, which is the same
+       "added and invisible" failure in miniature. */
+    const block = /const BLURBS = \{([\s\S]*?)\n\};/.exec(toolkitsPage)![1]!;
+    const pairs = [...block.matchAll(/'[^']*',\s*\n?\s*'([^']{10,})'/g)];
+    expect(pairs.length, 'no [title, blurb] pairs parsed').toBe(toolkitHrefs().length);
   });
 
   it('CARRIES NO BLURB FOR A TOOLKIT THAT NO LONGER EXISTS', () => {
@@ -72,6 +78,11 @@ describe('the toolkit list', () => {
        notice once it has accumulated enough to breach — by which time
        nobody remembers why it was moved. */
     expect(sitemap).not.toMatch(/blurb:/);
+    /* And the full labels, moved for the same reason. `short` stays —
+       the menu hint is computed from it and the menu is the entry. */
+    const block = /export const TOOLKITS = \[([\s\S]*?)\n\];/.exec(sitemap)![1]!;
+    expect(block).not.toMatch(/label:/);
+    expect(block).toMatch(/short:/);
   });
 });
 

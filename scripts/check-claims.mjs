@@ -609,6 +609,53 @@ assert(
   );
 }
 
+/* ------------------------------------------------------------------
+   A SURFACE THAT LISTS THE DEADLINES MUST ALSO SAY WHAT NOW GOVERNS
+   THEM.
+
+   Four times in one week a field was added to a registry, carried
+   correctly through the code, and printed by exactly one screen. The
+   worst instance was this one: `governedByUnread` and `isStale`
+   rendered on /methodology while the landing page's own "Reporting
+   deadlines in force" section — the section the footer names as the
+   regulatory basis and links to — showed a January 2023 advisory
+   circular with no hint that a gazetted regulation now sits above it.
+
+   A reader is owed three things about a figure: what it is, where it
+   comes from, and whether that source is still the top of the stack.
+   Two of the three is the combination that misleads, and it is the
+   one that renders when a field is added without a surface.
+
+   So: any file that renders rows out of MOR_OBLIGATIONS renders both.
+   Files that merely CONSULT the registry — the report form computing a
+   countdown, the toolkit filling a dropdown — are not listings and are
+   excluded by requiring the marker both surfaces share.
+   ------------------------------------------------------------------ */
+{
+  const listings = [
+    'apps/web/src/tools/home/index.js',
+    'apps/web/src/tools/methodology/index.js',
+  ];
+  assert(
+    'the deadline-listing surfaces were found',
+    listings.every((f) => read(f).includes('MOR_OBLIGATIONS')),
+    'a file listed here no longer reads the registry — update the list or the gate is empty',
+  );
+  for (const file of listings) {
+    const src = read(file).replace(/\/\*[\s\S]*?\*\//g, '');
+    assert(
+      `${file} says what now governs the figure`,
+      src.includes('governedByUnread'),
+      'it lists a deadline and not whether its instrument has been superseded',
+    );
+    assert(
+      `${file} marks an instrument past its review cycle`,
+      src.includes('isStale'),
+      'it lists a deadline and not whether its instrument has aged out',
+    );
+  }
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);
