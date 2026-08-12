@@ -223,6 +223,26 @@ export const MATURITY_SOURCE = Object.freeze({
   /** Not yet read against Doc 9859 fourth edition directly. */
   provisional: true,
   appliesFrom: "2026-11-26",
+
+  /* WHERE THE SCORING RULE COMES FROM, since it is not ours.
+
+     The scale above is this product's articulation and is labelled as
+     such wherever it appears. The rule that an assessment is positioned
+     at its WEAKEST element rather than its average is not — it follows
+     the SM ICG SMS Evaluation Tool, whose stated expectation is that
+     all individual indicators reach at least "operating" and that
+     effectiveness is achieved in all of the elements.
+
+     Named here so the screen can cite it. Deliberately NOT claimed as a
+     mapping between our five levels and SM ICG's four: a correspondence
+     between "Practised" and "Operating" would be our reading, and
+     presenting our reading as SM ICG's is the same invented authority
+     this module already refuses to claim for the scale itself. */
+  scoringBasis:
+    "SM ICG SMS Evaluation Tool — adopted by CASA as Form 1591 V3. It expects every " +
+    "element to be at least operating, which is why this assessment reports the weakest " +
+    "element rather than an average.",
+  scoringBasisUrl: "https://www.casa.gov.au/safety-management-system-sms-evaluation-tool-and-guidance",
 });
 
 export interface ComponentScore {

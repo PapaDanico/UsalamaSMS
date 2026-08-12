@@ -251,6 +251,17 @@ export function render(outlet) {
               ? 'compiled from secondary sources pending a read against Doc 9859 fourth edition, and is marked provisional wherever it appears'
               : 'read against the primary document'}.
           </p>
+          <p class="note">
+            <b>Why the weakest element is the answer, and not the average</b>
+            That rule is not ours. It follows the
+            <a href="${MATURITY_SOURCE.scoringBasisUrl}" rel="noreferrer">SM ICG SMS Evaluation
+            Tool</a>, which Australia's CASA has adopted as Form 1591 — it expects every element
+            to be at least operating, and effectiveness in all of them. A framework whose pass
+            condition applies to all twelve cannot be reported by an average, because an average
+            lets a strong element stand in for a missing one. SM ICG goes further and advises
+            that an SMS not be scored at all; where a number appears here it is shown as the
+            spread, never as a pass mark.
+          </p>
         </section>
 
         ${SMS_COMPONENTS.map(
