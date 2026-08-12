@@ -365,3 +365,53 @@ the current arrangement survivable rather than reckless. There is no
 test asserting the storage medium, deliberately: a test that asserted
 `localStorage` would have to be deleted to make the fix, which is a
 guard that argues against its own resolution.
+
+---
+
+## 11. Registration redaction is scoped to Kenya
+
+**The claim:** de-identification removes aircraft registrations from a
+narrative before it leaves the safety office.
+
+**Where it stops being true.** On 12 August 2026 the prefixes for Uganda
+(`5X`), Tanzania (`5H`) and Rwanda (`9XR`) were removed from
+`REGISTRATION_PREFIXES` in `apps/api/src/deident.ts`, on instruction,
+alongside the same narrowing applied to the jurisdictions and the
+aerodrome list.
+
+**Why this one is different from the other two narrowings.** Removing a
+jurisdiction removes a claim, and removing an aerodrome sends one field
+to free text. Removing a prefix here means a narrative naming `5X-DEF`
+keeps that registration **in a record labelled de-identified**. Whose
+law applies to an operator has nothing to do with which aircraft its
+crews write about: a Kenyan operator flying a sector into Entebbe writes
+about Ugandan aircraft, and that sector is a routine one.
+
+This is a defect the module already had once. It originally matched
+`5Y-[A-Z]{3}` alone and every Ugandan, Tanzanian, Rwandan and Ethiopian
+registration went through in clear; the prefix list was added to close
+it. Three are now open again **by decision rather than by accident**,
+which is the only improvement available over the original state.
+
+**Note the remaining list is not symmetrical.** Ethiopia, Burundi, DR
+Congo, Sudan, Libya and Somalia are still redacted. A Kenyan operator
+encounters Ugandan aircraft at least as often as Ethiopian ones, so the
+list as it stands is scoped by instruction rather than by a rule that
+can be derived. Either widen it back or narrow it to Kenya alone; the
+middle is the state that is hardest to explain to an auditor.
+
+**The flag:** `REGISTRATION_PREFIXES` in `apps/api/src/deident.ts`.
+
+**What must happen** before a customer relies on the de-identified view
+across a border: decide whether the redaction scope follows the State of
+Registry or follows the narratives operators actually write, and make
+the list match the answer.
+
+**The test that stops it rotting:** `tests/deident-corpus.test.ts` —
+*"registrations outside the State of Registry"* asserts `5X`, `5H` and
+`9XR` pass through in clear, and *"STILL redacts the State of Registry's
+own aircraft"* asserts Kenya does not. The cases were inverted rather
+than deleted: a deleted case is a gap nobody can see, and the next
+reader could not tell a decision from an oversight.
+
+**Owner:** whoever ships the first customer operating across a border.

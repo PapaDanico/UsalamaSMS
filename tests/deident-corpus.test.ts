@@ -53,9 +53,6 @@ const CLEAN_CORPUS = [
 /** Narratives that DO contain identifiers. Each must lose them. */
 const IDENTIFIED_CORPUS: Array<{ text: string; gone: string[]; token: string }> = [
   { text: "Aircraft 5Y-ABC was on stand 12.", gone: ["5Y-ABC"], token: "[REG]" },
-  { text: "5X-DEF diverted after the event.", gone: ["5X-DEF"], token: "[REG]" },
-  { text: "The crew of 5H-MTZ reported the defect.", gone: ["5H-MTZ"], token: "[REG]" },
-  { text: "9XR-AB was parked overnight.", gone: ["9XR-AB"], token: "[REG]" },
   { text: "ET-AXK operated the rotation.", gone: ["ET-AXK"], token: "[REG]" },
   { text: "We were number two behind KQ431 on the approach.", gone: ["KQ431"], token: "[FLT]" },
   { text: "Capt. John Otieno signed the technical log.", gone: ["Otieno"], token: "[CREW]" },
@@ -63,6 +60,52 @@ const IDENTIFIED_CORPUS: Array<{ text: string; gone: string[]; token: string }> 
   { text: "The report was emailed to j.otieno@ops.example the same day.", gone: ["@ops.example"], token: "[EMAIL]" },
   { text: "The occurrence happened on 2026-07-01 during the morning bank.", gone: ["2026-07-01"], token: "[DATE]" },
 ];
+
+/* ============================================================
+   WHAT IS DELIBERATELY NOT REDACTED, AND SINCE WHEN.
+
+   Uganda (5X), Tanzania (5H) and Rwanda (9XR) were removed from the
+   prefix list on 12 August 2026, when the product scoped itself to the
+   State of Registry. These cases are kept and INVERTED rather than
+   deleted, because a deleted test case is a gap nobody can see: the
+   next person to read this file would find no trace that these
+   registrations were ever handled, and no way to tell a decision from
+   an oversight.
+
+   So they assert the current behaviour explicitly. If somebody restores
+   the prefixes, these fail and point at the decision that has changed
+   rather than at a bug.
+
+   The consequence, stated plainly: a Kenyan operator's narrative about
+   a sector into Entebbe that names a Ugandan aircraft keeps that
+   registration in a record labelled de-identified. See
+   docs/05-SWITCHES.md, entry 11.
+   ============================================================ */
+const OUT_OF_SCOPE_REGISTRATIONS = [
+  { text: "5X-DEF diverted after the event.", kept: "5X-DEF", state: "Uganda" },
+  { text: "The crew of 5H-MTZ reported the defect.", kept: "5H-MTZ", state: "Tanzania" },
+  { text: "9XR-AB was parked overnight.", kept: "9XR-AB", state: "Rwanda" },
+];
+
+describe("registrations outside the State of Registry", () => {
+  it.each(OUT_OF_SCOPE_REGISTRATIONS)(
+    "passes $kept through in clear — $state is out of scope by decision",
+    ({ text, kept }) => {
+      const { text: scrubbed } = deIdentify(text);
+      expect(
+        scrubbed,
+        `${kept} was redacted — if the prefix was restored deliberately, update ` +
+          `this suite, the privacy notice and docs/05-SWITCHES.md entry 11 together`
+      ).toContain(kept);
+    }
+  );
+
+  it("STILL redacts the State of Registry's own aircraft", () => {
+    // The narrowing must not have reached Kenya. If this ever fails,
+    // the product is publishing its own operators' registrations.
+    expect(deIdentify("Aircraft 5Y-ABC was on stand 12.").text).not.toContain("5Y-ABC");
+  });
+});
 
 describe("de-identification corpus — nothing but identifiers is touched", () => {
   it.each(CLEAN_CORPUS)("leaves clean aviation prose byte-identical: %s", (narrative) => {

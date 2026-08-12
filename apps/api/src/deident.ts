@@ -120,19 +120,32 @@ const NOT_AN_IDENTIFIER = new Set([
 const NUMERIC_LEADING_PREFIXES = new Set(["60"]);
 
 /**
- * Aircraft registration prefixes for the states this product serves,
- * plus the wider set an East African operator routinely encounters.
+ * Aircraft registration prefixes redacted from a narrative.
  *
- * The original module matched `5Y-[A-Z]{3}` alone. Every Ugandan,
- * Tanzanian, Rwandan and Ethiopian registration in a narrative went
- * through the pipeline in clear — on a platform whose stated market is
- * the East African corridor.
+ * SCOPED TO THE STATE OF REGISTRY, on instruction, alongside the same
+ * narrowing applied to the jurisdictions and the aerodromes. Uganda
+ * (5X), Tanzania (5H) and Rwanda (9XR) were removed here on 12 August
+ * 2026.
+ *
+ * WHAT THAT MEANS, AND IT IS NOT THE SAME AS THE OTHER TWO NARROWINGS.
+ * Removing a jurisdiction removes a claim; removing an aerodrome sends
+ * one field to free text. Removing a prefix HERE means a narrative that
+ * names 5X-DEF keeps that registration in a record labelled
+ * de-identified. Whose law applies to an operator has nothing to do
+ * with which aircraft its crews write about: a Kenyan operator on a
+ * sector into Entebbe writes about Ugandan aircraft.
+ *
+ * This is the defect the module already had once. It originally matched
+ * `5Y-[A-Z]{3}` alone, and every Ugandan, Tanzanian, Rwandan and
+ * Ethiopian registration went through in clear. The prefixes below were
+ * added to close that. Three of them are now open again by decision
+ * rather than by accident, which is the only improvement available —
+ * IDENTIFIED_CORPUS pins the behaviour so it stays visible, the privacy
+ * notice states the scope, and docs/05-SWITCHES.md carries it as a
+ * claim with an expiry.
  */
 const REGISTRATION_PREFIXES = [
-  "5Y",  // Kenya
-  "5X",  // Uganda
-  "5H",  // Tanzania
-  "9XR", // Rwanda
+  "5Y",  // Kenya — the State of Registry
   "9U",  // Burundi
   "ET",  // Ethiopia
   "5Z",  // Kenya, earlier allocation — still on legacy records

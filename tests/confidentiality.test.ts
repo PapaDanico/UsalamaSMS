@@ -33,11 +33,16 @@ describe("de-identification — pattern scrubbing", () => {
     expect(text).toContain("[CREW]");
   });
 
-  it("covers East African registrations, not Kenya's alone", () => {
-    // The original module matched 5Y- only, on a platform whose stated
-    // market is the East African corridor. Every Ugandan, Tanzanian,
-    // Rwandan and Ethiopian registration went through in clear.
-    for (const reg of ["5X-ABC", "5H-MTZ", "9XR-AB", "ET-AXK", "9Q-CGA"]) {
+  it("covers more than Kenya's own registrations", () => {
+    // The original module matched 5Y- only and every non-Kenyan
+    // registration went through in clear. That is still the failure to
+    // watch for; the list it is watched against is now narrower.
+    //
+    // Uganda, Tanzania and Rwanda were removed on 12 August 2026 when
+    // the product scoped itself to the State of Registry. They are
+    // asserted ABSENT in tests/deident-corpus.test.ts rather than
+    // dropped from view here — see docs/05-SWITCHES.md, entry 11.
+    for (const reg of ["ET-AXK", "9Q-CGA", "5Z-AAA"]) {
       const { text } = deIdentify(`The aircraft ${reg} was on stand.`);
       expect(text, `${reg} survived de-identification`).not.toContain(reg);
       expect(text).toContain("[REG]");
@@ -76,7 +81,12 @@ describe("de-identification — pattern scrubbing", () => {
   });
 
   it("counts what it removed, per category", () => {
-    const result = deIdentify("5Y-ABC and 5X-DEF were both on 2026-07-01.");
+    // Two registrations that ARE in scope. This used to pair 5Y-ABC
+    // with 5X-DEF and counted 2; with Uganda out of scope it counted 1
+    // and read as a counting bug rather than as the scope change it
+    // was. The second registration is Ethiopian so the assertion
+    // measures the counter rather than the prefix list.
+    const result = deIdentify("5Y-ABC and ET-AXK were both on 2026-07-01.");
     expect(result.removed.REG).toBe(2);
     expect(result.removed.DATE).toBe(1);
   });
