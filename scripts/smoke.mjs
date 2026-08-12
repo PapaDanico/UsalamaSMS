@@ -901,6 +901,73 @@ try {
     );
   });
 
+  await check('IN-PAGE ANCHORS SCROLL, AND CLEAR THE STICKY CHROME', async () => {
+    // TWO FAILURES, ONE CHECK, because they present identically to a
+    // reader: nothing useful happened.
+    //
+    // The first was fatal and invisible. The router re-rendered on
+    // popstate, and Chrome fires popstate for a same-document hash
+    // change — so clicking any in-page anchor rebuilt the screen,
+    // destroying the DOM the browser was about to scroll to and
+    // resetting the scroll to zero. Every contents entry on six
+    // document pages, the footer's link to the deadlines, and the skip
+    // link a keyboard user reaches first: all dead. Nothing saw it,
+    // because a re-render produces identical markup and every selector
+    // still matched. The only evidence was a scroll position.
+    //
+    // The second is WCAG 2.2 SC 2.4.11 (Focus Not Obscured). This app
+    // has a sticky header AND a sticky sync strip above the content;
+    // landing a heading underneath them is arriving at a section whose
+    // title you cannot read.
+    await navigateTo(page, '/faq');
+    await page.waitForSelector('.toc a', { timeout: 5000 });
+    await page.click('.toc a[href="#regulatory"]');
+    // Wait for the scroll to SETTLE, not to start. scroll-behavior is
+    // smooth, so "scrollY > 0" is true a frame after the click while the
+    // page is still a thousand pixels from where it is going — and the
+    // first version of this check measured exactly there and reported an
+    // overshoot that was really a race.
+    await page.waitForFunction(
+      () => {
+        const y = window.scrollY;
+        if (window.__lastY === y) return true;
+        window.__lastY = y;
+        return false;
+      },
+      undefined,
+      { timeout: 5000, polling: 250 }
+    );
+
+    const landing = await page.evaluate(() => {
+      const heading = document.querySelector('#regulatory h2').getBoundingClientRect();
+      const chromeBottom = Math.max(
+        document.querySelector('.nav').getBoundingClientRect().bottom,
+        document.querySelector('#sync-strip').getBoundingClientRect().bottom
+      );
+      return {
+        scrollY: window.scrollY,
+        clearance: heading.top - chromeBottom,
+        hash: window.location.hash
+      };
+    });
+
+    assert(landing.scrollY > 0, 'clicking a contents entry did not scroll the page at all');
+    assert(landing.hash === '#regulatory', `the URL is ${landing.hash}, so it cannot be shared`);
+    assert(
+      landing.clearance >= 0,
+      `the heading lands ${Math.abs(Math.round(landing.clearance))}px underneath the sticky ` +
+        'header and sync strip — WCAG 2.2 SC 2.4.11'
+    );
+
+    // And the section really is the one in view, not merely somewhere
+    // on a page that happened to scroll.
+    assert(
+      landing.clearance < 200,
+      `the heading is ${Math.round(landing.clearance)}px below the chrome; the anchor ` +
+        'overshot the section it names'
+    );
+  });
+
   await check('THE GLOSSARY RENDERS THE MODULE, NOT A COPY OF IT', async () => {
     // 186 lines of vocabulary transcribed from the KCAA course glossary
     // existed in the repository so the de-identifier would not scrub

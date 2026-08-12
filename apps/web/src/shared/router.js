@@ -17,7 +17,34 @@ class Router {
     this.notFound = null;
     this.outlet = null;
     this.current = null;
-    this._onPop = () => this.render();
+    /* ============================================================
+       ONLY WHEN THE PATH CHANGED.
+
+       THE DEFECT: this was `() => this.render()`. Chrome fires popstate
+       for a same-document hash change, so clicking any in-page anchor
+       re-rendered the whole screen from scratch — which wiped the DOM
+       the browser was about to scroll to and reset the scroll position
+       to zero.
+
+       Every in-page anchor in the product was therefore dead. The
+       contents list on six document pages, the footer's link to the
+       deadlines section, and the skip link that is the first thing a
+       keyboard user reaches: all of them changed the URL, did nothing
+       visible, and left the reader at the top of the page.
+
+       Nothing in the suite could see it. A re-render produces the same
+       markup, so every selector still matched, every assertion still
+       passed, and the only evidence was a scroll position — which
+       nothing was reading.
+
+       Re-rendering the CURRENT path on demand is still deliberate and
+       still available: navigate() does it when asked for the route it
+       is already on. This is the other case, and the two are not the
+       same event.
+       ============================================================ */
+    this._onPop = () => {
+      if (this.current !== this.path) this.render();
+    };
   }
 
   register(path, handler, meta = {}) {

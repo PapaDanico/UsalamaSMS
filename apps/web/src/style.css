@@ -166,6 +166,12 @@
   --us-tap: 48px;
 
   --us-topbar: 60px;
+  /* The sticky chrome: the top bar plus the sync strip, which is also
+     sticky and also above the content. Anything scrolled to — an
+     anchor, a focused control — has to clear BOTH, and the 88px this
+     replaced cleared only the first. 8px of air on top so a heading
+     does not sit flush against the strip's border. */
+  --us-chrome: calc(var(--us-topbar) + 52px);
   --us-tabbar: 62px;
 
   /* The focus ring, as a shadow rather than an outline, for controls
@@ -396,8 +402,13 @@ section { padding: var(--us-section) 0; }
 
 /* Anchored jumps must clear the sticky header instead of hiding the
    heading behind it. */
-:target { scroll-margin-top: 88px; }
-[id] { scroll-margin-top: 88px; }
+/* scroll-padding on the scroller covers focus moves as well as
+   fragments — WCAG 2.2 SC 2.4.11, which a sticky header is the usual
+   way to fail. scroll-margin on the targets covers the case where the
+   scroller is not the document. */
+html { scroll-padding-top: var(--us-chrome); }
+:target,
+[id] { scroll-margin-top: var(--us-chrome); }
 
 /* skip link — keyboard users land here first */
 .skip-link {
