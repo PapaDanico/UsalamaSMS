@@ -315,6 +315,35 @@ describe("regulatory reporting deadlines", () => {
     expect(isStale(freshInstrument, new Date("2026-08-12T00:00:00Z"))).toBe(false);
   });
 
+  it("KEEPS THE FIGURE ATTRIBUTED TO WHERE IT CAME FROM, AND NAMES THE LAW ABOVE IT", () => {
+    /* The Kenyan 24 hours comes from Advisory Circular CAA-AC-SMS004A,
+       January 2023. KCAA has since gazetted the Civil Aviation (Safety
+       Management) Regulations as L.N. 32/2026 — law, where an AC is
+       guidance — and nobody here has read it.
+
+       The tempting move is to update `instrument` to the regulation.
+       That would attribute 24 hours to a document nobody has opened,
+       which is precisely the misattribution this module's own header
+       complains about: three rows once carried the EU's 72 hours as an
+       "ICAO-common" figure. Doing it ourselves would be worse.
+
+       So the two facts stay separate, and both must survive. */
+    const ke = MOR_OBLIGATIONS.KE;
+    expect(ke.instrument, "the figure was reattributed to an unread instrument").toMatch(
+      /CAA-AC-SMS004A/,
+    );
+    expect(ke.governedByUnread, "the governing regulation is not named").toMatch(/L\.N\. 32\/2026/);
+    expect(ke.note, "the note does not warn that the figure predates the regulation").toMatch(
+      /L\.N\. 32\/2026/,
+    );
+  });
+
+  it("does not claim a governing instrument where none is known", () => {
+    // The field is optional on purpose. Asserting one for ICAO would
+    // invent a Kenyan-style gazette record for a SARP.
+    expect(MOR_OBLIGATIONS.ICAO.governedByUnread).toBeUndefined();
+  });
+
   it("gives every obligation an instrument date, or staleness is unmeasurable", () => {
     for (const [id, o] of Object.entries(MOR_OBLIGATIONS)) {
       expect(o.instrumentIssued, `${id} has no instrument date`).toMatch(/^\d{4}-\d{2}-\d{2}$/);

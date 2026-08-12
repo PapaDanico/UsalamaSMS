@@ -113,6 +113,21 @@ export interface ReportingObligation {
    * — the precision claimed matches the precision published.
    */
   readonly instrumentIssued: string;
+
+  /**
+   * An instrument that GOVERNS this row and has not been read against
+   * it. Present only when one is known to exist.
+   *
+   * Distinct from `instrument`, which is where the figure in this row
+   * actually came from. Moving the citation to a document nobody has
+   * read would attribute a number to it — the exact misattribution the
+   * header of this file exists to complain about, committed by us
+   * rather than by somebody else.
+   *
+   * So both are stated: where the hours came from, and what law now
+   * sits above them unchecked.
+   */
+  readonly governedByUnread?: string;
   /**
    * The publisher's own revision cycle, in months. Staleness is measured
    * against this rather than a flat threshold — charter rule 5. An
@@ -161,10 +176,19 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
     verifiedOn: "2026-08-11",
     instrumentIssued: "2023-01-01",
     reviewCycleMonths: 36,
+    governedByUnread:
+      "Civil Aviation (Safety Management) Regulations, L.N. 32/2026, gazetted 3 March 2026",
     note:
       "24 hours for the pertinent information. Distinct from the 72-hour " +
       "window for undeclared or misdeclared dangerous goods, which runs " +
-      "from discovery and is a separate obligation — do not merge them.",
+      "from discovery and is a separate obligation — do not merge them. " +
+      "THE FIGURE COMES FROM AN ADVISORY CIRCULAR AND THERE IS NOW A " +
+      "REGULATION: KCAA gazetted the Civil Aviation (Safety Management) " +
+      "Regulations as L.N. 32/2026 on 3 March 2026 — law, where an AC is " +
+      "guidance. It has not been read against this row, so the 24 hours " +
+      "stays attributed to where it actually came from rather than being " +
+      "moved onto a document nobody here has opened. Working figure; " +
+      "confirm against L.N. 32/2026 before relying on it for a filing.",
   },
 };
 
