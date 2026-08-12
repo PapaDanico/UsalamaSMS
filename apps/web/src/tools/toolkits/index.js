@@ -176,7 +176,8 @@ export function render(outlet) {
           Nothing is stored and nothing is sent.
         </p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="/toolkits/register">Risk register</a>
+          <a class="btn btn-primary" href="/toolkits/sra">Safety risk assessment</a>
+          <a class="btn btn-ghost-lt" href="/toolkits/register">Risk register</a>
           <a class="btn btn-ghost-lt" href="/toolkits/maturity">SMS maturity assessment</a>
         </div>
       </div>
@@ -188,6 +189,7 @@ export function render(outlet) {
         <ol>
           <li><a href="#classifier">Occurrence classifier</a></li>
           <li><a href="#risk">Risk tolerability</a></li>
+          <li><a href="/toolkits/sra">Safety risk assessment</a></li>
           <li><a href="/toolkits/register">Risk register</a></li>
           <li><a href="/toolkits/maturity">SMS maturity assessment</a></li>
           <li><a href="/methodology#windows">Reporting deadline calculator</a></li>

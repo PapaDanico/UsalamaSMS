@@ -126,10 +126,13 @@ describe('level labelling', () => {
    Coverage: the answer to an audit that could not see the source.
 
    The arithmetic here produces the sentence the About page states —
-   "substantially covers one and a half of twelve" — so if the two ever
-   disagree, one of them is lying to an operator about its regulatory
-   position. That is the sentence with the highest consequence in the
-   product.
+   "substantially covers two of twelve" — so if the two ever disagree,
+   one of them is lying to an operator about its regulatory position.
+   That is the sentence with the highest consequence in the product.
+
+   It has moved once, from one and a half, when /toolkits/sra took
+   element 3.2 from NOT_BUILT to PARTIAL. The test fired before the
+   prose was updated, which is exactly what it is for.
    ============================================================ */
 
 import { COVERAGE, coverageSummary } from '../packages/shared/src/maturity';
@@ -166,10 +169,16 @@ describe('coverage', () => {
     expect(s.built + s.partial + s.assessedOnly + s.notBuilt).toBe(s.total);
   });
 
-  it('produces the one-and-a-half figure the About page states', () => {
+  it('produces the figure the About page states, in prose, in words', () => {
+    /* Was 1.5 until /toolkits/sra moved element 3.2 from NOT_BUILT to
+       PARTIAL. This test fired the moment the coverage entry changed
+       and before the prose did, which is the whole reason it exists:
+       the arithmetic and the sentence an operator reads have to move
+       together or one of them is telling them something false about
+       their regulatory position. */
     const s = coverageSummary();
     expect(s.total).toBe(12);
-    expect(s.elementsCovered).toBe(1.5);
+    expect(s.elementsCovered).toBe(2);
   });
 });
 

@@ -318,7 +318,30 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    Same lesson as the post list in taxonomy.ts, arriving from the same
    direction: the total says something grew, and the entry says whether
    it grew somewhere a person is waiting on it. --------------------- */
-const BUDGET = { entry: 212 * 1024, js: 316 * 1024, css: 46 * 1024 };
+/* ---------------------------------------------------------------
+   THE SEVENTH RAISE: TOTAL -> 332 KB. The safety risk assessment.
+
+   Asked for, and it earns it on the original rule without extension:
+   /toolkits/sra is a screen a person navigates to, lazily loaded, and
+   it is the largest single capability added since the report form.
+
+   WHAT IT IS. The register answers "what hazards do we carry". An SRA
+   answers the question that arrives at the worst moment — "you changed
+   something; what did you think would happen, and what did you do
+   about it?" A new route, a new type, a base closing. Annex 19 element
+   3.2 asks for it before the change and an auditor asks for it after,
+   and this product could not produce one.
+
+   The five steps are ICAO Doc 9859's own, in its order, including the
+   loop back from control to hazard identification that most templates
+   drop — a control changes the system, so a mitigation can introduce a
+   hazard of its own.
+
+   ENTRY: 208.3 KB of 212, up 0.4 KB, which is the dynamic import and
+   nothing else. Seven raises in and that number has moved 8 KB in
+   total, across roughly twenty screens. It is the one that was worth
+   defending. --------------------------------------------------- */
+const BUDGET = { entry: 212 * 1024, js: 332 * 1024, css: 46 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

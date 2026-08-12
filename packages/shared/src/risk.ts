@@ -66,9 +66,44 @@ export const LIKELIHOOD_SCALE: ReadonlyArray<ScalePoint<Likelihood>> = [
   { key: "EXTREMELY_IMPROBABLE", code: "1", label: "Extremely improbable" },
 ];
 
+/* ---------------------------------------------------------------
+   AN UNRECOGNISED VALUE MUST NOT GRADE AS GREEN.
+
+   Both functions used to index the lookup tables directly. Given a
+   severity that is not on the scale — a corrupted store, a renamed
+   enum, a hand-built payload — `SEVERITY_VALUE[sev]` is `undefined`,
+   the key becomes "undefinedx3", that key is in neither the red set
+   nor the amber one, and tolerability() returned **ACCEPTABLE**.
+   riskScore() returned NaN beside it.
+
+   So a malformed severity read as green: the flattering direction, on
+   the one calculation in this product whose whole job is to refuse to
+   flatter.
+
+   It survived because every caller wrapped these in a try/catch and a
+   test asserted the result was "not intolerable" — which was true, and
+   true for the wrong reason. Nothing threw. The guards were guarding
+   an exception that could not happen.
+
+   They throw now. Every caller already has the catch, so the change
+   converts a silent green into an explicit unknown at each of them.
+   --------------------------------------------------------------- */
+function valueOf(sev: Severity, lik: Likelihood): { s: number; l: number } {
+  const s = SEVERITY_VALUE[sev];
+  const l = LIKELIHOOD_VALUE[lik];
+  if (s === undefined || l === undefined) {
+    throw new RangeError(
+      `not on the Doc 9859 scale: severity ${JSON.stringify(sev)}, ` +
+        `likelihood ${JSON.stringify(lik)}`,
+    );
+  }
+  return { s, l };
+}
+
 /** Risk index score = severity × likelihood (1..25). */
 export function riskScore(sev: Severity, lik: Likelihood): number {
-  return SEVERITY_VALUE[sev] * LIKELIHOOD_VALUE[lik];
+  const { s, l } = valueOf(sev, lik);
+  return s * l;
 }
 
 /**
@@ -85,7 +120,8 @@ export function riskScore(sev: Severity, lik: Likelihood): number {
 const RED = new Set(["5x5", "5x4", "5x3", "4x5", "4x4", "3x5"]);
 const AMBER = new Set(["5x2", "5x1", "4x3", "4x2", "3x4", "3x3", "2x5", "2x4", "1x5"]);
 export function tolerability(sev: Severity, lik: Likelihood): Tolerability {
-  const key = `${SEVERITY_VALUE[sev]}x${LIKELIHOOD_VALUE[lik]}`;
+  const { s, l } = valueOf(sev, lik);
+  const key = `${s}x${l}`;
   if (RED.has(key)) return "INTOLERABLE";
   if (AMBER.has(key)) return "TOLERABLE";
   return "ACCEPTABLE";

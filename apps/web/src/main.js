@@ -257,6 +257,11 @@ router
     { title: 'Risk register' }
   )
   .register(
+    '/toolkits/sra',
+    (el) => lazy(el, () => import('./tools/sra/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Safety risk assessment' }
+  )
+  .register(
     '/toolkits/maturity',
     (el) => lazy(el, () => import('./tools/maturity/index.js').then((m) => (o) => m.render(o))),
     { title: 'SMS maturity assessment' }

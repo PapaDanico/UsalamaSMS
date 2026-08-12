@@ -167,6 +167,31 @@ const JURISDICTION_COUNT = [
   )
 ].length;
 const PROVISIONAL_COUNT = (REGULATIONS.match(/note:\s*\n?\s*"PROVISIONAL/g) ?? []).length;
+
+/* The coverage figure, computed from the same declaration the page
+   renders. This was typed as 1.5 and went stale the moment /toolkits/sra
+   moved element 3.2 from NOT_BUILT to PARTIAL — the check then failed
+   with "the arithmetic says 1.5" while the arithmetic said 2, which is
+   a suite asserting its own out-of-date copy of the answer.
+
+   BUILT counts one, PARTIAL a half; ASSESSED_ONLY and NOT_BUILT count
+   nothing. Same rule as coverageSummary(), read from the same file. */
+const MATURITY = readFileSync(
+  new URL('../packages/shared/src/maturity.ts', import.meta.url),
+  'utf8'
+);
+// COVERAGE is wrapped in Object.freeze([...]), so it closes with "]);"
+// rather than "];" — the first pattern matched nothing and the check
+// exited rather than passing on an empty block, which is the correct
+// direction for a guard that cannot read what it is guarding.
+const COVERAGE_BLOCK = /export const COVERAGE[\s\S]*?\n\]\);/.exec(MATURITY)?.[0] ?? '';
+const COVERED =
+  (COVERAGE_BLOCK.match(/state:\s*"BUILT"/g) ?? []).length +
+  (COVERAGE_BLOCK.match(/state:\s*"PARTIAL"/g) ?? []).length / 2;
+if (COVERED <= 0) {
+  console.error('smoke: could not read the COVERAGE states out of maturity.ts.');
+  process.exit(1);
+}
 if (JURISDICTION_COUNT < 2) {
   console.error('smoke: could not read JURISDICTIONS out of the registry.');
   process.exit(1);
@@ -1309,8 +1334,8 @@ try {
 
     const covered = (await page.locator('.stat__value').first().textContent()) ?? '';
     assert(
-      covered.trim() === '1.5',
-      `the coverage figure reads "${covered.trim()}" — the arithmetic says 1.5`
+      covered.trim() === String(COVERED),
+      `the coverage figure reads "${covered.trim()}" — the declaration says ${COVERED}`
     );
 
     // Every element says what is NOT here, including the built ones.
@@ -1379,6 +1404,61 @@ try {
       (await page.locator('.reg-entry').count()) === 0,
       'a removed entry came back after a reload'
     );
+  });
+
+  await check('AN SRA REFUSES TO BE ACCEPTED WITH A RED RISK ON IT', async () => {
+    // The claim with the highest consequence on this screen. Doc 9859's
+    // red band is not "acceptable with sign-off from somebody
+    // sufficiently senior" — it is not acceptable at any level of
+    // benefit. A tool that let an accountable executive click past it
+    // would be helping produce the document that proves they knew.
+    await page.goto(BASE + '/toolkits/sra', { waitUntil: 'networkidle' });
+    await page.evaluate(() => localStorage.removeItem('usalamasms.sra'));
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForSelector('#sra-hazard', { timeout: 5000 });
+
+    // Five steps, from the module rather than from the markup.
+    const steps = await page.locator('#sra-steps li').count();
+    assert(steps === 5, `${steps} steps rendered, and Doc 9859 sets out 5`);
+
+    await page.fill('#sra-system textarea[name="system"]',
+      'Twice-weekly F50 service into an unpaved strip with no published instrument ' +
+      'approach, flown by crews currently operating only to paved destinations.');
+
+    const addHazard = async (hazard, sev, lik, resSev, resLik) => {
+      await page.fill('#sra-hazard input[name="hazard"]', hazard);
+      await page.fill('#sra-hazard textarea[name="consequence"]', 'Runway excursion on landing');
+      await page.selectOption('#sra-hazard select[name="severity"]', sev);
+      await page.selectOption('#sra-hazard select[name="likelihood"]', lik);
+      await page.fill('#sra-hazard textarea[name="controls"]', 'Crosswind limit reduced');
+      if (resSev) await page.selectOption('#sra-hazard select[name="residualSeverity"]', resSev);
+      if (resLik) await page.selectOption('#sra-hazard select[name="residualLikelihood"]', resLik);
+      await page.selectOption('#sra-hazard select[name="owner"]', 'CHIEF_PILOT');
+      await page.check('#sra-hazard input[name="controlReviewed"]');
+      await page.click('#sra-hazard button[type="submit"]');
+      await page.waitForTimeout(250);
+    };
+
+    // One hazard whose control does NOT bring it out of the red band.
+    await addHazard('Unpaved surface in the wet season', 'A_CATASTROPHIC', 'FREQUENT',
+      'A_CATASTROPHIC', 'FREQUENT');
+    await addHazard('No published approach', 'C_MAJOR', 'REMOTE', 'D_MINOR', 'IMPROBABLE');
+
+    const rows = await page.locator('.reg-entry').count();
+    assert(rows === 2, `${rows} hazards on the assessment, expected 2`);
+
+    const verdict = ((await page.locator('#sra-verdict').textContent()) ?? '').replace(/\s+/g, ' ');
+    assert(/Not ready/.test(verdict), `verdict reads "${verdict.slice(0, 90)}"`);
+    assert(
+      /not acceptable at any level of benefit/i.test(verdict),
+      'the blocker does not say why a red residual cannot be signed off'
+    );
+
+    // The count is computed, not typed.
+    const stillRed = (await page.locator('#sra-strip .stat__value').nth(2).textContent()) ?? '';
+    assert(stillRed.trim() === '1', `"still intolerable" reads ${stillRed.trim()}, expected 1`);
+
+    await page.evaluate(() => localStorage.removeItem('usalamasms.sra'));
   });
 
   await check('THE REGISTER ASKS FOR A POST, NOT A TYPED NAME', async () => {
