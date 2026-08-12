@@ -2810,3 +2810,53 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .next-item { display: flex; flex-direction: column; gap: 2px; }
 .next-item a { font-weight: var(--us-weight-semi); }
 .next-item span { font-size: var(--us-text-sm); color: var(--us-text-secondary); }
+
+/* ── The implementation plan ─────────────────────────────────────────
+   Printed and submitted, not skimmed. So it keeps the document
+   measure and the numbering an assessor reads down, and it is NOT
+   marked no-print — this block is the reason the page has a print
+   button at all. */
+.mat-plan { margin-top: var(--us-space-8); }
+.mat-phase { margin-top: var(--us-space-6); }
+.mat-phase h4 { font-family: var(--us-font-display); font-size: calc(var(--us-text-md) * 1.1); margin: 0 0 var(--us-space-2); }
+.mat-phase__purpose { font-size: var(--us-text-sm); color: var(--us-text-secondary); margin: 0 0 var(--us-space-3); max-width: 62ch; }
+.mat-phase__done { display: block; margin-top: 2px; font-size: var(--us-text-sm); color: var(--us-text-secondary); }
+.mat-phase__settled,
+.mat-phase__partial { margin-top: var(--us-space-4); font-size: var(--us-text-sm); color: var(--us-text-tertiary); max-width: 62ch; }
+
+@media print {
+  /* A phase that breaks across a page is one an assessor loses. */
+  .mat-phase { break-inside: avoid; }
+}
+
+/* ── The assessment, on paper ────────────────────────────────────────
+   The print button exists because the implementation plan is an
+   artefact a regulator asks to be submitted. Printed against the screen
+   layout it came out in a 20rem column beside twelve sets of radio
+   buttons — the plan squeezed into a sidebar, and the thing taking the
+   page being the input rather than the output.
+
+   So the grid collapses and the RESULT goes first: position, what is
+   built for somebody else, where to start, then the plan. The answered
+   questions follow as an appendix rather than disappearing — the ticked
+   scale is the evidence behind the position, and an assessor who cannot
+   see what was answered has to take the summary on faith. */
+@media print {
+  .doc:has(.mat-result) {
+    display: block;
+  }
+  .mat-result {
+    max-width: none;
+    margin-bottom: var(--us-space-8);
+    break-after: page;
+  }
+  /* The unchosen options are noise on paper: five rungs printed per
+     element, four of them not the answer, across twelve elements. The
+     chosen one carries a border and stays legible. */
+  .mat-option:not(:has(input:checked)) {
+    display: none;
+  }
+  .mat-suit .chip:not(:has(input:checked)) {
+    display: none;
+  }
+}

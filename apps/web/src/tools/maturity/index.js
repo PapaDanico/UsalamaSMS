@@ -30,6 +30,7 @@ import {
   scoreAssessment,
   levelFor
 } from '../../../../../packages/shared/src/maturity.ts';
+import { implementationPlan } from '../../../../../packages/shared/src/plan.ts';
 
 const STORE = 'usalamasms.maturity';
 
@@ -140,7 +141,7 @@ function Element(element, answers, suitability) {
   `;
 }
 
-function Result(result, scale) {
+function Result(result, scale, plan) {
   if (result.answered === 0) {
     return html`<p class="mat-empty">
       Answer an element and the position appears here. Nothing is sent anywhere,
@@ -256,6 +257,56 @@ function Result(result, scale) {
           No element is at Absent or Documented. That is a real position; the next
           question is which component the evidence is thinnest in.
         </p>`}
+
+    ${plan.phases.length
+      ? html`<div class="mat-plan">
+          <h3>Your implementation plan</h3>
+          <p class="mat-gaps__lede">
+            The artefact a regulator asks a new operator to submit, built from the
+            answers above rather than from a template you fill in again. The phases
+            are this scale's own rungs: everything on one rung, moved to the next.
+            Nothing counts as being in place before it is written down, so that is
+            phase one — that rule is SM ICG's, not ours.
+            ${plan.scale
+              ? html`Scoped to an operation you described as
+                  <strong>${(OPERATOR_SCALES.find((s) => s.id === plan.scale) || {}).label}</strong>.`
+              : ''}
+          </p>
+          ${plan.phases.map(
+            (phase) => html`<section class="mat-phase">
+              <h4>
+                <span class="mat-element__id">Phase ${phase.order}</span>
+                ${phase.title}
+              </h4>
+              <p class="mat-phase__purpose">${phase.purpose}</p>
+              <ol>
+                ${phase.steps.map(
+                  (step) => html`<li>
+                    <strong>${step.element.id} ${step.element.name}</strong> —
+                    ${step.from.label.toLowerCase()} to ${step.to.label.toLowerCase()}.
+                    <span class="mat-gaps__evidence">${step.action}</span>
+                    <span class="mat-phase__done"><strong>Done when:</strong> ${step.evidence}</span>
+                  </li>`
+                )}
+              </ol>
+            </section>`
+          )}
+          ${plan.settled.length
+            ? html`<p class="mat-phase__settled">
+                Already at the top of the scale, and carried here so the plan shows the
+                whole picture rather than only the debt:
+                ${plan.settled.map((e) => `${e.id} ${e.name}`).join(', ')}.
+              </p>`
+            : ''}
+          ${plan.complete
+            ? ''
+            : html`<p class="mat-phase__partial">
+                This plan covers the elements you have answered. Answer the rest and it
+                will cover those too — it says nothing about an element it was never
+                told about, rather than guessing.
+              </p>`}
+        </div>`
+      : ''}
   `;
 }
 
@@ -386,7 +437,8 @@ export function render(outlet) {
   const body = outlet.querySelector('#mat-result-body');
 
   const repaint = () => {
-    body.innerHTML = Result(scoreAssessment(answers, 1, suitability), scale).toString();
+    const plan = implementationPlan(answers, { suitability, ...(scale ? { scale } : {}) });
+    body.innerHTML = Result(scoreAssessment(answers, 1, suitability), scale, plan).toString();
   };
 
   form.addEventListener('change', (event) => {

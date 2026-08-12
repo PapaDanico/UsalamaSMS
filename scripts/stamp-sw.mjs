@@ -419,8 +419,34 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    posts.ts out of taxonomy.ts, and entry came back to 210.6 of 212.
    The third time this exact class of mistake has been caught by this
    budget, and the third time the fix was not a bigger number.
+
+   CSS 50 -> 52 KB, AND WHAT IT BOUGHT. Four blocks, all of them things
+   the product previously computed and could not say:
+
+     · the suitability control and its findings block. SM ICG grades
+       Suitable against the operator's size and complexity, which is a
+       different question from how far an element has been taken — so
+       it needs a visible seam inside the element, or it reads as a
+       sixth rung on the first question;
+     · "what you can do now" after sign-in, which existed because a
+       safety manager who had just typed a password was told the
+       password worked and nothing about what it was for;
+     · the implementation plan, which is the artefact CASA asks a new
+       operator to submit;
+     · THE PRINT RULES, which are the largest share and the reason this
+       is not a saving to be found elsewhere. The plan printed against
+       the screen layout came out in a 20rem sidebar beside twelve sets
+       of radio buttons — the output squeezed into a column while the
+       input took the page. Print now collapses the grid, puts the
+       result first, and hides the four unchosen rungs per element.
+
+   Unlike the entry budget, nothing here rides on the back of a barrel
+   import: this is stylesheet for screens that did not exist, and there
+   was no split to find. The ENTRY figure — the one a reporter at a
+   strip actually pays — is untouched at 211.1 of 212, and CSS is
+   fetched once and cached by the service worker.
    --------------------------------------------------------------- */
-const BUDGET = { entry: 212 * 1024, js: 392 * 1024, css: 50 * 1024 };
+const BUDGET = { entry: 212 * 1024, js: 392 * 1024, css: 52 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {
