@@ -48,47 +48,51 @@
    need one. The rest are calculators on the index page — short enough
    to answer in place, and counted rather than listed so the hint stays
    the width of a menu.
+
+   THE PROSE IS NOT HERE, and that is the one thing about this list
+   worth explaining. Each toolkit's full label and its sentence of
+   blurb are rendered by exactly one surface — the toolkits page — and
+   this module is imported by main.js, so keeping them here put six
+   sentences and six titles into the ENTRY chunk that only a
+   lazily-loaded page ever reads. That is weight charged to a reporter
+   at a strip who is filing a report and will never open the toolkits
+   index. `short` stays, because the menu hint is computed from it and
+   the menu IS the entry.
+
+   So the LIST stays canonical here and the prose lives where it is
+   printed. The guarantee that made this list single-source is kept by
+   a test rather than by proximity: tests/sitemap.test.ts requires every
+   entry to have a blurb, so adding a toolkit without copy still fails
+   the build. Declared once, rendered where used.
    ------------------------------------------------------------ */
 export const TOOLKITS = [
   {
     href: '/toolkits/sra',
-    label: 'Safety risk assessment',
     short: 'risk assessment',
-    routed: true,
-    blurb: 'The five ICAO steps, for a change before it is made'
+    routed: true
   },
   {
     href: '/toolkits/register',
-    label: 'Risk register',
     short: 'risk register',
-    routed: true,
-    blurb: 'The standing hazards, with an owner and a review date'
+    routed: true
   },
   {
     href: '/toolkits/spi',
-    label: 'Safety performance indicators',
     short: 'performance indicators',
-    routed: true,
-    blurb: 'Alert levels computed from your own history, not picked'
+    routed: true
   },
   {
     href: '/toolkits/maturity',
-    label: 'SMS maturity assessment',
     short: 'maturity assessment',
-    routed: true,
-    blurb: 'Twelve elements of Annex 19, scored against evidence'
+    routed: true
   },
   {
     href: '/toolkits#classifier',
-    label: 'Occurrence classifier',
-    short: 'occurrence classifier',
-    blurb: 'Accident, serious incident or incident — and the clock it starts'
+    short: 'occurrence classifier'
   },
   {
     href: '/toolkits#risk',
-    label: 'Risk tolerability',
-    short: 'risk tolerability',
-    blurb: 'One cell of the Doc 9859 matrix, and what it obliges'
+    short: 'risk tolerability'
   }
 ];
 
@@ -155,6 +159,12 @@ export const SECTIONS = [
         label: 'Tutorials',
         short: 'Tutorials',
         hint: 'From a first report to a record a regulator can audit'
+      },
+      {
+        href: '/templates',
+        label: 'Templates and source documents',
+        short: 'Templates',
+        hint: 'What the authorities publish, and what we already do for you'
       },
       {
         href: '/glossary',

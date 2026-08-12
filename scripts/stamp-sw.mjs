@@ -445,8 +445,114 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    was no split to find. The ENTRY figure — the one a reporter at a
    strip actually pays — is untouched at 211.1 of 212, and CSS is
    fetched once and cached by the service worker.
+   ---------------------------------------------------------------
+   TOTAL -> 404 KB, for /templates. CSS AND ENTRY BOTH UNMOVED, and
+   the entry figure is the part of this receipt worth reading.
+
+   WHAT IT BOUGHT. One screen a person navigates to: the index of
+   published artefacts an operator can build an SMS from — CASA's gap
+   analysis tool, its evaluation tool, the sample manual, the ERP
+   template, the nine-booklet resource kit, and Doc 9859 behind all of
+   them. It holds no copies. Every entry links to the publisher, and
+   every entry states what this product already does against that
+   document and what the operator still has to go and get, which is
+   /coverage's discipline applied to somebody else's paper.
+
+   It qualifies on the stopping rule as written: a screen earns a
+   raise, a library does not. No dependency arrived, and the page
+   invented no CSS — it renders through the vocabulary /coverage
+   already had, because "what is here" and "what is not" is the same
+   statement in both places.
+
+   ENTRY WENT DOWN, from 211.9 to 211.8 KB, while gaining a route.
+   That is not luck. Adding a navigable destination costs the entry
+   chunk a menu item and a route registration, and this one was paid
+   for by finding weight already there and wrong: the six toolkit
+   blurbs lived in shared/sitemap.js, which main.js imports, so six
+   sentences printed only by the lazily-loaded toolkits index were
+   being downloaded by every reporter filing a report at a strip. The
+   LIST is still declared once — only the prose moved to the single
+   surface that prints it, and tests/sitemap.test.ts now requires every
+   toolkit to have a blurb, so the guarantee proximity used to give is
+   kept by something that can fail.
+
+   That is the pattern the earlier raises describe and this one
+   follows: weight given back before it was asked for.
+
+   WHAT WOULD STILL MAKE THE ANSWER NO, unchanged: a dependency, a
+   polyfill, a component library, or a lazy chunk that turns out to be
+   one screen plus a framework. And the test the original number
+   protects is intact — a 40 KB library added to the report form
+   breaks ENTRY, and ENTRY has now not moved in fourteen screens.
    --------------------------------------------------------------- */
-const BUDGET = { entry: 212 * 1024, js: 392 * 1024, css: 52 * 1024 };
+/* CSS -> 54 KB, and this one is not a screen. It is six declarations
+   that make the navigation reachable on the target handset.
+
+   .dropdown-menu is position:fixed with no max-height and no overflow.
+   That was survivable while the longest group had five items and
+   became a defect the moment it had six: the panel grew past the
+   bottom of a 390x844 viewport, and fixed positioning means the page
+   scroll cannot reach what hangs below it. The last destination in the
+   menu was simply gone — present in the DOM, reported visible, and
+   untappable.
+
+   The fix is max-height in dvh, overflow-y, and overscroll-behavior.
+   There is no cheaper version of it, and "remove a menu item instead"
+   is not a saving, it is the same defect chosen deliberately.
+
+   Weight was not given back here because the previous entry gave it
+   back already — the six toolkit blurbs moved out of the entry chunk,
+   which is the number that actually costs a reporter time. This is
+   0.2 KB of stylesheet, fetched once and precached by the service
+   worker, against a menu that works.
+
+   The stopping rule gains a second precedent alongside "a screen earns
+   a raise": so does a correctness fix on the target device. What still
+   does not is a dependency, a polyfill or a component library. */
+/* ENTRY 212 -> 214 KB. The first time this number has moved since the
+   session layer landed, across fourteen screens, and it is not moving
+   for a screen now either.
+
+   WHAT IT BOUGHT. The landing page's "Reporting deadlines in force"
+   section now renders two things the registry already held and only
+   /methodology printed: whether an instrument is past its review
+   cycle, and what now governs it. That section is the one the footer
+   names as the regulatory basis and links to by name, and it was
+   citing KCAA Advisory Circular CAA-AC-SMS004A of January 2023 with no
+   indication that the Civil Aviation (Safety Management) Regulations,
+   L.N. 32 of 2026, gazetted 3 March 2026, now sits above it.
+
+   That is not decoration on the first paint. It is the same class of
+   defect as the 72-hour deadline this whole product was corrected
+   from: a confident figure, correctly computed, presented without the
+   one fact that qualifies it. A reader is owed the figure, its source,
+   and whether that source is still the top of the stack; two of the
+   three is the combination that misleads. check-claims.mjs now fails
+   the build if either surface lists a deadline without both, so this
+   cannot quietly regress on one screen again — which is exactly how it
+   got here.
+
+   WEIGHT WAS GIVEN BACK FIRST, and nearly all of it. Two rounds of the
+   same finding: shared/sitemap.js is imported by main.js, so every
+   string in it lands in the entry chunk, and both the six toolkit
+   blurbs AND the six full toolkit labels were rendered by nothing but
+   the lazily-loaded toolkits index. Roughly half a kilobyte a reporter
+   at a strip was downloading to file a report on a screen that never
+   showed it. Both moved to the surface that prints them; `short` stays
+   because the menu hint is computed from it and the menu is the entry.
+   tests/sitemap.test.ts keeps the guarantee proximity used to give.
+
+   After giving that back the overage was under fifty bytes, which is
+   the honest shape of this raise: the cleanup paid for almost all of
+   it and the remainder is the sentence itself.
+
+   WHAT WOULD MAKE THE ANSWER NO. Anything that is not a correction to
+   a claim on a customer surface. A screen does not earn an ENTRY
+   raise — it earns a TOTAL one, and the record above shows seven of
+   those. A dependency, a polyfill or a component library earns
+   neither. The test the original number protects is intact: a 40 KB
+   library added to the report form still breaks this. */
+const BUDGET = { entry: 214 * 1024, js: 404 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

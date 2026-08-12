@@ -2307,6 +2307,74 @@ try {
     );
   });
 
+  await check('EVERY DESTINATION IN THE MENU CAN ACTUALLY BE REACHED', async () => {
+    /* THE DEFECT THIS COMES FROM, and it shipped for exactly one build.
+       The menu panel is position:fixed with no max-height and no
+       overflow, so it grew past the bottom of the viewport the moment a
+       sixth destination joined a group — and because it is fixed, the
+       page scroll cannot reach what hangs below. "Questions, answered
+       straight" became unclickable at 390x844, which is the target
+       handset, not an edge case.
+
+       Nothing saw it. Every selector still matched, the link was in the
+       DOM, `isVisible()` returned true, and the only symptom was a
+       Playwright click that timed out saying "element is outside of the
+       viewport" — in a check about anchors, two screens away from the
+       cause.
+
+       So this asserts the property directly, over EVERY item rather
+       than a sampled one: a destination advertised in the menu is a
+       destination a thumb can land on. The next item added either fits,
+       or the panel scrolls, or this goes red. */
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    const toggle = page.locator('#menu-toggle');
+    if (await toggle.isVisible()) await toggle.click();
+    await page.waitForSelector('#menu-panel a', { timeout: 5000 });
+
+    const links = page.locator('#menu-panel a');
+    const count = await links.count();
+    // A menu that renders nothing passes every assertion below it.
+    assert(count > 6, `the menu offers ${count} destinations`);
+
+    const viewport = page.viewportSize();
+    const unreachable = [];
+    for (let i = 0; i < count; i += 1) {
+      const link = links.nth(i);
+      const href = await link.getAttribute('href');
+      const box = await link.boundingBox();
+      if (!box) {
+        unreachable.push(`${href} (no box)`);
+        continue;
+      }
+      /* The centre of the item, which is where a tap lands. Measured
+         after scrolling the panel to it — a scrollable panel is a fine
+         answer to a long menu; an unscrollable one is not. */
+      await link.scrollIntoViewIfNeeded().catch(() => {});
+      const after = await link.boundingBox();
+      if (!after) {
+        unreachable.push(`${href} (no box after scroll)`);
+        continue;
+      }
+      const mid = after.y + after.height / 2;
+      if (mid < 0 || mid > viewport.height) {
+        unreachable.push(`${href} (centre at y=${Math.round(mid)}, viewport ${viewport.height})`);
+      }
+    }
+    assert(
+      unreachable.length === 0,
+      `${unreachable.length} menu destination(s) cannot be tapped: ${unreachable.join(', ')}`
+    );
+
+    // And the last one is genuinely clickable, not merely on-screen.
+    const last = links.nth(count - 1);
+    const href = await last.getAttribute('href');
+    await last.click({ timeout: 5000 });
+    assert(
+      page.url().endsWith(href.split('#')[0]) || href.startsWith('#'),
+      `clicking the last menu item (${href}) did not navigate — at ${page.url()}`
+    );
+  });
+
   await check('IN-PAGE ANCHORS SCROLL, AND CLEAR THE STICKY CHROME', async () => {
     // TWO FAILURES, ONE CHECK, because they present identically to a
     // reader: nothing useful happened.

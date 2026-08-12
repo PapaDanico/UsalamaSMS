@@ -1638,6 +1638,20 @@ html { scroll-padding-top: var(--us-chrome); }
   border-radius: var(--us-radius-lg);
   box-shadow: var(--us-shadow-lg);
   z-index: 70;
+  /* THE PANEL SCROLLS, and it has to. It is position:fixed, so anything
+     taller than the viewport hangs below the fold where the page scroll
+     cannot reach it — the menu simply loses its last items, silently,
+     on the smallest screen. It happened the moment a sixth destination
+     was added to one group: "Questions" became unreachable at 390x844,
+     which is the target handset. dvh rather than vh because mobile
+     browser chrome moves, and vh measures the tallest state. */
+
+  max-height: calc(100vh - var(--us-topbar) - var(--us-space-6));
+  max-height: calc(100dvh - var(--us-topbar) - env(safe-area-inset-top) - var(--us-space-6));
+  overflow-y: auto;
+  /* Scrolling to the end of the menu must not then scroll the page
+     behind it. */
+  overscroll-behavior: contain;
 }
 
 .dropdown-menu[hidden] { display: none; }
@@ -2074,6 +2088,25 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 @media (min-width: 900px) {
   .doc { grid-template-columns: 15rem minmax(0, 1fr); }
+
+  /* A DOC PAGE WITHOUT A CONTENTS LIST MUST NOT USE THE SIDEBAR COLUMN.
+     pages/index.js renders no `.toc` for a page with fewer than four
+     sections, so /tutorials had none — and with the two-column template
+     still declared, its body was auto-placed into the 15rem column and
+     read at 240px on a 1280px screen, with the wide column empty beside
+     it and the whole document in a ribbon down the left. It is the
+     failure that looks like a broken page and is really a missing
+     child.
+
+     Two rules, because one of them must not depend on `:has()`. The
+     explicit placement puts the body in the LAST column whatever the
+     template is — right on a page with a contents list, and right on
+     one without, even where `:has()` is not supported. `:has()` then
+     removes the empty sidebar track entirely and centres the measure,
+     so the space is used rather than merely occupied. */
+  .doc__body { grid-column: -2 / -1; }
+  .doc:not(:has(.toc)) { grid-template-columns: minmax(0, 1fr); }
+  .doc:not(:has(.toc)) .doc__body { margin-inline: auto; }
   /* --us-chrome, not --us-topbar. The sticky header is not the only
      sticky thing above the content — the sync strip is too — so an
      offset that clears one clips the panel under the other. Same
@@ -2083,6 +2116,29 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 
 .doc__body { min-width: 0; max-width: 68ch; }
+
+/* THE CALLOUT HAD NO RULE OF ITS OWN. `.note` was styled only inside
+   `.band-dark`, so everywhere else it was a bare paragraph whose lead-in
+   <b> ran straight into the sentence: "The usual mistakeReading the
+   deadline as advice." The CSS gate did not catch it, because a
+   `.band-dark .note` selector is a rule that mentions the class — the
+   gate asks whether a class is defined, not whether it is defined where
+   it is used.
+
+   The lead-in is a title, so it is a block. The rest is the callout the
+   markup has always implied. */
+.note {
+  margin: var(--us-space-4) 0;
+  padding: var(--us-space-4);
+  border-left: 3px solid var(--us-teal);
+  border-radius: 0 var(--us-radius-sm) var(--us-radius-sm) 0;
+  background: var(--us-surface-muted);
+}
+.note b,
+.note > strong:first-child {
+  display: block;
+  margin-bottom: var(--us-space-1);
+}
 
 /* `section { padding: var(--us-section) 0 }` is the benchmark's rule
    for a marketing page whose sections are full-bleed bands. A document

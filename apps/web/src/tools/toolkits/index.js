@@ -51,6 +51,36 @@ import {
    added — which is exactly how the SRA came to be invisible. */
 import { TOOLKITS, ROUTED_TOOLKITS } from '../../shared/sitemap.js';
 
+/* The one sentence each toolkit gets, keyed by the href the list
+   already declares. It lives HERE rather than in the sitemap because
+   this page is the only surface that prints it, and the sitemap is
+   imported by main.js — six sentences in the entry chunk is weight
+   charged to somebody filing a report at a strip who will never open
+   this index. The LIST is still declared once; only the prose moved to
+   where it is printed, and tests/sitemap.test.ts requires every entry
+   to have one so a new toolkit cannot arrive without copy. */
+const BLURBS = {
+  '/toolkits/sra': ['Safety risk assessment', 'The five ICAO steps, for a change before it is made'],
+  '/toolkits/register': ['Risk register', 'The standing hazards, with an owner and a review date'],
+  '/toolkits/spi': [
+    'Safety performance indicators',
+    'Alert levels computed from your own history, not picked'
+  ],
+  '/toolkits/maturity': [
+    'SMS maturity assessment',
+    'Twelve elements of Annex 19, scored against evidence'
+  ],
+  '/toolkits#classifier': [
+    'Occurrence classifier',
+    'Accident, serious incident or incident — and the clock it starts'
+  ],
+  '/toolkits#risk': ['Risk tolerability', 'One cell of the Doc 9859 matrix, and what it obliges']
+};
+
+/** [title, blurb] for a toolkit, by the href the list declares. */
+const title = (href) => BLURBS[href][0];
+const blurb = (href) => BLURBS[href][1];
+
 /* The scale is declared once, in risk.ts, alongside the matrix that
    scores it. Rendering it into a menu is presentation, so it happens
    here — but the wording is not retyped. */
@@ -191,8 +221,8 @@ export function render(outlet) {
                 interpolation is a class the gate cannot see. */
           ROUTED_TOOLKITS.map((t, i) =>
             i === 0
-              ? html`<a class="btn btn-primary" href="${t.href}">${t.label}</a>`
-              : html`<a class="btn btn-ghost-lt" href="${t.href}">${t.label}</a>`
+              ? html`<a class="btn btn-primary" href="${t.href}">${title(t.href)}</a>`
+              : html`<a class="btn btn-ghost-lt" href="${t.href}">${title(t.href)}</a>`
           )}
         </div>
       </div>
@@ -205,9 +235,9 @@ export function render(outlet) {
           ${TOOLKITS.map(
             (t) => html`<li>
               <a href="${t.href.startsWith('/toolkits#') ? t.href.slice('/toolkits'.length) : t.href}"
-                >${t.label}</a
+                >${title(t.href)}</a
               >
-              <span class="toc-summary">${t.blurb}</span>
+              <span class="toc-summary">${blurb(t.href)}</span>
             </li>`
           )}
           <li>
