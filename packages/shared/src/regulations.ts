@@ -54,14 +54,24 @@
 //
 // They are replaced by the baseline the operators they were guessing at
 // actually share: ICAO's own SARPs, which say what is required
-// everywhere and decline to invent the part that varies. An operator
-// outside the two verified jurisdictions gets the honest answer —
-// notify without delay, and your authority sets the number — instead of
-// a countdown built on nothing.
+// everywhere and decline to invent the part that varies.
+//
+// THE SHAPE THIS SETTLED INTO. A reporting obligation follows the STATE
+// OF REGISTRY, so the product maintains one State's standard properly
+// — Kenya, for now — and offers ICAO's baseline for everything else.
+// Two rows, not five, and the second one deliberately carries no number.
+//
+// The EU row was removed under the same rule. It was correct and
+// cited, and it implied a coverage that does not exist: nothing here
+// is built for an EU-registered operator, and a jurisdiction in the
+// dropdown is a claim to know that jurisdiction's obligations. Its
+// 72-hour figure survives in the notes below, because that figure is
+// the EVIDENCE for why the ICAO baseline carries none — three rows of
+// this table once quoted it as ICAO's own.
 // ---------------------------------------------------------------------
 
 /** The jurisdictions whose reporting law this engine encodes. */
-export const JURISDICTIONS = ["ICAO", "KE", "EU"] as const;
+export const JURISDICTIONS = ["ICAO", "KE"] as const;
 export type Jurisdiction = (typeof JURISDICTIONS)[number];
 
 /** Which event starts the clock. The distinction the old constant lost. */
@@ -141,19 +151,6 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
       "24 hours for the pertinent information. Distinct from the 72-hour " +
       "window for undeclared or misdeclared dangerous goods, which runs " +
       "from discovery and is a separate obligation — do not merge them.",
-  },
-  EU: {
-    jurisdiction: "EU",
-    authority: "European Union Aviation Safety Agency",
-    hours: 72,
-    clockStart: "AWARENESS",
-    instrument: "Regulation (EU) No 376/2014, Article 4(6)",
-    verifiedOn: "2026-08-11",
-    reviewCycleMonths: 60,
-    note:
-      "72 hours from becoming aware, save in exceptional circumstances. " +
-      "This is the row the old hardcoded constant was actually quoting — " +
-      "while labelled KCAA, and while anchored to the wrong event.",
   },
 };
 

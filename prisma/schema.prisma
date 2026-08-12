@@ -90,15 +90,21 @@ enum FlightPhase {
   MAINTENANCE
 }
 
-// ICAO is the baseline for an operator whose State instrument has not
-// been read: Annex 13 requires notification with a minimum of delay and
-// names no period, so no deadline is computed for it. UG, TZ and RW were
-// removed — all three carried the EU's 72 hours as an "ICAO-common"
-// default, and there is no such default. See regulations.ts.
+// A reporting obligation follows the STATE OF REGISTRY. This product
+// maintains one State's standard properly — Kenya — and offers ICAO's
+// baseline for every other: Annex 13 requires notification with a
+// minimum of delay and names no period, so no deadline is computed for
+// it.
+//
+// UG, TZ and RW were removed because all three carried the EU's 72
+// hours as an "ICAO-common" default, and there is no such default. The
+// EU row itself was then removed for scope rather than accuracy —
+// nothing here is built for an EU-registered operator, and a
+// jurisdiction on offer is a claim to know its obligations. See
+// regulations.ts.
 enum Jurisdiction {
   ICAO
   KE
-  EU
 }
 
 model Org {

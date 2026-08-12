@@ -157,9 +157,20 @@ if (prefixBlock) {
     prefixes.length >= 5,
     `only ${prefixes.length} prefixes — the stated market is the East African corridor`
   );
-  /* The four the corridor is actually flown between. Named individually
-     so dropping one is a specific, legible failure. */
-  for (const required of ['5Y', '5X', '5H', '9XR']) {
+  /* KENYA, AND ONLY KENYA IS REQUIRED NOW.
+
+     This list was ['5Y', '5X', '5H', '9XR'] — the four the corridor is
+     actually flown between — and it failed when the last three were
+     removed on 12 August 2026 as part of scoping the product to the
+     State of Registry. That failure was the gate working: an
+     uncovered prefix passes through de-identification in clear, and
+     the check said so before anything was built.
+
+     The three are not silently dropped from the check. They are
+     asserted ABSENT below, so restoring one fails here and points at
+     the decision rather than at a bug, and so the pairing with
+     docs/05-SWITCHES.md entry 11 cannot drift. */
+  for (const required of ['5Y']) {
     assert(
       `registration prefix ${required} is covered`,
       prefixes.includes(required),
@@ -172,6 +183,37 @@ if (prefixBlock) {
     'a duplicated prefix is a sign of a hand-merged list'
   );
 }
+
+/* ---------------- The corporate banner ----------------
+
+   UsalamaSMS is published under the JK & Associates banner, and an
+   operator entrusting its safety reports to a product is entitled to
+   know which organisation stands behind it. Stated on three documents
+   and in the footer of every screen — so it is checked in all four
+   places rather than in whichever one somebody remembers to edit. */
+
+const pageContent = read('apps/web/src/content/pages.js');
+const BANNER = /JK &amp; Associates|JK & Associates/;
+
+for (const [name, marker] of [
+  ['About', 'export const ABOUT'],
+  ['the privacy notice', 'export const PRIVACY'],
+  ['the terms of use', 'export const TERMS']
+]) {
+  const start = pageContent.indexOf(marker);
+  const rest = pageContent.slice(start, pageContent.indexOf('export const', start + 10));
+  assert(
+    `${name} names the corporate banner`,
+    start !== -1 && BANNER.test(rest),
+    `${name} does not say who publishes this product`
+  );
+}
+
+assert(
+  'the footer of every screen names the corporate banner',
+  BANNER.test(read('apps/web/src/index.html')),
+  'the shell footer does not carry the publisher'
+);
 
 /* ---------------- Documents that make dated claims ---------------- */
 
