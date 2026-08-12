@@ -32,6 +32,15 @@ So: do not add RLS policies. Do not add `FORCE ROW LEVEL SECURITY`
 either — the API connects as the table owner, and forcing RLS on an
 owner with no policies locks the application out of its own database.
 
+**Supabase's own security advisor also says otherwise**, and will keep
+saying it. `mcp__Supabase__get_advisors` reports
+`rls_enabled_no_policy` at level INFO against all ten tables, with a
+remediation link to a page about writing policies. Checked on 12 August
+2026: those ten notices are the *entire* security finding list — there
+are no errors and no warnings. Ten INFO notices describing the intended
+state is a clean bill of health for this architecture, not a to-do
+list.
+
 If this ever changes — if something genuinely starts using the Data
 API — that is a deliberate architectural decision, and it needs the
 grants, the policies and a test that a second tenant cannot read the

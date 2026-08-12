@@ -10,8 +10,10 @@ import type { FastifyInstance } from "fastify";
 import { LoginSchema } from "@usalamasms/shared";
 import {
   prisma, ENV, hmac, verifyPassword, issueAccessToken, issueRefreshToken,
-  appendAuditTx, authenticate,
+  appendAuditTx, authenticate, requirePermission,
 } from "./core";
+import argon2 from "argon2";
+import { randomBytes } from "node:crypto";
 
 /**
  * Every failed login returns this, with this status, after roughly the
@@ -189,6 +191,104 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ------------------------------- Me --------------------------------
+  /* ------------------ Administrative password reset ------------------
+
+     THE HOLE THIS FILLS. Login, refresh, logout and me were the whole
+     of authentication. A safety manager who forgot their password had
+     no route back in — not a self-service one, and not an
+     administrative one either. On a product handed to an operator with
+     fifteen staff, that is not an edge case; it is the second week.
+
+     WHY ADMINISTRATIVE RATHER THAN SELF-SERVICE. A self-service reset
+     needs an email sender, which is another external service, another
+     key to configure and another delivery path to fail quietly. An
+     operator this size has a person who does this. That person is the
+     SYSTEM_ADMIN, and the route is auditable, which an email link is
+     not.
+
+     THREE PROPERTIES THAT ARE THE WHOLE POINT:
+
+       1. IT REVOKES EVERY SESSION. Changing a password hash while
+          leaving refresh tokens alive means an attacker who has one
+          keeps it — the reset feels like a remedy and is not one. A
+          reset is a statement that the old credential is finished, and
+          that has to include the tokens issued from it.
+
+       2. IT CANNOT CROSS A TENANT. The target is looked up inside the
+          caller's own org. Two operators who compete on the same routes
+          share this database, and an admin of one resetting an account
+          in the other is the worst breach this product could have.
+
+       3. THE ADMIN STILL CANNOT READ A REPORT. SYSTEM_ADMIN holds
+          user.manage and org.manage and NO narrative permission — see
+          the note beside NARRATIVE_PERMISSIONS. Being able to restore
+          somebody's access is not being able to read what they filed in
+          confidence, and this route does not quietly become the way
+          around that.
+
+     The new password is returned ONCE, in the response, for the admin
+     to hand over. It is never stored in the clear and never logged: the
+     audit entry records that a reset happened, by whom, to whom — not
+     what the password is. */
+  app.post<{ Body: { userId?: unknown } }>(
+    "/api/v1/auth/admin/reset-password",
+    {
+      preHandler: [authenticate, requirePermission("user.manage")],
+      config: { rateLimit: { max: 10, timeWindow: "15 minutes" } },
+    },
+    async (req, reply) => {
+      const userId = typeof req.body?.userId === "string" ? req.body.userId : "";
+      if (!userId) return reply.code(400).send({ error: "user_id_required" });
+
+      /* Scoped to the caller's org in the WHERE clause rather than
+         fetched and then checked. A check after the fact is a check
+         somebody removes during a refactor without noticing what it
+         was for. */
+      const target = await prisma.user.findFirst({
+        where: { id: userId, orgId: req.auth!.org },
+        select: { id: true, email: true, role: true },
+      });
+      if (!target) return reply.code(404).send({ error: "user_not_found" });
+
+      /* 18 bytes of base64url — comfortably past the 12 characters
+         LoginSchema demands, and generated here rather than chosen, so
+         a temporary password is never a memorable one somebody keeps. */
+      const password = randomBytes(18).toString("base64url");
+      const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({ where: { id: target.id }, data: { passwordHash } });
+
+        // Property 1. Every outstanding refresh token, not just the
+        // current one — a reset that leaves a session alive is not a
+        // reset.
+        await tx.refreshToken.updateMany({
+          where: { userId: target.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+
+        await appendAuditTx(tx, {
+          orgId: req.auth!.org,
+          userId: req.auth!.sub,
+          action: "auth.password.reset",
+          entityType: "User",
+          entityId: target.id,
+          // The subject and the actor, never the credential.
+          detail: { targetEmail: target.email, targetRole: target.role },
+        });
+      });
+
+      return {
+        userId: target.id,
+        email: target.email,
+        password,
+        note:
+          "Shown once. Hand it over directly and have them change it. " +
+          "Every existing session for this account has been signed out.",
+      };
+    },
+  );
+
   app.get("/api/v1/auth/me", { preHandler: [authenticate] }, async (req) => ({
     userId: req.auth!.sub,
     orgId: req.auth!.org,

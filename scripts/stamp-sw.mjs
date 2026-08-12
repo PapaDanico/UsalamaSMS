@@ -290,7 +290,35 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    one: the total said "something grew", and the entry said "and it grew
    in the wrong place". A single total would have passed the bad version
    and failed the good one. */
-const BUDGET = { entry: 212 * 1024, js: 308 * 1024, css: 46 * 1024 };
+/* ---------------------------------------------------------------
+   THE SIXTH RAISE: TOTAL -> 316 KB. Administrative password reset.
+
+   What it buys is the hole that login, refresh, logout and me left
+   between them: a person who forgot a password had no route back into
+   the product. Not a self-service one and not an administrative one.
+   On an operator with fifteen staff that is the second week.
+
+   It is a capability rather than a route, which the rule did not
+   cover, so: it earns a raise for the reason a screen does — the
+   product got better at its job — and not for the reason a library
+   would not.
+
+   AND THE ENTRY BUDGET DID ITS JOB ON THE WAY, for the second time in
+   two days. The panel began inside the account screen, which is EAGER
+   because signing in is what sends a queued report. That put 2.5 KB
+   into the first paint of the form a ramp agent opens at a remote
+   strip, to carry a panel one person opens twice a year. Entry went
+   207.2 -> 209.7 and the total went over; splitting the panel into a
+   lazily-imported module brought entry back to 207.9.
+
+   The 0.7 KB that remains on entry is the dynamic import and the slot
+   it fills, which is the honest cost of the split and is charged to
+   the right screen.
+
+   Same lesson as the post list in taxonomy.ts, arriving from the same
+   direction: the total says something grew, and the entry says whether
+   it grew somewhere a person is waiting on it. --------------------- */
+const BUDGET = { entry: 212 * 1024, js: 316 * 1024, css: 46 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {
