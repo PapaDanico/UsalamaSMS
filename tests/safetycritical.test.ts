@@ -278,10 +278,51 @@ describe("regulatory reporting deadlines", () => {
   });
 
   it("measures staleness against the publisher's own cycle", () => {
-    // Charter rule 5. A 36-month circular at 13 months is current.
+    // Charter rule 5. A 36-month circular is current inside 36 months
+    // OF ITS ISSUE — the Kenyan AC is dated January 2023.
     const ke = MOR_OBLIGATIONS.KE;
-    expect(isStale(ke, new Date("2027-09-11T00:00:00Z"))).toBe(false);
-    expect(isStale(ke, new Date("2030-01-01T00:00:00Z"))).toBe(true);
+    expect(isStale(ke, new Date("2024-06-01T00:00:00Z"))).toBe(false);
+    expect(isStale(ke, new Date("2026-08-12T00:00:00Z"))).toBe(true);
+  });
+
+  it("DOES NOT LET RE-READING AN OLD DOCUMENT MAKE IT CURRENT", () => {
+    /* The clock this used to run on was `verifiedOn`, which resets
+       every time somebody looks at the row. A figure taken from a
+       January 2023 advisory circular and re-verified yesterday reported
+       as fresh until 2029 — it measured our diligence and called the
+       answer currency.
+
+       Found while checking the Kenyan row against KCARs 2025: the
+       authority published twenty-nine revised regulations that year and
+       this row cites a 2023 AC. Whether it survived them is precisely
+       what isStale() exists to raise, and it could not.
+
+       So: a row verified TODAY against an instrument older than the
+       cycle is still stale. */
+    const justRead = { ...MOR_OBLIGATIONS.KE, verifiedOn: "2026-08-12" };
+    expect(
+      isStale(justRead, new Date("2026-08-12T00:00:00Z")),
+      "re-reading a three-year-old circular reset its staleness",
+    ).toBe(true);
+
+    // And the converse: a recently ISSUED instrument is current even if
+    // nobody has looked at it for a while.
+    const freshInstrument = {
+      ...MOR_OBLIGATIONS.KE,
+      instrumentIssued: "2026-06-01",
+      verifiedOn: "2026-06-01",
+    };
+    expect(isStale(freshInstrument, new Date("2026-08-12T00:00:00Z"))).toBe(false);
+  });
+
+  it("gives every obligation an instrument date, or staleness is unmeasurable", () => {
+    for (const [id, o] of Object.entries(MOR_OBLIGATIONS)) {
+      expect(o.instrumentIssued, `${id} has no instrument date`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(
+        new Date(`${o.instrumentIssued}T00:00:00Z`).getTime(),
+        `${id} has an unparseable instrument date`,
+      ).not.toBeNaN();
+    }
   });
 });
 
