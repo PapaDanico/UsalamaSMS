@@ -374,7 +374,53 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    else. Eight raises in, and the number a reporter at a strip pays has
    moved 8.4 KB across roughly twenty-two screens.
    --------------------------------------------------------------- */
-const BUDGET = { entry: 212 * 1024, js: 352 * 1024, css: 47 * 1024 };
+/* ---------------------------------------------------------------
+   THE NINTH RAISE: TOTAL -> 392 KB, CSS -> 50 KB. The SMS record.
+
+   Earns it on the original rule and then some: /sms is a screen a
+   person navigates to, lazily loaded, and it is the largest single
+   capability this product has added — the other EIGHT Annex 19
+   elements, which /coverage has spent months telling operators it
+   could score and could not do.
+
+   WHAT IT IS. The signed safety policy and who has read it; the
+   accountability matrix; the appointment records; the emergency
+   exercises and what they found; the controlled documents; the
+   internal audit findings, closed and separately verified; the
+   training matrix with its expiries; and what reporters were told
+   happened. Four components, in ICAO's order, rendered from the same
+   SMS_COMPONENTS declaration the maturity assessment and the coverage
+   table use — so an element cannot appear here under a name the
+   framework does not use.
+
+   AND IT IS THE FIRST SCREEN THAT IS THE ORGANISATION'S RECORD RATHER
+   THAN THE DEVICE'S. Every read and write goes to the API, is scoped
+   to the caller's operator in SQL, and appends to the audit chain.
+   That is the difference between "an operator can produce the
+   document" and "the organisation holds it", and it is the whole
+   reason the coverage figure can move.
+
+   WHAT THE CSS BOUGHT. 1.4 KB for the record list: a left-edge state
+   stripe in the product's own risk bands, dense rows, and the
+   disclosure that keeps eight entry forms from burying the record they
+   sit under. Colour is never the only channel — every stripe has a
+   badge beside it stating the state in words.
+
+   ENTRY IS NOT RAISED, and it nearly was. Adding the eight Annex 19
+   permissions pushed it to 212.1 against a 212 ceiling — and the cause
+   was not the new screen. PERMISSIONS is built with `new Set([...])` at
+   module scope, which Rollup cannot tree-shake, so the whole
+   authorisation matrix rode in the entry chunk on the back of the
+   report form importing CreateReportSchema from the same barrel. A ramp
+   agent at a remote strip was downloading every role's permission set
+   before they could file anything.
+
+   Split into packages/shared/src/permissions.ts, the same shape as
+   posts.ts out of taxonomy.ts, and entry came back to 210.6 of 212.
+   The third time this exact class of mistake has been caught by this
+   budget, and the third time the fix was not a bigger number.
+   --------------------------------------------------------------- */
+const BUDGET = { entry: 212 * 1024, js: 392 * 1024, css: 50 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

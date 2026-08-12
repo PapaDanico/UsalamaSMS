@@ -236,7 +236,20 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/api/v1/sms/accountabilities", limited, async (req, reply) => {
     if (!guard(req.auth!.role, "document.read")) return reply.code(403).send({ error: "forbidden" });
-    const [accountabilities, appointments] = await Promise.all([
+    /* The roster ships with this payload, and it is not a convenience.
+       An appointment names a person, and so does a training record. A
+       dropdown built from the appointments already made can never
+       record the FIRST appointment — and until one exists, no training
+       either. Two of the eight elements were unreachable from a cold
+       start, which is the state every new operator begins in.
+
+       Withheld from a role that holds neither post: a frontline
+       reporter needs the reporting form, not the staff list. Inactive
+       users are excluded — an appointment is a live post, and offering
+       a leaver as the appointee is how a stale matrix gets made. */
+    const roster =
+      guard(req.auth!.role, "appointment.manage") || guard(req.auth!.role, "training.manage");
+    const [accountabilities, appointments, people] = await Promise.all([
       prisma.accountability.findMany({
         where: tenantWhere(req), orderBy: [{ post: "asc" }], take: LIST_LIMIT,
       }),
@@ -246,8 +259,16 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
         take: LIST_LIMIT,
         include: { user: { select: { name: true, role: true } } },
       }),
+      roster
+        ? prisma.user.findMany({
+            where: { ...tenantWhere(req), active: true },
+            orderBy: [{ name: "asc" }],
+            take: LIST_LIMIT,
+            select: { id: true, name: true, role: true },
+          })
+        : Promise.resolve([]),
     ]);
-    return reply.send({ accountabilities, appointments });
+    return reply.send({ accountabilities, appointments, people });
   });
 
   app.post("/api/v1/sms/accountabilities", limited, async (req, reply) => {

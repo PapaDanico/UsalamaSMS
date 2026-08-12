@@ -363,6 +363,71 @@ describe.skipIf(!hasDatabase)("the rest of Annex 19, through the real routes", (
     expect(verdict.ok, "the chain did not verify after the new routes wrote to it").toBe(true);
   });
 
+  /* ---------------- 1.3 / 4.1 — the roster the forms need -------------- */
+
+  it("1.3 — OFFERS THE ROSTER TO AN OPERATOR THAT HAS APPOINTED NOBODY YET", async () => {
+    /* The deadlock this fixes, found by driving the screen rather than
+       by reading it: the appointment form's person dropdown was built
+       from the appointments already recorded. With none recorded there
+       was nobody to choose, so the FIRST appointment could not be made
+       — and because the training form draws on the same list, no
+       training could be recorded either. Two of the eight elements were
+       unreachable from the state every new operator starts in.
+
+       Asserted against an org with users and zero appointments, which
+       is exactly that state. A roster derived from appointments returns
+       an empty array here and the test goes red. */
+    expect(await prisma().appointment.count({ where: { orgId } })).toBe(0);
+
+    const res = await call("GET", "/api/v1/sms/accountabilities", manager());
+    expect(res.statusCode).toBe(200);
+    const people = res.json().people as Array<{ id: string; name: string }>;
+    expect(people.length, "nobody could be appointed to the first post").toBeGreaterThan(0);
+    expect(people.map((p) => p.id)).toContain(frontlineId);
+
+    // And it is usable: the id offered is one the appointment route takes.
+    const made = await call("POST", "/api/v1/sms/appointments", manager(), {
+      post: "Safety Manager", userId: people[0]!.id, appointedOn: "2026-01-05T00:00:00.000Z",
+    });
+    expect(made.statusCode, "the roster offered a person the route then refused").toBe(201);
+  });
+
+  it("1.3 — the roster carries no email, and no password hash", async () => {
+    // A staff list is not a safety narrative, but it is also not a
+    // reason to hand out contact details and credential material to
+    // every screen that needs a name against a post.
+    const people = (await call("GET", "/api/v1/sms/accountabilities", manager())).json().people;
+    for (const p of people as Array<Record<string, unknown>>) {
+      expect(Object.keys(p).sort()).toEqual(["id", "name", "role"]);
+    }
+  });
+
+  it("1.3 — WITHHOLDS THE ROSTER FROM A ROLE THAT APPOINTS AND TRAINS NOBODY", async () => {
+    // A frontline reporter reads this screen and holds neither
+    // appointment.manage nor training.manage. They get the matrix,
+    // which is published, and not the staff list.
+    const res = await call("GET", "/api/v1/sms/accountabilities", frontline());
+    expect(res.statusCode).toBe(200);
+    expect(res.json().people, "the staff list went to a role with no use for it").toHaveLength(0);
+  });
+
+  it("1.3 — the roster stops at the operator's own boundary", async () => {
+    const res = await call("GET", "/api/v1/sms/accountabilities", manager());
+    const ids = (res.json().people as Array<{ id: string }>).map((p) => p.id);
+    expect(ids, "another operator's people were offered as appointees").not.toContain(otherManagerId);
+  });
+
+  it("1.3 — the roster does not offer a deactivated person", async () => {
+    // An appointment is a live post. Offering a leaver as the appointee
+    // is how a stale accountability matrix gets made, one plausible
+    // dropdown choice at a time.
+    await prisma().user.update({ where: { id: frontlineId }, data: { active: false } });
+    const ids = ((await call("GET", "/api/v1/sms/accountabilities", manager())).json().people as
+      Array<{ id: string }>).map((p) => p.id);
+    expect(ids).not.toContain(frontlineId);
+    expect(ids).toContain(managerId);
+  });
+
   it("refuses every one of them without a token", async () => {
     for (const url of [
       "/api/v1/sms/policy", "/api/v1/sms/accountabilities", "/api/v1/sms/exercises",

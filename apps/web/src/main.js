@@ -272,6 +272,11 @@ router
     { title: 'SMS maturity assessment' }
   )
   .register(
+    '/sms',
+    (el) => lazy(el, () => import('./tools/sms/index.js').then((m) => (o) => m.render(o))),
+    { title: 'The SMS record' }
+  )
+  .register(
     '/coverage',
     (el) => lazy(el, () => import('./tools/coverage/index.js').then((m) => (o) => m.render(o))),
     { title: 'What this covers' }

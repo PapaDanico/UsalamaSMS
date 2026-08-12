@@ -2647,3 +2647,83 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
     clip: rect(0 0 0 0);
   }
 }
+
+
+/* ------------------------------------------------------------------
+   THE SMS RECORD — the eight elements the organisation holds.
+
+   A record list, not a card grid. What somebody does on this screen is
+   read down a column looking for the one row that is wrong: the policy
+   that is unsigned, the finding closed but never verified, the training
+   that lapsed. So the rows are dense, the state is on the left edge as
+   a stripe AND stated in words in the badge, and nothing is centred.
+   ------------------------------------------------------------------ */
+.sms-el { margin-bottom: var(--us-space-5); }
+.sms-el .cov__head { margin-bottom: var(--us-space-2); }
+
+.rec-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-2);
+  margin-top: var(--us-space-3);
+}
+
+.rec {
+  border: 1px solid var(--us-border);
+  border-left: 3px solid var(--us-border-strong);
+  border-radius: var(--us-radius-sm);
+  padding: var(--us-space-3) var(--us-space-4);
+  background: var(--us-surface-muted);
+}
+/* The three states this screen has to distinguish at a glance, in the
+   product's own risk vocabulary. Never colour alone — every one of
+   these rows also carries a badge with the state as a word. */
+.rec[data-state='ok']   { border-left-color: var(--us-risk-acceptable-text); }
+.rec[data-state='part'] { border-left-color: var(--us-gold-text); }
+.rec[data-state='open'] { border-left-color: var(--us-ochre-text); }
+
+.rec__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--us-space-2) var(--us-space-3);
+  margin-bottom: var(--us-space-2);
+}
+.rec__head h4 {
+  margin: 0;
+  font-family: var(--us-font);
+  font-size: var(--us-text-md);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: 0;
+  flex: 1 1 12rem;
+}
+.rec__body { margin: 0 0 var(--us-space-2); font-size: var(--us-text-sm); }
+.rec__body:last-child { margin-bottom: 0; }
+.rec__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-1) var(--us-space-4);
+  margin: 0;
+  font-size: var(--us-text-xs);
+  color: var(--us-text-tertiary);
+}
+
+/* Adding to the record is a disclosure, not a form sitting open under
+   every element. Eight open forms on one screen is a page of inputs
+   with the record buried under them. */
+.sms-add { margin-top: var(--us-space-3); }
+.sms-add > summary {
+  cursor: pointer;
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-semi);
+  color: var(--us-teal-text);
+  padding: var(--us-space-2) 0;
+}
+.sms-add > summary:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 3px; }
+.sms-add form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-3);
+  padding-top: var(--us-space-3);
+  border-top: 1px solid var(--us-border);
+}
