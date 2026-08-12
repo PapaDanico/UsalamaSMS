@@ -289,7 +289,7 @@ export const FAQ = {
               verifiable hash chain. It installs as an app on a phone and works
               with the network off.</p>
               <p>It is deliberately <strong>not</strong> a complete SMS. Annex 19
-              defines twelve elements; this substantially covers one and a half.
+              defines twelve elements; this substantially covers two.
               <a href="/about#notyet">What it is not, and what you still
               need</a> lists the rest, and the
               <a href="/toolkits/maturity">maturity assessment</a> measures where

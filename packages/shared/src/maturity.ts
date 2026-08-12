@@ -413,10 +413,28 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
     missing: "Any way to define, record or watch one. No dashboard, no trend, no alert.",
   },
   {
+    /* PARTIAL, not BUILT, and the distinction is the same one the
+       register makes. /toolkits/sra produces a real safety risk
+       assessment — the five Doc 9859 steps in ICAO's order, with the
+       loop back from control to hazard identification, and acceptance
+       blocked while any residual risk is red. That is the assessment
+       half of element 3.2.
+
+       What it is not is management OF change: no categorisation of
+       which changes need one, no approval routing, no review after the
+       change, and the assessment lives in one browser rather than
+       being held by the organisation. An operator can produce the
+       document; it cannot yet run the process around it. */
     id: "3.2",
-    state: "NOT_BUILT",
-    has: "",
-    missing: "Management of change: categorisation, safety impact assessment, approval, review.",
+    state: "PARTIAL",
+    has:
+      "A safety risk assessment for a change, in ICAO Doc 9859's five steps, with " +
+      "acceptance refused while any risk remains intolerable after controls.",
+    missing:
+      "The process around the document: which changes require one, approval routing, " +
+      "review after the change, and an assessment the organisation holds rather than " +
+      "one browser.",
+    href: "/toolkits/sra",
   },
   {
     /* ASSESSED_ONLY, not PARTIAL, and the correction is worth recording.

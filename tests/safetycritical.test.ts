@@ -11,6 +11,52 @@ import {
 const SEVS: Severity[] = ["A_CATASTROPHIC","B_HAZARDOUS","C_MAJOR","D_MINOR","E_NEGLIGIBLE"];
 const LIKS: Likelihood[] = ["FREQUENT","OCCASIONAL","REMOTE","IMPROBABLE","EXTREMELY_IMPROBABLE"];
 
+describe("the scale REFUSES what is not on it", () => {
+  /* Found by writing an SRA test that expected a null and got a band.
+     Both functions used to index the lookup tables directly, so an
+     unrecognised severity produced `undefined`, a key of
+     "undefinedx3", membership of neither the red set nor the amber
+     one — and therefore **ACCEPTABLE**. A malformed severity graded
+     green, on the one calculation whose whole job is to refuse to
+     flatter.
+
+     It survived because every caller wrapped these in try/catch and a
+     test asserted the result was "not intolerable". That was true, and
+     true for the wrong reason: nothing threw, so the catch guarded an
+     exception that could not happen and the assertion passed on a
+     silent green.
+
+     These assert the REASON rather than the outcome, which is the
+     difference between the two versions of this check. */
+  it("throws on a severity that is not on the scale, rather than grading it", () => {
+    expect(() => tolerability("NOT_A_SEVERITY" as never, "REMOTE")).toThrow(/Doc 9859 scale/);
+    expect(() => riskScore("NOT_A_SEVERITY" as never, "REMOTE")).toThrow(/Doc 9859 scale/);
+  });
+
+  it("throws on a likelihood that is not on the scale", () => {
+    expect(() => tolerability("C_MAJOR", "SOMETIMES" as never)).toThrow(/Doc 9859 scale/);
+  });
+
+  it("never returns ACCEPTABLE for an unrecognised value", () => {
+    // The specific wrong answer, named. If somebody restores the direct
+    // lookup this is what comes back, and it is the dangerous one.
+    let result: unknown = "did not throw";
+    try {
+      result = tolerability("" as never, "" as never);
+    } catch {
+      result = "threw";
+    }
+    expect(result).not.toBe("ACCEPTABLE");
+  });
+
+  it("still grades every real cell", () => {
+    // The refusal must not have narrowed the scale itself.
+    expect(tolerability("A_CATASTROPHIC", "FREQUENT")).toBe("INTOLERABLE");
+    expect(tolerability("E_NEGLIGIBLE", "EXTREMELY_IMPROBABLE")).toBe("ACCEPTABLE");
+    expect(riskScore("C_MAJOR", "REMOTE")).toBe(9);
+  });
+});
+
 describe("risk matrix (Doc 9859 4th Ed, 5x5)", () => {
   it("computes deterministic scores 1..25 for all 25 cells", () => {
     const scores = new Set<number>();
