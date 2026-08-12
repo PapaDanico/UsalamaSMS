@@ -110,6 +110,10 @@ export const ABOUT = {
         training records; and a safety communication loop back to the people who
         file reports.</p>
 
+        <p><a href="/coverage">The coverage page</a> states every element, its
+        status, and what is missing from it — computed from the same declaration
+        the figure above comes from, so the two cannot drift apart.</p>
+
         <p>Several of those are on the way and some are closer than they look —
         the data model already carries hazards, risk assessments and performance
         indicators. But a page that let an operator believe its regulatory

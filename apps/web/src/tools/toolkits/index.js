@@ -29,28 +29,22 @@ import {
   OCCURRENCE_CLASSES,
   SERIOUS_INJURY_TESTS
 } from '../../../../../packages/shared/src/glossary.ts';
-import { tolerability, riskScore } from '../../../../../packages/shared/src/risk.ts';
+import {
+  tolerability,
+  riskScore,
+  SEVERITY_SCALE,
+  LIKELIHOOD_SCALE
+} from '../../../../../packages/shared/src/risk.ts';
 import {
   MOR_OBLIGATIONS,
   JURISDICTIONS,
   isProvisional
 } from '../../../../../packages/shared/src/regulations.ts';
 
-const SEVERITIES = [
-  ['A_CATASTROPHIC', 'A — Catastrophic'],
-  ['B_HAZARDOUS', 'B — Hazardous'],
-  ['C_MAJOR', 'C — Major'],
-  ['D_MINOR', 'D — Minor'],
-  ['E_NEGLIGIBLE', 'E — Negligible']
-];
-
-const LIKELIHOODS = [
-  ['FREQUENT', '5 — Frequent'],
-  ['OCCASIONAL', '4 — Occasional'],
-  ['REMOTE', '3 — Remote'],
-  ['IMPROBABLE', '2 — Improbable'],
-  ['EXTREMELY_IMPROBABLE', '1 — Extremely improbable']
-];
+/* The scale is declared once, in risk.ts, alongside the matrix that
+   scores it. Rendering it into a menu is presentation, so it happens
+   here — but the wording is not retyped. */
+const options = (scale) => scale.map((p) => ({ value: p.key, label: `${p.code} — ${p.label}` }));
 
 const ACTION = {
   INTOLERABLE:
@@ -155,14 +149,14 @@ function RiskAssessor() {
           label: 'If it happens, how bad is the worst credible outcome?',
           value: 'C_MAJOR',
           placeholder: 'Choose a severity',
-          options: SEVERITIES.map(([value, label]) => ({ value, label }))
+          options: options(SEVERITY_SCALE)
         })}
         ${Select({
           name: 'likelihood',
           label: 'How likely is it, in this operation?',
           value: 'REMOTE',
           placeholder: 'Choose a likelihood',
-          options: LIKELIHOODS.map(([value, label]) => ({ value, label }))
+          options: options(LIKELIHOOD_SCALE)
         })}
         <output class="calc__out" id="risk-out" aria-live="polite"></output>
       </form>
@@ -182,8 +176,8 @@ export function render(outlet) {
           Nothing is stored and nothing is sent.
         </p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="/toolkits/maturity">SMS maturity assessment</a>
-          <a class="btn btn-ghost-lt" href="/methodology#windows">Reporting deadline calculator</a>
+          <a class="btn btn-primary" href="/toolkits/register">Risk register</a>
+          <a class="btn btn-ghost-lt" href="/toolkits/maturity">SMS maturity assessment</a>
         </div>
       </div>
     </section>
@@ -194,6 +188,7 @@ export function render(outlet) {
         <ol>
           <li><a href="#classifier">Occurrence classifier</a></li>
           <li><a href="#risk">Risk tolerability</a></li>
+          <li><a href="/toolkits/register">Risk register</a></li>
           <li><a href="/toolkits/maturity">SMS maturity assessment</a></li>
           <li><a href="/methodology#windows">Reporting deadline calculator</a></li>
         </ol>

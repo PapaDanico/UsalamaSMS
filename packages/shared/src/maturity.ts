@@ -302,3 +302,288 @@ export function levelFor(mean: number): MaturityLevel {
   const floor = Math.max(0, Math.min(4, Math.floor(mean)));
   return MATURITY_LEVELS[floor]!;
 }
+
+// =====================================================================
+// COVERAGE — what this product actually implements, per element.
+//
+// WHY THIS IS IN CODE. An independent audit found the product claiming
+// to be a safety management system while covering one and a half of
+// Annex 19's twelve elements. The claim is fixed; this is the mechanism
+// that stops it coming back, and the answer to the audit's own
+// recommendation: publish which elements are implemented, which are
+// planned, and which are out of scope.
+//
+// It lives beside the framework it describes, so a page cannot state a
+// coverage figure the module disagrees with — and the counts on that
+// page are derived here rather than typed. Charter rule 10.
+//
+// The states are deliberately four rather than two, because "assessed"
+// and "managed" are different products and conflating them is the
+// overclaim in miniature.
+// =====================================================================
+
+export type CoverageState =
+  /** A person can do this work in the product today. */
+  | "BUILT"
+  /** Part of the element is workable; the rest is named below. */
+  | "PARTIAL"
+  /** The product can tell you where you stand, and cannot do the work. */
+  | "ASSESSED_ONLY"
+  /** Not built. The operator needs it elsewhere. */
+  | "NOT_BUILT";
+
+export interface ElementCoverage {
+  readonly id: string;
+  readonly state: CoverageState;
+  /** What exists, in the product, today. Empty when nothing does. */
+  readonly has: string;
+  /** What an operator still needs and will not find here. */
+  readonly missing: string;
+  /** Where to go, when there is somewhere. */
+  readonly href?: string;
+}
+
+export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
+  {
+    id: "1.1",
+    state: "ASSESSED_ONLY",
+    has: "The maturity assessment scores it and names the evidence.",
+    missing: "A signed safety policy, and any record of the accountable executive signing it.",
+    href: "/toolkits/maturity",
+  },
+  {
+    id: "1.2",
+    state: "ASSESSED_ONLY",
+    has: "Eight roles exist in the data model and are enforced per action on the API.",
+    missing: "An accountability matrix an operator can author, publish and evidence.",
+  },
+  {
+    id: "1.3",
+    state: "ASSESSED_ONLY",
+    has: "The maturity assessment scores it.",
+    missing: "Appointment records, protected time, and the evidence of independence.",
+    href: "/toolkits/maturity",
+  },
+  {
+    id: "1.4",
+    state: "NOT_BUILT",
+    has: "",
+    missing: "The emergency response plan, its exercises, and the contact directory behind it.",
+  },
+  {
+    id: "1.5",
+    state: "NOT_BUILT",
+    has: "",
+    missing: "Document control: versions, approval, distribution and read-acknowledgement.",
+  },
+  {
+    id: "2.1",
+    state: "BUILT",
+    has:
+      "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +
+      "hash-chained record, with the regulatory window computed per jurisdiction.",
+    missing:
+      "Proactive and predictive identification — surveys, flight data, and the analysis " +
+      "Doc 10159 asks for.",
+    href: "/report",
+  },
+  {
+    id: "2.2",
+    /* STILL PARTIAL, with a register now. The register covers hazard to
+       consequence to control to residual risk, with owners, review
+       dates and acceptance — and it lives in one browser. A register
+       the safety office cannot see is not an organisation's register,
+       so the element is not claimed. It moves from "a matrix with no
+       register" to "a register with no distribution", which is
+       progress and is not the same as done. */
+    state: "PARTIAL",
+    has:
+      "The Doc 9859 5x5 matrix, a risk assessor, and a risk register with initial and " +
+      "residual bands, owners, review dates and acceptance — all computed by the same " +
+      "scale, never stored.",
+    missing:
+      "Distribution. The register is held in one browser: it does not sync, the safety " +
+      "office cannot see it, and nobody else can contribute to it.",
+    href: "/toolkits/register",
+  },
+  {
+    id: "3.1",
+    state: "ASSESSED_ONLY",
+    has: "The data model carries indicators with targets and alert levels.",
+    missing: "Any way to define, record or watch one. No dashboard, no trend, no alert.",
+  },
+  {
+    id: "3.2",
+    state: "NOT_BUILT",
+    has: "",
+    missing: "Management of change: categorisation, safety impact assessment, approval, review.",
+  },
+  {
+    /* ASSESSED_ONLY, not PARTIAL, and the correction is worth recording.
+       This was marked PARTIAL because the audit chain is verifiable end
+       to end — and the `missing` field on the same entry said "an audit
+       trail is not an audit". Crediting the product for the chain here
+       claims the element on the strength of something that is not the
+       element. That is the overclaim in miniature, committed inside the
+       table written to prevent it, and it was caught by the test that
+       compares this arithmetic with the sentence About states. */
+    id: "3.3",
+    state: "ASSESSED_ONLY",
+    has:
+      "The maturity assessment scores it. Separately, the audit chain makes the RECORD " +
+      "verifiable, which is a different thing from auditing the system.",
+    missing:
+      "Audit management and corrective action — scheduling, findings, owners, and " +
+      "validation that a fix worked. An audit trail is not an audit.",
+    href: "/toolkits/maturity",
+  },
+  {
+    id: "4.1",
+    state: "NOT_BUILT",
+    has: "",
+    missing: "Training records, competency tracking and expiry alerting.",
+  },
+  {
+    id: "4.2",
+    state: "NOT_BUILT",
+    has: "",
+    missing:
+      "The loop back to the reporter. The maturity assessment asks whether people who " +
+      "file hear what happened; the product provides no way to tell them.",
+  },
+]);
+
+export interface CoverageSummary {
+  readonly built: number;
+  readonly partial: number;
+  readonly assessedOnly: number;
+  readonly notBuilt: number;
+  readonly total: number;
+  /** BUILT counts one, PARTIAL counts a half. Nothing else counts. */
+  readonly elementsCovered: number;
+}
+
+/**
+ * Summarise coverage.
+ *
+ * PARTIAL counts as a half and ASSESSED_ONLY counts as nothing, which
+ * is the whole point: being able to measure an element is not covering
+ * it. That arithmetic is what produces the "one and a half of twelve"
+ * the About page states, and it is computed here so the sentence and
+ * the table cannot disagree.
+ */
+export function coverageSummary(): CoverageSummary {
+  const count = (state: CoverageState) => COVERAGE.filter((c) => c.state === state).length;
+  const built = count("BUILT");
+  const partial = count("PARTIAL");
+  return {
+    built,
+    partial,
+    assessedOnly: count("ASSESSED_ONLY"),
+    notBuilt: count("NOT_BUILT"),
+    total: COVERAGE.length,
+    elementsCovered: built + partial / 2,
+  };
+}
+
+// =====================================================================
+// THE RISK REGISTER'S SHAPE.
+//
+// An audit named this the highest-impact, lowest-complexity addition,
+// and it is right: reporting produces hazards, and a hazard nobody has
+// assessed is a hazard nobody has decided about. Element 2.2 asks for
+// hazard -> consequence -> control -> residual risk, with an owner and
+// a closure date.
+//
+// The shape lives here, beside the framework it satisfies, so the
+// register and the coverage claim about it cannot drift.
+// =====================================================================
+
+import { tolerability, type Severity, type Likelihood } from "./risk";
+
+export type RiskStatus =
+  /** Assessed, mitigations not yet in place. */
+  | "OPEN"
+  /** Controls applied; residual risk assessed and being watched. */
+  | "MITIGATED"
+  /** Residual risk formally accepted by somebody who can accept it. */
+  | "ACCEPTED"
+  /** No longer applicable — the operation changed. */
+  | "CLOSED";
+
+export interface RiskEntry {
+  readonly id: string;
+  readonly hazard: string;
+  readonly consequence: string;
+  /** Initial, before controls. */
+  readonly severity: string;
+  readonly likelihood: string;
+  /** What is being done about it. */
+  readonly controls: string;
+  /** After controls. Absent until controls exist. */
+  readonly residualSeverity?: string;
+  readonly residualLikelihood?: string;
+  readonly owner: string;
+  /** ISO date. */
+  readonly reviewBy: string;
+  readonly status: RiskStatus;
+  /** Set only when status is ACCEPTED, and by whom. */
+  readonly acceptedBy?: string;
+  readonly createdAt: string;
+}
+
+/**
+ * The register's own health, computed.
+ *
+ * OVERDUE IS THE NUMBER THAT MATTERS. A register whose entries are all
+ * open is a register being kept; a register whose review dates have
+ * passed is a register being ignored, and an auditor reads the second
+ * as worse than having no register at all. So it is counted separately
+ * and first.
+ *
+ * `today` is passed in rather than read from the clock, because a
+ * function that reads the clock cannot be tested at a boundary — and
+ * "overdue" is entirely a boundary.
+ */
+export function registerHealth(
+  entries: ReadonlyArray<RiskEntry>,
+  today: Date,
+): {
+  total: number;
+  open: number;
+  accepted: number;
+  overdue: number;
+  unowned: number;
+  intolerableOpen: number;
+} {
+  const stamp = today.toISOString().slice(0, 10);
+  const live = entries.filter((e) => e.status !== "CLOSED");
+  return {
+    total: entries.length,
+    open: live.filter((e) => e.status === "OPEN").length,
+    accepted: entries.filter((e) => e.status === "ACCEPTED").length,
+    overdue: live.filter((e) => e.reviewBy && e.reviewBy < stamp).length,
+    // An entry nobody owns is an entry nobody will do anything about,
+    // and it is the most common defect in a real operator's register.
+    unowned: live.filter((e) => !e.owner.trim()).length,
+    /* Intolerable AFTER controls, still not accepted. This is the line
+       an inspector goes to first, and it is computed from the same
+       tolerability() the matrix and the assessor use — never stored,
+       so it cannot disagree with the scale. Residual where there is
+       one, initial where there is not: an entry with no controls yet
+       is carrying its initial risk, and rounding that down would be
+       the flattering direction. */
+    intolerableOpen: live
+      .filter((e) => e.status !== "ACCEPTED")
+      .filter((e) => {
+        const sev = e.residualSeverity ?? e.severity;
+        const lik = e.residualLikelihood ?? e.likelihood;
+        if (!sev || !lik) return false;
+        try {
+          return tolerability(sev as Severity, lik as Likelihood) === "INTOLERABLE";
+        } catch {
+          return false;
+        }
+      }).length,
+  };
+}

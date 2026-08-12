@@ -121,3 +121,143 @@ describe('level labelling', () => {
     expect(levelFor(99).value).toBe(4);
   });
 });
+
+/* ============================================================
+   Coverage: the answer to an audit that could not see the source.
+
+   The arithmetic here produces the sentence the About page states —
+   "substantially covers one and a half of twelve" — so if the two ever
+   disagree, one of them is lying to an operator about its regulatory
+   position. That is the sentence with the highest consequence in the
+   product.
+   ============================================================ */
+
+import { COVERAGE, coverageSummary } from '../packages/shared/src/maturity';
+
+describe('coverage', () => {
+  it('declares a state for every element in the framework, and no others', () => {
+    expect(COVERAGE).toHaveLength(SMS_ELEMENTS.length);
+    const declared = COVERAGE.map((c) => c.id).sort();
+    const framework = SMS_ELEMENTS.map((e) => e.id).sort();
+    expect(declared).toEqual(framework);
+  });
+
+  it('says what is missing for EVERY element, including the built ones', () => {
+    // A built element with nothing missing is a claim that one twelfth
+    // of an SMS is finished. Even reporting has gaps — proactive and
+    // predictive identification — and the page has to say so.
+    for (const entry of COVERAGE) {
+      expect(entry.missing.length).toBeGreaterThan(20);
+    }
+  });
+
+  it('gives every non-empty state something to point at or something it has', () => {
+    for (const entry of COVERAGE) {
+      if (entry.state === 'NOT_BUILT') expect(entry.has).toBe('');
+      else expect(entry.has.length).toBeGreaterThan(10);
+    }
+  });
+
+  it('counts PARTIAL as a half and ASSESSED_ONLY as nothing', () => {
+    // The whole point: being able to MEASURE an element is not covering
+    // it. Conflating the two is the overclaim in miniature.
+    const s = coverageSummary();
+    expect(s.elementsCovered).toBe(s.built + s.partial / 2);
+    expect(s.built + s.partial + s.assessedOnly + s.notBuilt).toBe(s.total);
+  });
+
+  it('produces the one-and-a-half figure the About page states', () => {
+    const s = coverageSummary();
+    expect(s.total).toBe(12);
+    expect(s.elementsCovered).toBe(1.5);
+  });
+});
+
+/* ============================================================
+   The register's health.
+
+   OVERDUE is the number an inspector goes to first, and it is entirely
+   a boundary — so `today` is a parameter rather than a clock read, and
+   the boundary is tested on both sides.
+   ============================================================ */
+
+import { registerHealth, type RiskEntry } from '../packages/shared/src/maturity';
+
+const entry = (over: Partial<RiskEntry> = {}): RiskEntry => ({
+  id: 'r1',
+  hazard: 'Bird activity on approach',
+  consequence: 'Engine ingestion on short final',
+  severity: 'B_HAZARDOUS',
+  likelihood: 'OCCASIONAL',
+  controls: '',
+  owner: 'Safety manager',
+  reviewBy: '2026-12-01',
+  status: 'OPEN',
+  createdAt: '2026-08-12T00:00:00.000Z',
+  ...over
+});
+
+describe('register health', () => {
+  const today = new Date('2026-08-12T09:00:00Z');
+
+  it('counts nothing when the register is empty', () => {
+    const h = registerHealth([], today);
+    expect(h.total).toBe(0);
+    expect(h.overdue).toBe(0);
+  });
+
+  it('treats a review date BEFORE today as overdue, and today as not', () => {
+    expect(registerHealth([entry({ reviewBy: '2026-08-11' })], today).overdue).toBe(1);
+    expect(registerHealth([entry({ reviewBy: '2026-08-12' })], today).overdue).toBe(0);
+  });
+
+  it('does not count a CLOSED entry as overdue or open', () => {
+    const h = registerHealth([entry({ reviewBy: '2020-01-01', status: 'CLOSED' })], today);
+    expect(h.overdue).toBe(0);
+    expect(h.open).toBe(0);
+    expect(h.total).toBe(1);
+  });
+
+  it('counts an entry nobody owns', () => {
+    expect(registerHealth([entry({ owner: '   ' })], today).unowned).toBe(1);
+  });
+
+  it('uses RESIDUAL risk where controls exist, and initial where they do not', () => {
+    // A_CATASTROPHIC x FREQUENT is intolerable; E_NEGLIGIBLE x
+    // EXTREMELY_IMPROBABLE is not. An entry whose controls bring it
+    // down must stop counting as intolerable — and an entry with no
+    // controls must keep counting, because rounding an unmitigated
+    // hazard down is the flattering direction.
+    const unmitigated = entry({ severity: 'A_CATASTROPHIC', likelihood: 'FREQUENT' });
+    expect(registerHealth([unmitigated], today).intolerableOpen).toBe(1);
+
+    const mitigated = entry({
+      severity: 'A_CATASTROPHIC',
+      likelihood: 'FREQUENT',
+      controls: 'Bird patrol before every departure',
+      residualSeverity: 'E_NEGLIGIBLE',
+      residualLikelihood: 'EXTREMELY_IMPROBABLE'
+    });
+    expect(registerHealth([mitigated], today).intolerableOpen).toBe(0);
+  });
+
+  it('stops counting an intolerable risk once it is formally ACCEPTED', () => {
+    // Accepted is a decision somebody made and signed. It is still on
+    // the register and still visible; it is no longer an open question.
+    const accepted = entry({
+      severity: 'A_CATASTROPHIC',
+      likelihood: 'FREQUENT',
+      status: 'ACCEPTED',
+      acceptedBy: 'Accountable executive'
+    });
+    const h = registerHealth([accepted], today);
+    expect(h.intolerableOpen).toBe(0);
+    expect(h.accepted).toBe(1);
+  });
+
+  it('survives a malformed scale value rather than throwing into the UI', () => {
+    const bad = entry({ severity: 'NOT_A_SEVERITY', likelihood: 'FREQUENT' });
+    expect(() => registerHealth([bad], today)).not.toThrow();
+    expect(registerHealth([bad], today).intolerableOpen).toBe(0);
+  });
+});

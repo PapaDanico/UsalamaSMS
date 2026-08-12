@@ -223,8 +223,44 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    panel that is the same component as the deadline calculator's.
 
    The stopping rule is unchanged and now has a precedent: a screen
-   earns a raise, a library does not. */
-const BUDGET = { entry: 212 * 1024, js: 292 * 1024, css: 44 * 1024 };
+   earns a raise, a library does not.
+
+   ---------------------------------------------------------------
+   THE FOURTH RAISE: CSS -> 46 KB, TOTAL -> 304 KB.
+
+   Held to the same rule, and here is the arithmetic behind it. Two
+   screens were added, both lazily loaded, both navigated to:
+
+     · /coverage — every one of Annex 19's twelve elements, its state,
+       what exists here, and what does not. It exists because an
+       independent review found the product describing itself as an SMS
+       while covering one and a half elements, and rated that Critical:
+       an operator adopting it as its sole SMS would fail an audit
+       believing it was covered. The page is the correction, and its
+       counts are computed from the same declaration the table renders
+       so the two cannot drift apart.
+
+     · /toolkits/register — element 2.2. Hazard, consequence, controls,
+       residual risk, owner, review date, acceptance. The bands are the
+       same tolerability() the matrix uses and are never stored, so an
+       entry cannot carry a band that disagrees with the scale.
+
+   THE NUMBER THAT DID NOT MOVE, again: entry is 206.7 KB against its
+   212 KB ceiling, roughly where it was eleven screens ago. Nothing
+   here reached the first paint of a report on a handset at a strip.
+
+   Weight was given back before it was asked for: the five severities
+   and five likelihoods now live once, in risk.ts beside the matrix
+   that scores them, instead of in four hand-typed copies. That is
+   worth more than the half-kilobyte it returned — four copies of a
+   safety scale is four places for its wording to drift, and a register
+   whose severity reads differently from the matrix it was scored
+   against is a register an auditor stops trusting.
+
+   The rule stands, and the test with it: a 40 KB library added to the
+   report form still breaks the entry budget, which is the one that
+   protects the person filing. */
+const BUDGET = { entry: 212 * 1024, js: 304 * 1024, css: 46 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {
