@@ -906,6 +906,15 @@ html { scroll-padding-top: var(--us-chrome); }
   line-height: var(--us-leading-snug);
 }
 
+/* A cell that has no number because no instrument publishes one. It is
+   set apart from a figure so a reader scanning the column cannot mistake
+   "without delay" for a missing value — the two mean opposite things. */
+.cell-none {
+  font-style: italic;
+  font-variant-numeric: normal;
+  color: var(--us-text-tertiary);
+}
+
 .reg-list__source {
   color: var(--us-text-tertiary);
 }

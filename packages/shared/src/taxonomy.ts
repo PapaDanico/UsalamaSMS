@@ -171,12 +171,17 @@ export const FLIGHT_PHASES = [
   { code: 'MAINTENANCE', label: 'Maintenance' }
 ];
 
-/** Jurisdictions, labelled by authority rather than by code. */
+/* Jurisdictions, labelled by authority rather than by code.
+
+   ICAO is first because it is the answer for every operator whose own
+   authority is not one of the other two — and that is most of them.
+   It carries no hour figure: Annex 13 asks for notification with a
+   minimum of delay and names no period. The list once held Uganda,
+   Tanzania and Rwanda at 72 hours apiece, borrowed from the EU and
+   labelled ICAO-common. It is not common and it is not ICAO's. */
 export const JURISDICTION_OPTIONS = [
+  { code: 'ICAO', label: 'ICAO baseline — my authority is not listed' },
   { code: 'KE', label: 'Kenya — KCAA' },
-  { code: 'UG', label: 'Uganda — UCAA' },
-  { code: 'TZ', label: 'Tanzania — TCAA' },
-  { code: 'RW', label: 'Rwanda — RCAA' },
   { code: 'EU', label: 'European Union — EASA' }
 ];
 

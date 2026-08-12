@@ -174,8 +174,10 @@ function Deadlines() {
                   : ''}
               </dt>
               <dd>
-                <strong>${o.hours} hours</strong> from
-                ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·
+                ${o.hours === null
+                  ? html`<strong>Without delay</strong> — no fixed period is set ·`
+                  : html`<strong>${o.hours} hours</strong> from
+                      ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`}
                 <span class="reg-list__source">${o.instrument}</span>
               </dd>
             </div>`;
@@ -184,9 +186,14 @@ function Deadlines() {
 
         <p class="footer-note">
           ${provisional.length
-            ? `${provisional.join(', ')} carry the ICAO-common figure pending a read ` +
-              `of the primary instrument, and are marked provisional wherever they appear.`
-            : 'Every row above has been read against its primary instrument.'}
+            ? `${provisional.join(', ')} carry a figure from a secondary source pending a ` +
+              `read of the primary instrument, and are marked provisional wherever they appear.`
+            : html`Every row above has been read against its primary instrument. Where an
+                operator&rsquo;s own authority is not listed, the ICAO baseline applies:
+                <strong>notify without delay</strong>. ICAO Annex 13 names no period and
+                Annex 19 leaves it to the State, so no countdown is shown rather than a
+                borrowed one &mdash; three authorities were once listed here at 72 hours,
+                which is the EU&rsquo;s figure and not a common one.`}
         </p>
       </div>
     </section>

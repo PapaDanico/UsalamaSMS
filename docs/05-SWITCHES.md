@@ -11,38 +11,57 @@ comment.
 
 ---
 
-## 1. The provisional jurisdictions
+## 1. The jurisdictions that are NOT covered
 
 **The claim:** UsalamaSMS computes the mandatory occurrence reporting
-deadline for Kenya, Uganda, Tanzania, Rwanda and the EU.
+deadline for Kenya and the EU, and offers ICAO's baseline everywhere
+else.
 
-**Why it expires:** only two of those five have been read against the
-primary instrument. Kenya's row comes from KCAA Advisory Circular
-CAA-AC-SMS004A (January 2023) — 24 hours, from awareness. The EU row
-comes from Regulation (EU) No 376/2014 Article 4(6) — 72 hours, from
-awareness. **Uganda, Tanzania and Rwanda are carried at the ICAO-common
-72 hours as a placeholder and have not been verified.**
+**What this entry used to say, and why it was wrong.** It used to claim
+five jurisdictions: Kenya, Uganda, Tanzania, Rwanda and the EU — with
+the middle three "carried at the ICAO-common 72 hours as a placeholder".
+There is no ICAO-common 72 hours. ICAO Annex 13 requires notification
+with a minimum of delay and names no period; Annex 19 requires the State
+to run a mandatory reporting system and leaves the period to the State.
+The 72 hours is the EU's own figure, from Regulation (EU) No 376/2014,
+misattributed. So three rows of a compliance tool stated a deadline that
+no instrument anywhere publishes, and the PROVISIONAL label made that
+visible without making it any less false.
 
-This is the most dangerous entry in this file, because a wrong reporting
-deadline is worse than no deadline: an operator without the tool knows
-it does not know.
+The three rows are gone. ICAO is now a jurisdiction in its own right
+with `hours: null` — it computes no date, and every surface says
+"without delay" rather than filling the gap with a number.
+
+**Why it still expires:** an operator in Uganda, Tanzania or Rwanda has
+a real deadline set by its own authority, and this product does not know
+it. The baseline is honest, not sufficient.
 
 **The flag:** `MOR_OBLIGATIONS[j].note` beginning `PROVISIONAL` in
-`packages/shared/src/regulations.ts`, surfaced by `isProvisional(j)`.
+`packages/shared/src/regulations.ts`, surfaced by `isProvisional(j)` and
+by `isProvisionalObligation(o)`.
 
-**What must happen:** obtain the current UCAA, TCAA and RCAA safety
-management regulations; set `hours`, `clockStart`, `instrument` and
-`verifiedOn` from the text; delete the `PROVISIONAL` prefix.
+**Provisional rows today: **0**.** `scripts/check-claims.mjs` compares
+that figure against the rows the code actually marks, and fails in both
+directions — an unverified row added without documenting it here, and a
+row documented here that the code does not mark.
+
+**What must happen** to add a jurisdiction: obtain that authority's
+safety management regulations; set `hours`, `clockStart`, `instrument`
+and `verifiedOn` from the text, not from a summary of it. A row that
+cannot cite a numbered provision does not get a number — it gets `null`
+and the ICAO baseline, which is what ICAO itself does.
 
 **The test that stops it rotting:** `tests/safetycritical.test.ts` —
-*"marks unverified jurisdictions as provisional rather than as fact"*
-asserts `isProvisional` is **true for exactly UG, TZ and RW** and false
-for KE and EU. Verifying a row without deleting the prefix fails the
-build; deleting the prefix without verifying fails it too, until the
-test's expectation is updated deliberately.
+*"still MARKS a provisional row, now that no real one trips it"* runs
+`isProvisionalObligation` against a synthetic row, because a guard with
+no instances is a guard that can silently stop working, and five
+assertions of `false` would pass just as happily against a function that
+always returned it. Alongside it, *"gives ICAO NO deadline, because ICAO
+publishes none"* fails the build if anyone gives the baseline an hour
+figure.
 
-**Owner:** whoever ships the first non-Kenyan customer. Before, not
-after.
+**Owner:** whoever ships the first customer outside Kenya and the EU.
+Before, not after.
 
 ---
 

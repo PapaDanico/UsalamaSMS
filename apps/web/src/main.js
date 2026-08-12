@@ -165,7 +165,7 @@ document.getElementById('footer-jurisdictions').textContent =
   (jurisdictions.length === 1 ? '' : 's') +
   (provisional.length
     ? `, of which ${provisional.length} carry a provisional figure pending a reading of the primary instrument.`
-    : ', every one read against its primary instrument.');
+    : ', every one read against its primary instrument, with ICAO as the baseline where a State period has not been.');
 
 /* Reveal the shell and retire the boot screen. Done here rather than in
    CSS so the swap happens when the app can actually render, not when
