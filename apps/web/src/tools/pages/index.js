@@ -167,14 +167,28 @@ export function renderPage(outlet, page) {
   /* A question linked to from elsewhere opens itself. Without this the
      browser scrolls to a closed disclosure and the reader sees the
      question they already clicked and none of the answer. */
-  openFragmentTarget(outlet);
-  window.addEventListener('hashchange', () => openFragmentTarget(outlet), { once: false });
+  openFragmentTarget();
 }
 
-function openFragmentTarget(outlet) {
+/* ONE listener, bound once at module scope.
+
+   The first version registered it inside renderPage, so every visit to
+   a document page added another — five pages navigated ten times left
+   fifty listeners, each holding a closure over an outlet that had since
+   been emptied. It worked, which is what makes that class of leak worth
+   naming: nothing misbehaves until something does, and by then the
+   cause is fifty frames away from the symptom.
+
+   Bound at module scope it cannot accumulate, and this module is itself
+   loaded lazily and only once. The handler reads the live document
+   rather than a captured element, so it is correct on whichever screen
+   happens to be rendered. */
+window.addEventListener('hashchange', openFragmentTarget);
+
+function openFragmentTarget() {
   const id = window.location.hash.replace(/^#/, '');
   if (!id) return;
-  const target = outlet.querySelector(`#${CSS.escape(id)}`);
+  const target = document.getElementById(id);
   if (target instanceof HTMLDetailsElement) {
     target.open = true;
     target.scrollIntoView();
