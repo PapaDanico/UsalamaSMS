@@ -81,6 +81,48 @@ describe('scoring', () => {
     expect(result.complete).toBe(false);
   });
 
+  it('POSITIONS AN SMS AT ITS WEAKEST ELEMENT, NOT AT ITS AVERAGE', () => {
+    /* The compensatory-scoring defect, stated as arithmetic: eleven
+       elements at Improving and one at Absent averages 3.67, which
+       labels as "Measured" and reads as a healthy SMS while a twelfth
+       of it does not exist. An auditor does not average — they find the
+       element that is missing and write it up.
+
+       SM ICG, whose evaluation tool CASA has adopted as Form 1591,
+       expects ALL elements to reach at least operating and
+       effectiveness in ALL of them. A framework whose pass condition is
+       universal cannot be reported by a mean. */
+    const answers: Record<string, number> = {};
+    for (const e of SMS_ELEMENTS) answers[e.id] = 4;
+    answers['1.4'] = 0;
+
+    const result = scoreAssessment(answers);
+    expect(result.complete).toBe(true);
+    expect(result.mean).toBeCloseTo(44 / 12, 5);
+    expect(result.position, 'an absent element was averaged away').toBe(0);
+    expect(result.limitedBy.map((e) => e.id)).toEqual(['1.4']);
+  });
+
+  it('names EVERY element holding the position, because they are the only work that moves it', () => {
+    const answers: Record<string, number> = {};
+    for (const e of SMS_ELEMENTS) answers[e.id] = 3;
+    answers['2.2'] = 1;
+    answers['4.1'] = 1;
+
+    const result = scoreAssessment(answers);
+    expect(result.position).toBe(1);
+    expect(result.limitedBy.map((e) => e.id).sort()).toEqual(['2.2', '4.1']);
+  });
+
+  it('withholds a position until every element is answered', () => {
+    // The weakest of four answers is not the weakest of twelve, and
+    // reporting it as though it were is the same overclaim inverted.
+    const partial = scoreAssessment({ '1.1': 0, '1.2': 4 });
+    expect(partial.complete).toBe(false);
+    expect(partial.position).toBeUndefined();
+    expect(partial.limitedBy).toHaveLength(0);
+  });
+
   it('means each component over its own answered elements', () => {
     const result = scoreAssessment({ '2.1': 4, '2.2': 2 });
     const srm = result.components.find((c) => c.component.id === '2')!;

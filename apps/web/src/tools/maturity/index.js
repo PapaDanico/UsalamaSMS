@@ -101,18 +101,41 @@ function Result(result) {
   }
 
   const overall = levelFor(result.mean);
+  /* THE HEADLINE IS THE WEAKEST ELEMENT, not the average — see
+     `position` in maturity.ts. The mean stays on screen because the
+     distribution is worth seeing, but it is demoted to context and
+     labelled as an average, because an average of a framework whose
+     pass condition is universal is a number that flatters. */
+  const limiting = result.position !== undefined ? MATURITY_LEVELS[result.position] : null;
 
   return html`
     <div class="mat-summary">
-      <p class="mat-summary__mean">
-        <span class="mat-summary__value">${result.mean.toFixed(1)}</span>
-        <span class="mat-summary__of">of 4 · ${overall.label}</span>
-      </p>
-      <p class="mat-summary__coverage">
-        ${result.answered} of ${result.total} elements answered${result.complete
-          ? ''
-          : ' — the mean covers only what has been answered'}
-      </p>
+      ${limiting
+        ? html`<p class="mat-summary__mean">
+              <span class="mat-summary__value">${limiting.label}</span>
+              <span class="mat-summary__of">is where this SMS stands</span>
+            </p>
+            <p class="mat-summary__coverage">
+              An SMS is only as implemented as its weakest element, and
+              ${result.limitedBy.length === 1 ? 'one element sits' : `${result.limitedBy.length} elements sit`}
+              at ${limiting.label.toLowerCase()}:
+              ${result.limitedBy.map((e) => `${e.id} ${e.name}`).join(', ')}. Work on any other
+              element will move the average and leave this position exactly where it is.
+            </p>
+            <p class="mat-summary__coverage">
+              The average across all twelve is ${result.mean.toFixed(1)} of 4 · ${overall.label}.
+              It is shown for the shape of the spread, not as the position — an average lets a
+              strong element stand in for a missing one, and an audit does not average.
+            </p>`
+        : html`<p class="mat-summary__mean">
+              <span class="mat-summary__value">${result.mean.toFixed(1)}</span>
+              <span class="mat-summary__of">of 4 · ${overall.label} · average so far</span>
+            </p>
+            <p class="mat-summary__coverage">
+              ${result.answered} of ${result.total} elements answered — this is the average of
+              those, not a position. Answer all twelve and this becomes the level of the weakest,
+              which is the one an auditor writes up.
+            </p>`}
     </div>
 
     <ol class="mat-bars">

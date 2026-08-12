@@ -242,6 +242,34 @@ export interface MaturityResult {
   /** Elements at or below `gapAtOrBelow`, weakest first — the work list. */
   readonly gaps: ReadonlyArray<{ element: SmsElement; level: number }>;
   readonly complete: boolean;
+
+  /**
+   * THE POSITION AN OPERATOR CAN ACTUALLY DEFEND, which is the level of
+   * its WEAKEST answered element — not the average of all twelve.
+   *
+   * The mean above is compensatory: eleven elements at Improving and
+   * one at Absent averages 3.67, labels as "Measured", and reads as a
+   * healthy SMS while a twelfth of it does not exist. An auditor does
+   * not average. They find the element that is missing and write it up.
+   *
+   * This follows the SM ICG SMS Evaluation Tool — the instrument CASA
+   * has adopted wholesale as Form 1591 — whose stated expectation is
+   * that ALL individual indicators reach at least "operating" and that
+   * effectiveness is achieved in ALL of the elements. A framework whose
+   * pass condition is universal cannot be reported by an average.
+   *
+   * Undefined until every element is answered: the weakest of four
+   * answers is not the weakest of twelve, and reporting it as though it
+   * were would be the same overclaim in the opposite direction.
+   */
+  readonly position?: number;
+
+  /**
+   * The elements sitting AT that position — what is holding the whole
+   * assessment where it is, and therefore the only work that can move
+   * it. Improving anything else changes the mean and not the position.
+   */
+  readonly limitedBy: ReadonlyArray<SmsElement>;
 }
 
 /**
@@ -287,13 +315,24 @@ export function scoreAssessment(
     .filter((g) => g.level <= gapAtOrBelow)
     .sort((a, b) => a.level - b.level || a.element.id.localeCompare(b.element.id));
 
+  /* Only once every element has been answered — see `position` on
+     MaturityResult. The weakest of four answers says nothing about an
+     SMS of twelve elements. */
+  const complete = all.length === SMS_ELEMENTS.length;
+  const position = complete ? Math.min(...all) : undefined;
+  const limitedBy = complete
+    ? SMS_ELEMENTS.filter((e) => answers[e.id] === position)
+    : [];
+
   return {
     components,
     mean: all.length ? all.reduce((a, b) => a + b, 0) / all.length : undefined,
     answered: all.length,
     total: SMS_ELEMENTS.length,
     gaps,
-    complete: all.length === SMS_ELEMENTS.length,
+    complete,
+    position,
+    limitedBy,
   };
 }
 
