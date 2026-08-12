@@ -52,14 +52,72 @@ const MIME = {
   '.woff2': 'font/woff2'
 };
 
-/* A static server that mirrors the SPA fallback Netlify provides, so a
-   deep link to /triage resolves here the way it does in production. */
+/* ============================================================
+   A static server that serves what NETLIFY WOULD SERVE.
+
+   THE DEFECT THIS CLOSES. It used to fall back to index.html for every
+   unmatched path, under a comment saying it "mirrors the SPA fallback
+   Netlify provides". Netlify provided nothing of the kind: netlify.toml
+   had no [[redirects]] at all, so on the deployed site /report,
+   /triage, /account and /design were the platform's 404 page. Only the
+   root worked, and only because dist/index.html happens to be there.
+
+   Two checks in this file exist specifically to prove a deep link
+   resolves — one of them named "the offline claim, at the URL a person
+   is on" — and both passed for the whole life of the project against a
+   fallback the production host did not have. A test server that is more
+   forgiving than the real one does not test the deployment; it tests
+   itself.
+
+   So the rules are READ FROM netlify.toml. Delete the redirect block
+   and the deep-link checks fail here, which is how the fix was
+   verified.
+   ============================================================ */
+const REDIRECTS = (() => {
+  const toml = readFileSync(resolve(ROOT, 'netlify.toml'), 'utf8');
+  const rules = [];
+  // Deliberately a small reader rather than a TOML dependency: it
+  // handles the [[redirects]] tables this file needs and REFUSES the
+  // rest, so a rule shape it cannot model is an error rather than a
+  // silent omission that would put the lie back.
+  for (const block of toml.split(/\[\[redirects\]\]/).slice(1)) {
+    const body = block.split(/\n\[/)[0];
+    const read = (key) => new RegExp(`^\\s*${key}\\s*=\\s*"?([^"\\n]+)"?`, 'm').exec(body)?.[1]?.trim();
+    const from = read('from');
+    const to = read('to');
+    const status = Number(read('status') ?? 301);
+    const force = /^\s*force\s*=\s*true/m.test(body);
+    if (!from || !to) continue;
+    if (!from.endsWith('/*') || status !== 200) {
+      console.error(
+        `FATAL: scripts/smoke.mjs models splat rewrites only, and netlify.toml ` +
+          `declares ${from} -> ${to} (${status}). Teach this reader that shape ` +
+          `rather than letting the suite test a routing table the deploy does not have.`
+      );
+      process.exit(1);
+    }
+    rules.push({ prefix: from.slice(0, -1), to, force });
+  }
+  return rules;
+})();
+
 const server = createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
-  let file = join(DIST, decodeURIComponent(url.pathname));
+  const pathname = decodeURIComponent(url.pathname);
+  let file = join(DIST, pathname);
+  const isFile = existsSync(file) && !statSync(file).isDirectory();
 
-  if (!existsSync(file) || statSync(file).isDirectory()) {
-    file = join(DIST, url.pathname === '/' ? 'index.html' : 'index.html');
+  if (pathname === '/') file = join(DIST, 'index.html');
+  else if (!isFile) {
+    // An existing asset wins over a rewrite unless the rule is forced,
+    // which is Netlify's shadowing order — /sw.js and /manifest.json
+    // must reach the browser as themselves.
+    const rule = REDIRECTS.find((r) => pathname.startsWith(r.prefix));
+    if (!rule) {
+      res.writeHead(404).end('not found');
+      return;
+    }
+    file = join(DIST, rule.to);
   }
 
   try {
@@ -294,63 +352,107 @@ try {
     assert(!at1280.toggle, 'the Menu button is still shown at 1280px, beside the inline links');
   });
 
-  await check('THE FOOTER IS INFORMATION, AND IT IS SHORT', async () => {
-    // Two failures, one rule. It must not be the header drawn twice —
-    // that is what it was originally, four links telling nobody
-    // anything. And it must not be the tallest thing on the screen —
-    // that is what it became when the five regulatory rows lived in it,
-    // and a person on a handset scrolled two thousand pixels of
-    // citation to reach a copyright line.
+  await check('THE FOOTER IS A SITE INDEX, NOT THE HEADER DRAWN TWICE', async () => {
+    // The original defect was a footer carrying exactly the header's
+    // four destinations and nothing else — a menu drawn twice that told
+    // nobody anything. The first version of this check policed it by
+    // counting links and requiring FEWER than the menu, which was a
+    // proxy and the wrong one: it would have failed a proper site index
+    // and passed a footer that repeated three of four destinations.
     //
-    // The rows moved to /#deadlines. The footer keeps a link to them,
-    // which is the difference between a reference and a wall.
-    const footer = await page.evaluate(() => {
+    // The rule that actually expresses it: the footer must carry
+    // destinations the header does not. Those are the ones a person
+    // looks to the bottom of a page for — the methodology, the terms,
+    // who is behind this — and their absence is what made the old
+    // footer redundant.
+    //
+    // Both lists are rendered from shared/sitemap.js, so this also
+    // fails if that declaration is bypassed and someone hand-writes a
+    // column again.
+    const links = await page.evaluate(() => {
+      const hrefs = (sel) =>
+        [...document.querySelectorAll(sel)].map((a) => a.getAttribute('href'));
+      const footer = hrefs('.footer a');
+      const header = new Set([...hrefs('#menu-panel a'), ...hrefs('#nav a')]);
       const el = document.querySelector('.footer');
-      const menu = document.querySelectorAll('#menu-panel a').length;
       return {
-        links: el.querySelectorAll('a').length,
-        menuLinks: menu,
-        regRows: el.querySelectorAll('.reg-list__row').length,
+        footer,
+        headerOnly: [...header],
+        footerOnly: footer.filter((h) => !header.has(h)),
         height: el.getBoundingClientRect().height,
         viewport: window.innerHeight,
+        regRows: el.querySelectorAll('.reg-list__row').length,
         text: el.textContent ?? ''
       };
     });
 
     assert(
-      footer.links < footer.menuLinks,
-      `the footer carries ${footer.links} links against the menu's ${footer.menuLinks} — ` +
-        'at parity it is the navigation drawn twice, which is what it was before'
+      links.footerOnly.length >= 4,
+      `the footer carries ${links.footerOnly.length} destinations the header does not ` +
+        `(${links.footerOnly.join(', ') || 'none'}). Below four it is the navigation ` +
+        'drawn twice, which is what it was before.'
     );
     assert(
-      footer.regRows === 0,
-      `${footer.regRows} regulatory rows are still in the footer; they belong at /#deadlines`
+      links.regRows === 0,
+      `${links.regRows} regulatory rows are still in the footer; they belong at /#deadlines`
     );
     assert(
-      footer.height < footer.viewport * 1.5,
-      `the footer is ${Math.round(footer.height)}px tall against a ${footer.viewport}px ` +
+      links.height < links.viewport * 1.5,
+      `the footer is ${Math.round(links.height)}px tall against a ${links.viewport}px ` +
         'viewport — a footer longer than a screen and a half is a page of its own'
     );
-    // What it must still say. The count is computed from the registry
-    // rather than typed, so a sixth jurisdiction changes this sentence
+    // What it must still say. The jurisdiction count is computed from
+    // the registry rather than typed, so a sixth changes this sentence
     // without anyone editing the HTML — charter rule 10, applied to the
     // one line that survived the move.
     assert(
-      /jurisdictions/.test(footer.text),
+      /jurisdictions/.test(links.text),
       'the footer does not say how many jurisdictions the figures cover'
     );
     assert(
-      /provisional/i.test(footer.text),
+      /provisional/i.test(links.text),
       'the footer does not carry the provisional caveat'
     );
     assert(
-      /Annex 19 Amendment 2/.test(footer.text),
+      /Annex 19 Amendment 2/.test(links.text),
       'the footer does not name the standard the product is built against'
     );
     assert(
-      await page.locator('.footer a[href="/#deadlines"]').count() === 1,
+      links.footer.includes('/#deadlines'),
       'the footer does not link to the deadlines it used to contain'
     );
+  });
+
+  await check('EVERY DESTINATION IN THE ARCHITECTURE RESOLVES', async () => {
+    // Six of these are lazily loaded, which means six chances for a
+    // route to be declared in the sitemap and never registered on the
+    // router — a menu item that lands on "not found". Nothing else in
+    // this file would notice: the link renders, it is clickable, and
+    // the not-found screen is a screen.
+    const hrefs = await page.evaluate(() =>
+      [...document.querySelectorAll('.footer a, #menu-panel a')]
+        .map((a) => a.getAttribute('href'))
+        .filter((h) => h && h.startsWith('/'))
+    );
+    const unique = [...new Set(hrefs)];
+    assert(unique.length >= 8, `${unique.length} distinct destinations declared`);
+
+    for (const href of unique) {
+      const probe = await page.context().newPage();
+      await probe.goto(BASE + href, { waitUntil: 'networkidle' });
+      const heading = (await probe.locator('#main h1').first().textContent()) ?? '';
+      const failed = await probe.locator('.notice--error').count();
+      await probe.close();
+      assert(
+        !/not found/i.test(heading),
+        `${href} is declared in the architecture and resolves to the not-found screen`
+      );
+      assert(
+        failed === 0,
+        `${href} rendered its load-failure message; its chunk did not arrive`
+      );
+      assert(heading.trim().length > 0, `${href} rendered no heading at all`);
+    }
   });
 
   await check('tap targets are at least 44px', async () => {
@@ -724,8 +826,14 @@ try {
     await page.unroute('**/api/v1/sync/batch');
   });
 
-  await check('the design route renders the matrix from the real module', async () => {
-    await navigateTo(page, '/design');
+  await check('METHODOLOGY renders both tables from the real modules', async () => {
+    // The route was called "design system", which described the screen
+    // to the people who built it and to nobody else. What is behind it
+    // — the Doc 9859 matrix and the deadline registry, rendered by the
+    // modules that compute them — is the most useful page for anyone
+    // deciding whether to trust the numbers, so it is named for what it
+    // is and carries the derivation in prose beside the tables.
+    await navigateTo(page, '/methodology');
     await page.waitForSelector('.risk-matrix__cell', { timeout: 5000 });
     const cells = await page.locator('.risk-matrix__cell').count();
     assert(cells === 25, `${cells} matrix cells, expected 25`);
@@ -733,9 +841,144 @@ try {
     // Colour is never the only channel: every cell carries its code.
     const codes = await page.locator('.risk-matrix__code').count();
     assert(codes === 25, `${codes} tolerability codes, expected 25`);
+
+    // And the obligation table, which is the other half of the claim.
+    // Five authorities, each with the date its figure was last read
+    // against the primary instrument — a figure without one does not
+    // enter the registry, and a page that dropped the dates would be
+    // making the claim without the evidence.
+    const rows = await page.locator('.oblig-table tbody tr').count();
+    assert(rows === 5, `${rows} obligation rows, expected 5`);
+    const verified = await page.locator('.oblig-table .verified').count();
+    assert(verified === 5, `${verified} rows carry a verification date, expected 5`);
+  });
+
+  await check('THE DEADLINE CALCULATOR COMPUTES, AND REFUSES THE UNSAFE INPUT', async () => {
+    // A page that explains a derivation and leaves the reader to do the
+    // arithmetic has explained nothing. This drives the same
+    // reportingDeadline() the report form calls.
+    //
+    // The refusal is the half that matters. Awareness before the
+    // occurrence is a silent error in the OPERATOR'S FAVOUR — it moves
+    // a deadline later — which is the direction that gets somebody in
+    // trouble with an authority rather than the direction that gets
+    // caught. The engine throws on it; this proves the screen does not
+    // swallow the throw and print a number anyway.
+    await page.selectOption('#deadline-calc select[name=jurisdiction]', 'KE');
+    await page.fill('#deadline-calc input[name=occurredAt]', '2026-08-11T10:00');
+    await page.fill('#deadline-calc input[name=awareAt]', '2026-08-14T08:00');
+    await page.waitForFunction(
+      () => document.querySelector('#deadline-result')?.dataset.state === 'ok',
+      undefined,
+      { timeout: 5000 }
+    );
+
+    const answer = (await page.locator('#deadline-result').textContent()) ?? '';
+    // 24 hours from awareness at 08:00Z on the 14th is 08:00Z on the 15th.
+    // Anchored to the occurrence it would read 2026-08-12, which is the
+    // defect the whole clockStart model exists to prevent.
+    assert(
+      /2026-08-15 08:00Z/.test(answer),
+      `KCAA 24h from 2026-08-14 08:00Z should be 2026-08-15 08:00Z; got "${answer.trim()}"`
+    );
+    assert(/24 hours from awareness/.test(answer), `the answer does not state its basis: "${answer.trim()}"`);
+
+    // Now the wrong way round.
+    await page.fill('#deadline-calc input[name=awareAt]', '2026-08-10T08:00');
+    await page.waitForFunction(
+      () => document.querySelector('#deadline-result')?.dataset.state === 'error',
+      undefined,
+      { timeout: 5000 }
+    );
+    const refusal = (await page.locator('#deadline-result').textContent()) ?? '';
+    assert(
+      /awareness cannot come before/i.test(refusal),
+      `the refusal does not say what is wrong: "${refusal.trim()}"`
+    );
+    assert(
+      !/\d{4}-\d{2}-\d{2}/.test(refusal),
+      `a date was printed alongside the refusal: "${refusal.trim()}"`
+    );
+  });
+
+  await check('THE GLOSSARY RENDERS THE MODULE, NOT A COPY OF IT', async () => {
+    // 186 lines of vocabulary transcribed from the KCAA course glossary
+    // existed in the repository so the de-identifier would not scrub
+    // "the AOC holder" into "the [FLT] holder", and nothing ever showed
+    // a word of it to a user.
+    //
+    // The count is read from the page and compared against the module
+    // the de-identifier reads. A page that retyped the list would drift
+    // from the redactor, and the drift would show up as a safety
+    // narrative with a mangled acronym in it.
+    await navigateTo(page, '/glossary');
+    await page.waitForSelector('#acronyms', { timeout: 5000 });
+
+    const onPage = await page.locator('#acronyms .deflist__row').count();
+    const inModule = Object.keys(
+      (await import('../packages/shared/src/glossary.ts')).SMS_ACRONYMS
+    ).length;
+    assert(
+      onPage === inModule,
+      `${onPage} abbreviations rendered against ${inModule} in the module the de-identifier reads`
+    );
+
+    // The three occurrence classes, and the sentence a reporter needs.
+    const classes = await page.locator('.class-card').count();
+    assert(classes === 3, `${classes} occurrence classes, expected 3`);
+    const text = (await page.locator('#classes').textContent()) ?? '';
+    assert(
+      /only in the result/.test(text),
+      'the glossary does not carry the accident/serious-incident distinction, ' +
+        'which is the single sentence most reporters get wrong'
+    );
+    // And the provenance, because a transcription without a date is a
+    // claim about a document nobody can re-check.
+    const source = (await page.locator('#acronyms .footnote').textContent()) ?? '';
+    assert(/KCAA/.test(source) && /\d{4}-\d{2}-\d{2}/.test(source),
+      `the glossary does not name its source and transcription date: "${source.trim()}"`);
+
+    // The filter narrows the list and SAYS how far. A filter that hides
+    // rows without a count is indistinguishable from a page that has
+    // lost its content, which on a reference page is the difference
+    // between "no match" and "broken".
+    await page.fill('#glossary-filter', 'aoc');
+    await page.waitForFunction(
+      () => document.querySelectorAll('#acronyms .deflist__row:not([hidden])').length === 1,
+      undefined,
+      { timeout: 5000 }
+    );
+    const shown = (await page.locator('#acronyms .deflist__row:not([hidden])').textContent()) ?? '';
+    assert(/Air operator certificate/.test(shown), `filtering for AOC showed "${shown.trim()}"`);
+    const counter = (await page.locator('#glossary-count').textContent()) ?? '';
+    assert(/1 of \d+/.test(counter), `the filter does not say how far it narrowed: "${counter.trim()}"`);
+    // A letter heading with nothing under it is worse than no heading.
+    const strayLetters = await page.locator('#acronyms .alpha:not([hidden])').count();
+    assert(strayLetters === 1, `${strayLetters} letter groups visible for a single match`);
+
+    // And it matches the EXPANSION too — somebody who half-remembers
+    // "the performance indicator one" should find SPI.
+    await page.fill('#glossary-filter', 'performance indicator');
+    await page.waitForFunction(
+      () => document.querySelectorAll('#acronyms .deflist__row:not([hidden])').length > 0,
+      undefined,
+      { timeout: 5000 }
+    );
+    const byMeaning = (await page.locator('#acronyms').textContent()) ?? '';
+    assert(/SPI/.test(byMeaning), 'the filter does not search the expansions, only the terms');
+
+    await page.fill('#glossary-filter', 'zzzz');
+    await page.waitForSelector('#glossary-empty:not([hidden])', { timeout: 5000 });
+    await page.fill('#glossary-filter', '');
   });
 
   await check('provisional jurisdictions are marked as provisional', async () => {
+    // Navigates itself. It used to read whatever the previous check had
+    // left on screen, which meant inserting a check above it silently
+    // changed what it was measuring — and it did, the first time one
+    // was: it went green on a page with no jurisdictions on it at all.
+    await navigateTo(page, '/methodology');
+    await page.waitForSelector('.oblig-table', { timeout: 5000 });
     const tags = await page.locator('#main .tag--provisional').count();
     assert(tags === 3, `${tags} provisional tags, expected 3 (UG, TZ, RW)`);
   });

@@ -153,27 +153,25 @@
       <main id="main" class="page" tabindex="-1"></main>
 
       <!-- ============================================================
-           THE FOOTER, REBUILT AS COLUMNS.
+           THE FOOTER: A SITE INDEX AND A STATEMENT OF BASIS.
 
            It held the five regulatory rows in full, which made it the
-           tallest thing on every screen in the app — a person on a
-           handset scrolled through two thousand pixels of citation to
-           reach a copyright line. The rows were also the most important
-           claim the product makes, set in footnote type below the fold.
+           tallest thing on every screen — a person on a handset
+           scrolled through two thousand pixels of citation to reach a
+           copyright line — while setting the most consequential claim
+           in the product in footnote type below the fold. Those rows
+           are a section on the landing page now, at #deadlines, where
+           somebody checking a deadline can be sent a URL.
 
-           They are a SECTION on the landing page now, with a heading
-           and an anchor, and the footer is what a footer is for: where
-           you are, what else there is, and what the numbers are based
-           on. Four short columns and a version line.
+           The columns are RENDERED FROM shared/sitemap.js, the same
+           declaration the header menu reads. Two hand-written lists is
+           how this came to repeat the header's four destinations and
+           tell nobody anything.
 
-           Still not a second menu. The header carries the four
-           destinations with a hint each; these columns carry the two
-           that are not destinations at all — the basis of the figures,
-           and the standard they are built to — plus one link each to
-           the places a person actually asks for from the bottom of a
-           page. The check in scripts/smoke.mjs holds the line at
-           "fewer links than the header, and none of them duplicating
-           the whole menu".
+           It is not the header drawn twice: it carries About,
+           Methodology, Tutorials, Questions, the privacy notice and
+           the terms, none of which are working navigation. The check
+           in scripts/smoke.mjs holds that line.
            ============================================================ -->
       <footer class="footer">
         <div class="wrap">
@@ -185,35 +183,17 @@
                 priced out. Reports are held on the device that files them
                 and reach the safety office of that operator and nobody else.
               </p>
+              <p class="footer-note" id="footer-jurisdictions"></p>
             </div>
 
-            <div class="footer-col">
-              <h2 class="section-title">The basis</h2>
-              <p><a href="/#deadlines">Reporting deadlines in force</a></p>
-              <p id="footer-jurisdictions" class="footer-note"></p>
-            </div>
-
-            <div class="footer-col">
-              <h2 class="section-title">The standard</h2>
-              <p class="footer-line">
-                <strong>ICAO Annex 19 Amendment 2</strong>, applicable
-                <time datetime="2026-11-26">26 November 2026</time>, with
-                Doc 10159 and the Doc 9859 risk classification.
-              </p>
-            </div>
-
-            <div class="footer-col">
-              <h2 class="section-title">This device</h2>
-              <p class="footer-line">
-                Reports are held in this browser until they send.
-              </p>
-            </div>
+            <!-- Written by the shell from the architecture. -->
+            <div class="footer-cols" id="footer-columns"></div>
           </div>
 
           <div class="ver">
-            <span>UsalamaSMS · Safety intelligence for African skies</span>
+            <span>UsalamaSMS &middot; Safety intelligence for African skies</span>
             <span>
-              Regulatory figures verified
+              Built to ICAO Annex 19 Amendment 2 &middot; regulatory figures verified
               <time datetime="2026-08-11">11 August 2026</time>
             </span>
           </div>

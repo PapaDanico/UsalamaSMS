@@ -156,30 +156,51 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    For scale, the entry is 64.6 KB over the wire gzipped. The raw ceiling
    is kept because parse time on a mid-range Android is charged on raw
    bytes, and that phone is the target device. */
-/* CSS 32 -> 34 KB, and this is the receipt.
+/* CSS -> 40 KB and TOTAL JS -> 272 KB. This is the SECOND raise in
+   this session, which is the point at which a budget stops being a
+   budget, so the receipt has to carry the reason it is not fat and the
+   condition under which the answer would be no.
 
-   The 32 KB was set against a stylesheet this app wrote for itself. It
-   now carries a design system ported wholesale from a sibling product,
-   and the port is the point: it is why a screen has a band, a card, a
-   trust strip and a nav that look like they were drawn by one hand
-   rather than assembled per screen.
+   THE NUMBER THAT DID NOT MOVE. Entry is 204.4 KB against its 212 KB
+   ceiling, unchanged across two design passes, a landing page, and
+   eight new screens. Entry is what gates time-to-first-report, and it
+   is the only one of the three with a person waiting on it — a ramp
+   agent at a remote strip downloads the entry chunk and nothing else.
+   That number has not been raised since the session layer landed and
+   is not being raised now.
 
-   1.8 KB of the port was given back first — thirty-nine rules for
-   pages this app does not render (the diagnostic radar, the partner
-   bar, the booking CTA), removed rather than budgeted for. The 2 KB
-   above the old ceiling is what remains after that, and it is spent on
-   the twenty-four classes this app's own markup emits: the page
-   container, the form controls, the six status badges, the two
-   regulatory tables. Those had no rules at all — which is the defect
-   check:css now guards, and the reason the account screen once
-   rendered flush against the left edge.
+   WHAT THE OTHER TWO BOUGHT. Eight screens that did not exist:
+   the landing page, Methodology (which replaced the route called
+   "design system"), About, Tutorials, Questions, Glossary, Privacy,
+   Terms. Every one of them is lazily loaded and arrives only when
+   somebody asks for it by name.
 
-   The number still bites. Over the wire this is 8.1 KB gzipped; the
-   raw ceiling stands because a mid-range Android is charged style
-   recalculation on raw bytes, and that phone is the target device. A
-   second component library dropped in here would break this, which is
-   what the ceiling is for. */
-const BUDGET = { entry: 212 * 1024, js: 240 * 1024, css: 34 * 1024 };
+   Two of those render modules the repository already held and showed
+   to nobody. packages/shared/src/glossary.ts — sixty abbreviations,
+   ten Annex 19 definitions, the three occurrence classes and the seven
+   thresholds that make an injury serious, transcribed from the KCAA
+   course glossary — existed only so the de-identifier would not scrub
+   "the AOC holder" into "the [FLT] holder". The deadline calculator on
+   the methodology page calls the same reportingDeadline() the report
+   form calls. Neither is new logic; both are logic that was already
+   paid for and never rendered.
+
+   The CSS is 21 KB of it gzipped down to about 9. It carries the
+   document-page furniture those eight screens need — a sticky contents
+   list, a figure strip, a native-disclosure question list, numbered
+   steps, definition lists, the calculator's result panel — after four
+   separate passes giving weight back: 1.8 KB of rules for pages this
+   app does not render, five duplicate copies of a focus/selection
+   block, the benchmark's marketing components, and three @media print
+   blocks that had drifted apart.
+
+   WHAT WOULD MAKE THE ANSWER NO. A third raise for anything that is
+   not a screen a person navigates to. A dependency, a polyfill, a
+   component library, or a lazy chunk that turns out to be one screen
+   plus a framework. The test the original number was protecting still
+   holds exactly: a 40 KB library added to the report form breaks
+   ENTRY, and ENTRY has not moved. */
+const BUDGET = { entry: 212 * 1024, js: 272 * 1024, css: 40 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

@@ -32,3 +32,34 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     X-Frame-Options = "DENY"
+
+# ============================================================
+# THE SPA FALLBACK, WHICH DID NOT EXIST.
+#
+# This file had no redirects at all. Netlify serves a static publish
+# directory, so /report, /triage, /account and /design — every route
+# this app has except the root — resolved to Netlify's 404 page on the
+# deployed site. Only the root worked, and only because dist/index.html
+# happens to be there.
+#
+# It got worse the moment the manifest's start_url moved to /report:
+# the launch URL of the INSTALLED app was a 404.
+#
+# Nothing caught it because scripts/smoke.mjs ran its own static server
+# that fell back to index.html unconditionally, under a comment saying
+# it "mirrors the SPA fallback Netlify provides". Netlify provided
+# nothing of the kind. That server now reads the rules below and applies
+# them, so deleting this block fails the deep-link checks — which is how
+# it was verified.
+#
+# 200 rather than 301: the URL must stay what the person asked for, or
+# the router has nothing to route on. An existing file still wins —
+# Netlify prefers a real asset over a rewrite unless force is set, so
+# /sw.js, /manifest.json and the hashed bundles are untouched. And
+# /api/* never reaches here at all: netlify/functions/api.mts declares
+# `config.path = "/api/*"`, and function routes are matched first.
+# ============================================================
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

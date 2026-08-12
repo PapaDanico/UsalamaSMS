@@ -39,15 +39,15 @@ import {
    on a surface a customer reads has to be kept by something. */
 const TRUST = [
   {
-    text: 'Files with no signal — the report is on the device before it is anywhere else',
+    text: 'Records without a connection — the report is on the device before it is anywhere else',
     icon: '<path d="M5 12.5a7 7 0 0 1 14 0"/><path d="M8.5 16a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/><path d="M3 3l18 18"/>'
   },
   {
-    text: 'A name is attached only if the reporter says so — an anonymous report stores no identifier at all',
+    text: 'A name is attached only if the reporter chooses — an anonymous report stores no identifier at all',
     icon: '<path d="M12 3l7 3v6c0 4.2-2.9 7.9-7 9-4.1-1.1-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/>'
   },
   {
-    text: 'Every deadline computed from today, never stored — so it cannot go stale',
+    text: 'Every deadline computed on each read, never stored — so no figure can go stale',
     icon: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'
   },
   {
@@ -63,24 +63,25 @@ const TRUST = [
 const STEPS = [
   {
     n: '01',
-    title: 'Someone files',
-    body: `Three fields and a send. It works with the radio off, because the
-           report is written to the handset first and the network is an
-           afterthought rather than a precondition.`
+    title: 'A report is filed',
+    body: `Three fields and a send. It works with the radio off: the report is
+           written to the handset first, and the network is a consequence
+           rather than a precondition.`
   },
   {
     n: '02',
     title: 'The clock starts',
-    body: `If it is an occurrence, the reporting deadline for the operator's
-           authority is computed from the moment of awareness — and recomputed
-           every time the screen is opened, so it is never a stale number.`
+    body: `If the report is an occurrence, the window set by the operator's own
+           authority is computed from the moment of awareness, and recomputed on
+           every read. There is no stored deadline to go stale.`
   },
   {
     n: '03',
-    title: 'The safety office sees it',
-    body: `It arrives tenant-scoped on an append-only record whose hash chain
-           can be verified. Nothing is edited in place, which is the property
-           that makes an SMS record evidence rather than a spreadsheet.`
+    title: 'The safety office receives it',
+    body: `It arrives scoped to that operator alone, on an append-only record
+           whose hash chain can be verified independently. Nothing is edited in
+           place — which is what makes a safety record evidence rather than a
+           spreadsheet.`
   }
 ];
 
@@ -91,15 +92,15 @@ function Hero() {
         <span class="eyebrow">Aviation safety management</span>
         <h1>Safety intelligence for African skies</h1>
         <p class="lede">
-          The safety management system for operators the incumbents priced
-          out. It files without signal, computes the reporting deadline your
-          authority actually sets, and keeps every narrative inside your own
-          organisation.
+          A safety management system for operators of three to fifteen
+          aircraft. It records a report without a connection, computes the
+          reporting window the operator's own authority sets, and keeps every
+          narrative inside that operator's organisation.
         </p>
 
         <div class="hero-actions">
           <a class="btn btn-primary" href="/report">File a report</a>
-          <a class="btn btn-ghost-lt" href="/triage">See what is on this device</a>
+          <a class="btn btn-ghost-lt" href="/methodology">How the figures are derived</a>
         </div>
 
         <ul class="trust-strip">
@@ -122,7 +123,7 @@ function Steps() {
   return html`
     <section class="panel wrap">
       <span class="eyebrow">How it works</span>
-      <h2>Three steps, and none of them need a connection</h2>
+      <h2>Three steps, none of which require a connection</h2>
       <div class="step-grid">
         ${STEPS.map(
           (s) => html`<article class="card step">
@@ -193,17 +194,19 @@ function Deadlines() {
 function Standard() {
   return html`
     <section class="panel wrap">
-      <span class="eyebrow">Standard</span>
-      <h2>Built against the amendment that has not landed yet</h2>
+      <span class="eyebrow">The standard</span>
+      <h2>Built to the amendment before it becomes applicable</h2>
       <p class="lede lede--tight">
-        ICAO Annex 19 Amendment 2 is applicable
-        <time datetime="2026-11-26">26 November 2026</time>. This product is
-        built to it now, with Doc 10159 on safety intelligence and the Doc 9859
-        risk classification behind the matrix — so an operator adopting it is
-        not rebuilding in November.
+        ICAO Annex 19 Amendment 2 becomes applicable on
+        <time datetime="2026-11-26">26 November 2026</time> and introduces
+        safety intelligence as a formal provision, with Doc 10159 behind it.
+        Every established product in this market predates that amendment and
+        will add it later. An operator adopting this one is not rebuilding in
+        November.
       </p>
-      <p>
-        <a class="btn btn-secondary" href="/design">See the design system</a>
+      <p class="doc-actions">
+        <a class="btn btn-secondary" href="/methodology">Read the methodology</a>
+        <a class="btn btn-ghost" href="/about">About the practice</a>
       </p>
     </section>
   `;

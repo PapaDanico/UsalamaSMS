@@ -94,10 +94,11 @@ export async function render(outlet) {
     <section class="panel">
       <header class="page-head">
         <span class="eyebrow">This device</span>
-        <h1>Triage</h1>
+        <h1>Reports on this device</h1>
         <p class="lede">
-          Everything filed on this handset, sent or not. The count above
-          is the one that matters.
+          Everything filed on this handset, sent or not. A report that has
+          not reached the safety office has not been made, and the strip
+          above is what says so.
         </p>
       </header>
 

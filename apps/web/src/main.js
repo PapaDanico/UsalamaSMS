@@ -1,15 +1,20 @@
 /* ============================================================
    App shell.
 
-   Five routes, one outlet, and the sync strip above all of them.
+   One outlet, the sync strip above all of it, and the architecture
+   declared in shared/sitemap.js rather than here.
 
-     /          the landing page — what this is, and what its numbers
-                are based on
-     /report    the report form — the screen the product lives or dies by
-     /triage    what is on this device and what has not been sent
-     /account   sign in, so the queue can send
-     /design    the brand system rendering itself against the real
-                modules, so docs/04-BRAND.md can be checked by looking
+     /             the landing page — what this is, and what its
+                   numbers rest on
+     /report       the report form — the screen the product lives or
+                   dies by, and the manifest's start_url
+     /triage       what is on this device and what has not been sent
+     /account      sign in, so the queue can send
+
+   and, lazily, the reference: /methodology (which replaced the route
+   once called "design system" — a name that described the screen to
+   the people who built it and to nobody else), /tutorials, /faq,
+   /about, /privacy, /terms.
 
    The form moved off `/` and the manifest's start_url moved onto
    /report with it. An installed app opens on the form because somebody
@@ -36,9 +41,9 @@ import {
   isProvisional
 } from '../../../packages/shared/src/regulations.ts';
 import { watchForInstall, offerUpdate } from './shared/prompts.js';
+import { SECTIONS, WORKING_SECTIONS } from './shared/sitemap.js';
 import { render as renderHome } from './tools/home/index.js';
 import { render as renderReport } from './tools/report/index.js';
-import { render as renderTriage } from './tools/triage/index.js';
 import { render as renderLogin } from './tools/login/index.js';
 
 /* ------------------------------ Chrome ------------------------------ */
@@ -46,50 +51,56 @@ import { render as renderLogin } from './tools/login/index.js';
 document.getElementById('logo-slot').innerHTML = Lockup({ height: 34 }).toString();
 document.getElementById('footer-logo-slot').innerHTML = Lockup({ height: 30 }).toString();
 
-/* The destinations, declared once and rendered into two places. A phone
-   gets them in the bottom bar where a thumb is; a desktop gets them
-   inline in the top bar. Two lists would drift, and the one that
-   drifted would be the one nobody was looking at. */
-const DESTINATIONS = [
-  { href: '/report', label: 'File a report', hint: 'Three fields, thirty seconds, works with no signal' },
-  { href: '/triage', label: 'Triage', hint: 'Everything filed on this device, sent or not' },
-  { href: '/account', label: 'Account', hint: 'Sign in so queued reports can send' },
-  { href: '/design', label: 'Design system', hint: 'The brand rendered against the real modules' }
-];
-
-/* Inline on a wide screen. Short labels here — the header has room for
-   four words, not for four sentences. */
-document.getElementById('nav').innerHTML = DESTINATIONS.map(
-  (d) => html`<a href="${d.href}">${d.label.replace('File a report', 'Report')}</a>`
-).join('');
-
 /* ============================================================
-   THE MENU IS THE NAVIGATION, and it lives in the header.
+   THE NAVIGATION, from one declaration.
 
-   This shipped with a bottom tab bar, on the argument that a thumb
-   cannot reach the top of a 6.7-inch screen. That argument is real and
-   it lost to a plainer one: the header is where a person looks for the
-   way around, the footer was repeating the same four links as a second
-   menu, and neither was telling them anything. The benchmark puts Menu
-   in the header; so does this now, and the footer becomes information.
+   shared/sitemap.js holds the whole information architecture. The
+   header renders the sections marked `working` — what somebody uses
+   the product to do, and the reference they reach for while doing it.
+   The footer renders all four as columns. Two hand-written lists is
+   how the footer came to repeat the header's four destinations and
+   tell nobody anything, and the half nobody looks at is the half that
+   goes stale.
 
-   The lockup is the way home. It is an <a href="/"> in every header on
-   every screen, which is why the landing page is not also a
-   destination in this list — a menu that offers "Home" beside a logo
-   that already goes there is a list padded to look fuller.
+   THE MENU IS THE NAVIGATION, and it lives in the header. This shipped
+   with a bottom tab bar, on the argument that a thumb cannot reach the
+   top of a 6.7-inch screen. That argument is real and it lost to a
+   plainer one: the header is where a person looks for the way around.
 
-   The panel carries a HINT per destination, which the tab bar could
-   never have shown. "Triage" means nothing to somebody on their first
-   shift; "everything filed on this device, sent or not" does.
+   The lockup is the way home — an <a href="/"> in every header on
+   every screen, which is why the landing page is not also an item in
+   the list. A menu offering "Home" beside a logo that already goes
+   there is a list padded to look fuller.
+
+   Each item carries a HINT, which the tab bar could never have shown.
+   "Triage" means nothing to somebody on their first shift;
+   "everything filed on this handset, sent or not" does.
    ============================================================ */
+
+/* Inline on a wide screen. SHORT labels here — the header has room for
+   four words, not for four sentences. Only the platform's own
+   destinations plus the methodology, because eight inline links is a
+   menu bar, and a menu bar on a safety tool is somebody hunting. */
+document.getElementById('nav').innerHTML = [
+  ...SECTIONS[0].items,
+  SECTIONS[1].items[0]
+]
+  .map((d) => html`<a href="${d.href}">${d.short ?? d.label}</a>`)
+  .join('');
+
 const menuPanel = document.getElementById('menu-panel');
 const menuToggle = document.getElementById('menu-toggle');
 
-menuPanel.innerHTML = DESTINATIONS.map(
-  (d) => html`<a class="nav-item" href="${d.href}">
-      <span class="nav-item-title">${d.label}</span>
-      <span class="nav-item-summary">${d.hint}</span>
-    </a>`
+menuPanel.innerHTML = WORKING_SECTIONS.map(
+  (section) => html`<div class="nav-group">
+      <p class="nav-group__title">${section.title}</p>
+      ${section.items.map(
+        (d) => html`<a class="nav-item" href="${d.href}">
+          <span class="nav-item-title">${d.label}</span>
+          <span class="nav-item-summary">${d.hint}</span>
+        </a>`
+      )}
+    </div>`
 ).join('');
 
 function setMenu(open) {
@@ -120,27 +131,40 @@ document.addEventListener('keydown', (event) => {
 });
 
 /* ============================================================
-   THE FOOTER'S ONE COMPUTED LINE.
+   THE FOOTER, RENDERED FROM THE SAME DECLARATION.
 
-   The five regulatory rows moved to the landing page, which is where a
-   person checking a deadline can be sent with a URL. What stays here is
-   the one fact the footer of every screen owes a reader: how many
-   jurisdictions the figures cover, and how many of those are still
-   provisional.
+   Four columns, one per section of the architecture, so the footer
+   cannot fall out of step with the header. It is not the header drawn
+   twice — it carries About, Methodology, Tutorials, Questions, the
+   privacy notice and the terms, none of which are working navigation —
+   and scripts/smoke.mjs holds that line by asserting the footer
+   carries links the header does not.
 
-   Charter rule 10 applies to it exactly as it applied to the rows.
-   Typing "five jurisdictions" here would be a second place the count
-   lives, and the one nobody updates when a sixth is added — so it is
-   counted from MOR_OBLIGATIONS, which is also what decides whether the
-   sentence needs a caveat at all.
+   No hints here. A hint under a footer link is a paragraph in a column
+   eighty pixels wide.
+
+   THE ONE COMPUTED LINE. The five regulatory rows moved to the landing
+   page, which is where a person checking a deadline can be sent a URL.
+   What stays is the fact the footer of every screen owes a reader: how
+   many jurisdictions the figures cover and how many are provisional.
+   Charter rule 10 — typing "five" here would be a second place the
+   count lives, and the one nobody updates when a sixth is added.
    ============================================================ */
+document.getElementById('footer-columns').innerHTML = SECTIONS.map(
+  (section) => html`<div class="footer-col">
+      <h2 class="section-title">${section.title}</h2>
+      ${section.items.map((d) => html`<p><a href="${d.href}">${d.label}</a></p>`)}
+    </div>`
+).join('');
+
 const jurisdictions = Object.keys(MOR_OBLIGATIONS);
 const provisional = jurisdictions.filter(isProvisional);
 
 document.getElementById('footer-jurisdictions').textContent =
-  `${jurisdictions.length} jurisdiction${jurisdictions.length === 1 ? '' : 's'}` +
+  `Deadlines cover ${jurisdictions.length} jurisdiction` +
+  (jurisdictions.length === 1 ? '' : 's') +
   (provisional.length
-    ? `, of which ${provisional.length} are provisional pending a read of the primary instrument.`
+    ? `, of which ${provisional.length} carry a provisional figure pending a reading of the primary instrument.`
     : ', every one read against its primary instrument.');
 
 /* Reveal the shell and retire the boot screen. Done here rather than in
@@ -153,38 +177,113 @@ document.getElementById('boot')?.remove();
 /* ------------------------------ Routes ------------------------------ */
 const outlet = document.getElementById('main');
 
+/* One place where a lazily-loaded screen is awaited, and one place
+   where failing to load one is reported. Written once because a route
+   that silently renders nothing when its chunk fails is indistinguishable
+   from a route that rendered an empty screen on purpose. */
+function lazy(el, load) {
+  el.innerHTML = '<div class="panel wrap"><p class="lede">Loading…</p></div>';
+  load().then(
+    (render) => render(el),
+    () => {
+      el.innerHTML =
+        '<section class="panel wrap"><h1>This page needs a connection</h1>' +
+        '<p class="notice notice--error">It is fetched when asked for rather than ' +
+        'carried on every screen, so it needs signal the first time. Filing a report ' +
+        'does not — that works offline and is on this device already.</p></section>';
+    }
+  );
+}
+
 router
   .register('/', (el) => renderHome(el), { title: 'Safety intelligence for African skies' })
   .register('/report', (el) => renderReport(el), { title: 'File a report' })
-  .register('/triage', (el) => void renderTriage(el), { title: 'Triage' })
+  /* LAZY, and this was the entry budget's last 4 KB.
+
+     The queue is a working destination and splitting it is not free —
+     it costs a round trip the first time somebody opens it. It is
+     still right: the entry chunk gates time-to-FIRST-REPORT, the
+     manifest starts an installed app on /report, and a person who has
+     just filed something has a connection often enough that the chunk
+     is there before they look. What the entry cannot afford is a
+     screen nobody has asked for yet. */
+  .register(
+    '/triage',
+    (el) => lazy(el, () => import('./tools/triage/index.js').then((m) => (o) => void m.render(o))),
+    { title: 'Reports on this device' }
+  )
   // NOT a guard in front of the report form, deliberately. Filing must
   // never require a password — see the header of tools/login. This route
   // is where someone goes to make the queue send, not a gate they pass
   // through to reach the product.
   .register('/account', (el) => renderLogin(el), { title: 'Sign in' })
-  /* LAZY. The design route renders the whole brand system — the risk
-     matrix, the obligation table, every token swatch — and it exists so
-     docs/04-BRAND.md can be checked by looking. A ramp agent never opens
-     it, and it was riding in the bundle that has to load over a bad link
-     before anyone can file anything.
+  /* LAZY, all of them. A ramp agent filing a hazard at a remote strip
+     opens none of these, and every kilobyte here would otherwise be
+     charged to the screen they do open — which loads over the link that
+     is the reason this product exists.
 
-     Split out, it comes back over the network when someone asks for it,
-     which is a fair trade for a screen only we use. */
+     Each carries its own failure message rather than a shared one,
+     because "this screen could not be loaded" on a privacy notice and
+     on the methodology are different problems for the reader. */
   .register(
-    '/design',
-    (el) => {
-      el.innerHTML = '<p class="lede">Loading the design system…</p>';
-      import('./tools/design/index.js').then(
-        (mod) => mod.render(el),
-        () => {
-          el.innerHTML =
-            '<section class="panel"><h1>Design system</h1>' +
-            '<p class="notice notice--error">This screen could not be loaded. ' +
-            'It is fetched on demand and needs a connection the first time.</p></section>';
-        }
-      );
-    },
-    { title: 'Design system' }
+    '/methodology',
+    (el) => lazy(el, () => import('./tools/methodology/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Methodology' }
+  )
+  .register(
+    '/glossary',
+    (el) => lazy(el, () => import('./tools/glossary/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Glossary' }
+  )
+  .register(
+    '/about',
+    (el) =>
+      lazy(el, () =>
+        Promise.all([import('./tools/pages/index.js'), import('./content/pages.js')]).then(
+          ([mod, content]) => (o) => mod.renderPage(o, content.PAGES['/about'])
+        )
+      ),
+    { title: 'About us' }
+  )
+  .register(
+    '/tutorials',
+    (el) =>
+      lazy(el, () =>
+        Promise.all([import('./tools/pages/index.js'), import('./content/pages.js')]).then(
+          ([mod, content]) => (o) => mod.renderPage(o, content.PAGES['/tutorials'])
+        )
+      ),
+    { title: 'Tutorials' }
+  )
+  .register(
+    '/faq',
+    (el) =>
+      lazy(el, () =>
+        Promise.all([import('./tools/pages/index.js'), import('./content/pages.js')]).then(
+          ([mod, content]) => (o) => mod.renderPage(o, content.PAGES['/faq'])
+        )
+      ),
+    { title: 'Questions, answered straight' }
+  )
+  .register(
+    '/privacy',
+    (el) =>
+      lazy(el, () =>
+        Promise.all([import('./tools/pages/index.js'), import('./content/pages.js')]).then(
+          ([mod, content]) => (o) => mod.renderPage(o, content.PAGES['/privacy'])
+        )
+      ),
+    { title: 'Privacy notice' }
+  )
+  .register(
+    '/terms',
+    (el) =>
+      lazy(el, () =>
+        Promise.all([import('./tools/pages/index.js'), import('./content/pages.js')]).then(
+          ([mod, content]) => (o) => mod.renderPage(o, content.PAGES['/terms'])
+        )
+      ),
+    { title: 'Terms of use' }
   )
   .setNotFound((el) => {
     el.innerHTML = html`
@@ -199,6 +298,7 @@ router
   .start(outlet);
 
 /* Mark the current route in the nav after every navigation. */
+
 function markCurrentNav() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
   for (const link of document.querySelectorAll('#nav a, #menu-panel a')) {

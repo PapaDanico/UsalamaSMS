@@ -58,8 +58,8 @@ export function render(outlet) {
              re-read because nothing pointed at it. Charter rule 10: a
              count printed on a surface is derived. -->
         <p class="lede">
-          <span id="report-required-count">Three</span> required fields. It
-          sends itself when there is signal.
+          <span id="report-required-count">Three</span> required fields. The
+          report is held on this device and sends when there is signal.
         </p>
       </header>
 

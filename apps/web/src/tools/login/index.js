@@ -39,15 +39,15 @@ const REASONS = {
    customer reads has to name one. */
 const TRUST = [
   {
-    text: 'Files with no signal — the report is on your device before it is anywhere else',
+    text: 'Records without a connection — the report is on this device before it is anywhere else',
     icon: '<path d="M5 12.5a7 7 0 0 1 14 0"/><path d="M8.5 16a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/><path d="M3 3l18 18"/>'
   },
   {
-    text: 'Your name is attached only if you say so — an anonymous report stores no identifier at all',
+    text: 'A name is attached only if you choose — an anonymous report stores no identifier at all',
     icon: '<path d="M12 3l7 3v6c0 4.2-2.9 7.9-7 9-4.1-1.1-7-4.8-7-9V6z"/><path d="M9 12l2 2 4-4"/>'
   },
   {
-    text: 'Every reporting deadline computed from today, never stored — so it cannot go stale',
+    text: 'Every reporting deadline computed on each read, never stored — so no figure goes stale',
     icon: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'
   },
   {
@@ -118,14 +118,15 @@ function renderForm(outlet) {
   outlet.innerHTML = html`
     ${Banner(
       'Sign in',
-      html`Reports are held on this device until someone signs in, so the safety
-        office knows which organisation they belong to.`
+      html`Reports are held on this device until somebody signs in. Until then the
+        system does not know which operator they belong to, and has nowhere to
+        send them.`
     )}
     <section class="panel wrap">
       <p class="lede lede--tight">
-        <strong>You do not need to sign in to file a report.</strong> Filing
-        works with no account and no signal; signing in is what sends what is
-        already queued.
+        <strong>Signing in is not required to file a report.</strong> Filing
+        works with no account and no connection; signing in is what sends what
+        is already queued.
       </p>
 
       <form id="login-form" class="card" novalidate>
