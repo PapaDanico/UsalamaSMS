@@ -1406,6 +1406,104 @@ try {
     );
   });
 
+  await check('AN INDICATOR IS JUDGED AGAINST THE PERIODS BEFORE IT', async () => {
+    // The claim on this screen, and the one that would be easiest to
+    // fake: alert levels computed from the operator's own history rather
+    // than picked. Six steady quarters then a spike must alert; the same
+    // six quarters with an ordinary seventh must not, or the tool is
+    // just colouring in the most recent bar.
+    await page.goto(BASE + '/toolkits/spi', { waitUntil: 'networkidle' });
+    await page.evaluate(() => localStorage.removeItem('usalamasms.spi'));
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForSelector('#spi-new', { timeout: 5000 });
+
+    await page.fill('#spi-new input[name="name"]', 'Unstable approaches');
+    await page.fill('#spi-new input[name="exposureUnit"]', 'approaches');
+    await page.selectOption('#spi-new select[name="owner"]', 'SAFETY_MANAGER');
+    await page.click('#spi-new button[type="submit"]');
+    await page.waitForSelector('[data-add-period]', { timeout: 5000 });
+
+    const addPeriod = async (label, events) => {
+      await page.fill('[data-add-period] input[name="label"]', label);
+      await page.fill('[data-add-period] input[name="events"]', String(events));
+      await page.fill('[data-add-period] input[name="exposure"]', '1000');
+      await page.click('[data-add-period] button[type="submit"]');
+      await page.waitForTimeout(120);
+    };
+
+    for (const [i, n] of [4, 4, 4, 4, 4, 4].entries()) await addPeriod(`Q${i + 1}`, n);
+
+    // Six periods of baseline and nothing judged yet — the screen must
+    // say so rather than drawing a confident line through them.
+    let head = ((await page.locator('.cov__has').first().textContent()) ?? '').trim();
+    const noLevels = ((await page.locator('.cov__missing').first().textContent()) ?? '').trim();
+    assert(
+      /Recording, with no alert levels yet/.test(head),
+      `with only a baseline the card reads "${head.slice(0, 80)}"`
+    );
+    assert(
+      /No alert levels yet/.test(noLevels) && /of 6/.test(noLevels),
+      `the card does not say how much history it still needs: "${noLevels.slice(0, 90)}"`
+    );
+
+    // An ordinary seventh: still quiet.
+    await addPeriod('Q7', 4);
+    head = ((await page.locator('.cov__has').first().textContent()) ?? '').trim();
+    assert(
+      !/^Alert/.test(head),
+      `a period identical to its baseline raised an alert: "${head.slice(0, 80)}"`
+    );
+
+    // And a spike: loud, with the criterion named in words rather than
+    // signalled by a colour.
+    await addPeriod('Q8', 40);
+    const card = ((await page.locator('.reg-entry').first().textContent()) ?? '').replace(
+      /\s+/g,
+      ' '
+    );
+    assert(/Alert/.test(card), `the spike did not alert: "${card.slice(0, 140)}"`);
+    assert(
+      /beyond 3σ/i.test(card),
+      'the alert does not name which criterion was crossed, only that one was'
+    );
+    const alerting = (await page.locator('#spi-strip .stat__value').nth(2).textContent()) ?? '';
+    assert(alerting.trim() === '1', `"alerting now" reads ${alerting.trim()}, expected 1`);
+
+    // The chart is decoration and says so; the numbers are in the table.
+    assert(
+      (await page.locator('.spi-chart[aria-hidden="true"]').count()) === 1,
+      'the trend chart is exposed to assistive technology as though it carried the data'
+    );
+    const rows = await page.locator('.oblig-table tbody tr').count();
+    assert(rows === 8, `${rows} periods in the table, expected 8`);
+
+    // It survives a reload, and it sent nothing to do any of it.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForSelector('.reg-entry', { timeout: 5000 });
+    assert(
+      (await page.locator('.oblig-table tbody tr').count()) === 8,
+      'the periods did not survive a reload'
+    );
+
+    // Printed, it is the indicator and not the forms that produce it.
+    await page.emulateMedia({ media: 'print' });
+    const printed = await page.evaluate(() => {
+      const vis = (el) => Boolean(el && getComputedStyle(el).display !== 'none');
+      return {
+        newForm: vis(document.querySelector('#spi-new')),
+        periodForm: vis(document.querySelector('[data-add-period]')),
+        table: vis(document.querySelector('.oblig-table')),
+        rows: document.querySelectorAll('.oblig-table tbody tr').length
+      };
+    });
+    await page.emulateMedia({ media: 'screen' });
+    assert(!printed.newForm, 'the blank add-an-indicator form prints');
+    assert(!printed.periodForm, 'the blank add-a-period form prints under every indicator');
+    assert(printed.table && printed.rows === 8, 'the periods do not print');
+
+    await page.evaluate(() => localStorage.removeItem('usalamasms.spi'));
+  });
+
   await check('A TOOLKIT NOBODY CAN FIND IN THE MENU IS NOT SHIPPED', async () => {
     // Found by a probe, not by a test. The safety risk assessment was
     // built, routed, linked from the coverage page and reachable by

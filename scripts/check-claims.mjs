@@ -460,6 +460,43 @@ assert(
   `README says ${integrationStated}, the suites define ${integrationCount}`
 );
 
+/* ---------------- The coverage figure ----------------
+
+   The most consequential number this repository publishes. "N of 12"
+   is an operator's regulatory position, and the README states it in
+   prose while /coverage computes it from COVERAGE. Until now the only
+   thing holding them together was a unit test asserting a literal 2,
+   which is a number typed in a second place: move an element and the
+   test fails, somebody edits the literal, and the README keeps saying
+   what it said. The half-credit rule for PARTIAL is the product's own
+   and is stated on the page; what is checked here is that the sentence
+   an operator reads is the arithmetic the table performs.
+
+   Read as text rather than imported, like every other source this gate
+   inspects — it runs before the build. */
+const coverageSource = read('packages/shared/src/maturity.ts');
+const countState = (state) =>
+  (coverageSource.match(new RegExp(`state:\\s*"${state}"`, 'g')) ?? []).length;
+const coverageBuilt = countState('BUILT');
+const coveragePartial = countState('PARTIAL');
+const coverageTotal =
+  coverageBuilt + coveragePartial + countState('ASSESSED_ONLY') + countState('NOT_BUILT');
+const coverageFigure = coverageBuilt + coveragePartial / 2;
+
+assert(
+  'every one of the twelve elements has a coverage entry',
+  coverageTotal === 12,
+  `${coverageTotal} coverage entries for 12 elements`
+);
+
+const coverageStated = statedCount(/\*\*([\d.]+) of 12\*\*/, 'coverage figure');
+assert(
+  'README coverage figure matches the coverage table',
+  coverageStated === coverageFigure,
+  `README says ${coverageStated} of 12, the table computes ${coverageFigure} ` +
+    `(${coverageBuilt} built + ${coveragePartial} partial at half credit)`
+);
+
 /* This gate's own total is only known once every assertion has run, so
    it is checked at the very end, below. */
 const claimsStated = statedCount(/(\d+) assertions that the registries/, 'claims assertion count');

@@ -262,6 +262,11 @@ router
     { title: 'Safety risk assessment' }
   )
   .register(
+    '/toolkits/spi',
+    (el) => lazy(el, () => import('./tools/spi/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Safety performance indicators' }
+  )
+  .register(
     '/toolkits/maturity',
     (el) => lazy(el, () => import('./tools/maturity/index.js').then((m) => (o) => m.render(o))),
     { title: 'SMS maturity assessment' }

@@ -1772,6 +1772,44 @@ html { scroll-padding-top: var(--us-chrome); }
 .badge[data-status='SYNCING'] { background: rgb(var(--us-teal-rgb) / 0.12); color: var(--us-teal-text); }
 .badge[data-status='PROTECTED'] { background: rgb(var(--us-teal-rgb) / 0.12); color: var(--us-teal-text); }
 
+/* ---- The safety performance indicator chart ------------------------
+
+   DECORATION, and marked aria-hidden in the markup. Every number it
+   draws is in the table underneath, because a trend that exists only as
+   a coloured line excludes the person reading a monochrome printout and
+   the person using a screen reader — and on this screen those are the
+   safety manager taking the pack to a review and whoever they hand it
+   to. The point marker carries its band as a data attribute, so shape
+   and position carry it too, not colour alone. */
+.spi-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: var(--us-space-3) 0;
+  overflow: visible;
+}
+.spi-chart__line { fill: none; stroke: var(--us-teal); stroke-width: 1.6; }
+.spi-chart__avg { stroke: var(--us-ink-600); stroke-width: 1; }
+.spi-chart__sd { stroke: var(--us-border-strong); stroke-width: 1; stroke-dasharray: 4 3; }
+.spi-chart__pt { fill: var(--us-teal); }
+.spi-chart__pt[data-sigma='1'] { fill: var(--us-gold-text); r: 4; }
+.spi-chart__pt[data-sigma='2'] { fill: var(--us-gold-text); r: 5; }
+.spi-chart__pt[data-sigma='3'] { fill: var(--us-ochre-text); r: 6; }
+
+/* One period, added inline on the indicator it belongs to. Three narrow
+   fields and two buttons; on a handset they stack, which is the default,
+   so this only has to stop them stacking on anything wider. */
+.spi-period {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+  align-items: flex-end;
+  margin-top: var(--us-space-3);
+  padding-top: var(--us-space-3);
+  border-top: 1px solid var(--us-border);
+}
+.spi-period .field { flex: 1 1 7rem; margin: 0; }
+
 /* The two tables on the design screen. `table` is already styled; these
    carry only what makes a regulatory obligation and a 5x5 matrix
    readable on a 320px screen. */

@@ -341,7 +341,40 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    nothing else. Seven raises in and that number has moved 8 KB in
    total, across roughly twenty screens. It is the one that was worth
    defending. --------------------------------------------------- */
-const BUDGET = { entry: 212 * 1024, js: 332 * 1024, css: 46 * 1024 };
+/* ---------------------------------------------------------------
+   THE EIGHTH RAISE: TOTAL -> 352 KB, CSS -> 47 KB. Safety performance
+   indicators.
+
+   Earns it on the original rule: /toolkits/spi is a screen a person
+   navigates to, lazily loaded, and it closes the last of the three
+   elements this product could measure but not do.
+
+   WHAT IT IS. Annex 19 element 3.1 — indicators with targets and alert
+   levels, reviewed on a cadence. The coverage table has carried
+   "no dashboard, no trend, no alert" against it since the table was
+   written, and it is the element an auditor reaches for immediately
+   after the reporting queue: a reporting system that produces no trend
+   is a filing cabinet.
+
+   The alert levels are computed from the operator's own history rather
+   than picked — average plus one, two and three standard deviations,
+   with each period judged against the periods BEFORE it. That last
+   clause is the whole method and the reason this is a module with
+   twenty-eight tests rather than a chart: fold a bad quarter into the
+   baseline that judges it and the average rises, the level rises with
+   it, and the tool reports that nothing happened.
+
+   WHAT THE CSS BOUGHT. 1 KB, for the trend chart and the inline
+   period row. The chart is aria-hidden decoration and every number it
+   draws is in the table underneath — on this screen the reader is a
+   safety manager with a monochrome printout in a review, so the line
+   cannot be the only place the trend exists.
+
+   ENTRY: 209.5 KB of 212, up 0.4 KB — the dynamic import and nothing
+   else. Eight raises in, and the number a reporter at a strip pays has
+   moved 8.4 KB across roughly twenty-two screens.
+   --------------------------------------------------------------- */
+const BUDGET = { entry: 212 * 1024, js: 352 * 1024, css: 47 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

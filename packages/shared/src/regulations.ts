@@ -229,8 +229,37 @@ export const STANDARDS: readonly Standard[] = [
     title: "Safety Management Manual",
     usedFor:
       "The 5×5 risk matrix, cell by cell, and the tolerability bands the register " +
-      "and the assessor both compute from.",
+      "and the assessor both compute from. Also the safety risk management process " +
+      "the change assessment follows, and the vocabulary the indicators use — a " +
+      "safety performance indicator, a target, and the split between high- and " +
+      "lower-consequence indicators.",
     verifiedOn: "2026-08-11",
+  },
+  {
+    /* SECTION-LEVEL, and for the same reason as the IOSA row rather
+       than a different one. The standard-deviation method behind the
+       alert levels — average plus one, two and three σ of the preceding
+       periods, with the three crossing criteria — is the basic
+       statistical trending method State and industry guidance builds
+       on, and the toolkit computes it. What this product has NOT done
+       is read the primary instrument's own wording of it, and the
+       document is not freely available to do so from here.
+
+       Citing a numbered provision on that basis would be the 72-hour
+       mistake again: a precise-looking reference to a page nobody
+       opened. So the reference is to the guidance area, the toolkit
+       says on its own face which half is ICAO's and which is method,
+       and this row is the record of what remains to be verified. */
+    body: "ICAO",
+    reference: "Doc 9859, 4th edition — safety performance monitoring",
+    title: "Safety Management Manual — indicators, targets and alert levels",
+    usedFor:
+      "The shape of element 3.1: indicators with targets and alert levels reviewed " +
+      "on a cadence. The standard-deviation method the toolkit computes is the " +
+      "general statistical trending method rather than a quoted provision — the " +
+      "primary wording has not been read, and the toolkit says so where it is used.",
+    verifiedOn: "2026-08-12",
+    sectionLevel: true,
   },
   {
     body: "ICAO",
