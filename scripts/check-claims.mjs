@@ -187,6 +187,38 @@ assert(
   `${provisionalInCode} PROVISIONAL markers found; the document claims three jurisdictions are unverified`
 );
 
+/* ============================================================
+   FILING SENDS, IT DOES NOT ONLY SCHEDULE.
+
+   requestBackgroundSync once registered a Background Sync and, if that
+   succeeded, did nothing else — the immediate flush lived in the catch
+   block, so it ran only where the API is MISSING. On every current
+   Chromium, and therefore on the mid-range Android this product is
+   designed for, filing a report queued it and sent nothing while the
+   form said "Report saved and sending now".
+
+   WHY THIS IS A SOURCE ASSERTION rather than a browser one. Headless
+   Chromium fires the registered sync event almost immediately, so a
+   smoke check cannot tell an immediate flush from a background one —
+   it passes either way, which was demonstrated by deleting the flush
+   and watching the suite stay green. The difference only appears on a
+   real device, where the browser may wait minutes or never.
+
+   So the property is asserted where it is visible: the flush must be
+   called on the ordinary path, not inside the catch. Crude, and it
+   fails on exactly the edit that caused the defect — which is more
+   than the environment can offer.
+   ============================================================ */
+const offline = read('apps/web/src/shared/offline.ts');
+const bgSync = /export async function requestBackgroundSync[\s\S]*?\n}/.exec(offline)?.[0] ?? '';
+const beforeCatch = bgSync.split('catch')[0] ?? '';
+assert(
+  'filing sends immediately rather than only scheduling a background sync',
+  /flushOutbox\s*\(/.test(beforeCatch),
+  'requestBackgroundSync does not call flushOutbox outside its catch block — ' +
+    'on a device that HAS Background Sync, filing would queue the report and send nothing'
+);
+
 const charter = read('docs/DIAGNOSTIC-CHARTER.md');
 assert(
   'the charter is the three-product version',

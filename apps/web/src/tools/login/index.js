@@ -189,14 +189,12 @@ function renderForm(outlet) {
     // with reports queued did it BECAUSE of the queued reports, and
     // making them wait for the next online event to find out whether it
     // worked is the kind of small silence this product cannot afford.
+    // flushOutbox dispatches usalamasms:sync-changed itself when the
+    // queue actually moved — see announce() in shared/offline.ts. This
+    // used to dispatch it here, which worked and left every other
+    // caller to remember; the file-a-report path did not, and the strip
+    // sat on "1 report waiting to send" for a report that had arrived.
     const outcome = await flushOutbox();
-
-    // AFTER the flush, not before. The session-changed event above fires
-    // while the batch is still in flight, so the strip repaints from the
-    // pre-flush queue and then never hears again — leaving "1 report
-    // waiting to send" on screen for a report that has just arrived.
-    // Small, and precisely the class of lie this strip exists to avoid.
-    window.dispatchEvent(new CustomEvent('usalamasms:sync-changed'));
     render(outlet);
 
     if (outcome.sent > 0) {

@@ -84,6 +84,69 @@ function classesDefined() {
   return defined;
 }
 
+/* ============================================================
+   IT HAS TO PARSE, and a warning is not a guard.
+
+   Removing one selector from a grouped rule left `.btn:hover,
+   .card:hover,` dangling with a trailing comma and no block. CSS
+   error recovery swallows everything up to the next brace, so the
+   whole reduced-motion block was dropped from the bundle — somebody
+   who asks their operating system for less motion kept getting the
+   card lift and the button transform.
+
+   The build DID say so. esbuild printed `Unexpected "}"` as a
+   WARNING, on a line of a concatenated stdin that names no source
+   file, in the middle of a successful build that exits 0. Nobody read
+   it, including me, for several commits.
+
+   So the parse result is a gate rather than a note. Charter rule 11:
+   a check that stops checking must fail.
+   ============================================================ */
+async function mustParse() {
+  /* esbuild's JS API, not `npx esbuild`.
+
+     The first version spawned a subprocess, which added a PATH
+     dependency and a package-resolution step to a gate whose whole job
+     is to be reliable — and it read the wrong stream, so it could not
+     fail at all until that was found. The API returns structured
+     warnings, so there is nothing to regex out of stderr and nothing
+     to resolve at run time. */
+  const esbuild = await import('esbuild');
+  const problems = [];
+
+  for (const sheet of [join(SRC, 'style.css'), join(SRC, 'fonts.css')]) {
+    const css = readFileSync(sheet, 'utf8');
+    let result;
+    try {
+      result = await esbuild.transform(css, { loader: 'css', logLevel: 'silent' });
+    } catch (error) {
+      const detail = (error.errors ?? [])
+        .map((e) => `${sheet}:${e.location?.line ?? '?'} ${e.text}`)
+        .join('\n');
+      problems.push(detail || `${sheet}: ${error.message}`);
+      continue;
+    }
+    for (const warning of result.warnings ?? []) {
+      problems.push(
+        `${sheet}:${warning.location?.line ?? '?'}:${warning.location?.column ?? 0} ` +
+          `${warning.text}\n    ${warning.location?.lineText?.trim() ?? ''}`
+      );
+    }
+  }
+  return problems;
+}
+
+const parseProblems = await mustParse();
+if (parseProblems.length) {
+  console.error('check:css FAILED — the stylesheet does not parse.\n');
+  console.error(parseProblems.join('\n\n'));
+  console.error(
+    '\nCSS error recovery discards everything up to the next brace, so a rule ' +
+      'that does not parse is a rule silently missing from the bundle.'
+  );
+  process.exit(1);
+}
+
 const files = walk(SRC);
 const used = classesUsed(files);
 const defined = classesDefined();

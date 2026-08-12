@@ -56,8 +56,8 @@ CAPA or SPI workflow. See `docs/02-STRATEGY.md`.
 npm install
 npm run check          # prisma generate, typecheck, brand gate, claims gate, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 49 assertions that the registries match the docs
-npm test               # 104 unit tests
+npm run check:claims   # 50 assertions that the registries match the docs
+npm test               # 117 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run test:integration   # 52 checks against a real Postgres
@@ -66,7 +66,7 @@ npm run seed               # first org + users; prints passwords once
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 36 checks, including filing a report with the network cut and
+— 40 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 

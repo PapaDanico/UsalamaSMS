@@ -455,6 +455,52 @@ try {
     }
   });
 
+  await check('WCAG 2.2 SC 2.5.8 — every standalone target is at least 24px', async () => {
+    // The existing 44px check below measures the report form's controls.
+    // This one sweeps EVERY route, because the document pages added a
+    // class of target the form does not have: a small standalone link
+    // at the end of an answer. "Link to this answer" shipped at 18px.
+    //
+    // Two exemptions, both in the success criterion rather than
+    // invented here:
+    //   · a link whose size is constrained by the line-height of the
+    //     sentence around it — an inline link in prose;
+    //   · a control whose hit area is a label wrapping it, which is how
+    //     the HRC chips work: the input is 1px and the label is 48.
+    // A check that ignored those would fail on conformant markup, and a
+    // check that ignored neither would be noise nobody acts on.
+    const routes = ['/', '/report', '/triage', '/account', '/methodology',
+                    '/glossary', '/tutorials', '/faq', '/about', '/privacy', '/terms'];
+    const small = [];
+
+    for (const route of routes) {
+      const probe = await page.context().newPage();
+      await probe.setViewportSize({ width: 390, height: 844 });
+      await probe.goto(BASE + route, { waitUntil: 'networkidle' });
+      const found = await probe.evaluate(() => {
+        const main = document.querySelector('#main');
+        const inlineLink = (el) => el.tagName === 'A' && el.closest('p,li,dd,summary');
+        const wrappedByLabel = (el) => el.closest('label') && el.closest('label') !== el;
+        return [...main.querySelectorAll('a[href],button,summary,input,select,textarea')]
+          .filter((el) => {
+            const box = el.getBoundingClientRect();
+            if (box.width === 0 || box.height === 0) return false;
+            if (inlineLink(el) || wrappedByLabel(el)) return false;
+            return box.width < 24 || box.height < 24;
+          })
+          .map((el) => {
+            const box = el.getBoundingClientRect();
+            return `${el.tagName}.${(el.className || '').toString().split(' ')[0]} ` +
+                   `${Math.round(box.width)}x${Math.round(box.height)}`;
+          });
+      });
+      await probe.close();
+      for (const f of found) small.push(`${route}: ${f}`);
+    }
+
+    assert(small.length === 0, `targets under 24px:\n  ${small.join('\n  ')}`);
+  });
+
   await check('tap targets are at least 44px', async () => {
     // OPEN THE OPTIONAL SECTION FIRST. The HRC chips live inside a
     // collapsed <details>, and a collapsed element's children measure
@@ -824,6 +870,378 @@ try {
 
     await page.unroute('**/api/v1/auth/login');
     await page.unroute('**/api/v1/sync/batch');
+  });
+
+  await check('FILING WHILE ONLINE LEAVES THE STRIP TELLING THE TRUTH', async () => {
+    // FOUND BY RUNNING THE APP AGAINST A REAL FASTIFY AND A REAL
+    // POSTGRES, not against a mock. File a report while online — the
+    // ordinary case, the one that happens every time — and:
+    //
+    //   the form dispatches report-filed; the shell repaints the strip
+    //   from an outbox that still holds the report and prints "1 report
+    //   waiting to send"; the flush sends it; the server answers 200;
+    //   the row leaves the outbox; and nothing tells the shell.
+    //
+    // The strip then said "1 report waiting to send" for a report that
+    // had arrived seventy milliseconds earlier, and went on saying it.
+    // Verified against the real stack: outbox empty, row in the
+    // database, audit chain extended, strip still claiming it was
+    // queued.
+    //
+    // That is the same class of lie the strip exists to prevent,
+    // pointing the other way. It sends somebody to the safety office to
+    // re-file a report that already arrived, and it teaches them that
+    // the one indicator this product hangs on cannot be believed.
+    //
+    // Every existing strip check missed it: they either cut the network
+    // (so the flush genuinely did not finish) or drove the flush from
+    // the sign-in path, which announced itself explicitly.
+    await page.context().setOffline(false);
+    /* NO CLEAN SLATE, AND NO GLOBAL ASSERTION.
+
+       Two wrong answers preceded this one and both are worth naming,
+       because the second turned CI red while passing locally.
+
+       The first version waited for outbox.length === 0. Earlier checks
+       deliberately leave reports queued that cannot drain, so "the
+       outbox is empty" was never a statement about THIS report.
+
+       The second deleted the database to get a clean slate. A delete
+       is BLOCKED while the page holds an open connection, and the
+       handler resolved on `onblocked` as readily as on `onsuccess` —
+       so on a slower runner the database survived, Dexie was left
+       wedged, the new report was never enqueued, and the check
+       reported "nothing was ever sent" about a send it had prevented.
+       A check that breaks the thing it measures is worse than no
+       check.
+
+       So neither. The strip is read BEFORE filing and compared with
+       after, which is exactly the regression: a report that reaches
+       the server must stop being counted. Whatever else is in the
+       queue is in it both times and cancels out. */
+    await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+    const countOf = async () => {
+      const text = (await page.locator('#sync-text').textContent()) ?? '';
+      const match = /(\d+) reports? waiting to send/i.exec(text);
+      return match ? Number(match[1]) : 0;
+    };
+
+    /* ESTABLISHES ITS OWN SESSION rather than inheriting one from an
+       earlier check. flushOutbox bails when isSignedIn() is false, and
+       a check that depends on what the previous check left in
+       localStorage reports "nothing was ever sent" the moment anything
+       above it changes — which is a check that fails for a reason
+       unrelated to what it tests. The same ordering dependency the
+       provisional-jurisdictions check had. */
+    await page.route('**/api/v1/auth/login', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'strip-probe-token',
+          refreshToken: 'strip-probe-refresh-token-long-enough',
+          role: 'FRONTLINE',
+          orgId: 'org'
+        })
+      })
+    );
+    await page.route('**/api/v1/auth/refresh', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'strip-probe-token',
+          refreshToken: 'strip-probe-refresh-token-long-enough',
+          role: 'FRONTLINE',
+          orgId: 'org'
+        })
+      })
+    );
+
+    let batches = 0;
+    await page.route('**/api/v1/sync/batch', async (route) => {
+      batches++;
+      const body = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          results: body.items.map((i) => ({
+            clientId: i.clientId,
+            status: 'applied',
+            serverUpdatedAt: new Date().toISOString()
+          }))
+        })
+      });
+    });
+
+    await page.goto(BASE + '/account', { waitUntil: 'networkidle' });
+    if (await page.locator('#login-form').count()) {
+      await page.fill('#login-email', 'ramp@example.test');
+      await page.fill('#login-password', 'a-sufficiently-long-test-password');
+      await page.click('#login-form button[type=submit]');
+      await page.waitForSelector('#login-panel', { timeout: 8000 });
+    }
+
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    const baseline = await countOf();
+
+    const typeValue = await page.locator('select[name=type] option').nth(1).getAttribute('value');
+    await page.selectOption('select[name=type]', typeValue);
+    await page.fill('input[name=title]', 'Online filing, strip must not lie');
+    await page.fill(
+      'textarea[name=narrative]',
+      'Filed with the network up, to prove the strip stops saying it is waiting.'
+    );
+    await page.click('#report-form button[type=submit]');
+
+    /* PROMPTLY, and the budget is the assertion.
+
+       The defect was not "the report never arrives" — a background
+       sync gets there eventually, when the browser decides to fire it.
+       The defect was that a person standing there with a working radio
+       watched nothing happen. So the window is four seconds, not
+       fifteen: long enough for a slow runner to complete one request,
+       short enough that a browser-scheduled background sync cannot be
+       what satisfies it.
+
+       A previous version polled for fifteen seconds and therefore
+       passed with the immediate flush deleted, which is the whole
+       defect. Caught by re-running the mutation.
+
+       AND EVEN AT FOUR SECONDS THIS CANNOT PROVE IT. Headless Chromium
+       fires a registered background sync almost at once, so the batch
+       arrives either way and this check stays green with the immediate
+       flush removed. The difference only exists on a real device. That
+       property is therefore asserted in scripts/check-claims.mjs, at
+       the source, where it can actually fail — and this comment is
+       here so the next person does not mistake this check for the one
+       that covers it. What THIS check covers is the strip: a report
+       that reached the server must stop being counted. */
+    const sentBy = Date.now() + 4000;
+    while (batches === 0 && Date.now() < sentBy) await page.waitForTimeout(100);
+
+    if (batches === 0) {
+      const why = await page.evaluate(() => ({
+        online: navigator.onLine,
+        session: localStorage.getItem('usalamasms.session'),
+        refresh: Boolean(localStorage.getItem('usalamasms.refresh')),
+        strip: document.querySelector('#sync-strip')?.dataset.state,
+        text: document.querySelector('#sync-text')?.textContent?.trim()
+      }));
+      assert(false, `nothing was ever sent: ${JSON.stringify(why)}`);
+    }
+
+    // ...and the strip comes back down, without waiting for another
+    // event. Baseline-relative: whatever was already stuck in the queue
+    // was there before this report too.
+    const settled = Date.now() + 5000;
+    let after = await countOf();
+    while (after > baseline && Date.now() < settled) {
+      await page.waitForTimeout(200);
+      after = await countOf();
+    }
+    const text = (await page.locator('#sync-text').textContent()) ?? '';
+    assert(
+      after <= baseline,
+      `the report reached the server and the strip still counts it: ` +
+        `"${text.trim()}" (was ${baseline} before filing, ${after} after)`
+    );
+
+    await page.unroute('**/api/v1/sync/batch');
+    await page.unroute('**/api/v1/auth/login');
+    await page.unroute('**/api/v1/auth/refresh');
+  });
+
+  await check('TRY AGAIN REPAINTS THE STRIP IT WAS SENT TO FIX', async () => {
+    // The strip's error state says "open Triage to review". Triage's
+    // answer is a Try again button. It calls retryReport(), which
+    // re-queues and flushes — and NOTHING in triage repaints the strip
+    // afterwards.
+    //
+    // So the only thing that can clear the error the button was pressed
+    // to clear is flushOutbox announcing its own outcome. This check is
+    // what makes that mechanism load-bearing rather than speculative:
+    // delete the announce and the strip stays red after a successful
+    // retry, telling the person the report still failed while it sits
+    // in the database.
+    await page.context().setOffline(false);
+
+    await page.route('**/api/v1/auth/refresh', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'retry-probe-token',
+          refreshToken: 'retry-probe-refresh-token-long-enough',
+          role: 'FRONTLINE',
+          orgId: 'org'
+        })
+      })
+    );
+
+    // REJECT the item rather than failing the request. A 5xx is
+    // retryable, so the report stays pending and backs off — and the
+    // Try again button only exists for a report the server has actually
+    // refused, which is the state a person needs an action for.
+    let allow = false;
+    await page.route('**/api/v1/sync/batch', async (route) => {
+      const body = route.request().postDataJSON();
+      if (!allow) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            results: body.items.map((i) => ({
+              clientId: i.clientId,
+              status: 'rejected',
+              error: 'Refused once, on purpose, so Try again has something to retry.'
+            }))
+          })
+        });
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          results: body.items.map((i) => ({
+            clientId: i.clientId,
+            status: 'applied',
+            serverUpdatedAt: new Date().toISOString()
+          }))
+        })
+      });
+    });
+
+    await page.goto(BASE + '/account', { waitUntil: 'networkidle' });
+    if (await page.locator('#login-form').count()) {
+      await page.route('**/api/v1/auth/login', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'retry-probe-token',
+            refreshToken: 'retry-probe-refresh-token-long-enough',
+            role: 'FRONTLINE',
+            orgId: 'org'
+          })
+        })
+      );
+      await page.fill('#login-email', 'ramp@example.test');
+      await page.fill('#login-password', 'a-sufficiently-long-test-password');
+      await page.click('#login-form button[type=submit]');
+      await page.waitForSelector('#login-panel', { timeout: 8000 });
+      await page.unroute('**/api/v1/auth/login');
+    }
+
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    const typeValue = await page.locator('select[name=type] option').nth(1).getAttribute('value');
+    await page.selectOption('select[name=type]', typeValue);
+    await page.fill('input[name=title]', 'Retry probe, first send refused');
+    await page.fill('textarea[name=narrative]', 'Filed to prove Try again clears the strip it was sent to fix.');
+    await page.click('#report-form button[type=submit]');
+
+    /* Wait for the REFUSAL to land before going looking for the button
+       it produces. Navigating on a timer meant racing the flush: if it
+       had not finished, the report was still pending, there was no
+       error state and therefore no Try again, and the check failed on
+       timing rather than on behaviour. */
+    await page.waitForFunction(
+      () => document.querySelector('#sync-strip')?.dataset.state === 'error',
+      undefined,
+      { timeout: 10000 }
+    );
+
+    await navigateTo(page, '/triage');
+    const retry = page.locator('[data-retry]').first();
+    await retry.waitFor({ timeout: 10000 });
+
+    allow = true;
+    await retry.click();
+
+    await page.waitForFunction(
+      () => document.querySelector('#sync-strip')?.dataset.state === 'synced',
+      undefined,
+      { timeout: 8000 }
+    );
+
+    await page.unroute('**/api/v1/sync/batch');
+    await page.unroute('**/api/v1/auth/refresh');
+  });
+
+  await check('THE MATURITY ASSESSMENT SURVIVES A RELOAD, AND SENDS NOTHING', async () => {
+    // The page tells a part-time safety manager they can do this over
+    // two sittings. That is a promise about persistence, and a promise
+    // on a surface a customer reads has to be kept by a mechanism —
+    // charter rule 7.
+    //
+    // It also promises the opposite about the network: nothing leaves
+    // the device. Both halves are checked here, because the second is
+    // the one somebody would notice too late.
+    /* Two things are NOT the assessment phoning home, and a check that
+       counted them would fail on correct behaviour:
+         · /auth/refresh, which the shell fires on every load to turn a
+           stored refresh token back into an access token;
+         · a request whose body carries none of the answers.
+       So: no API call other than that one, and no request body that
+       mentions an element id. */
+    const requests = [];
+    const watch = (r) => {
+      if (!r.url().includes('/api/')) return;
+      if (/\/auth\/refresh$/.test(new URL(r.url()).pathname)) return;
+      requests.push(`${r.method()} ${new URL(r.url()).pathname}`);
+    };
+    const leaked = [];
+    const watchBody = (r) => {
+      const body = r.postData();
+      if (body && /"?el-|maturity|"1\.1"/.test(body)) leaked.push(new URL(r.url()).pathname);
+    };
+    page.on('request', watch);
+    page.on('request', watchBody);
+
+    await page.goto(BASE + '/toolkits/maturity', { waitUntil: 'networkidle' });
+    await page.check('input[name="el-1.1"][value="3"]');
+    await page.check('input[name="el-2.1"][value="1"]');
+
+    // The score is COMPUTED, so it must already be right before any reload.
+    await page.waitForFunction(
+      () => /2\.0/.test(document.querySelector('.mat-summary__value')?.textContent ?? ''),
+      undefined,
+      { timeout: 5000 }
+    );
+
+    await page.reload({ waitUntil: 'networkidle' });
+    assert(
+      await page.locator('input[name="el-1.1"][value="3"]').isChecked(),
+      'the answers did not survive a reload, and the page says they will'
+    );
+    const restored = (await page.locator('.mat-summary__value').textContent()) ?? '';
+    assert(/2\.0/.test(restored), `the score did not come back: "${restored.trim()}"`);
+
+    // Unanswered elements excluded, not counted as zero: two answers at
+    // 3 and 1 is a mean of 2.0, never 0.33.
+    const coverage = (await page.locator('.mat-summary__coverage').textContent()) ?? '';
+    assert(/2 of 12/.test(coverage), `coverage reads "${coverage.trim()}"`);
+
+    assert(
+      requests.length === 0,
+      `the assessment made ${requests.length} API request(s): ${requests.join(', ')}`
+    );
+    assert(
+      leaked.length === 0,
+      `an assessment answer left the device in a request to ${leaked.join(', ')}`
+    );
+
+    // Clear leaves nothing behind, or the next person on a shared
+    // crew-room handset inherits somebody's assessment.
+    await page.click('#mat-clear');
+    await page.reload({ waitUntil: 'networkidle' });
+    assert(
+      (await page.locator('input[type=radio]:checked').count()) === 0,
+      'Clear answers left answers behind'
+    );
+    page.off('request', watch);
+    page.off('request', watchBody);
   });
 
   await check('METHODOLOGY renders both tables from the real modules', async () => {
