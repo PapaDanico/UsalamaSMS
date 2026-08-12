@@ -237,6 +237,27 @@ names what is missing — deliberately, because a Lambda that crashes on
 a missing variable produces a platform error that says nothing about
 which one.
 
+### The hosted database was behind the code
+
+Found on 12 August 2026 while seeding the demo organisation: the hosted
+project had **only the first three migrations applied**. The
+`reporterRecommendation` column did not exist, so the first report the
+API wrote would have failed on a column the code takes for granted.
+
+The remaining migrations were applied through the Supabase MCP and
+recorded in `_prisma_migrations` by hand, including the two enum
+migrations that had been applied the same way earlier. That matters:
+`apply_migration` records into `supabase_migrations`, not into Prisma's
+own history, so Prisma still believed both were pending and the next
+`prisma migrate deploy` would have tried to rename a type that had
+already been renamed — and failed the deploy.
+
+**The lesson is the one this document already carries about the
+baseline: two migration histories that do not agree will disagree at
+the worst moment.** If you apply schema through anything other than
+`prisma migrate deploy`, record it in `_prisma_migrations` in the same
+change.
+
 ### Direct connection versus the pooler
 
 Supabase → Connect offers both, and it offers the **direct** connection
@@ -245,7 +266,18 @@ and wrong for a serverless one, for two independent reasons. The
 second is the one usually cited; the first is the one that actually
 bites, and it bites immediately.
 
-1. **IPv6.** Supabase direct connections resolve to IPv6 by default —
+1. **IPv6.** Measured on this project rather than assumed:
+
+   ```
+   IPv4 OK    aws-0-eu-north-1.pooler.supabase.com   16.16.102.12
+   IPv4 OK    aws-1-eu-north-1.pooler.supabase.com   51.21.189.77
+   IPv4 FAIL  db.wbixxhpaswstaphfsowz.supabase.co    ENODATA
+   ```
+
+   `ENODATA` means the direct-connection host publishes **no A record at
+   all**. It is not that IPv4 is slower or less preferred; there is
+   nothing for an IPv4-only client to connect to. Supabase direct
+   connections resolve to IPv6 by default —
    the Connect panel says so, in a banner above the connection string.
    Netlify Functions run on Lambda, which egresses IPv4-only. So the
    direct connection does not degrade under load: it never opens at
@@ -269,6 +301,13 @@ port become 6543. Editing `5432` to `6543` in a direct-connection
 string produces something that looks right and resolves to nothing.
 Re-copy from the Transaction pooler tab. `scripts/setup-env.mjs` warns
 on both the port and the host for exactly this reason.
+
+**And the shard number is per project.** The pooler host is
+`aws-<n>-<region>.pooler.supabase.com`, where `<n>` is not always `0` —
+both `aws-0` and `aws-1` exist in `eu-north-1` and both resolve. Read
+the host from the project's own Connect panel rather than composing it
+from the region; a wrong shard produces a connection that resolves and
+then fails to authenticate.
 
 `DATABASE_URL` takes precedence over `SUPABASE_DATABASE_URL` in both
 `core.ts` and the function, so setting it explicitly overrides whatever
