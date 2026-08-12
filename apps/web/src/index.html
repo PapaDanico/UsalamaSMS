@@ -40,6 +40,11 @@
          preloading it would cost every cold start for the few reports
          that carry one. -->
     <link rel="preload" href="/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- And the display face, because the first thing on every screen is
+         an h1 set in it — a headline that swaps from the fallback serif
+         to Cormorant a beat after paint is the most visible reflow the
+         page has. -->
+    <link rel="preload" href="/fonts/cormorant-garamond-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
     <style>

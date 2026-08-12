@@ -143,6 +143,20 @@ export async function signOut(fetcher = fetch) {
     /* no worker, or no controller yet on a first load — nothing cached
        to clear in either case */
   }
+
+  /* AND THE LOCAL REPORT STORE, which this used to leave alone. A
+     crew-room tablet is a supported deployment: without this, the next
+     person to sign in opens Triage and reads the last person's
+     narratives. Synced reports go; unsent ones stay, because losing an
+     occurrence that reached nobody is worse than either. Imported
+     lazily so signing in does not pull Dexie into the first paint of a
+     screen that does not need it. */
+  try {
+    const { clearSyncedReports } = await import('./offline.ts');
+    await clearSyncedReports();
+  } catch {
+    /* the store is unreadable, which means there is nothing to leak */
+  }
 }
 
 /**

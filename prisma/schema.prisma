@@ -122,6 +122,17 @@ model Org {
   auditLogs AuditLog[]
   receipts  SyncReceipt[]
   spis      Spi[]
+
+  // The other eight Annex 19 elements.
+  policies         SafetyPolicy[]
+  policyReads      PolicyAcknowledgement[]
+  accountabilities Accountability[]
+  appointments     Appointment[]
+  exercises        EmergencyExercise[]
+  documents        ControlledDocument[]
+  findings         AuditFinding[]
+  training         TrainingRecord[]
+  communications   SafetyCommunication[]
 }
 
 model User {
@@ -140,6 +151,16 @@ model User {
   tokens   RefreshToken[]
   receipts SyncReceipt[]
   audits   AuditLog[]
+
+  // Named relations, because a user can appear against one table in
+  // more than one role and Prisma cannot guess which is which.
+  policiesSigned    SafetyPolicy[]          @relation("policySignatory")
+  policyReads       PolicyAcknowledgement[]
+  appointments      Appointment[]           @relation("appointee")
+  documentsApproved ControlledDocument[]    @relation("documentApprover")
+  findingsVerified  AuditFinding[]          @relation("findingVerifier")
+  training          TrainingRecord[]        @relation("trainee")
+  communications    SafetyCommunication[]   @relation("communicator")
 
   @@index([orgId, role])
 }
@@ -220,6 +241,7 @@ model SafetyReport {
 
   org      Org              @relation(fields: [orgId], references: [id], onDelete: Cascade)
   reporter User?            @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  feedback SafetyCommunication[]
   hazards  Hazard[]
 
   // DELIBERATELY NOT A COLUMN: regulatorDeadline.
@@ -387,4 +409,234 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([orgId, seq])
+}
+
+// =====================================================================
+// THE REST OF ANNEX 19.
+//
+// Everything above serves elements 2.1, 2.2, 3.1 and 3.2 — reporting,
+// risk, indicators and change. The models below are the other eight,
+// and they exist because /coverage has been telling operators for
+// months that the product can score those elements and cannot do them.
+//
+// ONE SHAPE, REPEATED, BECAUSE THE ELEMENTS SHARE ONE. Almost every
+// piece of SMS evidence an auditor asks for is: a versioned statement,
+// approved by a named post on a date, distributed to people, with a
+// record of who acknowledged it. That is not a coincidence — it is what
+// "documented" means in a regulated system. So the models rhyme
+// deliberately rather than each inventing its own vocabulary.
+//
+// WHAT IS NOT SHARED is what an auditor actually checks per element:
+// a policy is signed by the accountable executive and nobody else; a
+// finding has an owner and a verified closure; a training record
+// expires. Those are columns, not a generic key-value bag, because a
+// generic bag cannot be indexed, cannot be constrained, and cannot be
+// queried for "what is overdue" — which is the only question anybody
+// asks of this data.
+//
+// Every table is orgId-first, like the rest. Every write goes through
+// the API and appends to the audit chain.
+// =====================================================================
+
+/// Element 1.1 — management commitment. The signed safety policy.
+///
+/// VERSIONED AND APPEND-ONLY. A safety policy that is edited in place
+/// has no history, and the question an auditor asks is "what did it say
+/// when the decision was taken". Superseding writes a new row; the old
+/// one keeps its signature and its dates.
+model SafetyPolicy {
+  id        String   @id @default(uuid())
+  orgId     String
+  version   Int
+  statement String   @db.Text
+  /// Null until the accountable executive signs it. An unsigned policy
+  /// is a draft, and element 1.1 is about the signature.
+  signedById String?
+  signedOn   DateTime?
+  effectiveFrom DateTime?
+  supersededOn  DateTime?
+  createdAt DateTime @default(now())
+
+  org      Org               @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  signedBy User?             @relation("policySignatory", fields: [signedById], references: [id], onDelete: Restrict)
+  reads    PolicyAcknowledgement[]
+
+  @@unique([orgId, version])
+  @@index([orgId, supersededOn])
+}
+
+/// Who has read the policy. Element 1.1's evidence that it reached
+/// anybody, which is the half most operators cannot produce.
+model PolicyAcknowledgement {
+  id             String   @id @default(uuid())
+  orgId          String
+  policyId       String
+  userId         String
+  acknowledgedAt DateTime @default(now())
+
+  org    Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  policy SafetyPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([policyId, userId])
+  @@index([orgId, acknowledgedAt])
+}
+
+/// Element 1.2 — safety accountability and responsibilities.
+///
+/// A POST, NOT A PERSON. The question is whether each accountability has
+/// an owner in the structure; who currently holds the post is a separate
+/// fact that changes more often, and lives on Appointment below.
+model Accountability {
+  id             String   @id @default(uuid())
+  orgId          String
+  post           String
+  responsibility String   @db.Text
+  /// The Annex 19 element this accountability serves, so the matrix can
+  /// be read against the framework rather than as a list.
+  elementId      String?
+  createdAt      DateTime @default(now())
+
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, post])
+}
+
+/// Element 1.3 — appointment of key safety personnel.
+model Appointment {
+  id           String    @id @default(uuid())
+  orgId        String
+  post         String
+  userId       String
+  appointedOn  DateTime
+  /// The appointment letter's own reference, so the record points at the
+  /// document rather than replacing it.
+  letterRef    String?
+  endedOn      DateTime?
+  createdAt    DateTime  @default(now())
+
+  org  Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User @relation("appointee", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, post, endedOn])
+}
+
+/// Element 1.4 — emergency response planning, and the exercises that
+/// are the only evidence a plan works.
+model EmergencyExercise {
+  id         String   @id @default(uuid())
+  orgId      String
+  scenario   String   @db.Text
+  heldOn     DateTime
+  /// Who else took part. An ERP that connects to nobody is a document.
+  participants String @db.Text
+  findings   String   @db.Text
+  planUpdated Boolean @default(false)
+  createdAt  DateTime @default(now())
+
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, heldOn])
+}
+
+/// Element 1.5 — SMS documentation, under control.
+model ControlledDocument {
+  id          String   @id @default(uuid())
+  orgId       String
+  title       String
+  reference   String
+  version     String
+  approvedById String?
+  approvedOn  DateTime?
+  reviewBy    DateTime?
+  supersededOn DateTime?
+  createdAt   DateTime @default(now())
+
+  org        Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  approvedBy User? @relation("documentApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+
+  @@unique([orgId, reference, version])
+  @@index([orgId, reviewBy])
+}
+
+/// Element 3.3 — continuous improvement. An internal SMS audit finding,
+/// and the corrective action that closes it.
+///
+/// CLOSURE IS NOT THE SAME AS VERIFICATION, and conflating them is how
+/// an operator ends up with a closed finding that never worked. Both
+/// dates are here, and the API refuses to verify what is not closed.
+model AuditFinding {
+  id          String    @id @default(uuid())
+  orgId       String
+  auditRef    String
+  finding     String    @db.Text
+  /// The element the finding sits against, so an audit programme can be
+  /// shown to cover the framework rather than whatever was noticed.
+  elementId   String?
+  severity    FindingSeverity @default(OBSERVATION)
+  ownerPost   String
+  dueBy       DateTime?
+  correctiveAction String? @db.Text
+  closedOn    DateTime?
+  verifiedById String?
+  verifiedOn  DateTime?
+  createdAt   DateTime  @default(now())
+
+  org        Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  verifiedBy User? @relation("findingVerifier", fields: [verifiedById], references: [id], onDelete: Restrict)
+
+  @@index([orgId, closedOn, dueBy])
+  @@index([orgId, elementId])
+}
+
+enum FindingSeverity {
+  NONCONFORMITY
+  OBSERVATION
+  IMPROVEMENT
+}
+
+/// Element 4.1 — training and education.
+///
+/// EXPIRY IS THE POINT. A training matrix nobody can query for "what
+/// lapses this quarter" is a spreadsheet, and the finding an auditor
+/// writes is about the expired row rather than about the matrix.
+model TrainingRecord {
+  id          String   @id @default(uuid())
+  orgId       String
+  userId      String
+  course      String
+  completedOn DateTime
+  expiresOn   DateTime?
+  createdAt   DateTime @default(now())
+
+  org  Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User @relation("trainee", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, expiresOn])
+  @@index([orgId, userId])
+}
+
+/// Element 4.2 — safety communication, in both directions.
+///
+/// A bulletin published to the organisation, and — the half that
+/// actually decides whether people keep reporting — what the reporter
+/// was told happened as a result of theirs.
+model SafetyCommunication {
+  id          String   @id @default(uuid())
+  orgId       String
+  title       String
+  body        String   @db.Text
+  publishedOn DateTime @default(now())
+  publishedById String?
+  /// Set when this is feedback ABOUT a specific report rather than a
+  /// general bulletin. Never set for an anonymous report: there is
+  /// nobody to tell, and a row joining feedback to an anonymous report
+  /// is the re-identification the sync path was fixed to prevent.
+  reportId    String?
+
+  org         Org           @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  publishedBy User?         @relation("communicator", fields: [publishedById], references: [id], onDelete: Restrict)
+  report      SafetyReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, publishedOn])
 }

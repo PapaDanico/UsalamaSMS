@@ -17,6 +17,7 @@ import {
 } from "./core";
 import { syncRoutes } from "./routes.sync";
 import { authRoutes } from "./routes.auth";
+import { smsRoutes } from "./routes.sms";
 import { rateLimitKey } from "./rate-limit-key";
 
 export async function build(): Promise<FastifyInstance> {
@@ -196,6 +197,7 @@ export async function build(): Promise<FastifyInstance> {
   // ------------------------------ Routes ------------------------------
   await app.register(authRoutes);
   await app.register(syncRoutes);
+  await app.register(smsRoutes);
 
   // Regulator oversight: verify an org's audit chain by content.
   //
