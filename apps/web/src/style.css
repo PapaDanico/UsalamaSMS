@@ -1638,6 +1638,20 @@ html { scroll-padding-top: var(--us-chrome); }
   border-radius: var(--us-radius-lg);
   box-shadow: var(--us-shadow-lg);
   z-index: 70;
+  /* THE PANEL SCROLLS, and it has to. It is position:fixed, so anything
+     taller than the viewport hangs below the fold where the page scroll
+     cannot reach it — the menu simply loses its last items, silently,
+     on the smallest screen. It happened the moment a sixth destination
+     was added to one group: "Questions" became unreachable at 390x844,
+     which is the target handset. dvh rather than vh because mobile
+     browser chrome moves, and vh measures the tallest state. */
+
+  max-height: calc(100vh - var(--us-topbar) - var(--us-space-6));
+  max-height: calc(100dvh - var(--us-topbar) - env(safe-area-inset-top) - var(--us-space-6));
+  overflow-y: auto;
+  /* Scrolling to the end of the menu must not then scroll the page
+     behind it. */
+  overscroll-behavior: contain;
 }
 
 .dropdown-menu[hidden] { display: none; }
