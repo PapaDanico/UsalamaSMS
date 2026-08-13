@@ -581,6 +581,27 @@ export interface ElementCoverage {
   readonly missing: string;
   /** Where to go, when there is somewhere. */
   readonly href?: string;
+  /**
+   * The API routes that hold this element's records for the operator,
+   * when any do.
+   *
+   * WHY A FIELD AND NOT A SENTENCE. This table separates BUILT from
+   * PARTIAL on one distinction — whether the records are held on the
+   * server or on a handset — and for half a day element 2.2 said the
+   * register "lives in one browser… the safety office cannot see it"
+   * while /api/v1/register was live in production. Three false clauses
+   * on the one surface whose job is honest disclosure, understating
+   * the product to a regulator, with nothing able to notice because
+   * `state` and `missing` are prose.
+   *
+   * Naming the routes turns the distinction into something checkable:
+   * scripts/check-claims.mjs asserts every route here is registered by
+   * the API, that a BUILT element which is not purely a calculator
+   * names at least one, and — the half that would have caught this —
+   * that an element naming routes does not simultaneously claim in
+   * `missing` that nothing is held for the operator.
+   */
+  readonly serverRoutes?: ReadonlyArray<string>;
 }
 
 export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
@@ -592,6 +613,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   {
     id: "1.1",
     state: "BUILT",
+    serverRoutes: ["/api/v1/sms/policy"],
     has:
       "A safety policy the operator authors, signed by the accountable executive and by " +
       "nobody else, superseded rather than edited so an auditor can read what it said " +
@@ -604,6 +626,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   {
     id: "1.2",
     state: "BUILT",
+    serverRoutes: ["/api/v1/sms/accountabilities"],
     has:
       "An accountability matrix the operator authors — each post, what it answers for, " +
       "and the Annex 19 element it discharges — held by the organisation and readable " +
@@ -618,6 +641,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   {
     id: "1.3",
     state: "BUILT",
+    serverRoutes: ["/api/v1/sms/appointments"],
     has:
       "Appointment records against each post, with the appointment letter's reference, " +
       "and a successor's appointment ending the incumbent's rather than sitting " +
@@ -637,6 +661,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        plan being exercised, or the contact directory whose eleven
        months out of date is the finding this record exists to capture. */
     state: "PARTIAL",
+    serverRoutes: ["/api/v1/sms/exercises"],
     has:
       "Emergency response exercises: the scenario, who took part, what it found, and " +
       "whether the plan was changed as a result.",
@@ -653,6 +678,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        part an audit checks. The product is not a document store, and
        claiming the element outright would say it was. */
     state: "PARTIAL",
+    serverRoutes: ["/api/v1/sms/documents"],
     has:
       "Document control: reference, version, who approved it and when, and the date the " +
       "next review falls due.",
@@ -664,6 +690,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   {
     id: "2.1",
     state: "BUILT",
+    serverRoutes: ["/api/v1/sync/batch"],
     has:
       "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +
       "hash-chained record, with the regulatory window computed per jurisdiction.",
@@ -674,21 +701,34 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   },
   {
     id: "2.2",
-    /* STILL PARTIAL, with a register now. The register covers hazard to
-       consequence to control to residual risk, with owners, review
-       dates and acceptance — and it lives in one browser. A register
-       the safety office cannot see is not an organisation's register,
-       so the element is not claimed. It moves from "a matrix with no
-       register" to "a register with no distribution", which is
-       progress and is not the same as done. */
-    state: "PARTIAL",
+    /* MOVED TO BUILT, and the reason is the one this table has used
+       throughout rather than a fresh judgement: the register is held
+       ON THE SERVER now, not on the handset.
+
+       THIS ENTRY WAS WRONG FOR HALF A DAY AND NOTHING NOTICED. It read
+       "it lives in one browser… it does not sync, the safety office
+       cannot see it, and nobody else can contribute to it" — three
+       clauses, all of them false from the moment /api/v1/register
+       shipped. The surface whose entire job is honest disclosure was
+       understating the product to the one reader who most needs it
+       accurate, and no gate had an opinion because `state` and
+       `missing` are prose.
+
+       That is what `serverRoutes` below now exists to stop, and the
+       reason it is a field rather than a promise. */
+    state: "BUILT",
+    serverRoutes: ["/api/v1/register"],
     has:
       "The Doc 9859 5x5 matrix, a risk assessor, and a risk register with initial and " +
-      "residual bands, owners, review dates and acceptance — all computed by the same " +
-      "scale, never stored.",
+      "residual bands, owners, review dates and acceptance — held for the operator so " +
+      "the safety office can read it and an inspector can be shown it, with the bands " +
+      "computed by the same scale the matrix renders.",
     missing:
-      "Distribution. The register is held in one browser: it does not sync, the safety " +
-      "office cannot see it, and nobody else can contribute to it.",
+      "Hazards reaching it from the reporting queue rather than being typed again — a " +
+      "register entry still records where it came from so that difference stays " +
+      "visible. Deletion does not synchronise either: an entry removed on one device " +
+      "reappears from the server on another, which is the safe direction and not the " +
+      "finished one.",
     href: "/toolkits/register",
   },
   {
@@ -707,6 +747,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        indicator; the organisation cannot yet be shown to have. */
     id: "3.1",
     state: "PARTIAL",
+    serverRoutes: ["/api/v1/spi"],
     has:
       "Safety performance indicators with targets, and alert levels computed from " +
       "the operator's own baseline at one, two and three standard deviations, with " +
@@ -760,6 +801,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        performs — because a safety manager verifying their own finding
        closed is the finding, not the evidence. */
     state: "BUILT",
+    serverRoutes: ["/api/v1/sms/findings"],
     has:
       "Internal audit findings with a severity, an owning post and a due date; the " +
       "corrective action taken; closure; and verification by key management rather than " +
@@ -777,6 +819,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        training matrix useful, which is being told before the expiry
        rather than after it. */
     state: "PARTIAL",
+    serverRoutes: ["/api/v1/sms/training"],
     has:
       "A training matrix: person, course, completion and expiry, with each person's own " +
       "record visible to them and the whole matrix to those who manage it.",
@@ -788,6 +831,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   {
     id: "4.2",
     state: "BUILT",
+    serverRoutes: ["/api/v1/sms/communications"],
     has:
       "Safety communication the operator publishes, and feedback attached to the report " +
       "that prompted it — refused against an anonymous report, because a row joining " +

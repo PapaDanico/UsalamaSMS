@@ -49,19 +49,20 @@ them — alongside a glossary, tutorials, FAQ, about, privacy and terms.
 
 **`/coverage` is the one to read before adopting anything.** It states,
 element by element against Annex 19's twelve, what is built here and
-what is only partial — and the figure it reports, **9 of 12**, is
+what is only partial — and the figure it reports, **9.5 of 12**, is
 computed from the same declaration the table renders rather than typed
-beside it. Six elements are built and six are partial; a partial
-element counts a half, which is where the nine comes from.
+beside it. Seven elements are built and five are partial; a partial
+element counts a half, which is where the figure comes from.
 
 That figure moved from 2.5 when `/sms` gave eight elements a
-server-held record, and the six that stayed partial say plainly what
-they still lack: the emergency plan itself, the documents behind the
-document register, expiry alerting on training, and — for the risk
-register and the change assessment — distribution, because those two
-still live in one browser and the safety office cannot see them. The
-indicators no longer do. An operator adopting this as its sole SMS would still have
-gaps to answer for, and `/coverage` names every one of them.
+server-held record, and again when the register joined the indicators
+on the server. The five that stay partial say plainly what they still
+lack: the emergency plan itself, the documents behind the document
+register, expiry alerting on training, a record of what was done the
+last time an indicator crossed its alert level, and — for the change
+assessment alone now — anywhere to do it at all. An operator adopting
+this as its sole SMS would still have gaps to answer for, and
+`/coverage` names every one of them.
 
 **Nearly deployable.** The hosted database exists (Supabase, eu-north-1,
 schema applied and baselined, RLS deny-by-default) and the API ships as
@@ -87,7 +88,7 @@ for the operator rather than on one device, which is what regulation
 npm install
 npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 61 assertions that the registries match the docs
+npm run check:claims   # 66 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm test               # 303 unit tests
 npm run typecheck      # tsc --noEmit, strict
@@ -101,7 +102,7 @@ npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 61 checks, including filing a report with the network cut and
+— 62 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 

@@ -691,6 +691,128 @@ assert(
   }
 }
 
+/* ============================================================
+   THE COVERAGE TABLE IS CHECKED AGAINST THE API, NOT AGAINST ITSELF.
+
+   THE DEFECT. Element 2.2 read "it lives in one browser… it does not
+   sync, the safety office cannot see it, and nobody else can
+   contribute to it" for half a day AFTER /api/v1/register shipped to
+   production. Three clauses, all false, on the one surface in the
+   product whose entire job is to state honestly what an operator can
+   and cannot evidence to a regulator — and it was understating, which
+   is the direction nobody checks because it looks like modesty.
+
+   NOTHING COULD HAVE NOTICED. `state` and `missing` are prose. This
+   gate already verified that the COVERAGE COUNT on the front page
+   matches the table; it had no way to ask whether the table matches
+   the product. A count computed from a stale table is a computed
+   number that is confidently wrong.
+
+   SO THE TABLE NOW NAMES ITS ROUTES, and the three assertions below
+   are the ones that would have caught it:
+
+     1. every route named is one the API actually registers — so a
+        renamed endpoint fails here rather than on a screen;
+     2. an element that names routes does not simultaneously say in
+        `missing` that nothing is held for the operator — the exact
+        contradiction 2.2 shipped with;
+     3. the routes are read from routes.*.ts rather than from a list
+        typed here, so this cannot drift from the API.
+   ============================================================ */
+{
+  const maturity = read("packages/shared/src/maturity.ts");
+
+  /* The API's own registrations, read the way check-wiring.mjs reads
+     them. A list retyped here would be a second declaration, and the
+     one that goes stale. */
+  const registered = new Set();
+  for (const f of readdirSync(resolve(ROOT, "apps/api/src"))) {
+    if (!f.startsWith("routes.") || !f.endsWith(".ts")) continue;
+    const src = read(`apps/api/src/${f}`);
+    for (const m of src.matchAll(/app\.(?:get|post|put|patch|delete)\(\s*"([^"]+)"/g)) {
+      registered.add(m[1]);
+    }
+  }
+  assert(
+    "the API's registered routes were read at all",
+    registered.size > 8,
+    `read only ${registered.size} routes out of apps/api/src — this check would ` +
+      "pass by finding nothing, which is worse than not running",
+  );
+
+  const block = maturity.slice(
+    maturity.indexOf("export const COVERAGE"),
+    maturity.indexOf("export function", maturity.indexOf("export const COVERAGE")),
+  );
+  /* SLICED ON THE POSITION OF EACH id, not on a brace-and-indentation
+     shape. The first version matched `\n  {\n    id: "` and found nine
+     of the twelve, because three entries open with a block comment
+     between the brace and the id — and it reported that as a defect in
+     the table rather than in itself. Anchoring on the one token every
+     entry certainly has is both simpler and unable to miss one. */
+  const marks = [...block.matchAll(/id: "([0-9]+\.[0-9]+)"/g)];
+  const entries = marks.map((m, i) => ({
+    id: m[1],
+    text: block.slice(m.index, marks[i + 1]?.index ?? block.length),
+  }));
+  assert(
+    "the coverage entries were parsed",
+    entries.length >= 12,
+    `parsed ${entries.length} coverage entries; the framework has twelve`,
+  );
+
+  const unknown = [];
+  const contradictions = [];
+  let withRoutes = 0;
+
+  /* The claim a route contradicts: that the RECORDS THEMSELVES are not
+     held for the operator. Deliberately narrow — these are the
+     sentences 2.2 actually carried, not a general search for negation.
+
+     "does not sync" was in this pattern for one run and had to come
+     out. It matched inside the corrected entry's own honest caveat,
+     "Deletion does not synchronise either" — a true statement about a
+     real remaining gap, failed by a gate meant to catch the opposite
+     fault. A check that fires on accurate disclosure trains people to
+     word around it, and the wording it drives them to is vaguer than
+     what they started with. */
+  const CLAIMS_NOTHING_HELD =
+    /(?:lives|held) in one browser|safety office cannot see|nobody else can contribute|on one device rather than/i;
+
+  for (const e of entries) {
+    const routes = [...e.text.matchAll(/"(\/api\/[^"]+)"/g)].map((m) => m[1]);
+    if (!routes.length) continue;
+    withRoutes++;
+    for (const r of routes) {
+      if (!registered.has(r)) unknown.push(`${e.id} names ${r}, which the API does not register`);
+    }
+    const missing = /missing:\s*([\s\S]*?)(?:\n\s*href:|\n\s*\},)/.exec(e.text)?.[1] ?? "";
+    if (CLAIMS_NOTHING_HELD.test(missing)) {
+      contradictions.push(
+        `${e.id} names ${routes.join(", ")} and still tells the reader its records ` +
+          "are held on one device",
+      );
+    }
+  }
+
+  assert(
+    "coverage names enough server routes to be worth checking",
+    withRoutes >= 6,
+    `only ${withRoutes} element(s) name a route; this gate would pass by finding nothing`,
+  );
+  assert(
+    "every route the coverage table names is one the API registers",
+    unknown.length === 0,
+    unknown.join("; "),
+  );
+  assert(
+    "NO ELEMENT CLAIMS ITS RECORDS ARE DEVICE-ONLY WHILE NAMING A ROUTE THAT HOLDS THEM",
+    contradictions.length === 0,
+    contradictions.join("; ") +
+      " — this is the 2.2 defect: the coverage page understating the product to a regulator",
+  );
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);

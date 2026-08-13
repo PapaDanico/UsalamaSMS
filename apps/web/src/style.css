@@ -2167,8 +2167,29 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 
 .toc ol { margin: 0; padding-left: 1.2rem; }
-.toc li { margin-bottom: var(--us-space-2); font-size: var(--us-text-sm); }
-.toc a { color: var(--us-charcoal); }
+.toc li { font-size: var(--us-text-sm); }
+
+/* A THUMB, NOT A CURSOR. These were 17px tall — the line box of the
+   text and nothing more — in a vertical stack on a 390px screen.
+
+   WCAG 2.2 SC 2.5.8 exempts targets "in a sentence or block of text",
+   and the prose links across this product correctly rely on that. A
+   table of contents is not that: it is a list of navigation links with
+   no sentence around them, and the exception does not reach it. A
+   safety manager reading /coverage on a handset was aiming at a
+   seventeen-pixel band with the next destination four pixels away.
+
+   Given as block + min-height rather than padding on an inline box:
+   padding on an inline element inflates the painted background and
+   overlaps its neighbours without moving the hit area. The old
+   margin-bottom is gone because the min-height now carries the
+   separation, and keeping both would double the gap. */
+.toc a {
+  display: block;
+  min-height: 24px;
+  padding-block: var(--us-space-1);
+  color: var(--us-charcoal);
+}
 .toc a:hover { color: var(--us-teal); }
 /* A contents list that is only titles asks the reader to open each one
    to find out which is theirs. One line each, in the menu's pattern. */
