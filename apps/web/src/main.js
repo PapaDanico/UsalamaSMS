@@ -102,24 +102,81 @@ document.getElementById('nav').innerHTML = WORKING_SECTIONS.flatMap((s) => s.ite
 const menuPanel = document.getElementById('menu-panel');
 const menuToggle = document.getElementById('menu-toggle');
 
+/* TITLES NOW, SUMMARIES WHEN THEY ARRIVE.
+
+   The hint sentences moved to shared/menu-hints.js and are imported
+   dynamically, so they are not parsed before first paint. The reason
+   is written out in that file; what matters here is the consequence:
+   this panel renders complete and usable without them. A title is the
+   navigation, a hint is help text, and every destination is clickable
+   from the first frame whether or not the sentences ever land.
+
+   The summary element is written empty rather than omitted. Creating
+   it later would reflow the panel under whatever the reader had
+   already started moving a thumb towards; an empty span reserves
+   nothing visually and gives fill() somewhere to write. */
 menuPanel.innerHTML = WORKING_SECTIONS.map(
   (section) => html`<div class="nav-group">
       <p class="nav-group__title">${section.title}</p>
       ${section.items.map(
         (d) => html`<a class="nav-item" href="${d.href}">
           <span class="nav-item-title">${d.label}</span>
-          <span class="nav-item-summary">${d.hint}</span>
+          <span class="nav-item-summary"></span>
         </a>`
       )}
     </div>`
 ).join('');
 
+/* Fetched once. The promise is the guard rather than a boolean, so a
+   second call while the first is still in flight joins it instead of
+   starting a parallel download — the same single-flight reasoning the
+   token refresh uses, for the same reason. */
+let hints;
+function loadHints() {
+  hints ??= import('./shared/menu-hints.js')
+    .then(({ MENU_HINTS }) => {
+      /* Keyed off the anchor's own href rather than a data- attribute
+         repeating it. Writing data-hint-for onto fifteen items put the
+         href in the entry chunk twice, which is weight spent to avoid
+         one getAttribute — on the exact chunk this change exists to
+         make smaller. */
+      for (const a of menuPanel.querySelectorAll('a.nav-item')) {
+        const text = MENU_HINTS[a.getAttribute('href')];
+        if (text) a.querySelector('.nav-item-summary').textContent = text;
+      }
+    })
+    .catch(() => {
+      /* Deliberately silent, and safe to be. The menu keeps every
+         title and every destination; what is missing is a sentence of
+         help under each one. Reporting that as an error would put a
+         failure message in front of somebody whose navigation is
+         working. */
+    });
+  return hints;
+}
+
+/* Warmed on idle so the first open usually finds them already there.
+   requestIdleCallback yields to anything the app is still doing, which
+   on a cold start at a strip is the point — this must never compete
+   with the report form for the main thread. Safari has no
+   requestIdleCallback, hence the timeout fallback. */
+const warm = () => loadHints();
+if ('requestIdleCallback' in window) requestIdleCallback(warm, { timeout: 4000 });
+else setTimeout(warm, 2000);
+
 function setMenu(open) {
   menuPanel.hidden = !open;
   menuToggle.setAttribute('aria-expanded', String(open));
+  if (open) void loadHints();
 }
 
 menuToggle.addEventListener('click', () => setMenu(menuPanel.hidden));
+
+/* Ahead of the click where the platform gives us the chance. A pointer
+   arriving on the button is a menu about to open, and on a handset
+   pointerdown precedes click by the length of a tap. */
+menuToggle.addEventListener('pointerenter', warm, { once: true });
+menuToggle.addEventListener('pointerdown', warm, { once: true });
 
 /* Close on anything that means "I am done here": a destination chosen,
    a click outside, or Escape. A panel that only closes by pressing the

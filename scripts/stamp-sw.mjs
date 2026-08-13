@@ -616,9 +616,55 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    a raise, a legal requirement earns a raise — and so does not
    destroying the user's work. What still does not is a dependency, a
    polyfill or a component library. */
-const BUDGET = { entry: 214 * 1024, js: 409 * 1024, css: 54 * 1024 };
+/* TOTAL 409 -> 410 KB. ENTRY UNMOVED AT 214, and falls to 213.4 KB
+   against it — the first headroom that number has had in a while.
+
+   WHAT WAS BOUGHT. The menu's fourteen hint sentences moved out of
+   shared/sitemap.js — which main.js imports, and which is therefore
+   parsed before the app renders anything — into shared/menu-hints.js,
+   fetched when the menu is first opened. Entry falls 218,518 bytes
+   from 219,1xx, about 650 bytes off the path a reporter waits on
+   before the form appears.
+
+   WHAT IT COST, because a split is not free. The new chunk is 1,288
+   bytes: the prose plus a module wrapper. So TOTAL rises by more than
+   ENTRY falls, and the service worker precaches every hashed asset, so
+   the bytes a device ultimately downloads are unchanged. This buys
+   WHEN, not HOW MUCH — which is precisely the distinction the two
+   numbers exist to draw, and the only honest claim to make for it.
+
+   THE MEASUREMENT THAT MATTERS MORE THAN THE SAVING. Going looking for
+   a bigger win first, the entry chunk turns out to hold the landing
+   page, the report form and the login screen — statically imported in
+   main.js while all fourteen other routes are lazy — and with them the
+   whole regulations module, every instrument citation included. That
+   is not an oversight to clean up. A reporter at a strip has to be
+   able to open the app and file with no signal and no second request,
+   and those three screens plus their deadline arithmetic ARE that
+   promise. Deferring them would trade the product's central claim for
+   a smaller number.
+
+   So: roughly 650 bytes is about the size of the prose win available
+   in entry, and anything materially larger costs something this
+   product does not sell. That is worth knowing before the next person
+   attacks this figure.
+
+   THE ENTRY BUDGET THEREFORE STAYS AT 214. Lowering it to 213 was
+   tried and rejected on the measurement: the chunk is 213.4 KB, so a
+   213 KB ceiling fails the build it was meant to describe, and the
+   only ways to reach it are the three screens above. A budget set
+   below what the code can achieve without breaking a product promise
+   is not a tighter constraint, it is a broken build.
+
+   The stopping rule is unchanged and this raise does not test it: the
+   total moves so chunking overhead does not block the next change,
+   while the number describing what a reporter waits for gains room
+   rather than spending it. A dependency, a polyfill or a component
+   library still buys nothing. */
+const BUDGET = { entry: 214 * 1024, js: 410 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
+let entryAsset = null;
 for (const asset of assets) {
   const ext = asset.endsWith('.js') ? 'js' : asset.endsWith('.css') ? 'css' : null;
   if (!ext) continue;
@@ -628,7 +674,94 @@ for (const asset of assets) {
   // same way, so size is the only thing distinguishing them without
   // parsing the manifest, and a lazy chunk larger than the entry would
   // be a finding rather than a miscount.
-  if (ext === 'js' && bytes > sizes.entry) sizes.entry = bytes;
+  if (ext === 'js' && bytes > sizes.entry) {
+    sizes.entry = bytes;
+    entryAsset = asset;
+  }
+}
+
+/* ============================================================
+   WHAT IS DELIBERATELY NOT IN THE ENTRY CHUNK.
+
+   A budget catches weight. It does not catch weight arriving in the
+   WRONG PLACE while the number stays under, and it cannot catch a
+   saving being quietly undone — which is the failure mode for every
+   split this project has made.
+
+   The menu hints are the live example. Fourteen sentences moved to
+   shared/menu-hints.js so they stop being parsed before first paint by
+   a reporter who never opens a menu. Writing `hint:` back onto an item
+   in sitemap.js is the obvious thing for the next person to do: it is
+   where the item lives, it is where hints used to be, and nothing
+   about it looks wrong. The entry number would tick up by under a
+   kilobyte, stay inside the budget, and the split would be gone with
+   no gate having an opinion.
+
+   So a sentence from each deferred module is looked for in the built
+   entry asset by its actual text. Read from the module rather than
+   typed here, because a sentinel typed in two places is a sentinel
+   that stops matching the day somebody edits the copy — and then this
+   passes for the reason it should be failing.
+   ============================================================ */
+const DEFERRED = [
+  {
+    module: 'apps/web/src/shared/menu-hints.js',
+    what: 'the menu hints',
+    why:
+      'they moved out so they are not parsed before first paint; a `hint:` ' +
+      'written back onto an item in shared/sitemap.js puts them straight back'
+  }
+];
+
+if (!entryAsset) {
+  console.error('FATAL: no JS asset found in dist — the entry chunk could not be identified.');
+  process.exit(1);
+}
+
+const entrySource = readFileSync(resolve(DIST, entryAsset.slice(1)), 'utf8');
+let leaked = false;
+for (const d of DEFERRED) {
+  const source = readFileSync(resolve(ROOT, d.module), 'utf8');
+  /* EVERY sentence, not the longest one. Checking a single specimen
+     was the first version and it did not work: re-adding one hint to
+     sitemap.js — the realistic mistake, and the one this exists to
+     catch — put that sentence in the entry chunk while the probe went
+     on looking for a different sentence and reported clean. A gate
+     that only notices a wholesale revert does not cover the change
+     anybody actually makes.
+
+     Read from the source so they track edits: a sentinel typed here
+     would stop matching the day somebody rewords the copy, and then
+     this passes for the reason it should be failing. */
+  const prose = [...source.matchAll(/'((?:[^'\\]|\\.){40,})'/g)].map((m) => m[1]);
+
+  if (prose.length < 5) {
+    // Charter rule 11: a probe with nothing to look for finds nothing.
+    console.error(
+      `FATAL: read only ${prose.length} sentence(s) out of ${d.module}, so the ` +
+        'entry chunk was not meaningfully checked. Either the module was emptied ' +
+        'or its shape changed and this gate stopped covering it.'
+    );
+    process.exit(1);
+  }
+
+  const found = prose.filter((p) => entrySource.includes(p));
+  if (found.length) {
+    console.error(
+      `  IN THE ENTRY CHUNK  ${d.what} — ${d.why}.\n` +
+        `                      ${found.length} of ${prose.length} sentence(s) in ` +
+        `${entryAsset}, e.g. "${found[0].slice(0, 60)}…"`
+    );
+    leaked = true;
+  }
+}
+if (leaked) {
+  console.error(
+    '\nDeferred prose is being shipped in the entry chunk. It is charged to\n' +
+      'every cold start, including the reporter at a strip who never opens the\n' +
+      'screen that prints it. Put it back behind its dynamic import.'
+  );
+  process.exit(1);
 }
 
 let overBudget = false;
