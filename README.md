@@ -87,7 +87,7 @@ npm run check          # prisma generate, typecheck, brand, claims, css, glyphs,
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:claims   # 60 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
-npm test               # 282 unit tests
+npm test               # 292 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
@@ -98,7 +98,7 @@ npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 55 checks, including filing a report with the network cut and
+— 56 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 
@@ -185,15 +185,29 @@ reporting system that can be un-anonymised by a join is not a
 confidential reporting system, it is a list. Fixed, and guarded in
 [`tests/confidentiality.test.ts`](tests/confidentiality.test.ts).
 
-**2. The MOR deadline was wrong twice.** `morDeadline()` added 72 hours
-to the occurrence time and cited KCAA. 72 hours is the **EU** figure
-(Reg. 376/2014); KCAA's CAA-AC-SMS004A requires the pertinent
-information within **24**. And the EU's 72 hours run from **becoming
+**2. The MOR deadline was wrong three times.** `morDeadline()` added 72
+hours to the occurrence time and cited KCAA. 72 hours is the **EU**
+figure (Reg. 376/2014). And the EU's 72 hours run from **becoming
 aware**, not from the occurrence — an engineer who finds a Friday defect
 on Monday reports from Monday. A Kenyan operator would have seen a
 comfortable green countdown for two full days after going non-compliant.
-There is no worse failure available to a compliance tool than a
-confident wrong deadline. Replaced by
+
+The third correction came from finally reading the primary instrument.
+The product then showed a flat **24 hours**, taken from KCAA Advisory
+Circular CAA-AC-SMS004A — guidance, and superseded. The **Civil Aviation
+(Safety Management) Regulations, 2025**, gazetted as **L.N. 32 of 2026**
+on 3 March 2026, sets three periods in regulation 12(1): **24 hours for
+an accident, 48 for a serious incident, 72 for an incident or other
+safety related occurrence.** It also names incidents as mandatorily
+reportable, where the classifier had been calling them not automatically
+reportable — so the screen built to answer "must I report this, and by
+when" was answering both halves wrong for two of the three classes.
+
+Both errs strict rather than lax, which is why nobody noticed. A
+compliance tool that overstates urgency costs an operator time; one that
+understates it costs them a finding. Neither is the instrument. Where the
+class is unknown the strictest period still applies, and a test asserts
+that the row's default can never drift above it. Replaced by
 [`packages/shared/src/regulations.ts`](packages/shared/src/regulations.ts).
 
 **3. The audit chain did not verify the audit log.** `verifyAuditChain`

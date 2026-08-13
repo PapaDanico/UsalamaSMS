@@ -164,6 +164,14 @@ function Steps() {
    source is still the top of the stack. Two of three is the one that
    misleads.
    ============================================================ */
+/* The order regulation 12(1) states them in, which is also strictest
+   first — the one a reader should see before the others. */
+const CLASS_ORDER = [
+  ['ACCIDENT', 'for an accident'],
+  ['SERIOUS_INCIDENT', 'for a serious incident'],
+  ['INCIDENT', 'for an incident']
+];
+
 function Deadlines() {
   const codes = Object.keys(MOR_OBLIGATIONS);
   const provisional = codes.filter(isProvisional);
@@ -189,10 +197,32 @@ function Deadlines() {
                   : ''}
               </dt>
               <dd>
+                <!-- ONE ROW CAN CARRY THREE PERIODS. Kenya's regulation
+                     12(1) sets 24 hours for an accident, 48 for a
+                     serious incident and 72 for an incident. Printing
+                     the row's single figure here would state a quarter
+                     of the instrument as the whole of it — on the
+                     section the footer names as the regulatory basis. -->
                 ${o.hours === null
                   ? html`<strong>Without delay</strong> — no fixed period is set ·`
-                  : html`<strong>${o.hours} hours</strong> from
-                      ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`}
+                  : o.hoursByClass
+                    ? html`${CLASS_ORDER.map(
+                        ([key, label], i) => html`${i ? ' · ' : ''}<strong
+                            >${o.hoursByClass[key]} hours</strong
+                          >
+                          ${label}`
+                      )}
+                      from
+                      ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`
+                    : html`<strong>${o.hours} hours</strong> from
+                        ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`}
+                ${o.clockStartUnstated
+                  ? html`<span class="cite__governs">
+                      The instrument names the periods and not what starts them; awareness
+                      is the reading applied here, because a clock anchored to the event can
+                      run out before anybody knows it happened.
+                    </span>`
+                  : ''}
                 <span class="reg-list__source">${o.instrument}</span>
                 ${isStale(o, new Date())
                   ? html`<span class="tag tag--stale">Past its review cycle</span>`

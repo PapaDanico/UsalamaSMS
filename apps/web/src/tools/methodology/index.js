@@ -80,7 +80,14 @@ function Matrix() {
 /* A worked example rather than an abstract table: an occurrence at
    10:00Z discovered three days later. The gap is the entire point — it
    is what the replaced constant got wrong, and a table of raw hour
-   counts would hide it. */
+   counts would hide it.
+
+   THE EXAMPLE IS AN ACCIDENT, and the Window column reads
+   accident / serious incident / incident where a State sets three.
+   Kenya does: regulation 12(1) of L.N. 32/2026 gives 24, 48 and 72
+   hours respectively. A single Due date with three possible windows
+   above it is a date the reader cannot place, so the column says which
+   class it belongs to rather than leaving them to guess the strictest. */
 const OCCURRED_AT = new Date('2026-08-11T10:00:00Z');
 const AWARE_AT = new Date('2026-08-14T08:00:00Z');
 
@@ -91,16 +98,20 @@ function Obligations() {
     <thead>
       <tr>
         <th scope="col">Authority</th>
-        <th scope="col">Window</th>
+        <th scope="col">Window <span class="field-note">accident / serious / incident</span></th>
         <th scope="col">Clock starts</th>
-        <th scope="col">Due</th>
+        <th scope="col">Due <span class="field-note">for an accident</span></th>
         <th scope="col">Instrument</th>
       </tr>
     </thead>
     <tbody>
       ${JURISDICTIONS.map((j) => {
         const o = MOR_OBLIGATIONS[j];
-        const { due } = reportingDeadline(j, { occurredAt: OCCURRED_AT, awareAt: AWARE_AT });
+        /* The worked example is an ACCIDENT, and it is named as one in
+           the caption. Kenya's regulation 12(1) gives three periods and
+           a table that shows one date has to say which occurrence it is
+           the date for. */
+        const { due } = reportingDeadline(j, { occurredAt: OCCURRED_AT, awareAt: AWARE_AT }, 'ACCIDENT');
         return html`
           <tr>
             <th scope="row">
@@ -108,10 +119,16 @@ function Obligations() {
               ${isProvisional(j) ? html`<span class="tag tag--provisional">provisional</span>` : ''}
             </th>
             <td class="num" data-label="Window">
-              ${o.hours === null ? html`<span class="cell-none">no fixed period</span>` : `${o.hours} h`}
+              ${o.hours === null
+                ? html`<span class="cell-none">no fixed period</span>`
+                : o.hoursByClass
+                  ? html`${o.hoursByClass.ACCIDENT} / ${o.hoursByClass.SERIOUS_INCIDENT} /
+                      ${o.hoursByClass.INCIDENT} h`
+                  : `${o.hours} h`}
             </td>
             <td data-label="Clock starts">
               ${o.clockStart === 'AWARENESS' ? 'awareness' : 'occurrence'}
+              ${o.clockStartUnstated ? html`<span class="field-note">not stated by the instrument</span>` : ''}
             </td>
             <td class="num" data-label="Due">
               ${due ? fmt(due) : html`<span class="cell-none">without delay</span>`}

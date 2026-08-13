@@ -2901,6 +2901,21 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .mat-ref label { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--us-space-2); }
 .mat-ref__q { font-size: var(--us-text-sm); color: var(--us-text-secondary); }
 .mat-ref input { flex: 1 1 24ch; font: inherit; font-size: var(--us-text-sm); padding: 4px 8px; border: 1px solid var(--us-border); border-radius: var(--us-radius-sm); background: var(--us-surface); color: var(--us-text-primary); min-width: 0; }
+/* A small annotation on a column heading or a cell — what a figure is
+   FOR, rather than what it is. Its own class rather than `.verified`,
+   which means one specific thing ("verified <date>") and is counted by
+   a smoke check that expects one per jurisdiction row. Overloading a
+   semantic class is how `.tag--provisional` came to report stale rows
+   as provisional; the check caught it that time too. */
+.field-note { display: block; font-size: var(--us-text-2xs); font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--us-text-tertiary); }
+
+/* The clock-start caveat on the classifier. Kenya's regulation names a
+   period and never says what starts it; awareness is our reading, and a
+   reading presented as a quotation is the quiet kind of wrong this
+   product is built against. Small, inline, and it does not compete with
+   the figure it qualifies. */
+.calc__caveat { display: block; font-size: var(--us-text-xs); color: var(--us-text-tertiary); margin-top: 2px; }
+
 .mat-phase__assign { margin-top: var(--us-space-4); font-size: var(--us-text-sm); color: var(--us-text-secondary); max-width: 62ch; }
 
 @media print {

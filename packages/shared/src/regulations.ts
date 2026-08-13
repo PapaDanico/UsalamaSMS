@@ -35,6 +35,17 @@
 // Deadlines are computed on demand and never written to a row.
 // =====================================================================
 
+/* TYPE-ONLY, and deliberately. This module is dependency-free at
+   runtime — the risk matrix and the regulatory engine are the two pure
+   modules a caller can import without dragging the schema machinery in.
+   `import type` is erased at compile time, so keying a deadline on the
+   occurrence class costs nothing at runtime and still stops the two
+   files disagreeing about what the three classes are called. */
+import type { OccurrenceClass } from "./glossary";
+
+/** The three classes Kenya's regulation 12(1) sets separate periods for. */
+export type OccurrenceClassKey = OccurrenceClass["key"];
+
 // ---------------------------------------------------------------------
 // WHY THIS LIST SHRANK, AND WHAT REPLACED THE ROWS.
 //
@@ -92,7 +103,36 @@ export interface ReportingObligation {
    * file now" forces a lie into the one field nobody should guess.
    */
   readonly hours: number | null;
+  /**
+   * Where the instrument sets a DIFFERENT period per occurrence class.
+   *
+   * Kenya does. Regulation 12(1) of L.N. 32/2026 gives an accident 24
+   * hours, a serious incident 48, and an incident or other safety
+   * related occurrence 72 — one instrument, three deadlines, keyed on
+   * exactly the classification this product already helps a reporter
+   * make.
+   *
+   * `hours` above remains the figure used when the class is not known,
+   * and it must be the STRICTEST of these. Telling an operator it has
+   * less time than it does is a cost; telling it more is a breach. The
+   * relationship is asserted in tests rather than left to whoever edits
+   * the row next.
+   */
+  readonly hoursByClass?: Readonly<Record<OccurrenceClassKey, number>>;
   readonly clockStart: ClockStart;
+  /**
+   * True where the instrument names a period but not what starts it.
+   *
+   * L.N. 32/2026 says "within 24 hours" and never says from what. The
+   * Advisory Circular it replaced said from becoming aware, and
+   * awareness is the only anchor a person can act on — an
+   * occurrence-anchored clock can be past its deadline before anybody
+   * knows the event happened. So awareness is kept and this flag makes
+   * the product say, on the surface, that it is our reading rather than
+   * the instrument's words. A silent assumption in a compliance tool is
+   * the same failure as a silent figure.
+   */
+  readonly clockStartUnstated?: boolean;
   /** The instrument. A deadline without a citation is an opinion. */
   readonly instrument: string;
   /**
@@ -170,26 +210,42 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   KE: {
     jurisdiction: "KE",
     authority: "Kenya Civil Aviation Authority",
+    /* The strictest of the three below, used when the class is not yet
+       known. Never a middle value: an unknown occurrence is treated as
+       the one with the least time, because the cost of being early is
+       an inconvenience and the cost of being late is a breach. */
     hours: 24,
+    /* Regulation 12(1), verbatim: a service provider shall notify and
+       make mandatory occurrence reports "to the Authority within 24
+       hours, in the case of accident, 48 hours in the case of serious
+       incidents and 72 hours in the case of incidents and other safety
+       related occurrences." */
+    hoursByClass: { ACCIDENT: 24, SERIOUS_INCIDENT: 48, INCIDENT: 72 },
     clockStart: "AWARENESS",
-    instrument: "KCAA Advisory Circular CAA-AC-SMS004A (January 2023), Mandatory Occurrence Reporting",
-    verifiedOn: "2026-08-11",
-    instrumentIssued: "2023-01-01",
-    reviewCycleMonths: 36,
-    governedByUnread:
-      "Civil Aviation (Safety Management) Regulations, L.N. 32/2026, gazetted 3 March 2026",
+    /* The instrument states a period and not what starts it. See the
+       field's own documentation — awareness is our reading, and the
+       product says so rather than presenting it as quoted. */
+    clockStartUnstated: true,
+    instrument:
+      "Civil Aviation (Safety Management) Regulations, 2025 (L.N. 32 of 2026, " +
+      "Kenya Gazette Supplement No. 43, 3 March 2026), regulation 12(1)",
+    verifiedOn: "2026-08-12",
+    /* The date of gazettement, which is the date the instrument bears.
+       Note the citation year and the notice year differ — the
+       Regulations are cited as of 2025 and were gazetted in 2026, and
+       both appear above because an operator searching either will find
+       it. */
+    instrumentIssued: "2026-03-03",
+    reviewCycleMonths: 60,
     note:
-      "24 hours for the pertinent information. Distinct from the 72-hour " +
-      "window for undeclared or misdeclared dangerous goods, which runs " +
-      "from discovery and is a separate obligation — do not merge them. " +
-      "THE FIGURE COMES FROM AN ADVISORY CIRCULAR AND THERE IS NOW A " +
-      "REGULATION: KCAA gazetted the Civil Aviation (Safety Management) " +
-      "Regulations as L.N. 32/2026 on 3 March 2026 — law, where an AC is " +
-      "guidance. It has not been read against this row, so the 24 hours " +
-      "stays attributed to where it actually came from rather than being " +
-      "moved onto a document nobody here has opened. Working figure; " +
-      "confirm against L.N. 32/2026 before relying on it for a filing.",
+      "THREE PERIODS, NOT ONE, and which applies depends on how the occurrence " +
+      "classifies: 24 hours for an accident, 48 for a serious incident, 72 for an " +
+      "incident or other safety related occurrence. This product previously showed " +
+      "24 hours for all of them, from KCAA Advisory Circular CAA-AC-SMS004A " +
+      "(January 2023) — guidance, and now superseded. Regulation 18 of these " +
+      "Regulations revokes L.N. 91/2018.",
   },
+
 };
 
 /**
@@ -329,10 +385,67 @@ export const STANDARDS: readonly Standard[] = [
  * is deliberately no default: defaulting it to `occurredAt` would
  * reintroduce the exact bug this module exists to remove, quietly.
  */
+/**
+ * The period that applies, in hours, or null where none is fixed.
+ *
+ * Exported because two surfaces need the figure without needing a date:
+ * the occurrence classifier, which has just worked out the class and
+ * must show the period that goes with it, and the deadline computation
+ * below. One function so the two cannot disagree — the classifier used
+ * to read `obligation.hours` directly and would have gone on showing
+ * 24 hours for an incident the instrument gives 72.
+ */
+export function reportingHours(
+  jurisdiction: Jurisdiction,
+  occurrenceClass?: OccurrenceClassKey,
+): number | null {
+  const obligation = MOR_OBLIGATIONS[jurisdiction];
+  return (occurrenceClass && obligation.hoursByClass?.[occurrenceClass]) ?? obligation.hours;
+}
+
+/**
+ * Whether an occurrence of this class must be reported to THIS
+ * authority — which is not the same question as whether the class is
+ * generally reportable.
+ *
+ * OccurrenceClass.reportable in the glossary carries the general
+ * reading: Annex 13's notification duty covers accidents and serious
+ * incidents, and an incident is "not reportable as an occurrence in
+ * every case". That is true as a generality and false in Kenya.
+ * Regulation 12(1) of L.N. 32/2026 requires mandatory occurrence
+ * reports on "accidents, serious incidents, incidents and other safety
+ * related occurrences" — incidents named explicitly, with 72 hours
+ * against them.
+ *
+ * So the classifier was telling a Kenyan operator that an incident is
+ * not automatically reportable while the law required it inside three
+ * days. Derived from the instrument rather than from a second
+ * hand-typed flag: if a State's own table sets a period for the class,
+ * the State expects the report.
+ */
+export function isReportableUnder(
+  jurisdiction: Jurisdiction,
+  occurrenceClass: OccurrenceClassKey,
+  generallyReportable: boolean,
+): boolean {
+  const byClass = MOR_OBLIGATIONS[jurisdiction].hoursByClass;
+  if (byClass && occurrenceClass in byClass) return true;
+  return generallyReportable;
+}
+
 export function reportingDeadline(
   jurisdiction: Jurisdiction,
   times: { occurredAt: Date; awareAt: Date },
-): { due: Date | null; obligation: ReportingObligation } {
+  /**
+   * How the occurrence classifies, where that is known.
+   *
+   * Optional because it usually is not known yet: a reporter filing
+   * from a strip has answered "what kind of report is this", not "is
+   * this an accident under Annex 13". Omit it and the strictest period
+   * applies, which is the safe direction to be wrong in.
+   */
+  occurrenceClass?: OccurrenceClassKey,
+): { due: Date | null; obligation: ReportingObligation; hours: number | null } {
   const obligation = MOR_OBLIGATIONS[jurisdiction];
   const anchor = obligation.clockStart === "AWARENESS" ? times.awareAt : times.occurredAt;
 
@@ -353,11 +466,22 @@ export function reportingDeadline(
      of those would flow into a countdown and put a figure on screen
      that no instrument supports — which is the whole failure this
      module exists to prevent, reintroduced by a convenience. */
+  /* The class-specific period where the instrument sets one AND the
+     class is known; otherwise the row's own figure, which is the
+     strictest. Falling back to the strictest rather than to the widest
+     is the whole point — an unclassified occurrence must not be given
+     the incident window and then turn out to be an accident. */
+  const hours = reportingHours(jurisdiction, occurrenceClass);
+
+  /* No fixed period means no due date, and the honest return is the
+     absence rather than a very large number or the anchor itself. Both
+     of those would flow into a countdown and put a figure on screen
+     that no instrument supports — which is the whole failure this
+     module exists to prevent, reintroduced by a convenience. */
   return {
-    due: obligation.hours === null
-      ? null
-      : new Date(anchor.getTime() + obligation.hours * 3_600_000),
+    due: hours === null ? null : new Date(anchor.getTime() + hours * 3_600_000),
     obligation,
+    hours,
   };
 }
 
