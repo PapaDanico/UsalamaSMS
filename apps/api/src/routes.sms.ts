@@ -43,6 +43,25 @@ const toDate = (s: string | undefined | null): Date | null => (s ? new Date(s) :
 
 /* ------------------------------- schemas ------------------------------ */
 
+/* Regulation 13's seven fields — the six of 13(3) plus how 13(2)'s
+   protection is afforded. All optional: an operator part-way through
+   defining its scheme is a real state, and a required set would invite
+   placeholder text, which reads as answered where a blank reads as
+   missing. Capped rather than unbounded because these are rendered. */
+const VoluntaryInput = z
+  .object({
+    objective: z.string().trim().max(4000).optional(),
+    scope: z.string().trim().max(4000).optional(),
+    whoMayReport: z.string().trim().max(4000).optional(),
+    whenToReport: z.string().trim().max(4000).optional(),
+    howProcessed: z.string().trim().max(4000).optional(),
+    contactPost: z.string().trim().max(4000).optional(),
+    protection: z.string().trim().max(4000).optional(),
+  })
+  .refine((v) => Object.values(v).some((x) => typeof x === "string" && x.length > 0), {
+    message: "Send at least one field. An empty write defines nothing and would still audit.",
+  });
+
 const PolicyDraft = z.object({
   statement: z.string().min(50).max(20000),
   effectiveFrom: iso.optional(),
@@ -111,6 +130,88 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
   /* =====================================================================
      ELEMENT 1.1 — the safety policy.
      ===================================================================== */
+
+  /* =====================================================================
+     REGULATION 13 — the voluntary reporting system's own definition.
+
+     13(3) requires a service provider's voluntary system to DEFINE six
+     things; 13(2) requires it to be non-punitive and to afford
+     protection to its sources. The product has offered a "voluntary and
+     confidential" report type since the reporting form was built and
+     stated none of it. The requirement text lives in
+     packages/shared/src/voluntary.ts and is quoted on /methodology;
+     this is where an operator's own answers are kept.
+
+     READ IS document.read, WRITE IS policy.draft. Deliberately not a
+     new permission: defining the scheme is the same act as drafting the
+     policy that describes it, by the same post, and inventing a
+     permission for one table is how a matrix stops being reviewable.
+
+     UPSERT RATHER THAN CREATE, because there is exactly one scheme per
+     operator and the second POST is an edit, not a second scheme. The
+     unique constraint on orgId enforces that in the database as well —
+     a scheme defined twice and differently is what an inspector finds.
+
+     PARTIAL WRITES ARE ACCEPTED. An operator part-way through defining
+     its scheme is a real state, and refusing anything short of all six
+     would either block them recording what they have or invite
+     placeholder text. Which of the six are still undefined is computed
+     by unanswered() from the values, never stored — so the count cannot
+     disagree with the fields it describes.
+     ===================================================================== */
+
+  app.get("/api/v1/sms/voluntary", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "document.read")) return reply.code(403).send({ error: "forbidden" });
+    const scheme = await prisma.voluntaryScheme.findFirst({ where: tenantWhere(req) });
+    return reply.send({ scheme: scheme ?? null });
+  });
+
+  app.post("/api/v1/sms/voluntary", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "policy.draft")) return reply.code(403).send({ error: "forbidden" });
+    const body = VoluntaryInput.safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: "invalid_voluntary_scheme" });
+
+    /* Trimmed, and narrowed to strings.
+
+       AN EARLIER COMMENT HERE CLAIMED THIS GUARDED AGAINST SPREADING
+       THE PARSED BODY WHOLESALE — that editing the objective would
+       otherwise erase the contacting manager. That is not true, and
+       the mutation proved it: zod's `.optional()` OMITS an absent key
+       rather than setting it to undefined, so the naive spread carries
+       only the fields the caller actually sent and Prisma leaves the
+       rest alone. The protection comes from the schema, not from this
+       loop, and saying otherwise would have left the next person
+       defending a line that does nothing.
+
+       What the loop does do is trim, and refuse anything that is not a
+       string. The property it was wrongly credited with is real and
+       worth keeping — it is asserted in the integration suite against
+       the ROUTE rather than against this loop, so it stays true however
+       this is written. */
+    const data: Record<string, string> = {};
+    for (const [k, v] of Object.entries(body.data)) {
+      if (typeof v === "string") data[k] = v.trim();
+    }
+
+    const saved = await prisma.$transaction(async (tx) => {
+      const row = await tx.voluntaryScheme.upsert({
+        where: { orgId: req.auth!.org },
+        create: { orgId: req.auth!.org, ...data },
+        update: data,
+      });
+      await appendAuditTx(tx, {
+        orgId: req.auth!.org,
+        userId: req.auth!.sub,
+        action: "voluntary.define",
+        entityType: "VoluntaryScheme",
+        entityId: row.id,
+        detail: { defined: Object.keys(data) },
+      });
+      return row;
+    });
+
+    return reply.send({ scheme: saved });
+  });
 
   app.get("/api/v1/sms/policy", limited, async (req, reply) => {
     if (!guard(req.auth!.role, "document.read")) return reply.code(403).send({ error: "forbidden" });
