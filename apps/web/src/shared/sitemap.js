@@ -22,9 +22,22 @@
              header drawn twice, and scripts/smoke.mjs holds that line
              by asserting the footer carries links the header does not.
 
-   Every item carries a HINT. "Triage" means nothing to somebody on
-   their first shift; "everything filed on this device, sent or not"
-   does. The menu shows them, the footer does not — a hint under a
+   Every item in a working section carries a HINT, and the hints are
+   NOT IN THIS FILE. "Triage" means nothing to somebody on their first
+   shift; "everything filed on this handset, sent or not" does — but
+   this module is imported by main.js, so a sentence written here is a
+   sentence parsed before the app renders, by every person on every
+   cold start, including the one who taps "File a report" from the
+   landing page and never opens a menu.
+
+   So they live in shared/menu-hints.js, keyed by href, loaded when the
+   menu is first opened. Same split, and the same reasoning, as the
+   toolkit blurbs described below: the LIST is canonical here, the
+   PROSE lives where it is printed, and a test rather than proximity
+   keeps the two in step — tests/sitemap.test.ts fails when an item in
+   a working section has no hint in that module.
+
+   The footer prints labels alone and never hints. A hint under a
    footer link is a paragraph in a column eighty pixels wide.
    ============================================================ */
 
@@ -40,7 +53,8 @@
    person it goes stale for is the one looking for the thing that was
    added.
 
-   So the hint is COMPUTED from this list, and the toolkits page
+   So the hint is COMPUTED from this list — in shared/menu-hints.js,
+   where the sentence it builds is printed — and the toolkits page
    renders its hero and its contents from the same list. Adding a
    toolkit in one place adds it in all three.
 
@@ -56,8 +70,8 @@
    sentences and six titles into the ENTRY chunk that only a
    lazily-loaded page ever reads. That is weight charged to a reporter
    at a strip who is filing a report and will never open the toolkits
-   index. `short` stays, because the menu hint is computed from it and
-   the menu IS the entry.
+   index. `short` stays, because it is the list rather than the prose —
+   menu-hints.js builds the Toolkits sentence out of it.
 
    So the LIST stays canonical here and the prose lives where it is
    printed. The guarantee that made this list single-source is kept by
@@ -98,12 +112,6 @@ export const TOOLKITS = [
 
 /** The ones with a route of their own, named; the rest, counted. */
 export const ROUTED_TOOLKITS = TOOLKITS.filter((t) => t.routed);
-const CALCULATORS = TOOLKITS.length - ROUTED_TOOLKITS.length;
-
-const TOOLKITS_HINT = `${ROUTED_TOOLKITS.map((t) => t.short).join(', ')} and ${CALCULATORS} calculators`.replace(
-  /^./,
-  (c) => c.toUpperCase()
-);
 
 /* ============================================================
    THE GROUPS ARE THE OPERATOR'S SEQUENCE, NOT OUR FILING SYSTEM.
@@ -173,14 +181,12 @@ export const SECTIONS = [
         href: '/toolkits/maturity',
         label: 'Where your SMS stands',
         short: 'Where you stand',
-        inHeader: true,
-        hint: 'Grade the twelve elements, and get the implementation plan that falls out of it'
+        inHeader: true
       },
       {
         href: '/account',
         label: 'Account',
-        short: 'Account',
-        hint: 'Sign in so queued reports can reach the safety office'
+        short: 'Account'
       }
     ]
   },
@@ -193,15 +199,13 @@ export const SECTIONS = [
         href: '/report',
         label: 'File a report',
         short: 'Report',
-        inHeader: true,
-        hint: 'Three fields, thirty seconds, and it works with no signal'
+        inHeader: true
       },
       {
         href: '/triage',
         label: 'Reports on this device',
         short: 'Triage',
-        inHeader: true,
-        hint: 'Everything filed on this handset, sent or not'
+        inHeader: true
       }
     ]
   },
@@ -214,20 +218,17 @@ export const SECTIONS = [
         href: '/toolkits/sra',
         label: 'Safety risk assessment',
         short: 'Risk assessment',
-        inHeader: true,
-        hint: "Doc 9859's five steps, from the hazard to a decision somebody signs"
+        inHeader: true
       },
       {
         href: '/toolkits/register',
         label: 'Risk register',
-        short: 'Register',
-        hint: 'What you have accepted, who owns each one, and when it is next looked at'
+        short: 'Register'
       },
       {
         href: '/toolkits',
         label: 'Toolkits and calculators',
-        short: 'Toolkits',
-        hint: TOOLKITS_HINT
+        short: 'Toolkits'
       }
     ]
   },
@@ -239,21 +240,18 @@ export const SECTIONS = [
       {
         href: '/toolkits/spi',
         label: 'Safety performance indicators',
-        short: 'Indicators',
-        hint: 'What regulation 9(5) requires you to have, and to be able to produce'
+        short: 'Indicators'
       },
       {
         href: '/sms',
         label: 'The SMS record',
         short: 'SMS record',
-        inHeader: true,
-        hint: "Your operator's own evidence against all twelve elements"
+        inHeader: true
       },
       {
         href: '/coverage',
         label: 'What this covers',
-        short: 'Coverage',
-        hint: 'Element by element, what this product does and exactly where it stops'
+        short: 'Coverage'
       }
     ]
   },
@@ -269,32 +267,27 @@ export const SECTIONS = [
       {
         href: '/methodology',
         label: 'Methodology',
-        short: 'Methodology',
-        hint: 'How every deadline and risk index in this product is derived'
+        short: 'Methodology'
       },
       {
         href: '/tutorials',
         label: 'Tutorials',
-        short: 'Tutorials',
-        hint: 'From a first report to a record a regulator can audit'
+        short: 'Tutorials'
       },
       {
         href: '/templates',
         label: 'Templates and source documents',
-        short: 'Templates',
-        hint: 'What the authorities publish, and what we already do for you'
+        short: 'Templates'
       },
       {
         href: '/glossary',
         label: 'Glossary',
-        short: 'Glossary',
-        hint: 'The vocabulary, transcribed from the KCAA course glossary'
+        short: 'Glossary'
       },
       {
         href: '/faq',
         label: 'Questions, answered straight',
-        short: 'Questions',
-        hint: 'What operators actually ask, including what we cannot answer'
+        short: 'Questions'
       }
     ]
   },

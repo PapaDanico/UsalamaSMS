@@ -562,9 +562,41 @@ try {
     // The panel still opens and closes like a menu.
     await page.click('#menu-toggle');
     assert(await page.locator('#menu-panel').isVisible(), 'the menu did not open');
-    const hints = await page.locator('#menu-panel .nav-item-summary').count();
+    /* COUNTED BY TEXT, NOT BY ELEMENT, and the difference is the whole
+       check now. This used to compare how many .nav-item-summary spans
+       existed against how many items existed — which was a real test
+       while the hint was rendered into the span or the span was not
+       written at all. Since the hints moved to a lazily-imported
+       module, main.js writes an EMPTY summary span for every item and
+       fills it when the module lands, so the element count is equal by
+       construction and this passed without ever looking at a sentence.
+
+       Waited for rather than sampled, because the fill is now
+       asynchronous: reading immediately after the click is a race that
+       resolves differently on a slow machine, and a gate that fails
+       one run in twenty is one everybody learns to re-run. */
     const items = await page.locator('#menu-panel .nav-item').count();
-    assert(hints === items, `${items} destinations but ${hints} hints — a label alone is not navigation`);
+    await page
+      .waitForFunction(
+        (n) =>
+          [...document.querySelectorAll('#menu-panel .nav-item-summary')].filter(
+            (el) => (el.textContent ?? '').trim().length > 0
+          ).length === n,
+        items,
+        { timeout: 5000 }
+      )
+      .catch(() => {});
+    const hints = await page.evaluate(
+      () =>
+        [...document.querySelectorAll('#menu-panel .nav-item-summary')].filter(
+          (el) => (el.textContent ?? '').trim().length > 0
+        ).length
+    );
+    assert(
+      hints === items,
+      `${items} destinations but ${hints} carry a sentence — a label alone is not ` +
+        'navigation, and an empty summary means the hints never arrived'
+    );
     await page.keyboard.press('Escape');
     assert(await page.locator('#menu-panel').isHidden(), 'Escape did not close the menu');
 
@@ -1971,6 +2003,21 @@ try {
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.click('#menu-toggle');
+    /* The hints arrive from a dynamic import, so wait for one to land
+       before reading. Without this the assertion below that every
+       routed toolkit's entry carries a summary is a race — and it
+       would fail on the slow machine rather than the fast one, which
+       is the CI box. */
+    await page
+      .waitForFunction(
+        () =>
+          [...document.querySelectorAll('#menu-panel .nav-item-summary')].some(
+            (el) => (el.textContent ?? '').trim().length > 0
+          ),
+        undefined,
+        { timeout: 5000 }
+      )
+      .catch(() => {});
     const menu = await page.evaluate(() =>
       [...document.querySelectorAll('#menu-panel .nav-group')].flatMap((g) => {
         const group = g.querySelector('.nav-group__title')?.textContent?.trim() ?? '';

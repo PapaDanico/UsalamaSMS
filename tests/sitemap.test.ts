@@ -23,6 +23,7 @@ import { resolve } from 'node:path';
 const read = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 const toolkitsPage = read('apps/web/src/tools/toolkits/index.js');
 const sitemap = read('apps/web/src/shared/sitemap.js');
+const hints = read('apps/web/src/shared/menu-hints.js');
 const main = read('apps/web/src/main.js');
 
 /* sitemap.js is browser code with no type declarations, so it is read
@@ -104,21 +105,64 @@ describe('the information architecture', () => {
     }
   });
 
-  it('gives every item in a header section a hint, because the header shows them', () => {
+  it('gives every item in a header section a hint, because the menu shows them', () => {
     /* An item with no hint renders an empty line under its label in the
        menu — the defect the hints were introduced to fix, back. Only
        the `working` sections are checked: the footer prints labels
        alone and a hint there would be a paragraph in a column eighty
-       pixels wide. */
+       pixels wide.
+
+       THE HINTS ARE NO LONGER BESIDE THE ITEMS. They moved to
+       shared/menu-hints.js so fourteen sentences stop being parsed
+       before first paint by a reporter who never opens a menu. That is
+       a real saving and it costs exactly the guarantee proximity used
+       to give: an item added to sitemap.js no longer arrives next to
+       the place its sentence is written.
+
+       So this now reads BOTH files and matches them by href, which is
+       the key the rendered menu uses. Same trade, and the same
+       resolution, as the toolkit blurbs above. */
     const working = /working: true,\n    items: \[([\s\S]*?)\n    \]/g;
     const blocks = [...sitemap.matchAll(working)];
     expect(blocks.length, 'no header sections found').toBeGreaterThan(1);
+
+    const hinted = new Set(
+      [...hints.matchAll(/^\s*'([^']+)':/gm)].map((m) => m[1]!)
+    );
+    expect(hinted.size, 'no hints were read out of menu-hints.js').toBeGreaterThan(6);
+
     for (const block of blocks) {
-      const items = block[1]!.split(/\},\s*\{/);
-      for (const item of items) {
-        const href = /href: '([^']+)'/.exec(item)?.[1] ?? '(unnamed)';
-        expect(item, `${href} has no hint`).toMatch(/hint:/);
+      for (const item of block[1]!.split(/\},\s*\{/)) {
+        const href = /href: '([^']+)'/.exec(item)?.[1];
+        if (!href) continue;
+        expect(hinted.has(href), `${href} is in the menu with no hint in menu-hints.js`).toBe(
+          true
+        );
       }
     }
+  });
+
+  it('WRITES NO HINT BACK INTO THE ENTRY CHUNK, which is the whole point of moving them', () => {
+    /* sitemap.js is imported by main.js, so it IS the entry chunk.
+       Adding `hint:` back to an item is the obvious thing to do —
+       it is where the item lives and where the old ones used to be —
+       and it would quietly undo the saving with nothing to notice.
+
+       The build-level version of this is in check-claims.mjs, which
+       greps the built entry asset for the prose itself. This one is
+       here because it names the mistake at the file somebody is
+       editing when they make it. */
+    expect(sitemap, 'a hint was written back into sitemap.js').not.toMatch(/^\s*hint:/m);
+  });
+
+  it('leaves every menu destination with a summary element to write into', () => {
+    /* The panel renders before the hints arrive, so the summary span
+       must exist from the first frame and be addressable by href.
+       Rendering it only once the module lands would reflow the panel
+       under a thumb already moving. */
+    expect(main).toMatch(/class="nav-item-summary"/);
+    expect(main, 'nothing ever loads the hints').toMatch(
+      /import\(['"]\.\/shared\/menu-hints\.js['"]\)/
+    );
   });
 });
