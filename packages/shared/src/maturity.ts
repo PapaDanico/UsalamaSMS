@@ -696,7 +696,10 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "hash-chained record, with the regulatory window computed per jurisdiction.",
     missing:
       "Proactive and predictive identification — surveys, flight data, and the analysis " +
-      "Doc 10159 asks for.",
+      "Doc 10159 asks for. And somewhere to record the six things regulation 13(3) of " +
+      "L.N. 32/2026 requires a voluntary reporting system to define: /methodology now " +
+      "quotes all six with their sub-paragraphs, and the answers are the operator's own " +
+      "to write down elsewhere until this holds them.",
     href: "/report",
   },
   {

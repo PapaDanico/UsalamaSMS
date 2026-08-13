@@ -21,6 +21,11 @@
    ============================================================ */
 
 import { html } from '../../shared/html.js';
+import {
+  VOLUNTARY_REQUIREMENTS,
+  VOLUNTARY_PROTECTION,
+  VOLUNTARY_INSTRUMENT
+} from '../../../../../packages/shared/src/voluntary.ts';
 import { Select } from '../../components/Select.js';
 import {
   tolerability,
@@ -331,6 +336,7 @@ export function render(outlet) {
           <li><a href="#windows">The reporting window</a></li>
           <li><a href="#risk">Risk classification</a></li>
           <li><a href="#colour">Why colour is never the only channel</a></li>
+          <li><a href="#voluntary">The voluntary reporting system</a></li>
           <li><a href="#provenance">Provenance and revision</a></li>
         </ol>
       </nav>
@@ -410,6 +416,43 @@ export function render(outlet) {
             tellable apart without hue at all. The two alternatives measured
             1.10:1 and 1.06:1 against their neighbours and are recorded, with
             their numbers, in the brand document.
+          </p>
+        </section>
+
+        <section class="doc-section" id="voluntary">
+          <h2>The voluntary reporting system</h2>
+          <p>
+            This product offers a confidential, voluntary report type. That is a
+            category on a form. Regulation 13 of the
+            ${VOLUNTARY_INSTRUMENT.replace(/^Civil Aviation/, 'Civil Aviation')} does not
+            describe a category &mdash; it describes a system, and it says what that
+            system must be and must define.
+          </p>
+          <p class="note">
+            <b>${VOLUNTARY_PROTECTION.cite}</b>
+            &ldquo;${VOLUNTARY_PROTECTION.text}&rdquo; That is a property your system
+            must have, not a reassurance this product can give on your behalf.
+          </p>
+          <p>
+            Regulation 13(3) requires the system to define six things. They are yours
+            to state: an objective, a scope and a contacting manager are facts about
+            your organisation, and a tool that filled them in would be inventing an
+            answer and handing it to a regulator under your name. What this product
+            does is quote the requirement and leave the answer where it belongs.
+          </p>
+          <ol>
+            ${VOLUNTARY_REQUIREMENTS.map(
+              (r) => html`<li>
+                <strong>${r.cite}</strong> ${r.requirement}
+                <span class="field-note">${r.question}</span>
+                ${r.note ? html`<span class="field-note">${r.note}</span>` : ''}
+              </li>`
+            )}
+          </ol>
+          <p class="field-note">
+            Recording your six answers is not built yet. <a href="/coverage">What this
+            covers</a> says so, rather than letting this list imply that answering it
+            is kept anywhere.
           </p>
         </section>
 

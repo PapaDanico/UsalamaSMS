@@ -704,7 +704,49 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    Annex 19 element from "visible if you look" to "stated before it
    happens". A dependency, a polyfill or a component library still
    buys nothing. */
-const BUDGET = { entry: 214 * 1024, js: 412 * 1024, css: 54 * 1024 };
+/* TOTAL 412 -> 416 KB, for regulation 13's six requirements. ENTRY AND
+   CSS UNMOVED.
+
+   WHAT IT BOUGHT. The product has offered a "voluntary and
+   confidential" report type since the form was built. That is a label
+   in a list. Regulation 13 of L.N. 32/2026 does not describe a label:
+   13(2) requires the system to be non-punitive and to afford
+   protection to the sources, and 13(3) requires it to define six
+   things — objective, scope, who may report, when, how reports are
+   processed, and the manager to be contacted. The product asserted the
+   category and stated none of the substance.
+
+   The six are now quoted with their sub-paragraphs on /methodology,
+   with the answers left where they belong: an objective, a scope and a
+   contacting manager are facts about the OPERATOR, and a tool that
+   filled them in would be inventing an answer and handing it to a
+   regulator under somebody else's name. Recording those answers needs
+   a table and is not built; /coverage says so rather than letting the
+   rendered list imply otherwise.
+
+   Lands in the lazily-loaded /methodology chunk. ENTRY unmoved at
+   213.4 KB.
+
+   THE THIRD RAISE IN ONE DAY, AND THE NUMBER TO WATCH IS THE
+   CUMULATIVE ONE. Total has moved 408 -> 409 -> 410 -> 412 -> 416
+   across a single session: the register union that stopped a server
+   read deleting device work, the chunk overhead from deferring the
+   menu hints, element 4.1's currency arithmetic, and now this. Every
+   one has a receipt above and every one is defensible on its own,
+   which is precisely how a budget drifts — no single step is the
+   wrong call.
+
+   ENTRY IS THE REASSURANCE, and it is why this is drift rather than
+   rot: it has not moved in any of the four, and fell in one. A
+   reporter at a strip downloads the same bytes today as this morning;
+   all of this weight is on lazily-loaded screens that only a safety
+   manager opens. If ENTRY ever starts tracking TOTAL, that is the
+   moment to stop and take something out instead.
+
+   The stopping rule holds: a legal requirement stated faithfully earns
+   a raise. A dependency, a polyfill or a component library still buys
+   nothing. */
+const BUDGET = { entry: 214 * 1024, js: 416 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
