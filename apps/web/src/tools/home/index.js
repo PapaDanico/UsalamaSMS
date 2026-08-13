@@ -197,35 +197,39 @@ function Deadlines() {
                   : ''}
               </dt>
               <dd>
-                <!-- ONE ROW CAN CARRY THREE PERIODS. Kenya's regulation
-                     12(1) sets 24 hours for an accident, 48 for a
-                     serious incident and 72 for an incident. Printing
-                     the row's single figure here would state a quarter
-                     of the instrument as the whole of it — on the
-                     section the footer names as the regulatory basis. -->
+                <!-- ORDER MATTERS HERE. Figure, then the instrument it
+                     comes from, then whether that instrument is
+                     current, and only then the caveats. The caveat used
+                     to sit between the figure and its citation, which
+                     split the two things a reader needs to see
+                     together. -->
+                <!-- THE CLOCK PHRASE LEADS. Trailing it after a list of
+                     three periods needed a comma the template kept
+                     putting a space in front of, and read worse besides:
+                     the anchor applies to all three, so it belongs once
+                     at the front rather than tacked onto the last. -->
                 ${o.hours === null
-                  ? html`<strong>Without delay</strong> — no fixed period is set ·`
-                  : o.hoursByClass
-                    ? html`${CLASS_ORDER.map(
-                        ([key, label], i) => html`${i ? ' · ' : ''}<strong
-                            >${o.hoursByClass[key]} hours</strong
-                          >
-                          ${label}`
-                      )}
-                      from
-                      ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`
-                    : html`<strong>${o.hours} hours</strong> from
-                        ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`}
+                  ? html`<strong>Without delay</strong> &mdash; no fixed period is set`
+                  : html`From
+                      ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'}:
+                      ${o.hoursByClass
+                        ? CLASS_ORDER.map(
+                            ([key, label], i) => html`${i ? ' · ' : ''}<strong
+                                >${o.hoursByClass[key]} hours</strong
+                              >
+                              ${label}`
+                          )
+                        : html`<strong>${o.hours} hours</strong>`}`}
+                <span class="reg-list__source">&middot; ${o.instrument}</span>
+                ${isStale(o, new Date())
+                  ? html`<span class="tag tag--stale">Past its review cycle</span>`
+                  : ''}
                 ${o.clockStartUnstated
                   ? html`<span class="cite__governs">
                       The instrument names the periods and not what starts them; awareness
                       is the reading applied here, because a clock anchored to the event can
                       run out before anybody knows it happened.
                     </span>`
-                  : ''}
-                <span class="reg-list__source">${o.instrument}</span>
-                ${isStale(o, new Date())
-                  ? html`<span class="tag tag--stale">Past its review cycle</span>`
                   : ''}
                 ${o.governedByUnread
                   ? html`<span class="cite__governs">
