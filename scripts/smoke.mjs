@@ -1511,7 +1511,22 @@ try {
 
     // Clear leaves nothing behind, or the next person on a shared
     // crew-room handset inherits somebody's assessment.
+    /* Clear answers asks now, deliberately — it destroys twelve grades,
+       the suitability judgement, the scale and every plan assignment.
+       Accepted here because the point of these checks is what happens
+       AFTER a clear; the confirmation itself has its own check.
+
+       REGISTERED AND REMOVED AROUND THE CLICK, not `once`. A `once`
+       handler that its own dialog never reaches stays armed and fires
+       on somebody else's dialog several checks later, where a second
+       handler has already answered it — which crashes the run with
+       "Cannot accept dialog which is already handled", eighty lines
+       from the cause. */
+    const acceptClear = (d) => d.accept();
+    page.on('dialog', acceptClear);
     await page.click('#mat-clear');
+    await page.waitForTimeout(120);
+    page.off('dialog', acceptClear);
     await page.reload({ waitUntil: 'networkidle' });
     assert(
       (await page.locator('input[type=radio]:checked').count()) === 0,
@@ -1588,7 +1603,22 @@ try {
 
     // And Clear takes the names with it. A shared crew-room handset
     // must not hand the next person a colleague's name against a task.
+    /* Clear answers asks now, deliberately — it destroys twelve grades,
+       the suitability judgement, the scale and every plan assignment.
+       Accepted here because the point of these checks is what happens
+       AFTER a clear; the confirmation itself has its own check.
+
+       REGISTERED AND REMOVED AROUND THE CLICK, not `once`. A `once`
+       handler that its own dialog never reaches stays armed and fires
+       on somebody else's dialog several checks later, where a second
+       handler has already answered it — which crashes the run with
+       "Cannot accept dialog which is already handled", eighty lines
+       from the cause. */
+    const acceptClear = (d) => d.accept();
+    page.on('dialog', acceptClear);
     await page.click('#mat-clear');
+    await page.waitForTimeout(120);
+    page.off('dialog', acceptClear);
     await page.reload({ waitUntil: 'networkidle' });
     const after = await page.evaluate(() => localStorage.getItem('usalamasms.maturity') ?? '');
     assert(!after.includes('Kilonzo'), 'Clear answers left an owner behind in the store');
@@ -1643,7 +1673,22 @@ try {
       'the finding came back after a reload, with the reference still in the box'
     );
 
+    /* Clear answers asks now, deliberately — it destroys twelve grades,
+       the suitability judgement, the scale and every plan assignment.
+       Accepted here because the point of these checks is what happens
+       AFTER a clear; the confirmation itself has its own check.
+
+       REGISTERED AND REMOVED AROUND THE CLICK, not `once`. A `once`
+       handler that its own dialog never reaches stays armed and fires
+       on somebody else's dialog several checks later, where a second
+       handler has already answered it — which crashes the run with
+       "Cannot accept dialog which is already handled", eighty lines
+       from the cause. */
+    const acceptClear = (d) => d.accept();
+    page.on('dialog', acceptClear);
     await page.click('#mat-clear');
+    await page.waitForTimeout(120);
+    page.off('dialog', acceptClear);
     await page.reload({ waitUntil: 'networkidle' });
     assert(
       (await page.locator('input[name="ref-4.1"]').inputValue()) === '',
@@ -1889,11 +1934,23 @@ try {
     // stale for exactly the person looking for the thing that was added
     // last.
     //
-    // The rule, and it is not "the SRA is in the hint": every toolkit
-    // that is big enough to have a route of its own must be NAMED in
-    // the hint of the menu item that leads to it. Both sides are read
-    // from the running page, so this fails whenever a fourth is added
-    // and the hint is not — which is the failure that actually happened.
+    // THE RULE THIS ONCE ENFORCED WAS TOO WEAK, and the SRA proved it a
+    // second time. It required every routed toolkit to be NAMED IN THE
+    // HINT of the menu item leading to it — which stopped the hint
+    // going stale and left the actual complaint untouched: "a user
+    // would be confused where to start or get what, for instance the
+    // SRA". A name inside a sentence is not a destination. Nobody can
+    // click "risk assessment" in the summary text under a link called
+    // Toolkits; they click Toolkits and then go looking, which is the
+    // hunt the original defect was about.
+    //
+    // SO THE RULE IS NOW THE STRONGER ONE: a toolkit big enough to have
+    // a route of its own is big enough to have a MENU ENTRY of its own,
+    // under its own name, in the group that answers the question it
+    // exists to answer. Both sides are still read from the running
+    // page, so adding a fifth routed toolkit and leaving it out of the
+    // architecture fails here — the failure that actually happened,
+    // caught at the level it actually happens.
     //
     // It lives down here among the toolkit checks rather than beside the
     // navigation ones because the checks up there share one page that is
@@ -1901,16 +1958,6 @@ try {
     // took nine of them down with it. The suite's page is already 390
     // wide, which is where the header keeps its destinations behind the
     // Menu button, so no resize is needed either.
-    await page.goto(BASE, { waitUntil: 'networkidle' });
-    await page.click('#menu-toggle');
-    const hint = (
-      await page
-        .locator('#menu-panel a[href="/toolkits"] .nav-item-summary')
-        .textContent()
-    )?.toLowerCase().replace(/\s+/g, ' ').trim() ?? '';
-    await page.keyboard.press('Escape');
-    assert(hint.length > 0, 'the Toolkits menu item carries no hint at all');
-
     await page.goto(BASE + '/toolkits', { waitUntil: 'networkidle' });
     const toolkits = await page.evaluate(() =>
       [...document.querySelectorAll('.hero-actions a')]
@@ -1922,18 +1969,49 @@ try {
       `${toolkits.length} routed toolkits offered on the index; the product ships at least 3`
     );
 
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.click('#menu-toggle');
+    const menu = await page.evaluate(() =>
+      [...document.querySelectorAll('#menu-panel .nav-group')].flatMap((g) => {
+        const group = g.querySelector('.nav-group__title')?.textContent?.trim() ?? '';
+        return [...g.querySelectorAll('a.nav-item')].map((a) => ({
+          group,
+          href: a.getAttribute('href'),
+          title: a.querySelector('.nav-item-title')?.textContent?.trim() ?? '',
+          hint: a.querySelector('.nav-item-summary')?.textContent?.trim() ?? ''
+        }));
+      })
+    );
+    await page.keyboard.press('Escape');
+
+    assert(menu.length > 6, `the menu offered ${menu.length} destinations`);
+
     for (const t of toolkits) {
-      // The toolkit's own last two words — "risk assessment", "risk
-      // register", "maturity assessment". A hint that names it in
-      // different words is a hint that names something else.
-      const name = t.label.toLowerCase().split(/\s+/).slice(-2).join(' ');
+      const entry = menu.find((m) => m.href === t.href);
       assert(
-        hint.includes(name),
-        `the menu hint for Toolkits does not name "${t.label}" (${t.href}). ` +
-          `It reads "${hint}". A toolkit absent from the hint is a toolkit a ` +
-          'person navigating never learns exists.'
+        entry,
+        `${t.href} ("${t.label}") has a route of its own and NO MENU ENTRY of its own. ` +
+          `The menu offers: ${menu.map((m) => m.href).join(', ')}. A person looking for ` +
+          'it has to already know it lives inside Toolkits.'
+      );
+      assert(
+        entry.title.length > 0 && entry.hint.length > 0,
+        `the menu entry for ${t.href} renders "${entry.title}" / "${entry.hint}" — ` +
+          'a destination with no name or no summary is a blank line in the menu'
       );
     }
+
+    /* AND THE SAME DESTINATION IS NOT OFFERED TWICE. Regrouping a menu
+       is exactly when an item gets copied into its new home and left
+       in the old one, and two entries for one page is the "all over
+       the place" complaint in miniature. */
+    const dupes = menu
+      .map((m) => m.href)
+      .filter((h, i, all) => all.indexOf(h) !== i);
+    assert(
+      dupes.length === 0,
+      `the menu offers these destinations more than once: ${[...new Set(dupes)].join(', ')}`
+    );
   });
 
   await check('AN SRA REFUSES TO BE ACCEPTED WITH A RED RISK ON IT', async () => {
@@ -2978,6 +3056,115 @@ try {
      an anchor lands under the sticky chrome is a separate check with
      its own measurement two screens up. This one asks the prior
      question — whether the thing being scrolled to exists at all. */
+  await check('NOTHING IS DESTROYED WITHOUT ASKING — every screen, not three of four', async () => {
+    /* FOUND BY PRESSING EVERY BUTTON IN THE PRODUCT, which is not
+       something the suite had ever done.
+
+       Three of the four toolkits that hold work on the device asked
+       before destroying it: the register before removing an entry, the
+       SRA before removing a hazard, the indicators before removing an
+       indicator. The maturity assessment's "Clear answers" did not —
+       and it is the one that destroys most. Twelve elements' grades,
+       the suitability judgement, the operator scale, and every owner,
+       date and document reference somebody assigned on the
+       implementation plan. Held in this browser only. No copy, no undo,
+       one click, no question.
+
+       The inconsistency is the tell. A product that guards the small
+       destructive action and not the large one has not decided that
+       the large one is safe; it has simply never looked at them
+       together.
+
+       ASSERTED BY DISMISSING THE DIALOG. `d.dismiss()` is the person
+       who clicked by accident and said no — so this fails both when
+       the confirmation is missing and when it is shown but ignored,
+       which is the version that looks right in a screenshot. */
+    const CONTROLS = [
+      {
+        route: '/toolkits/maturity',
+        store: 'usalamasms.maturity',
+        /* THE STORE'S OWN SHAPE, which is flat: element ids at the top
+           level and the rest under underscore keys. Written in the
+           store's shape rather than in the shape the screen works in,
+           because a seed the loader silently discards produces an
+           empty assessment — and an empty assessment is not asked
+           about, so this check would have "passed" on a screen that
+           had nothing to destroy. It did exactly that once. */
+        seed: () =>
+          JSON.stringify({
+            '1.1': 3,
+            '1.2': 2,
+            '2.1': 4,
+            _suitability: { '1.1': 'SUITABLE' },
+            _references: { '1.1': 'SMSM rev 4 §2.1' }
+          }),
+        button: '#mat-clear',
+        survives: (raw) => {
+          const p = JSON.parse(raw);
+          return Object.keys(p).filter((k) => !k.startsWith('_')).length === 3;
+        }
+      },
+      {
+        route: '/toolkits/register',
+        store: 'usalamasms.register',
+        seed: () =>
+          JSON.stringify([
+            {
+              id: 'keep-me',
+              hazard: 'Bird activity on approach',
+              consequence: 'Ingestion on short final.',
+              severity: 'B_HAZARDOUS',
+              likelihood: 'OCCASIONAL',
+              controls: '',
+              owner: 'Samuel Kiprono',
+              reviewBy: '2026-12-01',
+              status: 'OPEN',
+              createdAt: '2026-08-01T00:00:00.000Z'
+            }
+          ]),
+        button: '[data-remove]',
+        survives: (raw) => JSON.parse(raw).length === 1
+      }
+    ];
+
+    const kept = [];
+    for (const c of CONTROLS) {
+      await page.goto(BASE + c.route, { waitUntil: 'networkidle' });
+      await page.evaluate(
+        ([k, v]) => localStorage.setItem(k, v),
+        [c.store, c.seed()]
+      );
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForSelector(c.button, { timeout: 5000 });
+
+      let asked = false;
+      const onDialog = (d) => {
+        asked = true;
+        d.dismiss();
+      };
+      page.on('dialog', onDialog);
+      await page.click(c.button);
+      await page.waitForTimeout(250);
+      page.off('dialog', onDialog);
+
+      const raw = await page.evaluate((k) => localStorage.getItem(k), c.store);
+      kept.push({ route: c.route, asked, alive: raw ? c.survives(raw) : false });
+    }
+
+    /* Read every one, then assert — a failure on the first control
+       must not be reported as a failure of the second. */
+    for (const k of kept) {
+      assert(
+        k.asked,
+        `${k.route} destroyed its stored work with no confirmation at all`
+      );
+      assert(
+        k.alive,
+        `${k.route} asked, the answer was no, and it went ahead anyway`
+      );
+    }
+  });
+
   await check('EVERY INTERNAL LINK RESOLVES, AND EVERY FRAGMENT HAS A TARGET', async () => {
     const origin = `http://localhost:${PORT}`;
 

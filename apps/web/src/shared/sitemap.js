@@ -105,29 +105,76 @@ const TOOLKITS_HINT = `${ROUTED_TOOLKITS.map((t) => t.short).join(', ')} and ${C
   (c) => c.toUpperCase()
 );
 
+/* ============================================================
+   THE GROUPS ARE THE OPERATOR'S SEQUENCE, NOT OUR FILING SYSTEM.
+
+   WHAT WAS WRONG, in the words it was reported in: "the
+   functionalities seem to be all over the place with no logical
+   sequence — a user would be confused where to start or get what,
+   for instance the SRA."
+
+   Both halves of that were true and they had one cause.
+
+   The groups were called "The platform" and "Understand". Those name
+   where we keep things. Nobody arrives at a safety tool wanting a
+   platform; they arrive having had a bird strike, or with an audit in
+   six weeks, or not knowing whether their SMS is any good. A menu
+   organised by our storage is a menu you can only use once you
+   already know the product.
+
+   And six instruments — the risk assessment, the register, the
+   indicators, the maturity assessment and two calculators — sat
+   behind the single word "Toolkits", which is the most container-ish
+   noun in the product.
+
+   THE SRA IS THE PROOF, AND THIS IS THE SECOND TIME IT HAS BEEN THE
+   PROOF. The first is on the record in scripts/smoke.mjs: the safety
+   risk assessment "shipped, was routed, was linked from the coverage
+   page, and was invisible to anybody navigating". The fix then was to
+   COMPUTE the menu hint from this list, so a new toolkit could not be
+   left out of the sentence. That was the right fix to the problem it
+   was aimed at — a stale sentence — and it did not touch the real
+   one. A name inside a hint is not a destination. You cannot click
+   "risk assessment" in a sentence under a link called "Toolkits"; you
+   click Toolkits and then go looking. Naming a thing in the label of
+   the drawer it is in is still leaving it in the drawer.
+
+   SO THE ORDER IS THE SEQUENCE AN OPERATOR ACTUALLY MOVES THROUGH,
+   and it is not invented here — it is Annex 19's own four components,
+   which is also the order regulation 9(4) of L.N. 32/2026 assumes
+   when it requires a plan "to facilitate the implementation":
+
+     Start here                  where do we stand, and who am I
+     When something happens      file it, then see what is filed
+     Assess and manage the risk  how bad, who owns it, when reviewed
+     Show it is working          indicators, the record, the limits
+     Reference                   what you reach for while doing any of it
+
+   Every instrument with a route of its own now sits in the group that
+   answers the question it exists to answer, under its own name. The
+   toolkits index keeps an entry because the two calculators live
+   there and are genuinely too short to route.
+
+   THE HEADER PICKS ITS OWN ITEMS, DECLARED. It used to render
+   `SECTIONS[0].items` plus `SECTIONS[1].items[0]` — positional, so
+   the header's contents were a consequence of the order of this file.
+   Reordering these groups, which is exactly what this change does,
+   would have silently rewritten the header. `inHeader: true` says
+   which five destinations earn a slot on a wide screen, and it says
+   it here, where somebody adding a group can see it.
+   ============================================================ */
 export const SECTIONS = [
   {
-    id: 'platform',
-    title: 'The platform',
+    id: 'standing',
+    title: 'Start here',
     working: true,
     items: [
       {
-        href: '/report',
-        label: 'File a report',
-        short: 'Report',
-        hint: 'Three fields, thirty seconds, and it works with no signal'
-      },
-      {
-        href: '/triage',
-        label: 'Reports on this device',
-        short: 'Triage',
-        hint: 'Everything filed on this handset, sent or not'
-      },
-      {
-        href: '/sms',
-        label: 'The SMS record',
-        short: 'SMS record',
-        hint: "Your operator's own evidence against all twelve elements"
+        href: '/toolkits/maturity',
+        label: 'Where your SMS stands',
+        short: 'Where you stand',
+        inHeader: true,
+        hint: 'Grade the twelve elements, and get the implementation plan that falls out of it'
       },
       {
         href: '/account',
@@ -138,16 +185,87 @@ export const SECTIONS = [
     ]
   },
   {
-    id: 'understand',
-    title: 'Understand',
+    id: 'occurrence',
+    title: 'When something happens',
     working: true,
     items: [
       {
+        href: '/report',
+        label: 'File a report',
+        short: 'Report',
+        inHeader: true,
+        hint: 'Three fields, thirty seconds, and it works with no signal'
+      },
+      {
+        href: '/triage',
+        label: 'Reports on this device',
+        short: 'Triage',
+        inHeader: true,
+        hint: 'Everything filed on this handset, sent or not'
+      }
+    ]
+  },
+  {
+    id: 'risk',
+    title: 'Assess and manage the risk',
+    working: true,
+    items: [
+      {
+        href: '/toolkits/sra',
+        label: 'Safety risk assessment',
+        short: 'Risk assessment',
+        inHeader: true,
+        hint: "Doc 9859's five steps, from the hazard to a decision somebody signs"
+      },
+      {
+        href: '/toolkits/register',
+        label: 'Risk register',
+        short: 'Register',
+        hint: 'What you have accepted, who owns each one, and when it is next looked at'
+      },
+      {
         href: '/toolkits',
-        label: 'Toolkits',
+        label: 'Toolkits and calculators',
         short: 'Toolkits',
         hint: TOOLKITS_HINT
+      }
+    ]
+  },
+  {
+    id: 'assurance',
+    title: 'Show it is working',
+    working: true,
+    items: [
+      {
+        href: '/toolkits/spi',
+        label: 'Safety performance indicators',
+        short: 'Indicators',
+        hint: 'What regulation 9(5) requires you to have, and to be able to produce'
       },
+      {
+        href: '/sms',
+        label: 'The SMS record',
+        short: 'SMS record',
+        inHeader: true,
+        hint: "Your operator's own evidence against all twelve elements"
+      },
+      {
+        href: '/coverage',
+        label: 'What this covers',
+        short: 'Coverage',
+        hint: 'Element by element, what this product does and exactly where it stops'
+      }
+    ]
+  },
+  {
+    id: 'reference',
+    title: 'Reference',
+    working: true,
+    items: [
+      /* Toolkits is NOT repeated here. It sits in "Assess and manage
+         the risk", which is what its two remaining calculators are
+         for; a second entry would be the same destination twice in
+         one menu, which is the fault this whole change is against. */
       {
         href: '/methodology',
         label: 'Methodology',
@@ -184,7 +302,10 @@ export const SECTIONS = [
     id: 'practice',
     title: 'The practice',
     items: [
-      { href: '/coverage', label: 'What this covers' },
+      /* "What this covers" moved up into "Show it is working", where
+         an operator asking what they can actually evidence will look
+         for it. The footer renders every section, so leaving it here
+         too would print it twice in one footer. */
       { href: '/about', label: 'About us' },
       { href: '/#deadlines', label: 'Regulatory basis' }
     ]
