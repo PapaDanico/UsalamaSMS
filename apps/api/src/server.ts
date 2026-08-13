@@ -18,6 +18,7 @@ import {
 import { syncRoutes } from "./routes.sync";
 import { authRoutes } from "./routes.auth";
 import { smsRoutes } from "./routes.sms";
+import { spiRoutes } from "./routes.spi";
 import { exportRoutes } from "./routes.export";
 import { rateLimitKey } from "./rate-limit-key";
 import { missingTables } from "./schema-guard";
@@ -221,6 +222,7 @@ export async function build(): Promise<FastifyInstance> {
   await app.register(authRoutes);
   await app.register(syncRoutes);
   await app.register(smsRoutes);
+  await app.register(spiRoutes);
   await app.register(exportRoutes);
 
   // Regulator oversight: verify an org's audit chain by content.

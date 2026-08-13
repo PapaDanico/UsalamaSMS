@@ -39,6 +39,7 @@ import {
   rate
 } from '../../../../../packages/shared/src/spi.ts';
 import { SAFETY_ROLES } from '../../../../../packages/shared/src/posts.ts';
+import { isSignedIn, authFetch } from '../../shared/session.js';
 
 const STORE = 'usalamasms.spi';
 const OTHER = '__other__';
@@ -103,6 +104,43 @@ function save(state) {
    somebody looking at a monochrome printout has. A trend line is worth
    having; a trend line that is the ONLY place the trend exists is a
    chart that excludes people. */
+/* =====================================================================
+   THE SERVER IS THE RECORD; THE BROWSER IS THE CACHE.
+
+   Regulation 9(5) of L.N. 32/2026 requires an SMS to have safety
+   performance indicators and targets "acceptable to the Authority".
+   Indicators held in one handset's localStorage are not: the safety
+   office cannot see them and an inspector cannot be shown them.
+
+   So when there is a session, this screen reads and writes
+   /api/v1/spi. Without one it keeps working exactly as it did — the
+   arithmetic is local and always was, and an indicator sketched out
+   before anybody signs in is better than an indicator not written
+   down. What changes is that the screen SAYS which of the two it is
+   looking at, because "my indicators are safe" is a belief a person
+   forms from a screen and not from a schema.
+
+   The alert levels are never fetched. They are derived by spiVerdict()
+   from the series, here, on every paint — the API does not return one
+   and could not be trusted if it did. Charter rule 6.
+   ===================================================================== */
+
+/** Server shape -> the shape this screen already works in. */
+const fromServer = (indicators) =>
+  indicators.map((i) =>
+    normalise({
+      id: i.id,
+      name: i.name,
+      kind: i.kind,
+      exposureUnit: i.exposureUnit,
+      per: i.per,
+      direction: i.direction,
+      target: i.target ?? undefined,
+      owner: i.owner,
+      periods: i.periods ?? []
+    })
+  );
+
 function Chart(verdict) {
   const series = verdict.rates;
   if (series.length < 2) return '';
@@ -442,11 +480,37 @@ export function render(outlet) {
   const form = outlet.querySelector('#spi-new');
   const error = outlet.querySelector('#spi-error');
 
+  /* 'server' once a session has answered, 'device' otherwise. Not a
+     cosmetic label: it is the difference between an indicator the
+     safety office can see and one that exists on a handset. */
+  let source = 'device';
+
   const persist = () => {
     if (!save(state)) {
       error.textContent =
         'These indicators could not be saved to the browser — private browsing, or ' +
         'the storage is full. Print the page before you leave it.';
+    }
+  };
+
+  /* A write that failed on the server has NOT been made, whatever the
+     screen shows. The local copy is rolled back to what the server
+     last confirmed rather than left holding an optimistic row — an
+     indicator that looks saved and is not is the failure this whole
+     move was meant to end. */
+  const send = async (url, body) => {
+    if (source !== 'server') return { ok: true, offline: true };
+    try {
+      const res = await authFetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) return { ok: true, data: await res.json() };
+      const detail = await res.json().catch(() => ({}));
+      return { ok: false, message: detail.message ?? 'The safety office could not be reached.' };
+    } catch {
+      return { ok: false, message: 'No connection — this is on the device only for now.' };
     }
   };
 
@@ -467,6 +531,14 @@ export function render(outlet) {
       <div class="stat">
         <dt class="stat__value">${alerting}</dt>
         <dd class="stat__label">Alerting now</dd>
+      </div>
+      <div class="stat">
+        <dt class="stat__value">${source === 'server' ? 'Safety office' : 'This device'}</dt>
+        <dd class="stat__label">
+          ${source === 'server'
+            ? 'Held for the operator — an inspector can be shown these'
+            : 'Sign in and these reach the safety office'}
+        </dd>
       </div>
     `.toString();
 
@@ -520,6 +592,36 @@ export function render(outlet) {
     form.reset();
     persist();
     repaint();
+
+    const added = state.indicators[state.indicators.length - 1];
+    send('/api/v1/spi', {
+      name: added.name,
+      kind: added.kind,
+      exposureUnit: added.exposureUnit,
+      per: added.per,
+      direction: added.direction,
+      ...(added.target === undefined ? {} : { target: added.target }),
+      owner: added.owner
+    }).then((r) => {
+      if (r.ok && r.data?.indicator?.id) {
+        /* Adopt the server's id. The local one was minted from a clock
+           and a random suffix so the screen had something to key on;
+           every period appended after this has to address the row the
+           server actually holds. */
+        state = {
+          indicators: state.indicators.map((i) =>
+            i.id === added.id ? { ...i, id: r.data.indicator.id } : i
+          )
+        };
+        persist();
+        repaint();
+      } else if (!r.ok) {
+        state = { indicators: state.indicators.filter((i) => i.id !== added.id) };
+        persist();
+        repaint();
+        error.textContent = r.message;
+      }
+    });
   });
 
   list.addEventListener('submit', (event) => {
@@ -564,15 +666,32 @@ export function render(outlet) {
     }
     say('');
 
+    const period = { label: f.label.value.trim(), events, exposure };
     state = {
       indicators: state.indicators.map((ind) =>
-        ind.id === id
-          ? { ...ind, periods: [...ind.periods, { label: f.label.value.trim(), events, exposure }] }
-          : ind
+        ind.id === id ? { ...ind, periods: [...ind.periods, period] } : ind
       )
     };
     persist();
     repaint();
+
+    send(`/api/v1/spi/${id}/periods`, period).then((r) => {
+      if (r.ok) return;
+      /* The server refused — most likely the same period label twice,
+         which it checks as well as this screen does. Take the row back
+         out rather than leave a period on screen that the record does
+         not have, and say which one. */
+      state = {
+        indicators: state.indicators.map((ind) =>
+          ind.id === id
+            ? { ...ind, periods: ind.periods.filter((p) => p.label !== period.label) }
+            : ind
+        )
+      };
+      persist();
+      repaint();
+      say(r.message);
+    });
   });
 
   list.addEventListener('click', (event) => {
@@ -589,5 +708,29 @@ export function render(outlet) {
   outlet.querySelector('#spi-print').addEventListener('click', () => window.print());
 
   repaint();
+
+  /* THE SERVER READ, last and asynchronously, so the screen is usable
+     before it answers. An operator at a strip on a bad link gets their
+     own device's copy immediately and the organisation's a moment
+     later; the alternative is a spinner in front of a safety record.
+
+     A failure here is not an error state. It means this device is
+     working offline, which is a supported way to use this product —
+     the strip says so and the indicators still compute. */
+  if (isSignedIn()) {
+    authFetch('/api/v1/spi')
+      .then(async (res) => {
+        if (!res.ok) return;
+        const body = await res.json();
+        source = 'server';
+        state = { indicators: fromServer(body.indicators ?? []) };
+        persist();
+        repaint();
+      })
+      .catch(() => {
+        /* Left on the device copy deliberately. */
+      });
+  }
+
   void raw;
 }
