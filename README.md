@@ -58,9 +58,9 @@ That figure moved from 2.5 when `/sms` gave eight elements a
 server-held record, and the six that stayed partial say plainly what
 they still lack: the emergency plan itself, the documents behind the
 document register, expiry alerting on training, and — for the risk
-register, the indicators and the change assessment — distribution,
-because those three live in one browser and the safety office cannot
-see them. An operator adopting this as its sole SMS would still have
+register and the change assessment — distribution, because those two
+still live in one browser and the safety office cannot see them. The
+indicators no longer do. An operator adopting this as its sole SMS would still have
 gaps to answer for, and `/coverage` names every one of them.
 
 **Nearly deployable.** The hosted database exists (Supabase, eu-north-1,
@@ -77,8 +77,10 @@ the function check the scheme rather than trusting the name. See
 one-time Prisma baseline the hosted schema needs. The triage queue reads
 this device rather than the organisation, and there is no investigation
 or CAPA workflow. `/toolkits/spi` computes indicators and alert levels
-but is not fed from the reporting queue and is held in one browser, so
-the measurement exists and the organisation's monitoring does not. See
+is not yet fed from the reporting queue, so the measurement exists and
+the monitoring that acts on it does not. The series itself is now held
+for the operator rather than on one device, which is what regulation
+9(5) of L.N. 32/2026 asks for. See
 `docs/02-STRATEGY.md`.
 
 ```bash
@@ -91,7 +93,7 @@ npm test               # 301 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
-npm run test:integration   # 102 checks against a real Postgres
+npm run test:integration   # 112 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify

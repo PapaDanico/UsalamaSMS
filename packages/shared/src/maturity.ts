@@ -712,9 +712,11 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "the operator's own baseline at one, two and three standard deviations, with " +
       "the three crossing criteria evaluated per period.",
     missing:
-      "The organisation's half: indicators fed from the reporting queue rather than " +
-      "typed, held somewhere the safety office can see, and a record of the action " +
-      "taken the last time a level was crossed.",
+      "Indicators fed from the reporting queue rather than typed in, and a record of " +
+      "the action taken the last time a level was crossed. The series itself is now " +
+      "held for the operator rather than on one device \u2014 regulation 9(5) of " +
+      "L.N. 32/2026 requires indicators and targets acceptable to the Authority, and " +
+      "a figure in a handset is not.",
     href: "/toolkits/spi",
   },
   {

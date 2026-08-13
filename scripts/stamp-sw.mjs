@@ -552,7 +552,35 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    those. A dependency, a polyfill or a component library earns
    neither. The test the original number protects is intact: a 40 KB
    library added to the report form still breaks this. */
-const BUDGET = { entry: 214 * 1024, js: 404 * 1024, css: 54 * 1024 };
+/* TOTAL -> 408 KB, for element 3.1 reaching the safety office. ENTRY
+   AND CSS BOTH UNMOVED.
+
+   WHAT IT BOUGHT. The safety performance indicators stop being a
+   handset's private notes. Regulation 9(5) of L.N. 32/2026 requires a
+   service provider's SMS to have "safety performance indicators and
+   targets acceptable to the Authority" — and until now the product
+   computed them correctly into localStorage, so an operator asked to
+   produce theirs had to produce a particular phone.
+
+   The weight is the sync itself: reading the organisation's series on
+   load, posting an indicator and a period, and taking a row back out
+   when the server refuses one. That last part is most of it and is not
+   optional — an indicator that looks saved and is not is the failure
+   this whole move exists to end, so a rejected write rolls the local
+   copy back rather than leaving an optimistic row on screen.
+
+   It lands in the lazily-loaded /toolkits/spi chunk. A reporter filing
+   at a strip does not download any of it, which is why ENTRY is
+   unchanged at 213.0 KB — nine screens and four budget raises since
+   that number last moved for anything other than a correction to a
+   claim.
+
+   The stopping rule gains its third precedent, and this one is the
+   strongest of them: a screen earns a raise, a correctness fix on the
+   target device earns a raise, and so does a legal requirement the
+   product already satisfied everywhere except where it counted. What
+   still does not is a dependency, a polyfill or a component library. */
+const BUDGET = { entry: 214 * 1024, js: 408 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {
