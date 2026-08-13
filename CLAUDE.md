@@ -100,6 +100,24 @@ recorded where it happened:
 red.** Every fix in this repo that claims to be verified was
 mutation-checked that way.
 
+## Rotating a demo password
+
+`npm run seed:demo -- --rotate`. It re-issues a password for accounts
+that already exist, revokes every live refresh token they hold, and
+prints the new one once into the terminal of whoever ran it.
+
+The flag exists because the instruction had no mechanism. `seed:demo`
+is idempotent by email and skips accounts that already exist, so a
+plain re-run answers "Every demo account already exists. No passwords
+to show." — and the only remaining routes were deleting the users,
+which orphans `reporterId` on every report they filed, or writing an
+argon2 hash into production by hand. Neither gets done, so the
+credential stays live.
+
+**Revoking the sessions is not optional.** A refresh token minted
+before a rotation still mints access tokens after it, so a rotation
+that leaves one alive has ended nothing.
+
 ## Secrets
 
 No secret appears in this repository, ever. `.env.example` carries
