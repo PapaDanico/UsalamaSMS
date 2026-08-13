@@ -661,7 +661,50 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    while the number describing what a reporter waits for gains room
    rather than spending it. A dependency, a polyfill or a component
    library still buys nothing. */
-const BUDGET = { entry: 214 * 1024, js: 410 * 1024, css: 54 * 1024 };
+/* TOTAL 410 -> 412 KB, for the anticipation half of element 4.1.
+   ENTRY AND CSS UNMOVED.
+
+   WHAT IT BOUGHT. The training matrix compared two date strings and
+   rendered lapsed or current. /coverage said exactly what that was
+   missing — "an expired row is visible to somebody who opens the
+   screen; nothing tells an operator a currency is about to lapse" — so
+   a recurrent lapsing next Tuesday looked identical to one lapsing in
+   a year, and acting in time meant opening the screen on the right day
+   and doing the subtraction by eye.
+
+   Four states now, computed from the dates already stored, with the
+   count and the next lapse above the list. No migration: completedOn
+   and expiresOn were both there, which is why this is arithmetic
+   rather than schema.
+
+   THE WEIGHT IS THE WINDOW, NOT THE RENDERING. A fixed thirty days
+   would have cost nothing and been wrong in both directions: on a
+   three-year rating it is a month's notice on a renewal needing a
+   quarter, and on a thirty-day currency it fires the day the record is
+   created, so every row is permanently amber and the colour stops
+   meaning anything. The second failure is the expensive one — a signal
+   that is always on is one people learn to ignore, and then the real
+   one arrives and is ignored with it. So the window is a fraction of
+   each record's own validity, bounded at both ends, using the same
+   fraction regulations.ts uses to decide when a reporting deadline
+   becomes DUE_SOON.
+
+   Lands in the lazily-loaded /sms chunk. A reporter filing at a strip
+   downloads none of it, which is why ENTRY is unmoved at 213.4 KB.
+
+   WHAT IT DID NOT BUY, and the coverage entry now says so rather than
+   letting an amber badge imply it: this anticipates, it does not
+   arrive. No digest, no email, no push. A currency still lapses
+   quietly for an operator who does not look.
+
+   Fifth precedent for the stopping rule, and consistent with the
+   others: a screen earns a raise, a correctness fix on the target
+   device earns a raise, a legal requirement earns a raise, not
+   destroying the user's work earns a raise — and so does moving an
+   Annex 19 element from "visible if you look" to "stated before it
+   happens". A dependency, a polyfill or a component library still
+   buys nothing. */
+const BUDGET = { entry: 214 * 1024, js: 412 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

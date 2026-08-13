@@ -824,8 +824,11 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "A training matrix: person, course, completion and expiry, with each person's own " +
       "record visible to them and the whole matrix to those who manage it.",
     missing:
-      "Alerting. An expired row is visible to somebody who opens the screen; nothing " +
-      "tells an operator a currency is about to lapse.",
+      "Reaching somebody who does not open the screen. The matrix now anticipates \u2014 " +
+      "each row is current, lapsing soon or lapsed, against a window proportional to " +
+      "its own validity, with the count and the next lapse stated above the list. What " +
+      "it does not do is arrive: there is no digest, no email and no push, so a currency " +
+      "still lapses quietly for an operator who does not look.",
     href: "/sms",
   },
   {
