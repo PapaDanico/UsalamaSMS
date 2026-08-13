@@ -2259,6 +2259,67 @@ try {
     );
   });
 
+  await check('THE REPORT FORM NAMES THE SHORTEST PERIOD AS THE SHORTEST', async () => {
+    /* THE HIGHEST-TRAFFIC COMPLIANCE CLAIM IN THE PRODUCT, and until
+       now nothing checked it. Mutating the countdown to read the widest
+       of Kenya's three periods instead of the strictest left all 56
+       checks green — a reporter would have been told they had 72 hours
+       for something the law gives 24, which is the exact direction of
+       error this whole module exists to prevent.
+
+       The form does NOT pass an occurrence class, deliberately: it asks
+       what kind of REPORT this is, not whether the event meets Annex
+       13's definition of an accident. So the strictest period must
+       apply, and it must be named AS the shortest rather than as the
+       figure — regulation 12(1) sets three and showing one as the whole
+       instrument is a third of the truth on the screen people use. */
+    const cameFrom = page.url();
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    await page.waitForSelector('select[name="type"]', { timeout: 5000 });
+    /* occurredAt lives inside the optional-detail disclosure, which is
+       collapsed by design — the three required fields come first. A
+       collapsed element's children are not actionable, so it is opened
+       here rather than reached through. */
+    await page.locator('details.report__more').evaluate((el) => { el.open = true; });
+
+    // No countdown for a hazard: it is not a mandatory occurrence report.
+    await page.selectOption('select[name="type"]', 'HAZARD');
+    await page.fill('input[name=occurredAt]', '2026-08-11T10:00');
+    await page.waitForTimeout(200);
+    const hazard = (await page.locator('#deadline-hint').textContent()) ?? '';
+
+    await page.selectOption('select[name="type"]', 'MOR');
+    await page.waitForTimeout(250);
+    const hint = ((await page.locator('#deadline-hint').textContent()) ?? '').replace(/\s+/g, ' ');
+
+    /* BOTH READS FIRST, THEN RESTORE, THEN ASSERT — for the reason the
+       classifier check below spells out. An assertion before the
+       restore leaves the page on /report and fails the next two checks
+       as well, with messages that point at the wrong screen. */
+    await page.goto(cameFrom, { waitUntil: 'networkidle' });
+    await page.waitForSelector('#deadline-calc', { timeout: 5000 });
+
+    assert(
+      hazard.trim() === '',
+      `a hazard was given a regulatory countdown: "${hazard.trim()}"`
+    );
+
+    assert(/24 hours/.test(hint), `the countdown does not use the strictest period: "${hint}"`);
+    assert(
+      /accident/i.test(hint),
+      `24 hours is stated without saying it is the accident figure: "${hint}"`
+    );
+    // And the other two are named, so nobody reads 24 as the whole rule.
+    assert(
+      /48/.test(hint) && /72/.test(hint),
+      `the other two periods regulation 12(1) sets are not named: "${hint}"`
+    );
+    assert(
+      !/^Around /.test(hint),
+      `a verified jurisdiction was hedged as provisional: "${hint}"`
+    );
+  });
+
   await check('THE CLASSIFIER SHOWS THE PERIOD THAT GOES WITH THE CLASS', async () => {
     /* Kenya's regulation 12(1) sets THREE periods — 24 hours for an
        accident, 48 for a serious incident, 72 for an incident or other
