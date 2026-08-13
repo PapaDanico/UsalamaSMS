@@ -43,7 +43,9 @@ import {
 import {
   MOR_OBLIGATIONS,
   JURISDICTIONS,
-  isProvisional
+  isProvisional,
+  reportingHours,
+  isReportableUnder
 } from '../../../../../packages/shared/src/regulations.ts';
 /* The toolkit list is declared once, in shared/sitemap.js, because the
    menu hint is computed from it. This page renders the same list rather
@@ -271,17 +273,36 @@ function bindClassifier(outlet) {
     const key = injury || damage ? 'ACCIDENT' : nearly ? 'SERIOUS_INCIDENT' : 'INCIDENT';
     const klass = OCCURRENCE_CLASSES.find((c) => c.key === key);
     const obligation = MOR_OBLIGATIONS[jurisdiction];
+    /* THE PERIOD FOLLOWS THE CLASS. Kenya's regulation 12(1) sets three
+       — 24 hours for an accident, 48 for a serious incident, 72 for an
+       incident — and this screen has just decided which one it is. It
+       used to print obligation.hours for all three, so an incident the
+       law gives 72 hours was shown as 24. Strict rather than lax, but
+       still not what the instrument says, on the one screen whose whole
+       job is to answer that question. */
+    const hours = reportingHours(jurisdiction, key);
+    /* AND WHETHER IT IS REPORTABLE AT ALL follows the instrument too.
+       The glossary calls an incident not reportable in every case,
+       which is the general reading; Kenya's regulation 12(1) names
+       incidents explicitly and gives them 72 hours. This screen was
+       telling a Kenyan operator it need not report something the law
+       requires inside three days. */
+    const reportable = isReportableUnder(jurisdiction, key, klass.reportable);
 
-    out.dataset.state = klass.reportable ? 'ok' : 'idle';
+    out.dataset.state = reportable ? 'ok' : 'idle';
     out.innerHTML = html`
       <strong>${klass.label}</strong>
       <span class="calc__detail">
-        ${klass.reportable
+        ${reportable
           ? html`Reportable as an occurrence ·
-              ${obligation.hours === null
+              ${hours === null
                 ? html`<strong>without delay</strong> — no fixed period is set ·`
-                : html`<strong>${obligation.hours} hours</strong> from
-                    ${obligation.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`}
+                : html`<strong>${hours} hours</strong> from
+                    ${obligation.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'}${obligation.clockStartUnstated
+                      ? html`<span class="calc__caveat">
+                          (the instrument names the period and not what starts it &mdash;
+                          awareness is the reading applied here)</span>`
+                      : ''} ·`}
               ${obligation.authority}${isProvisional(jurisdiction)
                 ? html` · <span class="tag tag--provisional">provisional</span>`
                 : ''}`

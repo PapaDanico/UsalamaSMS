@@ -89,8 +89,28 @@ export function render(outlet) {
         hint: 'An occurrence carries a reporting deadline; the others do not.'
       })}
 
+      ${/* THE ASTERISK GOES ON ALL THREE, and it did not. The required
+            attribute was set on all three fields, so the browser and a
+            screen reader both knew — and only the dropdown said so on
+            screen, because the Select component renders the marker and
+            these two are hand-written labels. A person filling this
+            form met the other two requirements as a validation failure
+            at submit, on a screen whose own lede promises "three
+            required fields". A process that surprises somebody at the
+            last step is the friction that stops the NEXT report.
+
+            aria-hidden on the mark, as the component does it: required
+            already carries the state to assistive technology, and a
+            screen reader announcing "star" is noise.
+
+            AND THIS IS A JS COMMENT, NOT AN HTML ONE. An HTML comment
+            inside a template literal is a string — it survives
+            minification and ships to a handset. That is how this change
+            first broke the entry budget. */ ''}
       <label class="field">
-        <span class="field-label">In one line, what happened?</span>
+        <span class="field-label"
+          >In one line, what happened?<span aria-hidden="true"> *</span></span
+        >
         <input
           name="title"
           maxlength="200"
@@ -102,7 +122,7 @@ export function render(outlet) {
       </label>
 
       <label class="field">
-        <span class="field-label">Tell us more</span>
+        <span class="field-label">Tell us more<span aria-hidden="true"> *</span></span>
         <textarea
           name="narrative"
           rows="6"
@@ -284,17 +304,42 @@ function wire(outlet) {
     const now = new Date();
     const awareAt = now > occurred ? now : occurred;
     const jurisdiction = 'KE';
-    const { due, obligation } = reportingDeadline(jurisdiction, { occurredAt: occurred, awareAt });
-    const hours = obligation.hours;
+    /* NO OCCURRENCE CLASS IS PASSED, and that is deliberate. This form
+       asks what kind of REPORT this is, not whether the event meets
+       Annex 13's definition of an accident — a reporter at a strip has
+       not made that determination and should not be made to. So the
+       engine falls back to the strictest period, which is the safe
+       direction: early is an inconvenience, late is a breach.
+
+       `hours` comes off the RETURN VALUE rather than off the row. They
+       are the same number today because no class is passed; reading the
+       row directly is how the message would come to state one figure
+       while `due` was computed from another the first time a caller
+       does pass one. */
+    const { due, obligation, hours } = reportingDeadline(jurisdiction, {
+      occurredAt: occurred,
+      awareAt,
+    });
     /* No due date means the instrument names no period. Saying "without
        delay" is not vaguer than a number here — it is the obligation,
        and a number invented to fill the gap would read as permission to
        take that long. */
+    /* WHERE A STATE SETS THREE PERIODS, SAY SO. Kenya's regulation
+       12(1) gives an accident 24 hours, a serious incident 48 and an
+       incident 72. Showing the 24 alone is safe but states a third of
+       the instrument as the whole of it, on the screen a reporter
+       actually uses — so the shortest is named AS the shortest, and the
+       reporter is told where the other two are worked out. */
+    const perClass = obligation.hoursByClass;
     deadlineHint.textContent = !due
       ? `${obligation.authority} sets no fixed period — notify without delay, and file within the window your authority sets.`
       : isProvisional(jurisdiction)
         ? `Around ${hours} hours to report — this jurisdiction's rule is not yet verified.`
-        : `${obligation.authority} expects this within ${hours} hours — by ${due.toUTCString()}.`;
+        : perClass
+          ? `${obligation.authority} expects an accident within ${hours} hours — by ` +
+            `${due.toUTCString()}. A serious incident has ${perClass.SERIOUS_INCIDENT} and an ` +
+            `incident ${perClass.INCIDENT}; the occurrence classifier works out which this is.`
+          : `${obligation.authority} expects this within ${hours} hours — by ${due.toUTCString()}.`;
   }
 
   narrative.addEventListener('input', () => {

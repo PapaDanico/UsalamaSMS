@@ -100,6 +100,16 @@ export function render(outlet) {
             elements. It is the reporting and risk-classification layer. Everything
             it does not do is listed below by name rather than omitted.
           </p>
+          <p>
+            <strong>The twelve are not our list.</strong> They are the Second Schedule to
+            Kenya&rsquo;s Civil Aviation (Safety Management) Regulations, 2025
+            (L.N. 32 of 2026), which prescribes &ldquo;four components and twelve elements
+            as the minimum requirements for SMS implementation&rdquo; &mdash; the same
+            framework as ICAO Annex 19, and for a Kenyan operator the actual legal
+            obligation rather than a standard adopted somewhere above them. Every element
+            below carries the Schedule&rsquo;s own id and its own words; a test holds them
+            against it so a paraphrase cannot quietly move the measure.
+          </p>
         </section>
 
         ${SMS_COMPONENTS.map(

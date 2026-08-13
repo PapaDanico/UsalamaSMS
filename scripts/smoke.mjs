@@ -2259,6 +2259,202 @@ try {
     );
   });
 
+  await check('EVERY REQUIRED FIELD SAYS SO BEFORE THE SUBMIT, NOT AFTER', async () => {
+    /* Three fields on this form carry `required`. Only one showed the
+       marker, because the dropdown comes from a component that renders
+       it and the other two are hand-written labels. The page's own lede
+       promises "three required fields" and marked one of them, so a
+       reporter met the other two as a validation failure at the last
+       step.
+
+       That is the friction that stops the NEXT report being filed, on
+       the screen this entire product exists for. Asserted as an
+       agreement between two things rather than as a count: whatever is
+       `required` must be marked, and whatever is marked must be
+       required. Adding a fourth required field without a marker fails
+       this, which is the mistake being guarded. */
+    const cameFrom = page.url();
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    await page.waitForSelector('select[name="type"]', { timeout: 5000 });
+
+    const fields = await page.evaluate(() =>
+      [...document.querySelectorAll('#main input, #main select, #main textarea')]
+        .filter((el) => el.name && el.type !== 'hidden')
+        .map((el) => {
+          const label =
+            el.closest('label') ?? document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+          return {
+            name: el.name,
+            required: el.required,
+            marked: /\*/.test(label?.querySelector('.field-label')?.textContent ?? label?.textContent ?? ''),
+          };
+        })
+    );
+    const lede = (await page.locator('#main .lede, #main p').first().textContent()) ?? '';
+
+    // Read everything, put the page back, then assert — the checks
+    // after this one continue from where they were left.
+    await page.goto(cameFrom, { waitUntil: 'networkidle' });
+    await page.waitForSelector('#deadline-calc', { timeout: 5000 });
+
+    assert(fields.length > 5, `only ${fields.length} fields found on the report form`);
+
+    const unmarked = fields.filter((f) => f.required && !f.marked).map((f) => f.name);
+    const overmarked = fields.filter((f) => !f.required && f.marked).map((f) => f.name);
+    assert(
+      unmarked.length === 0,
+      `required but not marked, so a reporter meets it at submit: ${unmarked.join(', ')}`
+    );
+    assert(
+      overmarked.length === 0,
+      `marked required but is not, which turns an optional field into a barrier: ${overmarked.join(', ')}`
+    );
+    // And the lede's promise matches the count, rather than being prose
+    // somebody typed once.
+    const required = fields.filter((f) => f.required).length;
+    assert(
+      /three required fields/i.test(lede) === (required === 3),
+      `the page says "${lede.trim().slice(0, 60)}" while ${required} fields are required`
+    );
+  });
+
+  await check('THE REPORT FORM NAMES THE SHORTEST PERIOD AS THE SHORTEST', async () => {
+    /* THE HIGHEST-TRAFFIC COMPLIANCE CLAIM IN THE PRODUCT, and until
+       now nothing checked it. Mutating the countdown to read the widest
+       of Kenya's three periods instead of the strictest left all 56
+       checks green — a reporter would have been told they had 72 hours
+       for something the law gives 24, which is the exact direction of
+       error this whole module exists to prevent.
+
+       The form does NOT pass an occurrence class, deliberately: it asks
+       what kind of REPORT this is, not whether the event meets Annex
+       13's definition of an accident. So the strictest period must
+       apply, and it must be named AS the shortest rather than as the
+       figure — regulation 12(1) sets three and showing one as the whole
+       instrument is a third of the truth on the screen people use. */
+    const cameFrom = page.url();
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    await page.waitForSelector('select[name="type"]', { timeout: 5000 });
+    /* occurredAt lives inside the optional-detail disclosure, which is
+       collapsed by design — the three required fields come first. A
+       collapsed element's children are not actionable, so it is opened
+       here rather than reached through. */
+    await page.locator('details.report__more').evaluate((el) => { el.open = true; });
+
+    // No countdown for a hazard: it is not a mandatory occurrence report.
+    await page.selectOption('select[name="type"]', 'HAZARD');
+    await page.fill('input[name=occurredAt]', '2026-08-11T10:00');
+    await page.waitForTimeout(200);
+    const hazard = (await page.locator('#deadline-hint').textContent()) ?? '';
+
+    await page.selectOption('select[name="type"]', 'MOR');
+    await page.waitForTimeout(250);
+    const hint = ((await page.locator('#deadline-hint').textContent()) ?? '').replace(/\s+/g, ' ');
+
+    /* BOTH READS FIRST, THEN RESTORE, THEN ASSERT — for the reason the
+       classifier check below spells out. An assertion before the
+       restore leaves the page on /report and fails the next two checks
+       as well, with messages that point at the wrong screen. */
+    await page.goto(cameFrom, { waitUntil: 'networkidle' });
+    await page.waitForSelector('#deadline-calc', { timeout: 5000 });
+
+    assert(
+      hazard.trim() === '',
+      `a hazard was given a regulatory countdown: "${hazard.trim()}"`
+    );
+
+    assert(/24 hours/.test(hint), `the countdown does not use the strictest period: "${hint}"`);
+    assert(
+      /accident/i.test(hint),
+      `24 hours is stated without saying it is the accident figure: "${hint}"`
+    );
+    // And the other two are named, so nobody reads 24 as the whole rule.
+    assert(
+      /48/.test(hint) && /72/.test(hint),
+      `the other two periods regulation 12(1) sets are not named: "${hint}"`
+    );
+    assert(
+      !/^Around /.test(hint),
+      `a verified jurisdiction was hedged as provisional: "${hint}"`
+    );
+  });
+
+  await check('THE CLASSIFIER SHOWS THE PERIOD THAT GOES WITH THE CLASS', async () => {
+    /* Kenya's regulation 12(1) sets THREE periods — 24 hours for an
+       accident, 48 for a serious incident, 72 for an incident or other
+       safety related occurrence — and this screen is the one whose
+       whole job is to work out which of the three an occurrence is.
+
+       It used to print the row's single figure for all of them, so an
+       incident the law gives 72 hours was shown as 24. Strict rather
+       than lax, which is why nobody noticed, and still a misstatement
+       of the instrument on the surface built to answer that question.
+
+       Driven here rather than unit-tested because the unit test proves
+       reportingHours() returns the right number and cannot see whether
+       the screen asks it. That is the failure this repository keeps
+       meeting: a correct module rendered by nobody. */
+    const cameFrom = page.url();
+    await page.goto(BASE + '/toolkits', { waitUntil: 'networkidle' });
+    await page.waitForSelector('#classify', { timeout: 5000 });
+    await page.selectOption('#classify select[name=jurisdiction]', 'KE');
+
+    /* Radios, not dropdowns — the three questions are yes/no and a
+       two-option select is a dropdown to answer a question a thumb
+       should answer in one tap. */
+    const answerFor = async (injury, damage, nearly) => {
+      await page.check(`#classify input[name=injury][value="${injury}"]`);
+      await page.check(`#classify input[name=damage][value="${damage}"]`);
+      await page.check(`#classify input[name=nearly][value="${nearly}"]`);
+      await page.waitForTimeout(150);
+      return ((await page.locator('#classify-out').textContent()) ?? '').replace(/\s+/g, ' ');
+    };
+
+    /* READ ALL THREE FIRST, THEN PUT THE PAGE BACK, THEN ASSERT.
+       Checks in this suite share one page and the next one expects to
+       be on /methodology already. Asserting before restoring means the
+       FIRST failure here also fails the neighbour, and the neighbour's
+       message is about a dropdown rather than about a deadline — which
+       is how a defect gets attributed to the wrong screen. */
+    const accident = await answerFor('yes', 'no', 'no');
+    const serious = await answerFor('no', 'no', 'yes');
+    const incident = await answerFor('no', 'no', 'no');
+
+    await page.goto(cameFrom, { waitUntil: 'networkidle' });
+    await page.waitForSelector('#deadline-calc', { timeout: 5000 });
+
+    assert(/Accident/.test(accident), `injury=yes did not classify as an accident: "${accident}"`);
+    assert(/24 hours/.test(accident), `an accident was not given 24 hours: "${accident}"`);
+
+    assert(/Serious incident/.test(serious), `not a serious incident: "${serious}"`);
+    assert(
+      /48 hours/.test(serious),
+      `a serious incident was not given 48 hours — regulation 12(1) sets 48: "${serious}"`
+    );
+
+    assert(
+      /72 hours/.test(incident),
+      `an incident was not given 72 hours — regulation 12(1) sets 72: "${incident}"`
+    );
+    /* And it must be offered AS reportable. The glossary calls an
+       incident not reportable in every case, which is the general
+       reading and wrong here: regulation 12(1) names incidents
+       explicitly. The screen was telling a Kenyan operator it need not
+       report something the law wants inside three days. */
+    assert(
+      /Reportable as an occurrence/.test(incident),
+      `an incident was not offered as reportable under a regulation that names it: "${incident}"`
+    );
+
+    // And the clock-start caveat, because the instrument names a period
+    // and never says what starts it. Awareness is our reading and the
+    // screen must not present it as the regulation's word.
+    assert(
+      /names the period and not what starts it/i.test(incident),
+      `the classifier states an unstated clock start as fact: "${incident}"`
+    );
+  });
+
   await check('THE DEADLINE CALCULATOR COMPUTES, AND REFUSES THE UNSAFE INPUT', async () => {
     // A page that explains a derivation and leaves the reader to do the
     // arithmetic has explained nothing. This drives the same

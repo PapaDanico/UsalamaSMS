@@ -164,6 +164,14 @@ function Steps() {
    source is still the top of the stack. Two of three is the one that
    misleads.
    ============================================================ */
+/* The order regulation 12(1) states them in, which is also strictest
+   first — the one a reader should see before the others. */
+const CLASS_ORDER = [
+  ['ACCIDENT', 'for an accident'],
+  ['SERIOUS_INCIDENT', 'for a serious incident'],
+  ['INCIDENT', 'for an incident']
+];
+
 function Deadlines() {
   const codes = Object.keys(MOR_OBLIGATIONS);
   const provisional = codes.filter(isProvisional);
@@ -190,12 +198,27 @@ function Deadlines() {
               </dt>
               <dd>
                 ${o.hours === null
-                  ? html`<strong>Without delay</strong> — no fixed period is set ·`
-                  : html`<strong>${o.hours} hours</strong> from
-                      ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'} ·`}
-                <span class="reg-list__source">${o.instrument}</span>
+                  ? html`<strong>Without delay</strong> &mdash; no fixed period is set`
+                  : html`From
+                      ${o.clockStart === 'AWARENESS' ? 'becoming aware' : 'the occurrence'}:
+                      ${o.hoursByClass
+                        ? CLASS_ORDER.map(
+                            ([key, label], i) => html`${i ? ' · ' : ''}<strong
+                                >${o.hoursByClass[key]} hours</strong
+                              >
+                              ${label}`
+                          )
+                        : html`<strong>${o.hours} hours</strong>`}`}
+                <span class="reg-list__source">&middot; ${o.instrument}</span>
                 ${isStale(o, new Date())
                   ? html`<span class="tag tag--stale">Past its review cycle</span>`
+                  : ''}
+                ${o.clockStartUnstated
+                  ? html`<span class="cite__governs">
+                      The instrument names the periods and not what starts them; awareness
+                      is the reading applied here, because a clock anchored to the event can
+                      run out before anybody knows it happened.
+                    </span>`
                   : ''}
                 ${o.governedByUnread
                   ? html`<span class="cite__governs">

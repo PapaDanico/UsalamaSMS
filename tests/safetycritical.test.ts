@@ -7,6 +7,7 @@ import {
   RiskAssessInputSchema, CreateReportSchema,
   type Severity, type Likelihood, type Role,
 } from "../packages/shared/src/index";
+import { SMS_ELEMENTS } from "../packages/shared/src/maturity";
 
 const SEVS: Severity[] = ["A_CATASTROPHIC","B_HAZARDOUS","C_MAJOR","D_MINOR","E_NEGLIGIBLE"];
 const LIKS: Likelihood[] = ["FREQUENT","OCCASIONAL","REMOTE","IMPROBABLE","EXTREMELY_IMPROBABLE"];
@@ -278,11 +279,21 @@ describe("regulatory reporting deadlines", () => {
   });
 
   it("measures staleness against the publisher's own cycle", () => {
-    // Charter rule 5. A 36-month circular is current inside 36 months
-    // OF ITS ISSUE — the Kenyan AC is dated January 2023.
-    const ke = MOR_OBLIGATIONS.KE;
-    expect(isStale(ke, new Date("2024-06-01T00:00:00Z"))).toBe(false);
-    expect(isStale(ke, new Date("2026-08-12T00:00:00Z"))).toBe(true);
+    /* Charter rule 5. Built on a CONSTRUCTED row rather than on
+       whichever real one happens to be old — this test used the Kenyan
+       AC as its stale example and went red the day that row was
+       replaced with a regulation gazetted in 2026. A guard about a
+       mechanism should not depend on the current contents of the data
+       it guards, or maintaining the data quietly disarms it. */
+    const base = MOR_OBLIGATIONS.KE;
+    const cycle36 = { ...base, instrumentIssued: "2023-01-01", reviewCycleMonths: 36 };
+    expect(isStale(cycle36, new Date("2024-06-01T00:00:00Z"))).toBe(false);
+    expect(isStale(cycle36, new Date("2026-08-12T00:00:00Z"))).toBe(true);
+
+    // The cycle is what makes the difference, not the elapsed time: the
+    // same age against a 60-month cycle is current.
+    const cycle60 = { ...cycle36, reviewCycleMonths: 60 };
+    expect(isStale(cycle60, new Date("2026-08-12T00:00:00Z"))).toBe(false);
   });
 
   it("DOES NOT LET RE-READING AN OLD DOCUMENT MAKE IT CURRENT", () => {
@@ -299,7 +310,12 @@ describe("regulatory reporting deadlines", () => {
 
        So: a row verified TODAY against an instrument older than the
        cycle is still stale. */
-    const justRead = { ...MOR_OBLIGATIONS.KE, verifiedOn: "2026-08-12" };
+    const justRead = {
+      ...MOR_OBLIGATIONS.KE,
+      instrumentIssued: "2023-01-01",
+      reviewCycleMonths: 36,
+      verifiedOn: "2026-08-12",
+    };
     expect(
       isStale(justRead, new Date("2026-08-12T00:00:00Z")),
       "re-reading a three-year-old circular reset its staleness",
@@ -315,27 +331,45 @@ describe("regulatory reporting deadlines", () => {
     expect(isStale(freshInstrument, new Date("2026-08-12T00:00:00Z"))).toBe(false);
   });
 
-  it("KEEPS THE FIGURE ATTRIBUTED TO WHERE IT CAME FROM, AND NAMES THE LAW ABOVE IT", () => {
-    /* The Kenyan 24 hours comes from Advisory Circular CAA-AC-SMS004A,
-       January 2023. KCAA has since gazetted the Civil Aviation (Safety
-       Management) Regulations as L.N. 32/2026 — law, where an AC is
-       guidance — and nobody here has read it.
+  it("NEVER ATTRIBUTES A FIGURE TO AN INSTRUMENT NOBODY HAS READ", () => {
+    /* The principle, kept as a mechanism rather than as a fact about
+       one row. It used to assert that Kenya cited an advisory circular
+       while naming L.N. 32/2026 as the unread law above it. That row
+       has since been replaced — the regulation was obtained and read,
+       so it is now the citation and the flag is gone — and a test
+       written against the state rather than the rule would simply have
+       been deleted at that point, taking the guard with it.
 
-       The tempting move is to update `instrument` to the regulation.
-       That would attribute 24 hours to a document nobody has opened,
-       which is precisely the misattribution this module's own header
-       complains about: three rows once carried the EU's 72 hours as an
-       "ICAO-common" figure. Doing it ourselves would be worse.
+       The rule outlives the row: wherever a governing instrument is
+       named as UNREAD, the figure must still be attributed to whatever
+       was actually read. Attributing it to the unread document is the
+       misattribution this module's header complains about — three rows
+       once carried the EU's 72 hours as an "ICAO-common" figure, and
+       doing it to ourselves would be worse. */
+    for (const code of JURISDICTIONS) {
+      const o = MOR_OBLIGATIONS[code];
+      if (!o.governedByUnread) continue;
+      expect(
+        o.instrument,
+        `${code} attributes its figure to an instrument it also calls unread`,
+      ).not.toContain(o.governedByUnread);
+      expect(o.note, `${code} names an unread instrument without warning in the note`).toMatch(
+        /L\.N\.|regulation|Regulations/i,
+      );
+    }
+  });
 
-       So the two facts stay separate, and both must survive. */
-    const ke = MOR_OBLIGATIONS.KE;
-    expect(ke.instrument, "the figure was reattributed to an unread instrument").toMatch(
-      /CAA-AC-SMS004A/,
-    );
-    expect(ke.governedByUnread, "the governing regulation is not named").toMatch(/L\.N\. 32\/2026/);
-    expect(ke.note, "the note does not warn that the figure predates the regulation").toMatch(
-      /L\.N\. 32\/2026/,
-    );
+  it("cites a real instrument for every jurisdiction, unread or not", () => {
+    // The check above is vacuous once no row carries the flag, which is
+    // the state today. This one cannot be: every row must cite
+    // something specific enough to look up.
+    for (const code of JURISDICTIONS) {
+      const o = MOR_OBLIGATIONS[code];
+      expect(o.instrument.length, `${code} has no instrument`).toBeGreaterThan(30);
+      expect(o.instrument, `${code} cites no identifiable document`).toMatch(
+        /Annex|Regulation|Circular|L\.N\./,
+      );
+    }
   });
 
   it("does not claim a governing instrument where none is known", () => {
@@ -454,5 +488,152 @@ describe("input validation", () => {
         likelihood: "EXTREMELY_IMPROBABLE" as const,
       }).success,
     ).toBe(true);
+  });
+});
+
+/* ============================================================
+   KENYA HAS THREE DEADLINES, NOT ONE.
+
+   The primary instrument was finally read: the Civil Aviation (Safety
+   Management) Regulations, 2025, gazetted as L.N. 32 of 2026 on 3
+   March 2026. Regulation 12(1), verbatim:
+
+     "A service provider shall notify and make mandatory occurrence
+      reports on accidents, serious incidents, incidents and other
+      safety related occurrences to the Authority within 24 hours, in
+      the case of accident, 48 hours in the case of serious incidents
+      and 72 hours in the case of incidents and other safety related
+      occurrences."
+
+   The product showed 24 hours for all of them, sourced from an
+   advisory circular — guidance, and superseded. That is the same
+   defect as the original 72-hour bug wearing the opposite sign: a
+   figure the instrument does not support, on a compliance surface.
+
+   The direction of the old error matters and is asserted below. It
+   was STRICT, not lax, so nobody was told they had longer than the law
+   allows. The replacement must keep that property wherever the class
+   is unknown.
+   ============================================================ */
+describe("Kenya's three reporting periods", () => {
+  const at = (iso: string) => new Date(iso);
+  const times = { occurredAt: at("2026-08-01T06:00:00Z"), awareAt: at("2026-08-01T06:00:00Z") };
+  const hoursBetween = (a: Date, b: Date) => (b.getTime() - a.getTime()) / 3_600_000;
+
+  it("gives an accident 24 hours", () => {
+    const r = reportingDeadline("KE", times, "ACCIDENT");
+    expect(r.hours).toBe(24);
+    expect(hoursBetween(times.awareAt, r.due!)).toBe(24);
+  });
+
+  it("gives a serious incident 48 hours", () => {
+    const r = reportingDeadline("KE", times, "SERIOUS_INCIDENT");
+    expect(r.hours).toBe(48);
+    expect(hoursBetween(times.awareAt, r.due!)).toBe(48);
+  });
+
+  it("gives an incident 72 hours", () => {
+    const r = reportingDeadline("KE", times, "INCIDENT");
+    expect(r.hours).toBe(72);
+    expect(hoursBetween(times.awareAt, r.due!)).toBe(72);
+  });
+
+  it("FALLS BACK TO THE STRICTEST PERIOD WHEN THE CLASS IS UNKNOWN", () => {
+    /* The safety property of this whole change. A reporter filing from
+       a strip has not classified the occurrence under Annex 13, and the
+       countdown must not hand them the 72-hour window for something
+       that turns out to be an accident. Early is an inconvenience;
+       late is a breach. */
+    const r = reportingDeadline("KE", times);
+    expect(r.hours).toBe(24);
+    const perClass = Object.values(MOR_OBLIGATIONS.KE.hoursByClass!);
+    expect(r.hours).toBe(Math.min(...perClass));
+  });
+
+  it("KEEPS THE ROW'S OWN FIGURE EQUAL TO THE STRICTEST CLASS", () => {
+    // Guards the next person who edits the row. A default that drifts
+    // above the strictest class is a silent extension of a deadline.
+    const ke = MOR_OBLIGATIONS.KE;
+    expect(ke.hours).toBe(Math.min(...Object.values(ke.hoursByClass!)));
+  });
+
+  it("cites the regulation rather than the advisory circular it replaced", () => {
+    const ke = MOR_OBLIGATIONS.KE;
+    expect(ke.instrument).toMatch(/L\.N\. 32 of 2026/);
+    expect(ke.instrument).toMatch(/regulation 12\(1\)/);
+    expect(ke.instrument).not.toMatch(/CAA-AC-SMS004A/);
+  });
+
+  it("NO LONGER CLAIMS AN UNREAD INSTRUMENT SITS ABOVE IT", () => {
+    // It has been read. Leaving the flag set would tell every reader to
+    // go and check something that is now the cited source.
+    expect(MOR_OBLIGATIONS.KE.governedByUnread).toBeUndefined();
+  });
+
+  it("says the instrument does not state what starts the clock", () => {
+    /* Regulation 12(1) says "within 24 hours" and never says from what.
+       Awareness is our reading, kept because it is the only anchor a
+       person can act on — and flagged so the product can say so rather
+       than presenting it as quoted. */
+    expect(MOR_OBLIGATIONS.KE.clockStartUnstated).toBe(true);
+    expect(MOR_OBLIGATIONS.KE.clockStart).toBe("AWARENESS");
+  });
+
+  it("leaves ICAO with no fixed period and no per-class table", () => {
+    const r = reportingDeadline("ICAO", times, "ACCIDENT");
+    expect(r.due).toBeNull();
+    expect(r.hours).toBeNull();
+    expect(MOR_OBLIGATIONS.ICAO.hoursByClass).toBeUndefined();
+  });
+});
+
+/* ============================================================
+   THE TWELVE ELEMENTS ARE KENYAN LAW, NOT ONLY AN ICAO STANDARD.
+
+   L.N. 32/2026's Second Schedule — "Framework for a Safety Management
+   System", made under regulations 6(2)(d) and 9(2)(c) — says: "The
+   framework comprises four components and twelve elements as the
+   minimum requirements for SMS implementation", and then lists them.
+
+   Every id and every NAME in this product matches that list verbatim,
+   including "The management of change" with its definite article. That
+   is worth holding still. /coverage reports "9 of 12" against these
+   elements, and if a name here drifted into a paraphrase the page
+   would be quietly measuring against our wording of the law rather
+   than the law's.
+
+   Transcribed from the instrument rather than imported from
+   maturity.ts, on purpose: importing the thing under test and
+   comparing it with itself is the check that cannot fail.
+   ============================================================ */
+describe("the Second Schedule to L.N. 32/2026", () => {
+  const SECOND_SCHEDULE: ReadonlyArray<readonly [string, string]> = [
+    ["1.1", "Management commitment"],
+    ["1.2", "Safety accountability and responsibilities"],
+    ["1.3", "Appointment of key safety personnel"],
+    ["1.4", "Coordination of emergency response planning"],
+    ["1.5", "SMS documentation"],
+    ["2.1", "Hazard identification"],
+    ["2.2", "Safety risk assessment and mitigation"],
+    ["3.1", "Safety performance monitoring and measurement"],
+    ["3.2", "The management of change"],
+    ["3.3", "Continuous improvement of the SMS"],
+    ["4.1", "Training and education"],
+    ["4.2", "Safety communication"],
+  ];
+
+  it("prescribes twelve elements", () => {
+    expect(SECOND_SCHEDULE).toHaveLength(12);
+  });
+
+  it("IS WHAT THIS PRODUCT MEASURES AGAINST, ID FOR ID AND WORD FOR WORD", () => {
+    expect(SMS_ELEMENTS.map((e) => [e.id, e.name])).toEqual(
+      SECOND_SCHEDULE.map(([id, name]) => [id, name]),
+    );
+  });
+
+  it("keeps the four components the Schedule groups them under", () => {
+    const components = new Set(SMS_ELEMENTS.map((e) => e.id.split(".")[0]));
+    expect([...components].sort()).toEqual(["1", "2", "3", "4"]);
   });
 });
