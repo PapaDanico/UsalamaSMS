@@ -47,6 +47,11 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: DATA
 
 const generatePassword = () => randomBytes(20).toString("base64url");
 
+/* `npm run seed:demo -- --rotate`. Off by default, because a seed that
+   silently changes a password nobody asked it to change is a seed
+   people stop running. */
+const ROTATE = process.argv.includes("--rotate");
+
 const ORG_NAME = process.env.DEMO_ORG_NAME ?? "Rift Valley Air — DEMO";
 const EMAIL_DOMAIN = process.env.DEMO_EMAIL_DOMAIN ?? "demo.usalamasms.test";
 
@@ -276,13 +281,55 @@ async function main() {
     const email = `${person.local}@${EMAIL_DOMAIN}`;
     const already = await prisma.user.findUnique({ where: { email } });
 
-    if (already) {
+    /* ROTATION IS A SEPARATE, EXPLICIT ACT.
+       Leaving an existing user alone is right by default: a second run
+       of a seed must not silently invalidate a password somebody is
+       using, and idempotence is the property the rest of this script
+       is built on.
+
+       But "rotate the demo passwords" was an instruction with no
+       mechanism behind it. The accounts exist, so the seed skipped
+       them; the only routes were deleting users — which orphans the
+       reporterId on every report they filed — or hand-writing an
+       argon2 hash into the database. Neither is a thing to ask
+       somebody to do under time pressure, which is how a leaked
+       credential stays live.
+
+       So: --rotate re-issues a password for accounts that already
+       exist, keeping the row, the id and everything joined to it. The
+       new password is printed once by the same block that prints a
+       first run's, into the terminal of whoever ran it. */
+    if (already && !ROTATE) {
       byLocal.set(person.local, already);
       console.log(`  user exists, left alone: ${email} (${already.role})`);
       continue;
     }
 
     const password = generatePassword();
+
+    if (already) {
+      const rotated = await prisma.user.update({
+        where: { id: already.id },
+        data: { passwordHash: await argon2.hash(password, { type: argon2.argon2id }) },
+      });
+      /* Every refresh token this account holds, revoked in the same
+         breath. A rotated password that leaves a live session behind
+         has not ended anything — the session outlives the credential
+         it was minted from, which is the whole reason rotation was
+         being asked for. */
+      const { count } = await prisma.refreshToken.updateMany({
+        where: { userId: already.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      byLocal.set(person.local, rotated);
+      created.push({ email, password, role: rotated.role, title: person.title });
+      console.log(
+        `  rotated: ${email} (${rotated.role})` +
+          (count > 0 ? ` — ${count} live session${count === 1 ? '' : 's'} revoked` : ''),
+      );
+      continue;
+    }
+
     const user = await prisma.user.create({
       data: {
         orgId: org.id,
@@ -340,11 +387,14 @@ async function main() {
 
   if (created.length === 0) {
     console.log("\nEvery demo account already exists. No passwords to show.");
+    console.log("To re-issue them:  npm run seed:demo -- --rotate");
     return;
   }
 
   console.log("\n" + "=".repeat(66));
-  console.log("  PASSWORDS — SHOWN ONCE, STORED NOWHERE");
+  console.log(
+    ROTATE ? "  PASSWORDS ROTATED — SHOWN ONCE, STORED NOWHERE" : "  PASSWORDS — SHOWN ONCE, STORED NOWHERE",
+  );
   console.log("  A demo account on a reachable deployment is a real");
   console.log("  credential. Put these in a password manager now.");
   console.log("=".repeat(66));
