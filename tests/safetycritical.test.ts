@@ -7,6 +7,7 @@ import {
   RiskAssessInputSchema, CreateReportSchema,
   type Severity, type Likelihood, type Role,
 } from "../packages/shared/src/index";
+import { SMS_ELEMENTS } from "../packages/shared/src/maturity";
 
 const SEVS: Severity[] = ["A_CATASTROPHIC","B_HAZARDOUS","C_MAJOR","D_MINOR","E_NEGLIGIBLE"];
 const LIKS: Likelihood[] = ["FREQUENT","OCCASIONAL","REMOTE","IMPROBABLE","EXTREMELY_IMPROBABLE"];
@@ -583,5 +584,56 @@ describe("Kenya's three reporting periods", () => {
     expect(r.due).toBeNull();
     expect(r.hours).toBeNull();
     expect(MOR_OBLIGATIONS.ICAO.hoursByClass).toBeUndefined();
+  });
+});
+
+/* ============================================================
+   THE TWELVE ELEMENTS ARE KENYAN LAW, NOT ONLY AN ICAO STANDARD.
+
+   L.N. 32/2026's Second Schedule — "Framework for a Safety Management
+   System", made under regulations 6(2)(d) and 9(2)(c) — says: "The
+   framework comprises four components and twelve elements as the
+   minimum requirements for SMS implementation", and then lists them.
+
+   Every id and every NAME in this product matches that list verbatim,
+   including "The management of change" with its definite article. That
+   is worth holding still. /coverage reports "9 of 12" against these
+   elements, and if a name here drifted into a paraphrase the page
+   would be quietly measuring against our wording of the law rather
+   than the law's.
+
+   Transcribed from the instrument rather than imported from
+   maturity.ts, on purpose: importing the thing under test and
+   comparing it with itself is the check that cannot fail.
+   ============================================================ */
+describe("the Second Schedule to L.N. 32/2026", () => {
+  const SECOND_SCHEDULE: ReadonlyArray<readonly [string, string]> = [
+    ["1.1", "Management commitment"],
+    ["1.2", "Safety accountability and responsibilities"],
+    ["1.3", "Appointment of key safety personnel"],
+    ["1.4", "Coordination of emergency response planning"],
+    ["1.5", "SMS documentation"],
+    ["2.1", "Hazard identification"],
+    ["2.2", "Safety risk assessment and mitigation"],
+    ["3.1", "Safety performance monitoring and measurement"],
+    ["3.2", "The management of change"],
+    ["3.3", "Continuous improvement of the SMS"],
+    ["4.1", "Training and education"],
+    ["4.2", "Safety communication"],
+  ];
+
+  it("prescribes twelve elements", () => {
+    expect(SECOND_SCHEDULE).toHaveLength(12);
+  });
+
+  it("IS WHAT THIS PRODUCT MEASURES AGAINST, ID FOR ID AND WORD FOR WORD", () => {
+    expect(SMS_ELEMENTS.map((e) => [e.id, e.name])).toEqual(
+      SECOND_SCHEDULE.map(([id, name]) => [id, name]),
+    );
+  });
+
+  it("keeps the four components the Schedule groups them under", () => {
+    const components = new Set(SMS_ELEMENTS.map((e) => e.id.split(".")[0]));
+    expect([...components].sort()).toEqual(["1", "2", "3", "4"]);
   });
 });
