@@ -86,6 +86,32 @@ const STEPS = [
   }
 ];
 
+/* TWO DOORS IN THE HERO, BECAUSE TWO DIFFERENT PEOPLE ARRIVE HERE.
+
+   The second action used to be "How the figures are derived", pointing
+   at /methodology. That is a reference page; it is in the menu under
+   Reference, and the section it summarises is eight hundred pixels
+   below the button on this very page. The most valuable slot on the
+   product's front door was spent sending a reader somewhere they were
+   already going.
+
+   What was missing was the answer to "where do I start" — the thing an
+   operator actually arrives asking. A ramp agent who has just had a
+   bird strike wants the form; a safety manager with an audit in six
+   weeks wants to know where their SMS stands. One of those had a door
+   and the other did not, and the one without it is the one paying for
+   this product.
+
+   Primary stays with the report: the occurrence is the time-critical
+   arrival, because a reporting window is already running while
+   somebody reads this. The other reader is not in a hurry.
+
+   AND THIS NOTE IS A JS COMMENT, NOT AN HTML ONE. Written as
+   `<!-- ... -->` inside the template literal below it is a STRING, not
+   a comment — the minifier cannot remove what it cannot see is a
+   comment, so every word ships to a handset on a rural link. Written
+   here it costs nothing. It went in as HTML first and put the entry
+   chunk 1.1 KB over budget, which is the only reason anybody noticed. */
 function Hero() {
   return html`
     <section class="band-dark">
@@ -103,7 +129,7 @@ function Hero() {
 
         <div class="hero-actions">
           <a class="btn btn-primary" href="/report">File a report</a>
-          <a class="btn btn-ghost-lt" href="/methodology">How the figures are derived</a>
+          <a class="btn btn-ghost-lt" href="/toolkits/maturity">See where your SMS stands</a>
         </div>
 
         <ul class="trust-strip">
