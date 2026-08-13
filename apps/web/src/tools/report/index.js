@@ -89,8 +89,28 @@ export function render(outlet) {
         hint: 'An occurrence carries a reporting deadline; the others do not.'
       })}
 
+      ${/* THE ASTERISK GOES ON ALL THREE, and it did not. The required
+            attribute was set on all three fields, so the browser and a
+            screen reader both knew — and only the dropdown said so on
+            screen, because the Select component renders the marker and
+            these two are hand-written labels. A person filling this
+            form met the other two requirements as a validation failure
+            at submit, on a screen whose own lede promises "three
+            required fields". A process that surprises somebody at the
+            last step is the friction that stops the NEXT report.
+
+            aria-hidden on the mark, as the component does it: required
+            already carries the state to assistive technology, and a
+            screen reader announcing "star" is noise.
+
+            AND THIS IS A JS COMMENT, NOT AN HTML ONE. An HTML comment
+            inside a template literal is a string — it survives
+            minification and ships to a handset. That is how this change
+            first broke the entry budget. */ ''}
       <label class="field">
-        <span class="field-label">In one line, what happened?</span>
+        <span class="field-label"
+          >In one line, what happened?<span aria-hidden="true"> *</span></span
+        >
         <input
           name="title"
           maxlength="200"
@@ -102,7 +122,7 @@ export function render(outlet) {
       </label>
 
       <label class="field">
-        <span class="field-label">Tell us more</span>
+        <span class="field-label">Tell us more<span aria-hidden="true"> *</span></span>
         <textarea
           name="narrative"
           rows="6"

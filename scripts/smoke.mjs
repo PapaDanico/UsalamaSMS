@@ -2259,6 +2259,65 @@ try {
     );
   });
 
+  await check('EVERY REQUIRED FIELD SAYS SO BEFORE THE SUBMIT, NOT AFTER', async () => {
+    /* Three fields on this form carry `required`. Only one showed the
+       marker, because the dropdown comes from a component that renders
+       it and the other two are hand-written labels. The page's own lede
+       promises "three required fields" and marked one of them, so a
+       reporter met the other two as a validation failure at the last
+       step.
+
+       That is the friction that stops the NEXT report being filed, on
+       the screen this entire product exists for. Asserted as an
+       agreement between two things rather than as a count: whatever is
+       `required` must be marked, and whatever is marked must be
+       required. Adding a fourth required field without a marker fails
+       this, which is the mistake being guarded. */
+    const cameFrom = page.url();
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    await page.waitForSelector('select[name="type"]', { timeout: 5000 });
+
+    const fields = await page.evaluate(() =>
+      [...document.querySelectorAll('#main input, #main select, #main textarea')]
+        .filter((el) => el.name && el.type !== 'hidden')
+        .map((el) => {
+          const label =
+            el.closest('label') ?? document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
+          return {
+            name: el.name,
+            required: el.required,
+            marked: /\*/.test(label?.querySelector('.field-label')?.textContent ?? label?.textContent ?? ''),
+          };
+        })
+    );
+    const lede = (await page.locator('#main .lede, #main p').first().textContent()) ?? '';
+
+    // Read everything, put the page back, then assert — the checks
+    // after this one continue from where they were left.
+    await page.goto(cameFrom, { waitUntil: 'networkidle' });
+    await page.waitForSelector('#deadline-calc', { timeout: 5000 });
+
+    assert(fields.length > 5, `only ${fields.length} fields found on the report form`);
+
+    const unmarked = fields.filter((f) => f.required && !f.marked).map((f) => f.name);
+    const overmarked = fields.filter((f) => !f.required && f.marked).map((f) => f.name);
+    assert(
+      unmarked.length === 0,
+      `required but not marked, so a reporter meets it at submit: ${unmarked.join(', ')}`
+    );
+    assert(
+      overmarked.length === 0,
+      `marked required but is not, which turns an optional field into a barrier: ${overmarked.join(', ')}`
+    );
+    // And the lede's promise matches the count, rather than being prose
+    // somebody typed once.
+    const required = fields.filter((f) => f.required).length;
+    assert(
+      /three required fields/i.test(lede) === (required === 3),
+      `the page says "${lede.trim().slice(0, 60)}" while ${required} fields are required`
+    );
+  });
+
   await check('THE REPORT FORM NAMES THE SHORTEST PERIOD AS THE SHORTEST', async () => {
     /* THE HIGHEST-TRAFFIC COMPLIANCE CLAIM IN THE PRODUCT, and until
        now nothing checked it. Mutating the countdown to read the widest

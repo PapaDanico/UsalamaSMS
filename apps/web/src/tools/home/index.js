@@ -197,17 +197,6 @@ function Deadlines() {
                   : ''}
               </dt>
               <dd>
-                <!-- ORDER MATTERS HERE. Figure, then the instrument it
-                     comes from, then whether that instrument is
-                     current, and only then the caveats. The caveat used
-                     to sit between the figure and its citation, which
-                     split the two things a reader needs to see
-                     together. -->
-                <!-- THE CLOCK PHRASE LEADS. Trailing it after a list of
-                     three periods needed a comma the template kept
-                     putting a space in front of, and read worse besides:
-                     the anchor applies to all three, so it belongs once
-                     at the front rather than tacked onto the last. -->
                 ${o.hours === null
                   ? html`<strong>Without delay</strong> &mdash; no fixed period is set`
                   : html`From
