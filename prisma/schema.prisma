@@ -299,11 +299,55 @@ model RiskAssessment {
   acceptedById       String?
   acceptedAt         DateTime?
 
+  // ------------------------------------------------------------------
+  // THE STANDING REGISTER, which is a different artefact from a
+  // one-off assessment and was living in a browser.
+  //
+  // An assessment answers "how bad is this". A register answers "what
+  // are we doing about it, who owns it, and when do we look again" —
+  // and it is the register an auditor asks for, because a hazard with
+  // no owner and no review date has been assessed and not managed.
+  // ------------------------------------------------------------------
+  controls String? @db.Text
+
+  // The residual position, AFTER the controls above. Stored for exactly
+  // the reason the initial pair is: it is the assessment of record at a
+  // point in time, and recomputing it if the matrix is ever revised
+  // would rewrite a decision somebody signed.
+  //
+  // Nullable as a set: an entry assessed today and controlled next week
+  // has an initial position and no residual one, and inventing a
+  // residual equal to the initial would report a control that does not
+  // exist.
+  residualSeverity     Severity?
+  residualLikelihood   Likelihood?
+  residualScore        Int?
+  residualTolerability Tolerability?
+
+  owner    String?
+  // The date the entry is next due to be looked at. A register whose
+  // rows have no review date is a list, and the finding an auditor
+  // writes is that nobody was going to look again.
+  reviewBy DateTime?
+  status   RiskStatus @default(OPEN)
+
+  updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 
   hazard Hazard @relation(fields: [hazardId], references: [id], onDelete: Cascade)
 
   @@index([orgId, tolerability])
+  // The two queries a safety office actually runs against a register:
+  // what is open, and what is due.
+  @@index([orgId, status])
+  @@index([orgId, reviewBy])
+}
+
+enum RiskStatus {
+  OPEN
+  MITIGATED
+  ACCEPTED
+  CLOSED
 }
 
 model Spi {

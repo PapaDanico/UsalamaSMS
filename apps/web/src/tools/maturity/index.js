@@ -661,6 +661,37 @@ export function render(outlet) {
   outlet.querySelector('#mat-print').addEventListener('click', () => window.print());
 
   outlet.querySelector('#mat-clear').addEventListener('click', () => {
+    /* ASK FIRST, like every other destructive control in the product.
+       The register asks before removing ONE entry; the SRA asks before
+       removing one hazard; the indicators ask before removing one
+       indicator. This button was the odd one out, and it is the one
+       that destroys most: every element's grade, the suitability
+       judgement, the operator scale, and — since the plan was wired in
+       — every owner, date and document reference somebody assigned.
+       That is an afternoon's work behind a single unguarded click,
+       held only in this browser, with no copy anywhere and no undo.
+
+       It only asks when there is something to lose. A confirmation
+       over an empty assessment is a dialog that teaches people to
+       dismiss dialogs, which is how the guarded ones stop working. */
+    const held =
+      Object.keys(answers).length +
+      Object.keys(suitability).length +
+      Object.keys(assignments).length +
+      Object.keys(references).length +
+      (scale ? 1 : 0);
+    if (
+      held > 0 &&
+      !window.confirm(
+        'Clear this maturity assessment?\n\n' +
+          'Every grade, the suitability judgement, the operator scale and every ' +
+          'owner, date and document reference on the plan will be removed. This ' +
+          'is held on this device only — there is no copy, and this cannot be undone.'
+      )
+    ) {
+      return;
+    }
+
     answers = {};
     suitability = {};
     scale = undefined;

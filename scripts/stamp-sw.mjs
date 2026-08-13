@@ -580,7 +580,43 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    target device earns a raise, and so does a legal requirement the
    product already satisfied everywhere except where it counted. What
    still does not is a dependency, a polyfill or a component library. */
-const BUDGET = { entry: 214 * 1024, js: 408 * 1024, css: 54 * 1024 };
+/* TOTAL 408 -> 409 KB, so a server read cannot delete the device's own
+   work. ENTRY AND CSS BOTH UNMOVED.
+
+   WHAT IT BOUGHT, and this is the least optional raise in the file.
+
+   Both server-backed toolkits read the organisation's copy on load and
+   assigned it straight over the device's, then persisted. A signed-in
+   safety manager whose organisation had no server-side records yet
+   opened the screen and watched an empty list overwrite their own — no
+   click, no confirmation, no undo, nothing on screen afterwards to say
+   it had happened.
+
+   IT WAS AIMED AT EVERY EXISTING USER SIMULTANEOUSLY. The server side
+   arrives in the same release as the read, so on the first load after
+   the deploy every operator's server-side register is empty BY
+   DEFINITION, and every local register would have been wiped against
+   it. A migration that destroys the data it is migrating. The
+   indicators are worse again: an indicator is not one fact but a
+   series, and six quarters of exposure cannot be typed back in from
+   memory the way a hazard description can.
+
+   The weight is the union itself — reconciling the two lists by id,
+   keeping anything the safety office has never heard of, and adopting
+   the server's id on a successful write so the same hazard cannot
+   arrive twice on the next load. The register needed that last part;
+   the indicators already had it.
+
+   Lands entirely in the lazily-loaded /toolkits chunks. A reporter
+   filing at a strip downloads none of it, which is why ENTRY is
+   unmoved at 214.0 KB.
+
+   The stopping rule gains a fourth precedent, and it is the plainest:
+   a screen earns a raise, a correctness fix on the target device earns
+   a raise, a legal requirement earns a raise — and so does not
+   destroying the user's work. What still does not is a dependency, a
+   polyfill or a component library. */
+const BUDGET = { entry: 214 * 1024, js: 409 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 for (const asset of assets) {

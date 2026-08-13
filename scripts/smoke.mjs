@@ -1511,7 +1511,22 @@ try {
 
     // Clear leaves nothing behind, or the next person on a shared
     // crew-room handset inherits somebody's assessment.
+    /* Clear answers asks now, deliberately — it destroys twelve grades,
+       the suitability judgement, the scale and every plan assignment.
+       Accepted here because the point of these checks is what happens
+       AFTER a clear; the confirmation itself has its own check.
+
+       REGISTERED AND REMOVED AROUND THE CLICK, not `once`. A `once`
+       handler that its own dialog never reaches stays armed and fires
+       on somebody else's dialog several checks later, where a second
+       handler has already answered it — which crashes the run with
+       "Cannot accept dialog which is already handled", eighty lines
+       from the cause. */
+    const acceptClear = (d) => d.accept();
+    page.on('dialog', acceptClear);
     await page.click('#mat-clear');
+    await page.waitForTimeout(120);
+    page.off('dialog', acceptClear);
     await page.reload({ waitUntil: 'networkidle' });
     assert(
       (await page.locator('input[type=radio]:checked').count()) === 0,
@@ -1588,7 +1603,22 @@ try {
 
     // And Clear takes the names with it. A shared crew-room handset
     // must not hand the next person a colleague's name against a task.
+    /* Clear answers asks now, deliberately — it destroys twelve grades,
+       the suitability judgement, the scale and every plan assignment.
+       Accepted here because the point of these checks is what happens
+       AFTER a clear; the confirmation itself has its own check.
+
+       REGISTERED AND REMOVED AROUND THE CLICK, not `once`. A `once`
+       handler that its own dialog never reaches stays armed and fires
+       on somebody else's dialog several checks later, where a second
+       handler has already answered it — which crashes the run with
+       "Cannot accept dialog which is already handled", eighty lines
+       from the cause. */
+    const acceptClear = (d) => d.accept();
+    page.on('dialog', acceptClear);
     await page.click('#mat-clear');
+    await page.waitForTimeout(120);
+    page.off('dialog', acceptClear);
     await page.reload({ waitUntil: 'networkidle' });
     const after = await page.evaluate(() => localStorage.getItem('usalamasms.maturity') ?? '');
     assert(!after.includes('Kilonzo'), 'Clear answers left an owner behind in the store');
@@ -1643,7 +1673,22 @@ try {
       'the finding came back after a reload, with the reference still in the box'
     );
 
+    /* Clear answers asks now, deliberately — it destroys twelve grades,
+       the suitability judgement, the scale and every plan assignment.
+       Accepted here because the point of these checks is what happens
+       AFTER a clear; the confirmation itself has its own check.
+
+       REGISTERED AND REMOVED AROUND THE CLICK, not `once`. A `once`
+       handler that its own dialog never reaches stays armed and fires
+       on somebody else's dialog several checks later, where a second
+       handler has already answered it — which crashes the run with
+       "Cannot accept dialog which is already handled", eighty lines
+       from the cause. */
+    const acceptClear = (d) => d.accept();
+    page.on('dialog', acceptClear);
     await page.click('#mat-clear');
+    await page.waitForTimeout(120);
+    page.off('dialog', acceptClear);
     await page.reload({ waitUntil: 'networkidle' });
     assert(
       (await page.locator('input[name="ref-4.1"]').inputValue()) === '',
@@ -1889,11 +1934,23 @@ try {
     // stale for exactly the person looking for the thing that was added
     // last.
     //
-    // The rule, and it is not "the SRA is in the hint": every toolkit
-    // that is big enough to have a route of its own must be NAMED in
-    // the hint of the menu item that leads to it. Both sides are read
-    // from the running page, so this fails whenever a fourth is added
-    // and the hint is not — which is the failure that actually happened.
+    // THE RULE THIS ONCE ENFORCED WAS TOO WEAK, and the SRA proved it a
+    // second time. It required every routed toolkit to be NAMED IN THE
+    // HINT of the menu item leading to it — which stopped the hint
+    // going stale and left the actual complaint untouched: "a user
+    // would be confused where to start or get what, for instance the
+    // SRA". A name inside a sentence is not a destination. Nobody can
+    // click "risk assessment" in the summary text under a link called
+    // Toolkits; they click Toolkits and then go looking, which is the
+    // hunt the original defect was about.
+    //
+    // SO THE RULE IS NOW THE STRONGER ONE: a toolkit big enough to have
+    // a route of its own is big enough to have a MENU ENTRY of its own,
+    // under its own name, in the group that answers the question it
+    // exists to answer. Both sides are still read from the running
+    // page, so adding a fifth routed toolkit and leaving it out of the
+    // architecture fails here — the failure that actually happened,
+    // caught at the level it actually happens.
     //
     // It lives down here among the toolkit checks rather than beside the
     // navigation ones because the checks up there share one page that is
@@ -1901,16 +1958,6 @@ try {
     // took nine of them down with it. The suite's page is already 390
     // wide, which is where the header keeps its destinations behind the
     // Menu button, so no resize is needed either.
-    await page.goto(BASE, { waitUntil: 'networkidle' });
-    await page.click('#menu-toggle');
-    const hint = (
-      await page
-        .locator('#menu-panel a[href="/toolkits"] .nav-item-summary')
-        .textContent()
-    )?.toLowerCase().replace(/\s+/g, ' ').trim() ?? '';
-    await page.keyboard.press('Escape');
-    assert(hint.length > 0, 'the Toolkits menu item carries no hint at all');
-
     await page.goto(BASE + '/toolkits', { waitUntil: 'networkidle' });
     const toolkits = await page.evaluate(() =>
       [...document.querySelectorAll('.hero-actions a')]
@@ -1922,18 +1969,49 @@ try {
       `${toolkits.length} routed toolkits offered on the index; the product ships at least 3`
     );
 
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.click('#menu-toggle');
+    const menu = await page.evaluate(() =>
+      [...document.querySelectorAll('#menu-panel .nav-group')].flatMap((g) => {
+        const group = g.querySelector('.nav-group__title')?.textContent?.trim() ?? '';
+        return [...g.querySelectorAll('a.nav-item')].map((a) => ({
+          group,
+          href: a.getAttribute('href'),
+          title: a.querySelector('.nav-item-title')?.textContent?.trim() ?? '',
+          hint: a.querySelector('.nav-item-summary')?.textContent?.trim() ?? ''
+        }));
+      })
+    );
+    await page.keyboard.press('Escape');
+
+    assert(menu.length > 6, `the menu offered ${menu.length} destinations`);
+
     for (const t of toolkits) {
-      // The toolkit's own last two words — "risk assessment", "risk
-      // register", "maturity assessment". A hint that names it in
-      // different words is a hint that names something else.
-      const name = t.label.toLowerCase().split(/\s+/).slice(-2).join(' ');
+      const entry = menu.find((m) => m.href === t.href);
       assert(
-        hint.includes(name),
-        `the menu hint for Toolkits does not name "${t.label}" (${t.href}). ` +
-          `It reads "${hint}". A toolkit absent from the hint is a toolkit a ` +
-          'person navigating never learns exists.'
+        entry,
+        `${t.href} ("${t.label}") has a route of its own and NO MENU ENTRY of its own. ` +
+          `The menu offers: ${menu.map((m) => m.href).join(', ')}. A person looking for ` +
+          'it has to already know it lives inside Toolkits.'
+      );
+      assert(
+        entry.title.length > 0 && entry.hint.length > 0,
+        `the menu entry for ${t.href} renders "${entry.title}" / "${entry.hint}" — ` +
+          'a destination with no name or no summary is a blank line in the menu'
       );
     }
+
+    /* AND THE SAME DESTINATION IS NOT OFFERED TWICE. Regrouping a menu
+       is exactly when an item gets copied into its new home and left
+       in the old one, and two entries for one page is the "all over
+       the place" complaint in miniature. */
+    const dupes = menu
+      .map((m) => m.href)
+      .filter((h, i, all) => all.indexOf(h) !== i);
+    assert(
+      dupes.length === 0,
+      `the menu offers these destinations more than once: ${[...new Set(dupes)].join(', ')}`
+    );
   });
 
   await check('AN SRA REFUSES TO BE ACCEPTED WITH A RED RISK ON IT', async () => {
@@ -2944,6 +3022,403 @@ try {
     );
     assert(!state.isOfflinePage, 'the offline page was served instead of the cached app');
     assert(/sign in|signed in/i.test(state.heading), `offline /account rendered "${state.heading}"`);
+  });
+
+  /* ============================================================
+     EVERY LINK IN THE PRODUCT, FOLLOWED.
+
+     THE DEFECT THAT BOUGHT THIS. The footer carried
+     "/methodology#reporting" under the words "see the regulatory
+     basis". /methodology renders #windows, #risk, #colour and
+     #provenance, and has never rendered #reporting. Every press since
+     that line was written navigated to the methodology page and
+     scrolled to the top — the reader arrives somewhere plausible,
+     reads the wrong section, and has no way to know they were sent to
+     a fragment that does not exist. /templates carried the same dead
+     target under the same words.
+
+     THE REASON IT NEEDS A GATE RATHER THAN A FIX. This is the SECOND
+     time a fragment in this footer has failed silently. The first was
+     the router dropping the hash from "/#deadlines", recorded in
+     shared/router.js: "It had never once worked." A class of defect
+     that has shipped twice, in the same eight lines of chrome, is not
+     an accident anybody is going to stop making by being careful.
+
+     WHY IT IS HERE AND NOT IN A STATIC CHECK. Almost every id in this
+     product is rendered by JavaScript from a registry — #c-2 on
+     /coverage, #q-<slug> on /faq, #component-<id> on /toolkits. A
+     grep for id="reporting" over the source would pass on a page
+     whose anchors are all built at runtime, which is the failure mode
+     described at the top of this file: a check that cannot fail.
+     Resolving a fragment means rendering the page it points at.
+
+     WHAT IS DELIBERATELY NOT ASSERTED: that a fragment SCROLLS. Where
+     an anchor lands under the sticky chrome is a separate check with
+     its own measurement two screens up. This one asks the prior
+     question — whether the thing being scrolled to exists at all. */
+  await check('A SERVER READ NEVER DELETES WORK THAT ONLY EXISTS ON THE DEVICE', async () => {
+    /* FOUND IN REVIEW, ON THE WAY TO MERGE, WHICH IS THE ONLY REASON
+       IT IS NOT LIVE.
+
+       Both server-backed toolkits read the organisation's copy on load
+       and assigned it straight over the device's, then persisted. So a
+       signed-in safety manager whose organisation had no server-side
+       records yet opened the screen and watched an empty list
+       overwrite their own work. No click, no confirmation, no undo,
+       and nothing on screen afterwards to say it had happened.
+
+       IT WOULD HAVE FIRED FOR EVERY EXISTING USER AT ONCE. The server
+       side arrives in the same release as this read, so on the first
+       load after the deploy every operator's server register is empty
+       by definition — and every local register would have been wiped
+       against it. A migration that destroys the data it is migrating.
+
+       Asserted with the network stubbed rather than against a real
+       API, because the property is about what the SCREEN does with an
+       empty answer, and an empty answer is the whole point. A live API
+       would have to be emptied to reproduce it, which is the condition
+       being tested. */
+    const EMPTY = { '/api/v1/register': { entries: [] }, '/api/v1/spi': { indicators: [] } };
+    const CASES = [
+      {
+        route: '/toolkits/register',
+        api: '/api/v1/register',
+        store: 'usalamasms.register',
+        seed: JSON.stringify([
+          {
+            id: 'device-only-1',
+            hazard: 'Bird activity on approach to runway 06',
+            consequence: 'Ingestion on short final.',
+            severity: 'B_HAZARDOUS',
+            likelihood: 'OCCASIONAL',
+            controls: '',
+            owner: 'Samuel Kiprono',
+            reviewBy: '2026-12-01',
+            status: 'OPEN',
+            createdAt: '2026-08-01T00:00:00.000Z'
+          }
+        ]),
+        survivors: (raw) => JSON.parse(raw).map((e) => e.id)
+      },
+      {
+        route: '/toolkits/spi',
+        api: '/api/v1/spi',
+        store: 'usalamasms.spi',
+        seed: JSON.stringify({
+          indicators: [
+            {
+              id: 'device-only-1',
+              name: 'Unstable approaches',
+              kind: 'LOWER_CONSEQUENCE',
+              exposureUnit: 'sectors',
+              per: 1000,
+              direction: 'LOWER_IS_BETTER',
+              owner: 'Samuel Kiprono',
+              periods: [{ id: 'p1', label: '2026-Q1', events: 4, exposure: 1200 }]
+            }
+          ]
+        }),
+        survivors: (raw) => (JSON.parse(raw).indicators ?? []).map((i) => i.id)
+      }
+    ];
+
+    /* ITS OWN CONTEXT, WITH SERVICE WORKERS BLOCKED, and that detail is
+       the whole check.
+
+       Written first against the shared page, this passed with the
+       defect fully restored — the worst possible result, and the
+       reason it is worth spelling out. page.route() does not intercept
+       requests a SERVICE WORKER makes, and by that point in the run
+       the worker is installed and controlling the page. So the stub
+       was never hit: the worker fetched the real path, the static
+       server answered, res.ok was true, res.json() threw on markup,
+       and the screen's own .catch() swallowed it. The read never
+       reached the code being tested, so both the fixed and the broken
+       version "passed".
+
+       A blocked-worker context puts the request back on the page,
+       where route() can answer it. It is closed at the end so the rest
+       of the suite keeps the worker it needs for the offline checks. */
+    const bare = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+
+    /* The refresh has to succeed or authFetch never sends the read —
+       it waits for a token before the first request, deliberately, and
+       a failed restore would leave this measuring nothing again. */
+    await probe.route('**/api/v1/auth/refresh', (r) =>
+      r.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'stub', refreshToken: 'stub2',
+          role: 'SAFETY_MANAGER', orgId: 'org-1'
+        })
+      })
+    );
+
+    const outcome = [];
+    try {
+      for (const c of CASES) {
+        let stubbed = false;
+        await probe.route(`**${c.api}`, (r) => {
+          stubbed = true;
+          return r.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(EMPTY[c.api])
+          });
+        });
+
+        await probe.goto(BASE + c.route, { waitUntil: 'networkidle' });
+        await probe.evaluate(
+          ([store, seed]) => {
+            localStorage.setItem(
+              'usalamasms.session',
+              JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+            );
+            localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+            localStorage.setItem(store, seed);
+          },
+          [c.store, c.seed]
+        );
+        await probe.reload({ waitUntil: 'networkidle' });
+        await probe.waitForTimeout(600);
+
+        const raw = await probe.evaluate((k) => localStorage.getItem(k), c.store);
+        outcome.push({ route: c.route, api: c.api, stubbed, ids: raw ? c.survivors(raw) : [] });
+
+        await probe.unroute(`**${c.api}`);
+      }
+    } finally {
+      await bare.close();
+    }
+
+    /* BOTH SCREENS REPORTED, not just the first to fail. Two
+       server-backed toolkits share this defect and they were fixed in
+       one change; an assert that throws on the register would leave
+       the indicators unexamined and somebody fixing one screen would
+       be told the job was done. */
+    const faults = [];
+    for (const o of outcome) {
+      /* THE GUARD THAT MAKES THE REST MEAN ANYTHING. If the empty
+         answer never reached the screen, nothing below was tested and
+         a pass is a lie — which is exactly how this check first
+         "passed" against the defect fully restored. */
+      if (!o.stubbed) {
+        faults.push(
+          `${o.route}: the stubbed ${o.api} was never called, so the screen was ` +
+            'never given an empty answer and this check tested nothing'
+        );
+      } else if (!o.ids.includes('device-only-1')) {
+        faults.push(
+          `${o.route}: the safety office answered with nothing and the device's own ` +
+            `work was destroyed. What survived: [${o.ids.join(', ') || 'nothing at all'}]`
+        );
+      }
+    }
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
+  await check('NOTHING IS DESTROYED WITHOUT ASKING — every screen, not three of four', async () => {
+    /* FOUND BY PRESSING EVERY BUTTON IN THE PRODUCT, which is not
+       something the suite had ever done.
+
+       Three of the four toolkits that hold work on the device asked
+       before destroying it: the register before removing an entry, the
+       SRA before removing a hazard, the indicators before removing an
+       indicator. The maturity assessment's "Clear answers" did not —
+       and it is the one that destroys most. Twelve elements' grades,
+       the suitability judgement, the operator scale, and every owner,
+       date and document reference somebody assigned on the
+       implementation plan. Held in this browser only. No copy, no undo,
+       one click, no question.
+
+       The inconsistency is the tell. A product that guards the small
+       destructive action and not the large one has not decided that
+       the large one is safe; it has simply never looked at them
+       together.
+
+       ASSERTED BY DISMISSING THE DIALOG. `d.dismiss()` is the person
+       who clicked by accident and said no — so this fails both when
+       the confirmation is missing and when it is shown but ignored,
+       which is the version that looks right in a screenshot. */
+    const CONTROLS = [
+      {
+        route: '/toolkits/maturity',
+        store: 'usalamasms.maturity',
+        /* THE STORE'S OWN SHAPE, which is flat: element ids at the top
+           level and the rest under underscore keys. Written in the
+           store's shape rather than in the shape the screen works in,
+           because a seed the loader silently discards produces an
+           empty assessment — and an empty assessment is not asked
+           about, so this check would have "passed" on a screen that
+           had nothing to destroy. It did exactly that once. */
+        seed: () =>
+          JSON.stringify({
+            '1.1': 3,
+            '1.2': 2,
+            '2.1': 4,
+            _suitability: { '1.1': 'SUITABLE' },
+            _references: { '1.1': 'SMSM rev 4 §2.1' }
+          }),
+        button: '#mat-clear',
+        survives: (raw) => {
+          const p = JSON.parse(raw);
+          return Object.keys(p).filter((k) => !k.startsWith('_')).length === 3;
+        }
+      },
+      {
+        route: '/toolkits/register',
+        store: 'usalamasms.register',
+        seed: () =>
+          JSON.stringify([
+            {
+              id: 'keep-me',
+              hazard: 'Bird activity on approach',
+              consequence: 'Ingestion on short final.',
+              severity: 'B_HAZARDOUS',
+              likelihood: 'OCCASIONAL',
+              controls: '',
+              owner: 'Samuel Kiprono',
+              reviewBy: '2026-12-01',
+              status: 'OPEN',
+              createdAt: '2026-08-01T00:00:00.000Z'
+            }
+          ]),
+        button: '[data-remove]',
+        survives: (raw) => JSON.parse(raw).length === 1
+      }
+    ];
+
+    const kept = [];
+    for (const c of CONTROLS) {
+      await page.goto(BASE + c.route, { waitUntil: 'networkidle' });
+      await page.evaluate(
+        ([k, v]) => localStorage.setItem(k, v),
+        [c.store, c.seed()]
+      );
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForSelector(c.button, { timeout: 5000 });
+
+      let asked = false;
+      const onDialog = (d) => {
+        asked = true;
+        d.dismiss();
+      };
+      page.on('dialog', onDialog);
+      await page.click(c.button);
+      await page.waitForTimeout(250);
+      page.off('dialog', onDialog);
+
+      const raw = await page.evaluate((k) => localStorage.getItem(k), c.store);
+      kept.push({ route: c.route, asked, alive: raw ? c.survives(raw) : false });
+    }
+
+    /* Read every one, then assert — a failure on the first control
+       must not be reported as a failure of the second. */
+    for (const k of kept) {
+      assert(
+        k.asked,
+        `${k.route} destroyed its stored work with no confirmation at all`
+      );
+      assert(
+        k.alive,
+        `${k.route} asked, the answer was no, and it went ahead anyway`
+      );
+    }
+  });
+
+  await check('EVERY INTERNAL LINK RESOLVES, AND EVERY FRAGMENT HAS A TARGET', async () => {
+    const origin = `http://localhost:${PORT}`;
+
+    /* Crawl rather than list. A hand-written list of routes is a
+       second declaration of the architecture, and the one that goes
+       stale — which is the same reasoning shared/sitemap.js exists
+       under. Following the links finds the pages the way a reader
+       does, including any the sitemap does not mention. */
+    const seen = new Map(); // route -> { ids:Set, heading } , null while pending
+    const queue = ['/'];
+    const links = []; // { from, href, path, hash }
+
+    while (queue.length) {
+      const route = queue.shift();
+      if (seen.has(route)) continue;
+      seen.set(route, null);
+
+      await page.goto(`${origin}${route}`, { waitUntil: 'networkidle' });
+
+      const found = await page.evaluate(() => {
+        const ids = [];
+        for (const el of document.querySelectorAll('[id]')) ids.push(el.id);
+        const hrefs = [];
+        for (const a of document.querySelectorAll('a[href]')) {
+          hrefs.push(a.getAttribute('href'));
+        }
+        return {
+          ids,
+          hrefs,
+          heading: document.querySelector('#main h1')?.textContent?.trim() ?? ''
+        };
+      });
+
+      seen.set(route, { ids: new Set(found.ids), heading: found.heading });
+
+      for (const href of found.hrefs) {
+        /* Off-origin, mail and downloads are somebody else's uptime.
+           A gate that fails when a regulator reorganises their own
+           site is a gate that gets disabled. */
+        if (!href || !href.startsWith('/')) continue;
+        if (/\.(png|svg|json|woff2?|ico|pdf|css|js)$/i.test(href)) continue;
+
+        const hash = href.includes('#') ? href.slice(href.indexOf('#')) : '';
+        const path = (hash ? href.slice(0, href.indexOf('#')) : href) || '/';
+        links.push({ from: route, href, path, hash });
+        if (!seen.has(path)) queue.push(path);
+      }
+    }
+
+    /* Guard the crawl itself. If a navigation broke early the loop
+       finishes quietly having proved nothing — charter rule 11, and
+       the exact failure this file's header warns about. */
+    assert(
+      seen.size >= 10,
+      `the crawl reached only ${seen.size} route(s); this product has more than that`
+    );
+    assert(links.length >= 30, `the crawl collected only ${links.length} internal link(s)`);
+
+    const broken = [];
+
+    for (const [route, state] of seen) {
+      if (!state) {
+        broken.push(`${route} — never rendered`);
+      } else if (/^not found$/i.test(state.heading)) {
+        /* Reached by following a link this product renders, so this
+           is not a reader mistyping a URL. Somebody wrote the href. */
+        const from = links.filter((l) => l.path === route).map((l) => l.from);
+        broken.push(`${route} — renders "Not found", linked from ${[...new Set(from)].join(', ')}`);
+      }
+    }
+
+    for (const link of links) {
+      const target = seen.get(link.path);
+      if (!target) continue; // already reported above
+      if (!link.hash) continue;
+      const id = decodeURIComponent(link.hash.slice(1));
+      if (!id) continue;
+      if (!target.ids.has(id)) {
+        broken.push(
+          `${link.from} links to "${link.href}", but ${link.path} renders no id "${id}"`
+        );
+      }
+    }
+
+    assert(
+      broken.length === 0,
+      `${broken.length} broken link(s):\n         ${broken.join('\n         ')}`
+    );
   });
 
   await check('no uncaught page errors across the whole run', async () => {

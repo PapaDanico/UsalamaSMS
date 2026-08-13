@@ -717,13 +717,34 @@ export function render(outlet) {
      A failure here is not an error state. It means this device is
      working offline, which is a supported way to use this product —
      the strip says so and the indicators still compute. */
+  /* AND IT MUST NOT DELETE INDICATORS THAT ONLY EXIST HERE. This
+     assigned the server list straight over `state` and persisted it,
+     so a signed-in safety manager whose organisation had no
+     server-side indicators yet opened the screen and watched an empty
+     list overwrite their own — every indicator, and every period of
+     history under it. No click, no confirmation, no undo.
+
+     That is worse here than anywhere else in the product. An indicator
+     is not one fact; it is a series, and the series is the whole
+     value. Six quarters of exposure cannot be reconstructed from
+     memory the way a hazard description can, and alertLevels() has
+     nothing to judge against once they are gone.
+
+     Unioned by id, server first, for the reasons written out at length
+     on the register screen — including the honest cost, which is that
+     with no delete synchronisation an indicator removed elsewhere can
+     reappear. A reappearing indicator is visible and can be removed
+     again; six quarters silently deleted are not noticed at all. */
   if (isSignedIn()) {
     authFetch('/api/v1/spi')
       .then(async (res) => {
         if (!res.ok) return;
         const body = await res.json();
+        const held = fromServer(body.indicators ?? []);
+        const known = new Set(held.map((i) => i.id));
+        const deviceOnly = state.indicators.filter((i) => !known.has(i.id));
         source = 'server';
-        state = { indicators: fromServer(body.indicators ?? []) };
+        state = { indicators: [...held, ...deviceOnly] };
         persist();
         repaint();
       })

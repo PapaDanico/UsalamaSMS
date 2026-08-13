@@ -78,13 +78,24 @@ document.getElementById('footer-logo-slot').innerHTML = Lockup({ height: 30 }).t
    ============================================================ */
 
 /* Inline on a wide screen. SHORT labels here — the header has room for
-   four words, not for four sentences. Only the platform's own
-   destinations plus the methodology, because eight inline links is a
-   menu bar, and a menu bar on a safety tool is somebody hunting. */
-document.getElementById('nav').innerHTML = [
-  ...SECTIONS[0].items,
-  SECTIONS[1].items[0]
-]
+   four words, not for four sentences, and eight inline links is a menu
+   bar rather than a route through the product.
+
+   READ FROM `inHeader`, NOT FROM POSITION. This was
+   `[...SECTIONS[0].items, SECTIONS[1].items[0]]` — "everything in the
+   first group, plus whatever happens to be first in the second". That
+   is a header whose contents are a side effect of the order of
+   sitemap.js, and the very next change to that file was a reordering
+   of every group. It would have rewritten the header silently and
+   correctly-looking: still five links, still short labels, just no
+   longer the five anybody chose.
+
+   The five that carry the flag are one per step of the sequence, so
+   the header reads left to right as the order the work happens in:
+   where you stand, then what to do when something happens, then
+   assessing it, then showing it works. */
+document.getElementById('nav').innerHTML = WORKING_SECTIONS.flatMap((s) => s.items)
+  .filter((d) => d.inHeader)
   .map((d) => html`<a href="${d.href}">${d.short ?? d.label}</a>`)
   .join('');
 
