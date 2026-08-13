@@ -166,6 +166,14 @@ export function render(outlet) {
      know it — which is precisely the gap /coverage described. */
   let source = 'device';
 
+  /* Entries the safety office has never heard of. Counted rather than
+     assumed to be zero: once the screen says "Safety office", a reader
+     takes that to mean an inspector could be shown all of it, and any
+     entry filed here before signing in is not covered by that
+     sentence. Naming the number is the difference between a register
+     with partial distribution and a register that claims full. */
+  let deviceOnly = [];
+
   outlet.innerHTML = html`
     <section class="band-dark">
       <div class="wrap">
@@ -339,7 +347,11 @@ export function render(outlet) {
         <dt class="stat__value">${source === 'server' ? 'Safety office' : 'This device'}</dt>
         <dd class="stat__label">
           ${source === 'server'
-            ? 'Held for the operator — an inspector can be shown these'
+            ? deviceOnly.length
+              ? `Held for the operator — but ${deviceOnly.length} ` +
+                `${deviceOnly.length === 1 ? 'entry is' : 'entries are'} still ` +
+                'only on this device'
+              : 'Held for the operator — an inspector can be shown these'
             : 'Sign in and these reach the safety office'}
         </dd>
       </div>
@@ -450,7 +462,28 @@ export function render(outlet) {
         })
       })
         .then(async (res) => {
-          if (res.ok) return;
+          if (res.ok) {
+            /* ADOPT THE SERVER'S ID. The entry was created here with a
+               locally generated id and the server stored it under its
+               own; leaving the two different means the next load reads
+               the same hazard twice — once from the server and once
+               from this device — and a register that lists every entry
+               twice after a reload is a register nobody trusts to
+               count. Taking the server's id makes the two copies one
+               row, which is what lets the read below keep device-only
+               work without duplicating anything. */
+            const created = await res.json().catch(() => ({}));
+            const serverId = created.entry?.id;
+            if (serverId && serverId !== added.id) {
+              const at = entries.findIndex((x) => x.id === added.id);
+              if (at >= 0) {
+                entries[at] = { ...entries[at], id: serverId };
+                save(entries);
+                repaint();
+              }
+            }
+            return;
+          }
           const detail = await res.json().catch(() => ({}));
           entries = entries.filter((x) => x.id !== added.id);
           save(entries);
@@ -539,14 +572,39 @@ export function render(outlet) {
   /* Read the organisation's register last, so the screen is usable
      before the network answers. A failure leaves the device copy in
      place: working offline is a supported way to use this product, not
-     an error state. */
+     an error state.
+
+     A SERVER READ MUST NEVER DELETE WORK THAT ONLY EXISTS HERE, and
+     the first version of this did exactly that. It assigned the server
+     list straight over `entries` and saved it, so a signed-in safety
+     manager whose organisation had no server-side register yet — which
+     is EVERY existing user on the first load after this ships, because
+     the server side arrives in the same release — opened the screen
+     and watched an empty register overwrite their own. No click, no
+     confirmation, no undo, and nothing on screen to say it had
+     happened. It is the same fault as the unguarded "Clear answers"
+     button, minus the button.
+
+     So the two lists are unioned by id, server first. Entries the
+     safety office holds are authoritative for anything it knows
+     about; anything it has never heard of stays exactly where it is.
+
+     THE HONEST COST, stated rather than hidden: there is no delete
+     synchronisation yet, so an entry removed on another device can
+     reappear here. That is the right way round. A hazard that comes
+     back is visible and can be removed again; a hazard silently
+     deleted is not noticed at all, and this register exists to be the
+     thing that was not forgotten. */
   if (isSignedIn()) {
     authFetch('/api/v1/register')
       .then(async (res) => {
         if (!res.ok) return;
         const body = await res.json();
+        const held = (body.entries ?? []).map(normaliseEntry).filter(Boolean);
+        const known = new Set(held.map((e) => e.id));
+        deviceOnly = entries.filter((e) => !known.has(e.id));
         source = 'server';
-        entries = (body.entries ?? []).map(normaliseEntry).filter(Boolean);
+        entries = [...held, ...deviceOnly];
         save(entries);
         repaint();
       })

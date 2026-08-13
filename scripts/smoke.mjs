@@ -3056,6 +3056,172 @@ try {
      an anchor lands under the sticky chrome is a separate check with
      its own measurement two screens up. This one asks the prior
      question — whether the thing being scrolled to exists at all. */
+  await check('A SERVER READ NEVER DELETES WORK THAT ONLY EXISTS ON THE DEVICE', async () => {
+    /* FOUND IN REVIEW, ON THE WAY TO MERGE, WHICH IS THE ONLY REASON
+       IT IS NOT LIVE.
+
+       Both server-backed toolkits read the organisation's copy on load
+       and assigned it straight over the device's, then persisted. So a
+       signed-in safety manager whose organisation had no server-side
+       records yet opened the screen and watched an empty list
+       overwrite their own work. No click, no confirmation, no undo,
+       and nothing on screen afterwards to say it had happened.
+
+       IT WOULD HAVE FIRED FOR EVERY EXISTING USER AT ONCE. The server
+       side arrives in the same release as this read, so on the first
+       load after the deploy every operator's server register is empty
+       by definition — and every local register would have been wiped
+       against it. A migration that destroys the data it is migrating.
+
+       Asserted with the network stubbed rather than against a real
+       API, because the property is about what the SCREEN does with an
+       empty answer, and an empty answer is the whole point. A live API
+       would have to be emptied to reproduce it, which is the condition
+       being tested. */
+    const EMPTY = { '/api/v1/register': { entries: [] }, '/api/v1/spi': { indicators: [] } };
+    const CASES = [
+      {
+        route: '/toolkits/register',
+        api: '/api/v1/register',
+        store: 'usalamasms.register',
+        seed: JSON.stringify([
+          {
+            id: 'device-only-1',
+            hazard: 'Bird activity on approach to runway 06',
+            consequence: 'Ingestion on short final.',
+            severity: 'B_HAZARDOUS',
+            likelihood: 'OCCASIONAL',
+            controls: '',
+            owner: 'Samuel Kiprono',
+            reviewBy: '2026-12-01',
+            status: 'OPEN',
+            createdAt: '2026-08-01T00:00:00.000Z'
+          }
+        ]),
+        survivors: (raw) => JSON.parse(raw).map((e) => e.id)
+      },
+      {
+        route: '/toolkits/spi',
+        api: '/api/v1/spi',
+        store: 'usalamasms.spi',
+        seed: JSON.stringify({
+          indicators: [
+            {
+              id: 'device-only-1',
+              name: 'Unstable approaches',
+              kind: 'LOWER_CONSEQUENCE',
+              exposureUnit: 'sectors',
+              per: 1000,
+              direction: 'LOWER_IS_BETTER',
+              owner: 'Samuel Kiprono',
+              periods: [{ id: 'p1', label: '2026-Q1', events: 4, exposure: 1200 }]
+            }
+          ]
+        }),
+        survivors: (raw) => (JSON.parse(raw).indicators ?? []).map((i) => i.id)
+      }
+    ];
+
+    /* ITS OWN CONTEXT, WITH SERVICE WORKERS BLOCKED, and that detail is
+       the whole check.
+
+       Written first against the shared page, this passed with the
+       defect fully restored — the worst possible result, and the
+       reason it is worth spelling out. page.route() does not intercept
+       requests a SERVICE WORKER makes, and by that point in the run
+       the worker is installed and controlling the page. So the stub
+       was never hit: the worker fetched the real path, the static
+       server answered, res.ok was true, res.json() threw on markup,
+       and the screen's own .catch() swallowed it. The read never
+       reached the code being tested, so both the fixed and the broken
+       version "passed".
+
+       A blocked-worker context puts the request back on the page,
+       where route() can answer it. It is closed at the end so the rest
+       of the suite keeps the worker it needs for the offline checks. */
+    const bare = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+
+    /* The refresh has to succeed or authFetch never sends the read —
+       it waits for a token before the first request, deliberately, and
+       a failed restore would leave this measuring nothing again. */
+    await probe.route('**/api/v1/auth/refresh', (r) =>
+      r.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'stub', refreshToken: 'stub2',
+          role: 'SAFETY_MANAGER', orgId: 'org-1'
+        })
+      })
+    );
+
+    const outcome = [];
+    try {
+      for (const c of CASES) {
+        let stubbed = false;
+        await probe.route(`**${c.api}`, (r) => {
+          stubbed = true;
+          return r.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(EMPTY[c.api])
+          });
+        });
+
+        await probe.goto(BASE + c.route, { waitUntil: 'networkidle' });
+        await probe.evaluate(
+          ([store, seed]) => {
+            localStorage.setItem(
+              'usalamasms.session',
+              JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+            );
+            localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+            localStorage.setItem(store, seed);
+          },
+          [c.store, c.seed]
+        );
+        await probe.reload({ waitUntil: 'networkidle' });
+        await probe.waitForTimeout(600);
+
+        const raw = await probe.evaluate((k) => localStorage.getItem(k), c.store);
+        outcome.push({ route: c.route, api: c.api, stubbed, ids: raw ? c.survivors(raw) : [] });
+
+        await probe.unroute(`**${c.api}`);
+      }
+    } finally {
+      await bare.close();
+    }
+
+    /* BOTH SCREENS REPORTED, not just the first to fail. Two
+       server-backed toolkits share this defect and they were fixed in
+       one change; an assert that throws on the register would leave
+       the indicators unexamined and somebody fixing one screen would
+       be told the job was done. */
+    const faults = [];
+    for (const o of outcome) {
+      /* THE GUARD THAT MAKES THE REST MEAN ANYTHING. If the empty
+         answer never reached the screen, nothing below was tested and
+         a pass is a lie — which is exactly how this check first
+         "passed" against the defect fully restored. */
+      if (!o.stubbed) {
+        faults.push(
+          `${o.route}: the stubbed ${o.api} was never called, so the screen was ` +
+            'never given an empty answer and this check tested nothing'
+        );
+      } else if (!o.ids.includes('device-only-1')) {
+        faults.push(
+          `${o.route}: the safety office answered with nothing and the device's own ` +
+            `work was destroyed. What survived: [${o.ids.join(', ') || 'nothing at all'}]`
+        );
+      }
+    }
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
   await check('NOTHING IS DESTROYED WITHOUT ASKING — every screen, not three of four', async () => {
     /* FOUND BY PRESSING EVERY BUTTON IN THE PRODUCT, which is not
        something the suite had ever done.
