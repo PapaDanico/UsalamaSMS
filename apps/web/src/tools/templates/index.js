@@ -94,7 +94,7 @@ export function render(outlet) {
             because a template mirrored here is a template that goes stale here and the
             reader has no way to tell which. That is the same reason this product computes
             deadlines rather than storing them &mdash; the
-            <a href="/methodology#reporting">regulatory basis</a> names the instrument
+            <a href="/#deadlines">regulatory basis</a> names the instrument
             behind each one and when it was last read.
           </p>
         </section>

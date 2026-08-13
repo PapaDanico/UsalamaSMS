@@ -602,10 +602,45 @@ assert(
     !/verified\s*(<time|[0-9])/i.test(footer),
     'the chrome claims a currency it cannot know — put it beside the figure instead',
   );
+  /* THIS ASSERTION USED TO READ /methodology/.test(footer), AND THAT
+     IS HOW A DEAD LINK LIVED IN THE FOOTER.
+
+     Two faults, and the second is the instructive one.
+
+     It read the wrong half. The footer's columns are not in this file
+     at all — main.js writes them from shared/sitemap.js into an empty
+     <div id="footer-columns">. So a static test over index.html sees
+     the bottom strip and none of the navigation, and demanded a
+     SECOND route to the basis in the strip because it could not see
+     the first one in the column. The footer ended up saying
+     "Regulatory basis" twice, three centimetres apart, in different
+     words, pointing at two different places.
+
+     And it could not fail. The link that satisfied it was
+     "/methodology#reporting" — a fragment /methodology has never
+     rendered. A substring test passes identically on a working route
+     and a broken one, so the gate reported the claim kept for as long
+     as the claim was false.
+
+     So it now reads the declaration the footer is BUILT from, which
+     is where the route either exists or does not. Whether that route
+     lands on something real is the crawl in scripts/smoke.mjs, which
+     resolves every fragment in the product against the ids its target
+     actually renders — a question no static check can answer, because
+     nearly every id here is written at runtime from a registry. */
+  const sitemap = read('apps/web/src/shared/sitemap.js');
   assert(
     'the footer sends the reader to where currency IS stated',
-    /methodology/.test(footer),
-    'no route from the standard-conformance line to the per-instrument basis',
+    /href:\s*'\/#deadlines'/.test(sitemap) && /href:\s*'\/methodology'/.test(sitemap),
+    'the footer architecture no longer routes to the per-instrument basis — ' +
+      'sitemap.js must carry both the deadlines section and the methodology page',
+  );
+  assert(
+    'AND THE STRIP DOES NOT REPEAT WHAT THE COLUMNS ALREADY SAY',
+    !/regulatory basis/i.test(footer),
+    'the conformance strip names the regulatory basis a second time — the ' +
+      'footer column above it already links there, and two links to one idea ' +
+      'in one footer read as two destinations',
   );
 }
 

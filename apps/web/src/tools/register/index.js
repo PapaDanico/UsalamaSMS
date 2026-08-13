@@ -22,6 +22,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import { isSignedIn, authFetch } from '../../shared/session.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
   tolerability,
@@ -157,6 +158,13 @@ function Row(entry) {
 
 export function render(outlet) {
   let entries = load();
+
+  /* WHERE THE REGISTER LIVES, and it is shown on screen rather than
+     assumed. 'device' until the organisation's register answers: a
+     safety manager who thinks the safety office can see their entries
+     when it cannot has a register with no distribution and does not
+     know it — which is precisely the gap /coverage described. */
+  let source = 'device';
 
   outlet.innerHTML = html`
     <section class="band-dark">
@@ -327,6 +335,14 @@ export function render(outlet) {
         <dt class="stat__value">${h.unowned}</dt>
         <dd class="stat__label">With no owner</dd>
       </div>
+      <div class="stat">
+        <dt class="stat__value">${source === 'server' ? 'Safety office' : 'This device'}</dt>
+        <dd class="stat__label">
+          ${source === 'server'
+            ? 'Held for the operator — an inspector can be shown these'
+            : 'Sign in and these reach the safety office'}
+        </dd>
+      </div>
     `.toString();
 
     list.innerHTML = entries.length
@@ -405,6 +421,51 @@ export function render(outlet) {
     const stored = save(entries);
     form.reset();
     repaint();
+
+    /* THE SERVER IS THE RECORD WHEN THERE IS ONE. Same shape as the
+       indicators: post it, and take the row back out if the server
+       refuses rather than leaving an entry on screen that the register
+       does not have. An entry that looks filed and is not is worse than
+       one nobody wrote down, because the second gets written again. */
+    const added = entries[0];
+    if (source === 'server') {
+      authFetch('/api/v1/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          hazard: added.hazard,
+          consequence: added.consequence,
+          severity: added.severity,
+          likelihood: added.likelihood,
+          ...(added.controls ? { controls: added.controls } : {}),
+          ...(added.residualSeverity && added.residualLikelihood
+            ? {
+                residualSeverity: added.residualSeverity,
+                residualLikelihood: added.residualLikelihood
+              }
+            : {}),
+          ...(added.owner ? { owner: added.owner } : {}),
+          ...(added.reviewBy ? { reviewBy: added.reviewBy } : {}),
+          status: added.status
+        })
+      })
+        .then(async (res) => {
+          if (res.ok) return;
+          const detail = await res.json().catch(() => ({}));
+          entries = entries.filter((x) => x.id !== added.id);
+          save(entries);
+          repaint();
+          error.textContent =
+            detail.detail?.formErrors?.[0] ??
+            detail.message ??
+            'The safety office could not be reached — this entry was not filed.';
+        })
+        .catch(() => {
+          error.textContent =
+            'No connection — this entry is on the device and has not reached the ' +
+            'safety office yet.';
+        });
+    }
     if (!stored) {
       error.textContent =
         'This entry is on the register for this sitting, but it could NOT be ' +
@@ -474,5 +535,23 @@ export function render(outlet) {
   outlet.querySelector('#reg-print').addEventListener('click', () => window.print());
 
   repaint();
+
+  /* Read the organisation's register last, so the screen is usable
+     before the network answers. A failure leaves the device copy in
+     place: working offline is a supported way to use this product, not
+     an error state. */
+  if (isSignedIn()) {
+    authFetch('/api/v1/register')
+      .then(async (res) => {
+        if (!res.ok) return;
+        const body = await res.json();
+        source = 'server';
+        entries = (body.entries ?? []).map(normaliseEntry).filter(Boolean);
+        save(entries);
+        repaint();
+      })
+      .catch(() => {});
+  }
+
   void raw;
 }

@@ -2946,6 +2946,128 @@ try {
     assert(/sign in|signed in/i.test(state.heading), `offline /account rendered "${state.heading}"`);
   });
 
+  /* ============================================================
+     EVERY LINK IN THE PRODUCT, FOLLOWED.
+
+     THE DEFECT THAT BOUGHT THIS. The footer carried
+     "/methodology#reporting" under the words "see the regulatory
+     basis". /methodology renders #windows, #risk, #colour and
+     #provenance, and has never rendered #reporting. Every press since
+     that line was written navigated to the methodology page and
+     scrolled to the top — the reader arrives somewhere plausible,
+     reads the wrong section, and has no way to know they were sent to
+     a fragment that does not exist. /templates carried the same dead
+     target under the same words.
+
+     THE REASON IT NEEDS A GATE RATHER THAN A FIX. This is the SECOND
+     time a fragment in this footer has failed silently. The first was
+     the router dropping the hash from "/#deadlines", recorded in
+     shared/router.js: "It had never once worked." A class of defect
+     that has shipped twice, in the same eight lines of chrome, is not
+     an accident anybody is going to stop making by being careful.
+
+     WHY IT IS HERE AND NOT IN A STATIC CHECK. Almost every id in this
+     product is rendered by JavaScript from a registry — #c-2 on
+     /coverage, #q-<slug> on /faq, #component-<id> on /toolkits. A
+     grep for id="reporting" over the source would pass on a page
+     whose anchors are all built at runtime, which is the failure mode
+     described at the top of this file: a check that cannot fail.
+     Resolving a fragment means rendering the page it points at.
+
+     WHAT IS DELIBERATELY NOT ASSERTED: that a fragment SCROLLS. Where
+     an anchor lands under the sticky chrome is a separate check with
+     its own measurement two screens up. This one asks the prior
+     question — whether the thing being scrolled to exists at all. */
+  await check('EVERY INTERNAL LINK RESOLVES, AND EVERY FRAGMENT HAS A TARGET', async () => {
+    const origin = `http://localhost:${PORT}`;
+
+    /* Crawl rather than list. A hand-written list of routes is a
+       second declaration of the architecture, and the one that goes
+       stale — which is the same reasoning shared/sitemap.js exists
+       under. Following the links finds the pages the way a reader
+       does, including any the sitemap does not mention. */
+    const seen = new Map(); // route -> { ids:Set, heading } , null while pending
+    const queue = ['/'];
+    const links = []; // { from, href, path, hash }
+
+    while (queue.length) {
+      const route = queue.shift();
+      if (seen.has(route)) continue;
+      seen.set(route, null);
+
+      await page.goto(`${origin}${route}`, { waitUntil: 'networkidle' });
+
+      const found = await page.evaluate(() => {
+        const ids = [];
+        for (const el of document.querySelectorAll('[id]')) ids.push(el.id);
+        const hrefs = [];
+        for (const a of document.querySelectorAll('a[href]')) {
+          hrefs.push(a.getAttribute('href'));
+        }
+        return {
+          ids,
+          hrefs,
+          heading: document.querySelector('#main h1')?.textContent?.trim() ?? ''
+        };
+      });
+
+      seen.set(route, { ids: new Set(found.ids), heading: found.heading });
+
+      for (const href of found.hrefs) {
+        /* Off-origin, mail and downloads are somebody else's uptime.
+           A gate that fails when a regulator reorganises their own
+           site is a gate that gets disabled. */
+        if (!href || !href.startsWith('/')) continue;
+        if (/\.(png|svg|json|woff2?|ico|pdf|css|js)$/i.test(href)) continue;
+
+        const hash = href.includes('#') ? href.slice(href.indexOf('#')) : '';
+        const path = (hash ? href.slice(0, href.indexOf('#')) : href) || '/';
+        links.push({ from: route, href, path, hash });
+        if (!seen.has(path)) queue.push(path);
+      }
+    }
+
+    /* Guard the crawl itself. If a navigation broke early the loop
+       finishes quietly having proved nothing — charter rule 11, and
+       the exact failure this file's header warns about. */
+    assert(
+      seen.size >= 10,
+      `the crawl reached only ${seen.size} route(s); this product has more than that`
+    );
+    assert(links.length >= 30, `the crawl collected only ${links.length} internal link(s)`);
+
+    const broken = [];
+
+    for (const [route, state] of seen) {
+      if (!state) {
+        broken.push(`${route} — never rendered`);
+      } else if (/^not found$/i.test(state.heading)) {
+        /* Reached by following a link this product renders, so this
+           is not a reader mistyping a URL. Somebody wrote the href. */
+        const from = links.filter((l) => l.path === route).map((l) => l.from);
+        broken.push(`${route} — renders "Not found", linked from ${[...new Set(from)].join(', ')}`);
+      }
+    }
+
+    for (const link of links) {
+      const target = seen.get(link.path);
+      if (!target) continue; // already reported above
+      if (!link.hash) continue;
+      const id = decodeURIComponent(link.hash.slice(1));
+      if (!id) continue;
+      if (!target.ids.has(id)) {
+        broken.push(
+          `${link.from} links to "${link.href}", but ${link.path} renders no id "${id}"`
+        );
+      }
+    }
+
+    assert(
+      broken.length === 0,
+      `${broken.length} broken link(s):\n         ${broken.join('\n         ')}`
+    );
+  });
+
   await check('no uncaught page errors across the whole run', async () => {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
   });
