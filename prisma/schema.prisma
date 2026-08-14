@@ -116,6 +116,33 @@ model Org {
   aocNumber    String?
   createdAt    DateTime     @default(now())
 
+  /// HOW MANY AIRCRAFT, AND THEREFORE WHAT IT COSTS.
+  ///
+  /// The BAND IS NOT STORED. pricing.ts derives it from this number, so
+  /// an operator that buys a fourth aircraft moves band by changing one
+  /// fact rather than by somebody remembering to change two. A stored
+  /// band is a value that can disagree with the fleet it was computed
+  /// from, and then the invoice and the product disagree in front of a
+  /// customer.
+  ///
+  /// NULLABLE, and that is deliberate rather than lazy: every Org that
+  /// existed before this field did has no fleet size, and
+  /// `billableBand` returns null for a missing one instead of quietly
+  /// invoicing the cheapest band off an absent fact.
+  fleetSize Int?
+
+  /// The two dates a subscription is computed from — see
+  /// packages/shared/src/subscription.ts. TRIAL, ACTIVE, GRACE and
+  /// LAPSED are derived from these on every read and never written
+  /// down, so no failed webhook can leave an operator in a state that
+  /// disagrees with what they have actually paid for.
+  ///
+  /// `paidThrough` is the ONLY field a payment rail ever writes, which
+  /// is what stops M-Pesa, a card processor and a bank transfer from
+  /// becoming three different state machines.
+  trialEndsOn DateTime?
+  paidThrough DateTime?
+
   users     User[]
   reports   SafetyReport[]
   hazards   Hazard[]
@@ -124,22 +151,22 @@ model Org {
   spis      Spi[]
 
   // The other eight Annex 19 elements.
-  policies         SafetyPolicy[]
-  voluntaryScheme  VoluntaryScheme?
-  policyReads      PolicyAcknowledgement[]
-  accountabilities Accountability[]
-  appointments     Appointment[]
-  exercises        EmergencyExercise[]
+  policies          SafetyPolicy[]
+  voluntaryScheme   VoluntaryScheme?
+  policyReads       PolicyAcknowledgement[]
+  accountabilities  Accountability[]
+  appointments      Appointment[]
+  exercises         EmergencyExercise[]
   emergencyContacts EmergencyContact[]
-  documents        ControlledDocument[]
-  findings         AuditFinding[]
-  training         TrainingRecord[]
-  communications   SafetyCommunication[]
-  changes          ChangeAssessment[]
-  documentReads    DocumentAcknowledgement[]
-  reportMoves      ReportTransition[]
-  actions          CorrectiveAction[]
-  config           OrgConfig?
+  documents         ControlledDocument[]
+  findings          AuditFinding[]
+  training          TrainingRecord[]
+  communications    SafetyCommunication[]
+  changes           ChangeAssessment[]
+  documentReads     DocumentAcknowledgement[]
+  reportMoves       ReportTransition[]
+  actions           CorrectiveAction[]
+  config            OrgConfig?
 }
 
 model User {
@@ -266,7 +293,7 @@ model SafetyReport {
   // code the product has not got yet is a gap in the product, not an
   // error in the report. The occurrence is recorded and the gap is
   // reported — see unrecognised() in packages/shared/src/cictt.ts.
-  cicttCodes   String[]
+  cicttCodes String[]
 
   // ------------------------ Confidentiality ------------------------
   isAnonymous           Boolean   @default(false)
