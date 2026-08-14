@@ -416,6 +416,40 @@ p { text-wrap: pretty; }
 p { margin: 0 0 1rem; }
 a { color: var(--us-teal); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+/* ============================================================
+   A LINK INSIDE A SENTENCE IS UNDERLINED. WCAG 1.4.1.
+
+   FOUND BY THE FIRST AXE SWEEP, and it is the exact finding that
+   sweep existed to look for. This product's own rule is that colour is
+   never the only channel — every status badge carries a word, every
+   matrix cell carries its code — and inline links broke it on
+   twenty-two nodes across eleven screens. A teal link at #20605f
+   inside body copy at #5c5852 is 1.4:1 against each other, where 1.4.1
+   asks 3:1 when colour is the sole signal. Both colours are perfectly
+   legible on their own; the failure is that somebody who cannot
+   separate the two hues has nothing else to go on.
+
+   The footer's legal strip had already worked this out and fixed
+   itself in isolation, with the reasoning written down four hundred
+   lines below. Nobody applied it to the body copy, and no check knew
+   the rule existed — asserted properties are not a sweep, and this is
+   what the difference costs.
+
+   SCOPED TO PROSE, for the reason the footer gives. A link sitting on
+   its own line in a nav, a card, a table of contents or a button is
+   not a link "in a text block": there is no surrounding sentence to be
+   confused with, and underlining it is noise that makes a list of
+   destinations look like a paragraph somebody marked up wrong. `p` and
+   `li` inside prose are where the ambiguity actually is.
+   ============================================================ */
+p > a:not(.btn):not(.us-lockup),
+p a:not(.btn):not(.us-lockup),
+dd a:not(.btn):not(.us-lockup) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
 img { max-width: 100%; display: block; }
 .eyebrow { font-family: var(--us-font); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: .72rem; color: var(--us-teal); margin: 0 0 .8rem; }
 section { padding: var(--us-section) 0; }
@@ -554,7 +588,7 @@ html { scroll-padding-top: var(--us-chrome); }
    per line with no surrounding prose, so they are not links "in a text
    block" and underlining them would be noise. */
 .footer .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); gap: clamp(2rem, 5vw, 3.5rem); }
-.footer .ver { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: .77rem; color: #9a8c85; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.footer .ver { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: .77rem; color: #a89a92; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
 
 
 .footer p { font-size: .89rem; margin-bottom: .45rem; }
@@ -2667,7 +2701,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   margin-left: var(--us-space-2);
   font-size: var(--us-text-2xs);
   font-weight: 700;
-  color: var(--us-ink-400);
+  /* --us-ink-400 measured 3.58:1 here against the warm paper. It is the
+     product's lightest ink and it is fine as a hairline or a rule; as
+     11px TEXT carrying a count somebody reads, it is under 4.5. One
+     step darker clears it without changing what the number is for. */
+  color: var(--us-ink-600);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2898,12 +2936,51 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-weight: var(--us-weight-normal);
 }
 
+/* ============================================================
+   THIS CLASS RENDERS ON TWO DIFFERENT GROUNDS, and it only ever had
+   one colour.
+
+   On /toolkits the classifier sits on the dark band, where sand at 72%
+   is right. On /toolkits/sra the same span sits on a CARD, and
+   near-white on near-white measured 1.02:1 — the verdict text on the
+   safety risk assessment, the sentence saying why an assessment cannot
+   be accepted, was invisible. Not low contrast: invisible.
+
+   Found by the first axe sweep. It was never going to be found any
+   other way: the brand gate asserts declared token pairs and this is a
+   pairing nobody declared, because the class was written for one screen
+   and reused on another with a different background six weeks later.
+
+   THE LIGHT GROUND IS THE DEFAULT and the dark band overrides it. That
+   way round deliberately — a third screen reusing this class will get
+   the readable-on-paper colour by default, and the failure mode of
+   guessing wrong becomes "slightly dark text on a dark band" rather
+   than "no text at all".
+   ============================================================ */
 .calc__detail {
   display: block;
   margin-top: var(--us-space-2);
   font-size: var(--us-text-xs);
   font-weight: var(--us-weight-normal);
-  color: rgb(var(--us-sand-rgb) / 0.72);
+  color: var(--us-text-tertiary);
+}
+
+/* THE GROUND IS .calc__out, AND IT HAS THREE STATES, NOT TWO. Only
+   `ok` is charcoal; `idle` is warm paper and `error` is a pale ochre
+   wash, and both of those are light. Two wrong guesses got here — first
+   `.band-dark`, which matched nothing because the dark surface is the
+   box and not the band, then `:not([data-state='idle'])`, which was
+   right about idle and forgot error entirely and left the SRA's
+   "Not ready" reason at 1.02:1. That sentence says WHY an assessment
+   cannot be accepted.
+
+   Naming the one dark state rather than excluding the light ones is
+   what stops the third guess: a state added later gets the
+   readable-on-paper default, so the worst case is dark text on a dark
+   box rather than nothing at all. Measured after each attempt rather
+   than reasoned about. */
+.calc__out[data-state='ok'] .calc__detail {
+  color: rgb(var(--us-sand-rgb) / 0.78);
 }
 
 .calc__out[data-state='ok'] .tag--provisional { background: var(--us-sand); }
@@ -3422,7 +3499,17 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    reading presented as a quotation is the quiet kind of wrong this
    product is built against. Small, inline, and it does not compete with
    the figure it qualifies. */
-.calc__caveat { display: block; font-size: var(--us-text-xs); color: var(--us-text-tertiary); margin-top: 2px; }
+/* THE CAVEAT WAS ALL BUT INVISIBLE, at 1.97:1, and it is the honesty
+   text on the risk calculator. --us-text-tertiary is #5c5852, a token
+   for LIGHT grounds, and this element renders on the dark band — a
+   pairing no gate had an opinion about because the brand gate asserts
+   contrast on Warm Sand and on white, and nothing checked the dark
+   surfaces at all. Found by the first axe sweep.
+
+   The sand token at 72% over charcoal is what .calc__detail beside it
+   already uses; matching it fixes the ratio and stops two adjacent
+   pieces of the same caveat being different colours. */
+.calc__caveat { display: block; font-size: var(--us-text-xs); color: rgb(var(--us-sand-rgb) / 0.78); margin-top: 2px; }
 
 .mat-phase__assign { margin-top: var(--us-space-4); font-size: var(--us-text-sm); color: var(--us-text-secondary); max-width: 62ch; }
 

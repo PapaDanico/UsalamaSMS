@@ -304,16 +304,43 @@ whoever builds the settings screen.
 | Entry bundle | 214.8 KB of a 215 KB budget |
 | Total JS | 456.7 KB of 458 KB |
 
-### 6.1 · No accessibility sweep has been run · MATERIAL
+### 6.1 · Accessibility — SWEPT AND CLEAN, 14 August 2026
 
-Individual properties are asserted — every status badge carries a word
-and a glyph rather than only a colour, contrast is gated at 4.5:1,
-targets clear 24px, the page does not scroll sideways at 320px, focus
-is kept somewhere when a row is removed.
+`npm run check:a11y` runs axe over every rendered screen at WCAG 2.1 AA,
+in `verify`, against the built bundle. **20 screens, zero violations.**
 
-**Nothing has run axe over the rendered states.** Asserted properties
-are not the same as a sweep, and the gap is precisely the violations
-nobody thought to assert.
+The first run found **65**, and what it found is the argument for the
+sweep existing. This product already asserted a great many
+accessibility properties — a word beside every status colour, contrast
+gated at 4.5:1, 24px targets, no sideways scroll at 320px, focus kept
+when a row is removed. Every one of those is real, and none of them is
+a sweep.
+
+Two of the sixty-five were not low contrast but **invisible**:
+
+- the safety risk assessment's "Not ready" reason — the sentence saying
+  *why* an assessment cannot be accepted — at **1.02:1**, near-white on
+  near-white;
+- the risk calculator's caveat at **1.97:1**, a light-ground token
+  rendering on the dark band.
+
+Neither could have been found by adding assertions, because neither was
+a declared pairing. Both were classes written for one surface and reused
+on another months later. The brand gate checks the token pairs it is
+given; it cannot check a pairing that only exists once a page renders.
+
+The third finding was systemic and contradicted the product's own
+stated rule. **Inline links were distinguished by colour alone** — teal
+on body grey, 1.4:1 against each other, on 22 nodes across 11 screens —
+in a product whose design principle is that colour is never the only
+channel. The footer's legal strip had worked this out and fixed itself
+in isolation, with the reasoning written down; nobody applied it to the
+body copy, and no check knew the rule existed.
+
+Routes are discovered from the architecture rather than listed, and the
+gate refuses to pass on a crawl that finds almost nothing or a sweep
+that reached no screen. The accepted-rules map is **empty**: all 65 were
+fixed, none excused.
 
 ### 6.2 · The bundle is the thing to watch · WATCH
 
@@ -365,11 +392,9 @@ Ordered by leverage, not by size.
    toward BUILT, and fills the one row every incumbent has.
 3. **Per-tenant configuration, with the line enforced structurally.**
    Preference in the tenant record; law in the shared modules.
-4. **Run axe over the rendered states.** The one quality dimension with
-   no coverage at all.
-5. **Delete synchronisation**, before a second device per operator is
+4. **Delete synchronisation**, before a second device per operator is
    realistic.
-6. **A second jurisdiction**, when somebody can read the instrument.
+5. **A second jurisdiction**, when somebody can read the instrument.
 
 Items 1 and 2 are not engineering and are the two that unblock the
 most. That is the finding this analysis exists to surface: **the
