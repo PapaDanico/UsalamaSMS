@@ -91,6 +91,43 @@ describe("the message says something an operator can act on", () => {
     expect(h.subject).toContain("1 past");
   });
 
+  it("counts each report once — overdue is a subset, not an addition", () => {
+    /* THE DEFECT THIS EXISTS FOR, found by driving the built queue with
+       one report past its deadline and one approaching. The screen said
+       "1 past the reporting deadline, 1 approaching"; the message the
+       share sheet was handed said "1 report is PAST... 2 reports are
+       approaching" — three reports, from two, because `count` was
+       rendered as the approaching figure as well as the total.
+
+       Asserted as arithmetic rather than as a string, so it holds when
+       the wording changes: every number named in the message adds up to
+       the number of reports the caller counted. */
+    const both = deadlinesHandoff({ count: 2, overdue: 1 });
+    expect(both.body).toContain("1 report is PAST");
+    expect(both.body).toContain("1 report is approaching");
+    expect(both.subject).toBe("Reporting deadline: 1 past, 1 approaching");
+
+    for (const [count, overdue] of [
+      [2, 1], [4, 1], [9, 4], [7, 0], [3, 3],
+    ] as ReadonlyArray<readonly [number, number]>) {
+      const h = deadlinesHandoff({ count, overdue });
+      const named = [...`${h.subject}\n${h.body}`.matchAll(/(\d+) reports?\b/g)]
+        .map((m) => Number(m[1]));
+      const total = named.reduce((a, b) => a + b, 0);
+      expect(
+        total,
+        `${count} reports (${overdue} overdue) produced a message naming ${total}: ${h.subject} / ${h.body}`
+      ).toBe(count);
+    }
+  });
+
+  it("does not claim anything is approaching when everything is already past", () => {
+    const h = deadlinesHandoff({ count: 3, overdue: 3 });
+    expect(h.body).toContain("3 reports are PAST");
+    expect(h.body).not.toContain("approaching");
+    expect(h.subject).toBe("Reporting deadline: 3 past");
+  });
+
   it("says nothing about overdue when nothing is", () => {
     const h = deadlinesHandoff({ count: 2, overdue: 0 });
     expect(h.body).not.toContain("PAST");

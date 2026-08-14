@@ -120,23 +120,57 @@ export function contactsHandoff(c: HandoffCounts): Handoff {
 }
 
 export function deadlinesHandoff(c: HandoffCounts): Handoff {
-  const overdue = c.overdue ?? 0;
+  /* `overdue` IS A SUBSET OF `count`, as the interface above says and as
+     every other composer here reads it: trainingHandoff says "3 records
+     lapse within 30 days. 1 has already lapsed" — four records are not
+     described.
+
+     THIS ONE DOUBLE-COUNTED. It rendered `count` as the approaching
+     figure as well, so a queue holding one report past its deadline and
+     one approaching produced "1 report is PAST the reporting deadline.
+     2 reports are approaching" — three reports, from two. The screen
+     beside it said "1 past, 1 approaching" at the same moment, which is
+     the worse half of it: the sentence a safety manager forwards
+     disagreed with the sentence they were looking at.
+
+     None of the tests above it could see this. They asserted the order
+     of the two clauses, the plurals, and that nothing identifying got
+     out — every property except whether the numbers added up. It was
+     found by driving the built screen and reading what the share sheet
+     was handed. */
+  const overdue = Math.max(0, Math.min(c.overdue ?? 0, c.count));
+  const approaching = c.count - overdue;
+
   /* THE OVERDUE COUNT LEADS WHEN THERE IS ONE. A message that opens
      with "four approaching" and buries "one already late" is a message
      read as comfortable. */
-  const head =
+  const past =
     overdue > 0
-      ? `${overdue} ${plural(overdue, "report is", "reports are")} PAST the reporting deadline. `
+      ? `${overdue} ${plural(overdue, "report is", "reports are")} PAST the reporting deadline.`
       : "";
+  const soon =
+    approaching > 0
+      ? `${approaching} ${plural(approaching, "report is", "reports are")} approaching the ` +
+        `reporting deadline for your State.`
+      : "";
+
+  /* Neither, which the triage screen never sends because it renders
+     nothing when both are zero. Said plainly rather than left as a
+     message whose only content is its own provenance. */
+  const sentences = [past, soon].filter(Boolean).join(" ") ||
+    "No report is approaching its reporting deadline.";
+
+  const subject =
+    overdue > 0 && approaching > 0
+      ? `Reporting deadline: ${overdue} past, ${approaching} approaching`
+      : overdue > 0
+        ? `Reporting deadline: ${overdue} past`
+        : `Reporting deadline: ${approaching} approaching`;
+
   return {
     kind: "deadlines",
-    subject:
-      overdue > 0
-        ? `Reporting deadline: ${overdue} past, ${c.count} approaching`
-        : `Reporting deadline: ${c.count} approaching`,
-    body:
-      `${head}${c.count} ${plural(c.count, "report is", "reports are")} approaching the ` +
-      `reporting deadline for your State.\n\n${PROVENANCE}`,
+    subject,
+    body: `${sentences}\n\n${PROVENANCE}`,
   };
 }
 
