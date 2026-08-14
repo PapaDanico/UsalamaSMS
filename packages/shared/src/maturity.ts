@@ -749,18 +749,35 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        crossed" — has nowhere to live. An operator can watch an
        indicator; the organisation cannot yet be shown to have. */
     id: "3.1",
-    state: "PARTIAL",
+    /* MOVED TO BUILT, against the element's OWN evidence definition
+       rather than against a feeling that it looks finished. 3.1 asks
+       for "indicators with a defined trigger, and a record of what
+       happened the last time one was crossed". The trigger has been
+       here since alertLevels() landed; the record arrived with
+       /api/v1/spi/:id/periods/:periodId/action, attached to the period
+       rather than to a level so that charter rule 6 still holds — the
+       level is derived on every read and never stored.
+
+       WHAT IS DELIBERATELY NOT TREATED AS BLOCKING. "Indicators fed
+       from the reporting queue rather than typed in" was named in the
+       old missing text and is genuinely absent, but it is not in this
+       element's evidence definition and never was. Holding an element
+       PARTIAL against a requirement the framework does not make is the
+       mirror of overclaiming, and it is what had 2.2 understating the
+       product for half a day. It stays named below as work, not as a
+       gap in the element. */
+    state: "BUILT",
+
     serverRoutes: ["/api/v1/spi"],
     has:
       "Safety performance indicators with targets, and alert levels computed from " +
       "the operator's own baseline at one, two and three standard deviations, with " +
       "the three crossing criteria evaluated per period.",
     missing:
-      "Indicators fed from the reporting queue rather than typed in, and a record of " +
-      "the action taken the last time a level was crossed. The series itself is now " +
-      "held for the operator rather than on one device \u2014 regulation 9(5) of " +
-      "L.N. 32/2026 requires indicators and targets acceptable to the Authority, and " +
-      "a figure in a handset is not.",
+      "Indicators fed from the reporting queue rather than typed in \u2014 the counts " +
+      "are the operator's own, entered by hand, so an indicator can disagree with the " +
+      "reports behind it until somebody reconciles them. Not part of this element's " +
+      "evidence, and real work all the same.",
     href: "/toolkits/spi",
   },
   {

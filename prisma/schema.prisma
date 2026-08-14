@@ -410,6 +410,22 @@ model SpiPeriod {
   label     String
   events    Int
   exposure  Float
+  /// Element 3.1's own evidence definition asks for "a record of what
+  /// happened the last time one was crossed". This is that record,
+  /// attached to the PERIOD rather than to an alert level — the level
+  /// is derived by alertLevels() on every read and is deliberately not
+  /// stored, so hanging the action off it would either require storing
+  /// it or leave the note orphaned the moment the series moved.
+  ///
+  /// Nullable, and not required when a level is crossed. A product that
+  /// refuses to record the numbers until somebody has written the
+  /// response gets the numbers entered somewhere else.
+  actionTaken String?   @db.Text
+  /// When the action was taken. Separate from createdAt, which is when
+  /// the row was typed: an operator recording last quarter's response
+  /// this morning is the ordinary case, and conflating the two would
+  /// date every response to the day of data entry.
+  actionOn    DateTime?
   createdAt DateTime @default(now())
 
   spi Spi @relation(fields: [spiId], references: [id], onDelete: Cascade)
