@@ -274,6 +274,99 @@ and a mandatory human review before distribution. That is what
 
 ---
 
+## 3. The three big regulators, and what they converge on
+
+**Added 14 August 2026.** This file cited one EASA regulation and
+nothing else from the FAA, EASA or CASA, which left the largest
+comparison in the industry sitting in a chat log — the failure mode
+`docs/08-OPEN-WORK.md` opens by naming.
+
+**READ FROM SECONDARY SOURCES, NOT THE PRIMARIES.** Network egress from
+this environment blocks faa.gov, easa.europa.eu, casa.gov.au and
+icao.int without exception. Everything below is corroborated across
+independent secondary sources and is recorded as such — the same
+standard as `CICTT_VERIFIED_AGAINST_PRIMARY` and
+`accidentNotification.domesticInstrumentRead`. **No figure here should
+enter a customer surface until somebody has opened the instrument.**
+
+### 3.1 The convergence, which is the finding
+
+All three have moved SMS DOWN-MARKET to small operators inside the last
+two years, on staggered deadlines, and each has published scaling
+guidance rather than an exemption. That is the market thesis arriving
+independently from three regulators who did not coordinate it.
+
+| | Instrument | Who it newly reaches | Clock |
+|---|---|---|---|
+| **FAA** | 14 CFR Part 5, final rule 26 Apr 2024, effective 28 May 2024 | Part 135 charter and commuter, 91.147 air tours, some Part 21 holders | Declaration of Compliance by **28 May 2027** |
+| **EASA** | Part-ORO Subpart GEN Section II, plus Reg. (EU) 376/2014 | Already broad; AMC/GM Issue 2 Amd 29 (Dec 2025) keeps aligning to ICAO | Continuous |
+| **CASA** | AC 119-01, Part 119/138 CASR | Australian air transport; a **micro-operator** sample manual exists | In force |
+| **ICAO** | Annex 19 Amendment 2 → 3rd edition | RPAS operators, their AMOs, certified heliports | Applicable **26 Nov 2026** |
+
+### 3.2 EASA — ECCAIRS is the interoperability substrate, and it is ADREP
+
+The single most useful finding for this product. **ECCAIRS 2 is EASA's
+platform, every Member State and the European Central Repository store
+occurrence reports in it, and it uses the ADREP taxonomy — ICAO's.**
+
+That is exactly the taxonomy this product started coding occurrences to
+on 14 August 2026. The CICTT work was argued on ICAO grounds; EASA's
+infrastructure is independent confirmation that occurrence categories
+are the interoperability primitive rather than a nicety, and it names
+the next step precisely: **an export shaped so a State can ingest it**,
+rather than a JSON file an operator's consultant re-keys.
+
+Reg. 376/2014 also asks operators to hold their occurrences in a
+database, and pairs mandatory with voluntary reporting under Just
+Culture — the same pairing L.N. 32's regulations 12 and 13 make, which
+is why the voluntary-scheme screen generalises beyond Kenya.
+
+### 3.3 FAA — a second clock, over this product's exact operator
+
+Part 5 now reaches **Part 135 charter and commuter operators**, which is
+the same profile as a Kenyan AOC with six turboprops: small, varied,
+previously outside SMS, and now inside it with a hard date. The rule
+carries **thirteen exceptions for single-pilot operators**, which is the
+clearest statement any regulator has made that a proportionate SMS is a
+legal category and not a concession.
+
+**This is not a market this product serves** — it computes Kenya's
+instrument and an ICAO baseline, and a US row would need somebody to
+read Part 5. It is recorded because the *shape* of the demand is
+identical and the deadline is public: an operator population that must
+declare compliance by 28 May 2027 is a population buying tooling in
+2026.
+
+### 3.4 CASA — the scalability argument, already won
+
+CASA publishes a resource kit of SMS basics for smaller organisations,
+sample SMS manuals for Part 119 and Part 138, and **a separate
+micro-operator sample manual**. Its framing is that SMS scope and
+resources scale to the size and nature of the operation, and that
+implementation strategies differ by size rather than the framework
+doing.
+
+That is the argument `maturity.ts` already implements — grading against
+the operator's own scale, refusing to average twelve elements into a
+percentage, and refusing to treat a small operator's SMS as a large
+one's with pieces missing. A regulator publishing a micro-operator
+manual is the strongest available evidence that this is the correct
+reading of Annex 19 rather than a convenient one.
+
+### 3.5 What this changes for the product
+
+1. **An ECCAIRS/ADREP-shaped export** is now the highest-value
+   interoperability step, and today's occurrence coding is its
+   precondition. Not "export to ECCAIRS" — that needs the schema read
+   from EASA — but the codes travelling in the operator's own copy,
+   which they now do.
+2. **Nothing else changes.** No FAA or EASA jurisdiction row goes into
+   `MOR_OBLIGATIONS` on the strength of a secondary source. The rule
+   that a figure not read against the primary does not enter the
+   registry is what makes the Kenya row worth anything, and a second
+   country's market size is not a reason to bend it.
+
+
 ## Sources
 
 - [IATA — 2025 Annual Safety Report release, 9 March 2026](https://www.iata.org/en/pressroom/2026-releases/2026-03-09-01/)
@@ -298,3 +391,14 @@ and a mandatory human review before distribution. That is what
 - [SKYbrary — ICAO Safety Management Manual Doc 9859](https://skybrary.aero/articles/icao-safety-management-manual-doc-9859)
 - [Rohit Raj — Offline-first PWA patterns: service workers, IndexedDB, Background Sync](https://rohitraj.tech/en/notes/pwa-offline-sync)
 - [techbuild.africa — Why building for low-bandwidth users is essential to Africa's digital economy](https://techbuild.africa/low-bandwidth-product-design-africa/)
+- [FAA — Safety Management System, specifics by aviation industry type](https://www.faa.gov/about/initiatives/sms/specifics_by_aviation_industry_type/design_and_manufacturing_organizations)
+- [FAA — Part 5 FAQ from industry](https://www.faa.gov/media/96306)
+- [EASA — Occurrence reporting FAQs](https://www.easa.europa.eu/en/the-agency/faqs/occurrence-reporting)
+- [EASA — ECCAIRS 2](https://www.easa.europa.eu/en/node/143347)
+- [EASA — Part-ORO, AMC and GM](https://www.easa.europa.eu/en/acceptable-means-compliance-and-guidance-material-group/part-oro-organisation-requirements-air)
+- [EASA — Easy Access Rules for Occurrence Reporting (Reg. (EU) 376/2014)](https://www.easa.europa.eu/en/downloads/119244/en)
+- [EASA — Safety management toolkit for non-complex operators](https://www.easa.europa.eu/en/document-library/general-publications/ehest-safety-management-toolkit-non-complex-operators-2nd)
+- [CASA — Advisory Circular AC 119-01, safety management systems](https://www.casa.gov.au/safety-management-systems-air-transport-operations)
+- [CASA — Resource kit to develop your safety management system](https://www.casa.gov.au/resources-and-education/publications/industry-guides/safety-kits/resource-kit-develop-your-safety-management-system)
+- [CASA — Guide to sample SMS manuals, Part 119 and Part 138](https://www.casa.gov.au/sites/default/files/2026-05/guide-safety-management-system-sample-manuals-smsm-part-119-part-138-casr.pdf)
+- [SKYbrary — SMS and SSP reference library](https://skybrary.aero/articles/sms-and-ssp-reference-library)

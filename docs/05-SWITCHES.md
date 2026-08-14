@@ -446,3 +446,37 @@ than deleted: a deleted case is a gap nobody can see, and the next
 reader could not tell a decision from an oversight.
 
 **Owner:** whoever ships the first customer operating across a border.
+
+---
+
+## 11. The FAA's Part 135 deadline is described as forthcoming
+
+**The claim:** `docs/01-RESEARCH.md` §3.3 records that 14 CFR Part 5 now
+reaches Part 135 charter and commuter operators, and that they must
+submit a Declaration of Compliance by **28 May 2027** — and reads that
+as an operator population buying tooling in 2026.
+
+**Why it expires:** on 28 May 2027. After it, "a population that must
+declare compliance by 2027" describes something that has already
+happened, and the sentence about demand shape either becomes a
+statement about who actually bought or it becomes nothing.
+
+**The flag:** the date itself, and the marker below.
+
+<!-- EXPIRES: 2027-05-28 -->
+
+**What must happen:** replace the forecast with what was observed. If a
+US row was never added — the current and correct position, because no
+FAA instrument has been read against the primary here — say so plainly
+rather than leaving a market note that reads as a plan.
+
+**The test:** `scripts/check-switches.mjs` reads the `EXPIRES` marker
+and fails the build on 28 May 2027.
+
+**What is NOT claimed, and must not start being:** that this product
+computes any FAA obligation. §3.3 is explicit that the dates come from
+secondary sources and that no jurisdiction row enters
+`MOR_OBLIGATIONS` on that basis. The claims gate already refuses a
+deadline for a jurisdiction with no instrument to cite; this entry
+exists so the market note does not quietly become a product claim in
+the meantime.

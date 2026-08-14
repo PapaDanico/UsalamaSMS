@@ -227,7 +227,7 @@ See [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) for the evidence and
 | [`docs/01-RESEARCH.md`](docs/01-RESEARCH.md) | The regulatory clock, the AFI safety case, competitor pricing, why SMS implementations fail, and the confidentiality findings |
 | [`docs/02-STRATEGY.md`](docs/02-STRATEGY.md) | Positioning, the aggregate-data fork, module suite by tier, sequencing, commercial model, architecture verdicts, risks |
 | [`docs/04-BRAND.md`](docs/04-BRAND.md) | How the six-colour identity is encoded, the two artwork combinations that are not reproduced and the measurements that condemned them, why the risk-scale green is almost black, and the one dropdown component every operational field goes through |
-| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Ten claims with an expiry date — which flag controls each, and the test that stops it rotting |
+| [`docs/05-SWITCHES.md`](docs/05-SWITCHES.md) | Eleven claims with an expiry date — which flag controls each, and the test that stops it rotting |
 | [`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md) | The hosted database, the one-time Prisma baseline it needs, why RLS has no policies, and which environment variables go where. No secrets, by rule |
 
 ---
