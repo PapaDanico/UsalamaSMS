@@ -27,6 +27,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { can, type Permission } from "@usalamasms/shared";
+import { periodWindow } from "../../../packages/shared/src/spi";
 import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
 
 const LIST_LIMIT = 200;
@@ -216,6 +217,66 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
         actionTaken: saved.actionTaken,
         actionOn: saved.actionOn ? saved.actionOn.toISOString().slice(0, 10) : null,
       },
+    });
+  });
+
+  /* ------------------------------------------------------------------
+     HOW MANY REPORTS ACTUALLY ARRIVED IN THIS PERIOD.
+
+     The debt this pays down has been recorded since the register was
+     server-backed: "indicators are typed, not fed" — an operator types
+     an event count while the reports it came from sit in the same
+     database, so the indicator can disagree with the queue behind it
+     and nobody finds out until an inspector adds them up.
+
+     IT OFFERS, IT DOES NOT FILL IN. An indicator counts a PARTICULAR
+     thing — unstable approaches, MEL deferrals, ground damage — and the
+     number of reports filed in a quarter is not that thing unless the
+     operator says it is. Filling the field in silently would replace a
+     transcription error with a category error, which is worse because
+     it looks right. So this answers the question and the screen puts
+     the answer beside the field with the caveat attached.
+
+     A LABEL WITH NO WINDOW IS REFUSED, not guessed at. "Winter ops" and
+     "Rotation 4" are cadences an operator may legitimately use, and a
+     product that quietly decided one of them meant a quarter would be
+     confidently wrong about a number somebody reports to an authority.
+     ------------------------------------------------------------------ */
+  app.get("/api/v1/spi/observed", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "spi.read")) return reply.code(403).send({ error: "forbidden" });
+    const label = String((req.query as { label?: string }).label ?? "");
+    const window = periodWindow(label);
+    if (!window) {
+      return reply.code(422).send({
+        error: "unrecognised_period",
+        message:
+          `"${label}" is not a period this product can turn into a date range, so it ` +
+          "cannot count reports for it. Quarters (2026-Q1), months (2026-08), days and " +
+          "years are understood; anything else is yours to count.",
+      });
+    }
+
+    /* GROUPED IN POSTGRES rather than counted here, and filed BY
+       createdAt rather than by occurredAt — an indicator period is a
+       reporting period, and a report about something that happened last
+       March still arrived this quarter. The distinction matters and the
+       response names which one it used. */
+    const rows = await prisma.safetyReport.groupBy({
+      by: ["type"],
+      where: { ...tenantWhere(req), createdAt: { gte: window.from, lt: window.to } },
+      _count: { _all: true },
+    });
+
+    return reply.send({
+      label,
+      from: window.from.toISOString(),
+      to: window.to.toISOString(),
+      countedBy: "createdAt",
+      total: rows.reduce((n, r) => n + r._count._all, 0),
+      byType: Object.fromEntries(rows.map((r) => [r.type, r._count._all])),
+      caveat:
+        "This is how many reports arrived in that window. It is this indicator's event " +
+        "count only if this indicator counts reports — check before using it.",
     });
   });
 

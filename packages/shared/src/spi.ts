@@ -210,6 +210,66 @@ export function periodOrder(label: string): number | null {
   return null;
 }
 
+/**
+ * The calendar window a period label covers, or null.
+ *
+ * WHY THIS EXISTS. The indicator screen asks an operator to type an
+ * EVENT COUNT, and the reports those events came from are already in
+ * the database. That is the "indicators are typed, not fed" debt, and
+ * it has been recorded as one since the register was server-backed.
+ *
+ * WHAT IT DOES NOT DO, and this is the whole design. It does not make
+ * the count authoritative. An indicator counts a PARTICULAR thing —
+ * unstable approaches, MEL deferrals, ground damage — and the number of
+ * reports filed in a quarter is not that thing unless the operator says
+ * it is. So this resolves a label to a window, the API counts reports
+ * in it, and the screen OFFERS the figure beside the field with the
+ * caveat attached. Filling it in silently would replace a transcription
+ * error with a category error, which is worse because it looks right.
+ *
+ * ONLY THE LABELS periodOrder() ALREADY UNDERSTANDS. A free-form
+ * cadence — "Winter ops", "Rotation 4" — returns null and the screen
+ * says it cannot count for that label rather than guessing at one.
+ *
+ * INCLUSIVE OF `from`, EXCLUSIVE OF `to`, which is how a half-open
+ * range avoids double-counting the boundary between two consecutive
+ * periods. A report filed at midnight on 1 April belongs to Q2 and to
+ * Q2 only.
+ */
+export function periodWindow(label: string): { from: Date; to: Date } | null {
+  const t = label.trim().toUpperCase().replace(/\s+/g, "-");
+  const utc = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d));
+
+  const quarter = /^(\d{4})-?Q([1-4])$/.exec(t);
+  if (quarter) {
+    const y = Number(quarter[1]);
+    const q = Number(quarter[2]);
+    return { from: utc(y, (q - 1) * 3, 1), to: utc(y, q * 3, 1) };
+  }
+
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (day) {
+    const y = Number(day[1]), m = Number(day[2]), d = Number(day[3]);
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    return { from: utc(y, m - 1, d), to: utc(y, m - 1, d + 1) };
+  }
+
+  const month = /^(\d{4})-(\d{2})$/.exec(t);
+  if (month) {
+    const y = Number(month[1]), m = Number(month[2]);
+    if (m < 1 || m > 12) return null;
+    return { from: utc(y, m - 1, 1), to: utc(y, m, 1) };
+  }
+
+  const year = /^(\d{4})$/.exec(t);
+  if (year) {
+    const y = Number(year[1]);
+    return { from: utc(y, 0, 1), to: utc(y + 1, 0, 1) };
+  }
+
+  return null;
+}
+
 export type PeriodRefusal =
   | { readonly ok: true }
   | { readonly ok: false; readonly reason: string };

@@ -819,10 +819,13 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "the register by band, indicators over an alert level, and which risks are owned " +
       "below the authority their band requires \u2014 computed on every read, never stored.",
     missing:
-      "Indicators fed from the reporting queue rather than typed in \u2014 the counts " +
-      "are the operator's own, entered by hand, so an indicator can disagree with the " +
-      "reports behind it until somebody reconciles them. Not part of this element's " +
-      "evidence, and real work all the same. And the picture reports a report COUNT " +
+      "Indicators fed from the reporting queue AUTOMATICALLY. The screen will now count " +
+      "the reports that arrived in a period and put the figure beside the field, so the " +
+      "reconciliation an operator used to do from memory is one button \u2014 but it does " +
+      "not fill the field in, and that is deliberate rather than unfinished: an " +
+      "indicator counts a particular thing, and the number of reports filed in a " +
+      "quarter is not that thing unless the operator says it is. And the picture " +
+      "reports a report COUNT " +
       "rather than Doc 9859's rate per 1,000 hours, because this product does not hold " +
       "your flying hours; it says so on the page rather than dividing by days and " +
       "calling the result a rate.",

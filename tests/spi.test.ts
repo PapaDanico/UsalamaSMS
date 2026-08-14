@@ -33,6 +33,7 @@ import {
   watch,
   type Indicator,
   type Period,
+  periodWindow,
 } from "../packages/shared/src/spi";
 
 const periods = (events: number[], exposure = 1000): Period[] =>
@@ -359,6 +360,70 @@ describe("the vocabulary", () => {
       expect(kind.definition.length).toBeGreaterThan(30);
       expect(kind.note.length).toBeGreaterThan(30);
       expect(kind.examples.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("the window a period label covers", () => {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+  it("RESOLVES A QUARTER TO ITS THREE MONTHS", () => {
+    const w = periodWindow("2026-Q1")!;
+    expect(iso(w.from)).toBe("2026-01-01");
+    expect(iso(w.to)).toBe("2026-04-01");
+  });
+
+  it("IS HALF-OPEN, so consecutive periods cannot double-count a boundary", () => {
+    /* A report filed at midnight on 1 April belongs to Q2 and to Q2
+       only. An inclusive `to` would count it in both quarters, which
+       inflates one denominator and one numerator at once — the kind of
+       error that survives review because both numbers look plausible. */
+    const q1 = periodWindow("2026-Q1")!;
+    const q2 = periodWindow("2026-Q2")!;
+    expect(q1.to.getTime()).toBe(q2.from.getTime());
+
+    const boundary = new Date("2026-04-01T00:00:00.000Z");
+    const inQ1 = boundary >= q1.from && boundary < q1.to;
+    const inQ2 = boundary >= q2.from && boundary < q2.to;
+    expect(inQ1).toBe(false);
+    expect(inQ2).toBe(true);
+  });
+
+  it("handles the fourth quarter rolling into the next year", () => {
+    const w = periodWindow("2026-Q4")!;
+    expect(iso(w.from)).toBe("2026-10-01");
+    expect(iso(w.to)).toBe("2027-01-01");
+  });
+
+  it("resolves months, days and years", () => {
+    expect(iso(periodWindow("2026-02")!.to)).toBe("2026-03-01");
+    // December rolls the year, which a naive month+1 gets wrong.
+    expect(iso(periodWindow("2026-12")!.to)).toBe("2027-01-01");
+    expect(iso(periodWindow("2026-08-14")!.to)).toBe("2026-08-15");
+    expect(iso(periodWindow("2026")!.to)).toBe("2027-01-01");
+  });
+
+  it("REFUSES A LABEL IT CANNOT DATE, rather than guessing", () => {
+    /* "Winter ops" and "Rotation 4" are cadences an operator may
+       legitimately use. A product that quietly decided one of them
+       meant a quarter would be confidently wrong about a number
+       somebody reports to an authority. */
+    expect(periodWindow("Winter ops")).toBeNull();
+    expect(periodWindow("Rotation 4")).toBeNull();
+    expect(periodWindow("")).toBeNull();
+    expect(periodWindow("2026-13")).toBeNull();
+    expect(periodWindow("2026-Q5")).toBeNull();
+  });
+
+  it("accepts every label periodOrder does, and no others", () => {
+    /* The two functions read the same labels and must not drift: a
+       label the screen sorts by but cannot count for is a screen that
+       silently offers nothing on some rows and not others. */
+    for (const label of ["2026-Q1", "2026-08", "2026-08-14", "2026", "Winter ops", "2026-13"]) {
+      expect(
+        periodWindow(label) === null,
+        `${label}: periodOrder and periodWindow disagree about whether it is dateable`,
+      ).toBe(periodOrder(label) === null);
     }
   });
 });

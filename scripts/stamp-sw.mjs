@@ -1013,7 +1013,53 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    ENTRY IS STILL 213.7 OF 214. The rule has now shaped two consecutive
    features and both are better for it. */
-const BUDGET = { entry: 214 * 1024, js: 442 * 1024, css: 56 * 1024 };
+/* TOTAL 442 -> 446 KB, for the de-identification notice and the
+   indicator feed. ENTRY UNMOVED at 213.7 for the THIRD raise running,
+   and CSS unmoved — neither of these is a new screen.
+
+     pages chunk  27,965 -> 29,510  +1,545   the privacy section
+     spi chunk    22,069 -> 23,993  +1,924   the observed-count control
+     total       451,350 -> 454,996 +3,646
+     entry       218,801 -> 218,801  UNMOVED
+     css          57,041 -> 57,041   UNMOVED
+
+   THE FIRST TWO ATTEMPTS TO MEASURE THIS BOTH REPORTED ZERO, for two
+   different reasons, and both looked like a clean result:
+
+     · `git stash` without -u leaves untracked files in place, so both
+       builds were the same tree. That one is recorded in the receipt
+       above; it happened again here before it was remembered.
+     · reverting only pages.js to measure its chunk in isolation made
+       the CLAIMS GATE FAIL — the assertion added in the same change
+       requires the privacy notice to cite L.N. 32 — so `npm run build`
+       refused and dist was left holding the previous build. The gate
+       working correctly presented as a zero delta.
+
+   The numbers above are measured against a5a9d84, the commit that set
+   the 442 budget, with everything since applied. They add up:
+   1,545 + 1,924 = 3,469 of 3,646, the remaining 177 being chunk
+   registry across 23 chunks. A receipt whose parts do not sum to its
+   total is a receipt that has not been checked.
+
+   WHAT IT BUYS. The privacy notice did not mention de-identification at
+   all — the strongest protection this product offers, absent from the
+   document an operator's lawyer reads. It now names L.N. 32 of 2026's
+   Third Schedule, paragraph 3.1 Note 2, which makes the safeguard the
+   instrument's answer rather than a courtesy we chose, and states the
+   limit as well as the mechanism.
+
+   And the indicator screen will now count the reports that arrived in a
+   period. That is the "indicators are typed, not fed" debt, paid down
+   as far as it honestly can be: the figure is OFFERED beside the field
+   and never filled in, because an indicator counts a particular thing
+   and a quarter's report count is not that thing unless the operator
+   says so. A label the product cannot date is refused rather than
+   guessed at.
+
+   ENTRY HAS NOT MOVED IN THREE RAISES. It is 213.7 of 214, where it
+   was before the risk picture. Everything bought since sits on screens
+   a reporter at a strip never opens. */
+const BUDGET = { entry: 214 * 1024, js: 446 * 1024, css: 56 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

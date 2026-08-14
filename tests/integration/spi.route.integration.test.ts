@@ -319,4 +319,64 @@ describe.skipIf(!hasDatabase)("safety performance indicators, through the real r
   it("requires a token at all", async () => {
     expect((await app.inject({ method: "GET", url: "/api/v1/spi" })).statusCode).toBe(401);
   });
+
+  it("COUNTS THE REPORTS THAT ARRIVED IN A PERIOD, without filling anything in", async () => {
+    /* The "indicators are typed, not fed" debt, paid down as far as it
+       honestly can be: the count is offered, with the caveat that a
+       report count is this indicator's event count only if this
+       indicator counts reports. */
+    const token = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const mk = (clientId: string, at: string, type = "HAZARD") =>
+      prisma().safetyReport.create({
+        data: {
+          orgId, clientId, type: type as never, title: clientId, narrative: "x",
+          createdAt: new Date(at),
+        },
+      });
+    await mk("q1-a", "2026-01-15T00:00:00.000Z");
+    await mk("q1-b", "2026-03-31T23:59:59.000Z");
+    await mk("q1-mor", "2026-02-01T00:00:00.000Z", "MOR");
+    // The boundary, and the quarter after it.
+    await mk("q2-boundary", "2026-04-01T00:00:00.000Z");
+
+    const res = await app.inject({
+      method: "GET", url: "/api/v1/spi/observed?label=2026-Q1",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.total, "the boundary report was counted into Q1").toBe(3);
+    expect(body.byType.MOR).toBe(1);
+    expect(body.byType.HAZARD).toBe(2);
+    expect(body.countedBy).toBe("createdAt");
+    expect(body.caveat).toMatch(/only if this indicator counts reports/i);
+  });
+
+  it("REFUSES A LABEL IT CANNOT DATE, rather than guessing at one", async () => {
+    const token = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const res = await app.inject({
+      method: "GET", url: "/api/v1/spi/observed?label=Winter%20ops",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error).toBe("unrecognised_period");
+    expect(res.json().message).toMatch(/yours to count/i);
+  });
+
+  it("counts only this operator's reports", async () => {
+    const token = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    await prisma().safetyReport.create({
+      data: {
+        orgId: otherOrgId, clientId: "theirs", type: "HAZARD",
+        title: "Competitor", narrative: "x", createdAt: new Date("2026-01-15T00:00:00.000Z"),
+      },
+    });
+    const body = (
+      await app.inject({
+        method: "GET", url: "/api/v1/spi/observed?label=2026-Q1",
+        headers: { authorization: `Bearer ${token}` },
+      })
+    ).json();
+    expect(body.total).toBe(0);
+  });
 });
