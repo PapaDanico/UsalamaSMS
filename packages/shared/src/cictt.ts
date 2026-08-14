@@ -25,9 +25,41 @@
    WHAT IS VERIFIED HERE AND WHAT IS NOT. READ THIS BEFORE TRUSTING IT.
 
    THE CODES AND LABELS below were compiled from secondary sources —
-   published summaries and State safety reviews citing CICTT — and NOT
-   read against the primary document, "Aviation Occurrence Categories:
-   Definitions and Usage Notes", CICTT version 4.8, May 2021.
+   published summaries, State safety reviews and taxonomy references
+   citing CICTT — and NOT read against the primary document, "Aviation
+   Occurrence Categories: Definitions and Usage Notes", CICTT version
+   4.8, May 2021.
+
+   RE-CHECKED 14 AUGUST 2026, AND THE LIST GREW BY THIRTEEN. The first
+   compilation carried twenty categories. A second pass across
+   independent references — SKYbrary's ADREP taxonomy pages, the ATSB's
+   occurrence terminology, NASA and State safety reports coding to
+   CICTT, and search-level extracts of the primary itself — corroborated
+   thirteen more: ADRM, AMAN, ATM, EVAC, FUEL, GTOW, LOC-G, LOLI, NAV,
+   RI, UIMC, USOS and WSTRW.
+
+   ONE OF THOSE WAS A SAFETY GAP AND NOT MERELY AN OMISSION. **RI,
+   runway incursion**, is among the most consequential occurrence types
+   in aviation, and it was absent. An operator classifying one found
+   nothing that fitted; the conscientious answer was OTHR and the
+   likely answer was something adjacent and wrong. A taxonomy missing
+   its highest-frequency serious category does not fail loudly — it
+   produces confidently mis-coded data, which is worse than none.
+
+   THE PRIMARY STILL HAS NOT BEEN READ, and the flag below still says
+   so. Network egress from this environment blocks icao.int,
+   intlaviationstandards.org, ntsb.gov, enac.gov.it, cast-safety.org and
+   faa.gov — every mirror of the document that was found. Corroboration
+   across several independent sources is better than one summary and it
+   is not the same as reading the document, so nothing here claims it
+   is.
+
+   WHAT READING IT WOULD SETTLE, when somebody can: the exact published
+   wording of each title, the categories still missing from this list,
+   and the definitions. The machine-readable form to check against is
+   the ECCAIRS Aviation Data Definition Standard, attribute 430
+   (Occurrence category) — which is also what an ECCAIRS-compatible
+   export would have to satisfy.
 
    THE DEFINITIONS ARE DELIBERATELY ABSENT. A category's definition is
    the part that decides a borderline case, it runs to a paragraph with
@@ -80,6 +112,11 @@ export interface OccurrenceCategory {
 
 export const OCCURRENCE_CATEGORIES: ReadonlyArray<OccurrenceCategory> = Object.freeze([
   // ---- In flight ----
+  { code: "AMAN", label: "Abrupt manoeuvre", group: "In flight" },
+  { code: "UIMC", label: "Unintended flight in instrument meteorological conditions", group: "In flight" },
+  { code: "WSTRW", label: "Wind shear or thunderstorm", group: "In flight" },
+  { code: "NAV", label: "Navigation errors", group: "In flight" },
+  { code: "LOLI", label: "Loss of lifting conditions en route", group: "In flight" },
   { code: "LOC-I", label: "Loss of control — in flight", group: "In flight" },
   { code: "CFIT", label: "Controlled flight into or toward terrain", group: "In flight" },
   { code: "MAC", label: "Airprox, TCAS alert, loss of separation, near or actual mid-air collision", group: "In flight" },
@@ -92,10 +129,20 @@ export const OCCURRENCE_CATEGORIES: ReadonlyArray<OccurrenceCategory> = Object.f
   // ---- Runway and landing ----
   { code: "RE", label: "Runway excursion", group: "Runway and landing" },
   { code: "ARC", label: "Abnormal runway contact", group: "Runway and landing" },
+  /* THE ONE WHOSE ABSENCE WAS A SAFETY GAP RATHER THAN AN OMISSION. A
+     runway incursion is among the most consequential occurrence types in
+     aviation and an operator looking for it found nothing, so the honest
+     ones coded OTHR and the rest picked something adjacent and wrong. */
+  { code: "RI", label: "Runway incursion", group: "Runway and landing" },
+  { code: "USOS", label: "Undershoot or overshoot", group: "Runway and landing" },
 
   // ---- On the ground ----
   { code: "GCOL", label: "Ground collision", group: "On the ground" },
   { code: "RAMP", label: "Ground handling", group: "On the ground" },
+  { code: "LOC-G", label: "Loss of control — on the ground", group: "On the ground" },
+  { code: "ADRM", label: "Aerodrome — design, service or functionality", group: "On the ground" },
+  { code: "EVAC", label: "Evacuation", group: "On the ground" },
+  { code: "GTOW", label: "Glider towing related events", group: "On the ground" },
 
   // ---- Aircraft ----
   { code: "SCF-PP", label: "System or component failure or malfunction — powerplant", group: "Aircraft" },
@@ -103,9 +150,11 @@ export const OCCURRENCE_CATEGORIES: ReadonlyArray<OccurrenceCategory> = Object.f
   { code: "F-NI", label: "Fire or smoke — non-impact", group: "Aircraft" },
   { code: "F-POST", label: "Fire or smoke — post-impact", group: "Aircraft" },
   { code: "CABIN", label: "Cabin safety events", group: "Aircraft" },
+  { code: "FUEL", label: "Fuel related", group: "Aircraft" },
 
   // ---- Other ----
   { code: "SEC", label: "Security related", group: "Other" },
+  { code: "ATM", label: "ATM or CNS — air traffic management and communication, navigation, surveillance", group: "Other" },
   {
     code: "OTHR",
     label: "Other — nothing in this list fits",

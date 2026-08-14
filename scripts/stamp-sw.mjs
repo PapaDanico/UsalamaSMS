@@ -1271,7 +1271,30 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    configuration, at the end of a long session. IT IS THE LAST ONE. The
    next CSS raise splits the sheet first; this receipt is the record
    that the debt was taken knowingly rather than forgotten. */
-const BUDGET = { entry: 215 * 1024, js: 471 * 1024, css: 60 * 1024 };
+/* TOTAL 471 -> 472 KB. 0.9 KB, for thirteen occurrence categories the
+   taxonomy has and this product did not — and one of them makes this
+   the least arguable raise in the file.
+
+   RI, RUNWAY INCURSION, WAS MISSING. It is among the most consequential
+   occurrence types in aviation. An operator classifying one found
+   nothing that fitted: the conscientious answer was OTHR and the likely
+   answer was something adjacent and wrong. A taxonomy missing its
+   highest-frequency serious category does not fail loudly — it produces
+   confidently mis-coded data, and mis-coded data is worse than absent
+   data because somebody trusts it.
+
+   The other twelve are ADRM, AMAN, ATM, EVAC, FUEL, GTOW, LOC-G, LOLI,
+   NAV, UIMC, USOS and WSTRW. Twenty categories became thirty-three.
+
+   ENTRY UNCHANGED AT 214.8 for the fourth change running, and the
+   weight is in the triage chunk where the taxonomy already lives —
+   classification is the safety office's act and a reporter at a strip
+   downloads none of it.
+
+   NOT A CSS RAISE. The previous receipt's rule stands: the next CSS
+   raise splits the stylesheet first. This is JS, and it is nine
+   hundred bytes to stop a runway incursion being filed as "other". */
+const BUDGET = { entry: 215 * 1024, js: 472 * 1024, css: 60 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

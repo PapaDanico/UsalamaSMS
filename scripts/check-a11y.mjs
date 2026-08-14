@@ -39,6 +39,7 @@
    declares what deliberately does not travel.
    ===================================================================== */
 import { chromium } from 'playwright';
+import { findChromium } from './lib/chromium.mjs';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, dirname, resolve } from 'node:path';
@@ -94,7 +95,7 @@ try {
 }
 
 await new Promise((r) => server.listen(PORT, r));
-const browser = await chromium.launch();
+const browser = await chromium.launch({ executablePath: findChromium() });
 
 let failed = 0;
 let checked = 0;

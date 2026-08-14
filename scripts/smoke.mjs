@@ -30,6 +30,10 @@
    ============================================================ */
 
 import { chromium } from 'playwright';
+/* One answer for every script that drives a browser. This function
+   lived here and was copied nowhere, which is how the update gate came
+   to have a worse one. */
+import { findChromium } from './lib/chromium.mjs';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -220,21 +224,6 @@ await new Promise((r) => server.listen(PORT, r));
    points at a directory of versioned installs, so the exact binary path
    moves with every browser bump — a hardcoded one works until it does
    not, and then fails on somebody else's machine only. */
-function findChromium() {
-  if (process.env['CHROME_PATH']) return process.env['CHROME_PATH'];
-  const base = process.env['PLAYWRIGHT_BROWSERS_PATH'];
-  if (base && existsSync(base)) {
-    const candidates = readdirSync(base)
-      .filter((d) => d.startsWith('chromium-'))
-      .sort()
-      .reverse()
-      .map((d) => join(base, d, 'chrome-linux', 'chrome'))
-      .filter((p) => existsSync(p));
-    if (candidates[0]) return candidates[0];
-  }
-  return undefined; // let playwright resolve its own download
-}
-
 const browser = await chromium.launch({ executablePath: findChromium() });
 
 try {
