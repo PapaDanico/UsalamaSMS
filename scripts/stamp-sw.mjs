@@ -763,19 +763,31 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    alone, and that is exactly the shape of drift: no single step is the
    wrong call and the sum is 12 KB.
 
-   THE SIGNAL I SAID TO WATCH FOR HAS NOW APPEARED, small but present.
-   ENTRY has been flat all day and fell once; this change moved it
-   213.4 -> 213.5 KB, because voluntary.ts is now imported by two
-   lazily-loaded screens and the bundler hoists what more than one chunk
-   needs. A tenth of a kilobyte is noise. The DIRECTION is not, and the
-   rule written here two raises ago was that entry beginning to track
-   total is the moment to take something out instead of buying more.
+   ENTRY MOVED 82 BYTES, AND THE FIRST EXPLANATION WRITTEN HERE WAS
+   WRONG. It said voluntary.ts had been hoisted into the entry chunk
+   because two lazily-loaded screens now import it. Measuring the built
+   output says otherwise: the module is in voluntary-*.js, a shared
+   chunk of its own at 1,946 bytes, and NONE of the regulation prose
+   appears in the entry chunk at all. The split did exactly what it
+   should.
 
-   So: this raise, and then a consolidation pass before the next one.
-   What should be examined is whether /methodology and /sms both need to
-   render the full requirement text, or whether the reference statement
-   and the answer form can share one rendering. That is a real question
-   with a real answer, and it is cheaper than a sixth raise.
+   What actually grew is the CHUNK REGISTRY — the entry carries a map of
+   every lazy chunk it can load, and there is now one more. That is the
+   price of the split working, not evidence of weight leaking inward,
+   and it argues AGAINST splitting further rather than for consolidating
+   what is already shared.
+
+   The correction matters more than the 82 bytes. A receipt that
+   misdiagnoses a number sends the next person hunting a saving that is
+   not there — here, rewriting two renderers to share one, when the DATA
+   they render is already shared and the duplication was never the cost.
+   Measure the built chunks before believing any story about them,
+   including this one.
+
+   THE RULE STILL STANDS, unchanged: entry beginning to genuinely track
+   total is the moment to take something out instead of buying more.
+   This was not that. Five raises in a day still is a pattern worth
+   naming, and the next one should be argued for rather than assumed.
 
    The stopping rule itself is unchanged and this still satisfies it: a
    screen earns a raise. A dependency, a polyfill or a component library
