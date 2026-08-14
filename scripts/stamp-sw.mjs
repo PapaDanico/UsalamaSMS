@@ -1453,7 +1453,41 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    WHAT THE REPORTER GETS FOR THEIR KILOBYTE: an operator that can sign
    up on a Sunday evening without calling anybody, which is the only way
    the product ever reaches the reporter at all. */
-const BUDGET = { entry: 217 * 1024, js: 492 * 1024, css: 60 * 1024 };
+/* TOTAL 492 -> 494 KB. ENTRY UNMOVED AT 216.0, and that is the whole
+   argument rather than a footnote to it.
+
+   WHAT IT BOUGHT: the tutorial's second act. The five steps it had
+   ended exactly where an SMS begins — file, read the deadline, watch
+   the queue, sign in, set a review cadence. An operator who followed
+   every one of them finished with a queue that drains and no idea how
+   to produce the things an auditor actually asks for: a hazard raised
+   from the report that revealed it, an assessment with an ALARP
+   justification, a risk accepted by somebody senior enough to accept
+   it, a corrective action closed on evidence, one indicator with a
+   period behind it. All five screens existed. Nothing walked anybody
+   into them.
+
+   That is a churn problem before it is a documentation problem. The
+   product is sold on being an SMS rather than a reporting inbox, and
+   the only path from one to the other was reading the source.
+
+   WHERE THE WEIGHT LANDED, and why this raise is cheap where the last
+   one was expensive. It is content inside the `pages` chunk, which is
+   lazily loaded and shared with About, Questions, Privacy and Terms. A
+   reporter at a remote strip filing a report never fetches it. The
+   people who pay the 1.3 KB are the ones reading the documentation,
+   which is the audience it is for.
+
+   WHICH EXPOSES THE REAL LIMIT, recorded here because the next person
+   will hit it. `js (total)` cannot tell weight a REPORTER pays from
+   weight a PROSPECT pays — it sums both, so documentation competes for
+   budget with the offline-filing path. That is the same defect the CSS
+   budget has, where one number sums every stylesheet and splitting the
+   file therefore buys nothing. Both want the shape `entry` already has:
+   two numbers, one for what must arrive before somebody can file and
+   one for everything else. Until that exists, raises like this one have
+   to be argued in prose instead of being obvious from the figure. */
+const BUDGET = { entry: 217 * 1024, js: 494 * 1024, css: 60 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
