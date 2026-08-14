@@ -134,6 +134,7 @@ model Org {
   findings         AuditFinding[]
   training         TrainingRecord[]
   communications   SafetyCommunication[]
+  changes          ChangeAssessment[]
 }
 
 model User {
@@ -162,6 +163,7 @@ model User {
   findingsVerified  AuditFinding[]          @relation("findingVerifier")
   training          TrainingRecord[]        @relation("trainee")
   communications    SafetyCommunication[]   @relation("communicator")
+  changesApproved   ChangeAssessment[]      @relation("changeApprover")
 
   @@index([orgId, role])
 }
@@ -400,16 +402,16 @@ model Spi {
 }
 
 model SpiPeriod {
-  id        String   @id @default(uuid())
+  id          String    @id @default(uuid())
   // Denormalised onto the period as well as the indicator, because
   // every query in this API is scoped by orgId first and a join is not
   // a tenancy boundary.
-  orgId     String
-  spiId     String
+  orgId       String
+  spiId       String
   // "2026-Q1", "March" — whatever the operator's cadence is called.
-  label     String
-  events    Int
-  exposure  Float
+  label       String
+  events      Int
+  exposure    Float
   /// Element 3.1's own evidence definition asks for "a record of what
   /// happened the last time one was crossed". This is that record,
   /// attached to the PERIOD rather than to an alert level — the level
@@ -426,7 +428,7 @@ model SpiPeriod {
   /// this morning is the ordinary case, and conflating the two would
   /// date every response to the day of data entry.
   actionOn    DateTime?
-  createdAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   spi Spi @relation(fields: [spiId], references: [id], onDelete: Cascade)
 
@@ -604,6 +606,87 @@ model VoluntaryScheme {
   org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@index([orgId])
+}
+
+enum ChangeTrigger {
+  FLEET
+  ROUTE_OR_NETWORK
+  ORGANISATION
+  KEY_PERSONNEL
+  EQUIPMENT_OR_SYSTEM
+  PROCEDURE
+  OTHER
+}
+
+enum ChangeStatus {
+  DRAFT
+  ASSESSED
+  APPROVED
+  IN_EFFECT
+  REVIEWED
+}
+
+/// Element 3.2 — the management of change, held by the organisation.
+///
+/// The element's evidence definition is unusually precise: "a change
+/// assessment for the most recent significant change, DATED BEFORE IT
+/// HAPPENED". An assessment written after the fleet arrived is a
+/// justification, and the difference between the two is the whole
+/// element. Both dates are therefore stored and neither is derived —
+/// `assessedOn` is when the thinking was done, `effectiveFrom` is when
+/// the change takes effect, and their ORDER is what an inspector reads.
+///
+/// THE RISK POSITION IS STORED, for the same reason RiskAssessment's
+/// is: an assessment is a decision taken on a date under the matrix as
+/// it stood, and recomputing it if the scale is ever revised would
+/// rewrite a decision somebody approved. Computed on write from the
+/// same risk.ts the register and /methodology use.
+///
+/// APPROVAL IS A SEPARATE ACT from assessment, and separately
+/// permissioned — moc.create writes it, moc.approve signs it. A change
+/// its own author can approve is not routed.
+model ChangeAssessment {
+  id            String        @id @default(uuid())
+  orgId         String
+  title         String
+  description   String        @db.Text
+  trigger       ChangeTrigger
+  /// When the thinking was done.
+  assessedOn    DateTime
+  /// When the change takes, or took, effect. Nullable while a change is
+  /// still being planned — a date nobody has set is not the same as a
+  /// change that happened today.
+  effectiveFrom DateTime?
+
+  severity     Severity
+  likelihood   Likelihood
+  score        Int
+  tolerability Tolerability
+  controls     String?      @db.Text
+
+  residualSeverity     Severity?
+  residualLikelihood   Likelihood?
+  residualScore        Int?
+  residualTolerability Tolerability?
+
+  approvedById String?
+  approvedAt   DateTime?
+
+  /// The half operators most often skip: whether the change did what it
+  /// was expected to. Element 3.2 is not discharged by assessing.
+  reviewDueOn DateTime?
+  reviewedOn  DateTime?
+  reviewNotes String?   @db.Text
+
+  status    ChangeStatus @default(DRAFT)
+  updatedAt DateTime     @updatedAt
+  createdAt DateTime     @default(now())
+
+  org        Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  approvedBy User? @relation("changeApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+
+  @@index([orgId, status])
+  @@index([orgId, effectiveFrom])
 }
 
 model SafetyPolicy {

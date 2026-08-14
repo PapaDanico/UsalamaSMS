@@ -49,19 +49,19 @@ them — alongside a glossary, tutorials, FAQ, about, privacy and terms.
 
 **`/coverage` is the one to read before adopting anything.** It states,
 element by element against Annex 19's twelve, what is built here and
-what is only partial — and the figure it reports, **10 of 12**, is
+what is only partial — and the figure it reports, **10.5 of 12**, is
 computed from the same declaration the table renders rather than typed
-beside it. Eight elements are built and four are partial; a partial
+beside it. Nine elements are built and three are partial; a partial
 element counts a half, which is where the figure comes from.
 
 That figure moved from 2.5 when `/sms` gave eight elements a
 server-held record, again when the register joined the indicators on
 the server, and again when an indicator gained the record of what was
-done the last time one crossed. The four that stay partial say plainly
-what they still lack: the emergency plan itself, the documents behind
-the document register, a warning that reaches somebody who does not
-open the training screen, and — for the change assessment — anywhere to
-do it at all. An operator adopting
+done the last time one crossed, and again when the change assessment
+moved off the handset. The three that stay partial say plainly what
+they still lack: the emergency plan itself, the documents behind the
+document register, and a warning that reaches somebody who does not
+open the training screen. An operator adopting
 this as its sole SMS would still have gaps to answer for, and
 `/coverage` names every one of them.
 
@@ -95,7 +95,7 @@ npm test               # 323 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
-npm run test:integration   # 135 checks against a real Postgres
+npm run test:integration   # 148 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify

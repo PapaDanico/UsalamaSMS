@@ -794,14 +794,29 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        being held by the organisation. An operator can produce the
        document; it cannot yet run the process around it. */
     id: "3.2",
-    state: "PARTIAL",
+    /* MOVED TO BUILT against the element's own evidence: "a change
+       assessment for the most recent significant change, DATED BEFORE
+       IT HAPPENED". The assessment is now held by the organisation
+       rather than one browser, and the route REFUSES one dated after
+       its own change took effect — accepting that would let the product
+       manufacture the evidence this element exists to test for.
+
+       Approval is a separate act from assessment, separately
+       permissioned, and refused outright while the residual position
+       is intolerable. The review after the change is recorded, which
+       is the half operators most often skip and the reason 3.2 is not
+       discharged by assessing. */
+    state: "BUILT",
+    serverRoutes: ["/api/v1/changes"],
     has:
-      "A safety risk assessment for a change, in ICAO Doc 9859's five steps, with " +
-      "acceptance refused while any risk remains intolerable after controls.",
+      "A change assessment the organisation holds — trigger, description, the Doc 9859 " +
+      "position before and after controls, an approval by a different post from the one " +
+      "that wrote it, and the review after the change. Refused if dated after the change " +
+      "took effect, and refused approval while the residual risk is intolerable.",
     missing:
-      "The process around the document: which changes require one, approval routing, " +
-      "review after the change, and an assessment the organisation holds rather than " +
-      "one browser.",
+      "Which changes require one. The product assesses the change an operator brings " +
+      "it; it does not know an operator's own threshold for significance, and a tool " +
+      "that guessed would either flood the register or miss the change that mattered.",
     href: "/toolkits/sra",
   },
   {
