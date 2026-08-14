@@ -340,9 +340,29 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get("/api/v1/auth/me", { preHandler: [authenticate] }, async (req) => ({
-    userId: req.auth!.sub,
-    orgId: req.auth!.org,
-    role: req.auth!.role,
-  }));
+  /* THE ORGANISATION'S NAME, not only its id.
+     
+     Added for the printed record. An operator prints /sms for an audit,
+     and a pack of loose pages with no operator name on them is a pack
+     an auditor cannot attribute — the id in the token is a uuid, which
+     is useless on paper. The name is not in the JWT deliberately: a
+     token is a credential and should carry claims, not display strings
+     that go stale when an operator renames itself.
+     
+     AOC number too, where the operator has one, because that is the
+     reference a regulator files a pack under. */
+  app.get("/api/v1/auth/me", { preHandler: [authenticate] }, async (req) => {
+    const org = await prisma.org.findUnique({
+      where: { id: req.auth!.org },
+      select: { name: true, aocNumber: true, jurisdiction: true },
+    });
+    return {
+      userId: req.auth!.sub,
+      orgId: req.auth!.org,
+      role: req.auth!.role,
+      orgName: org?.name ?? null,
+      aocNumber: org?.aocNumber ?? null,
+      jurisdiction: org?.jurisdiction ?? null,
+    };
+  });
 }

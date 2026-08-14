@@ -29,6 +29,7 @@
 
 import { html } from '../../shared/html.js';
 import { isSignedIn, authFetch } from '../../shared/session.js';
+import { printId, loadOrg } from '../../shared/print-id.js';
 
 const BAND_LABEL = {
   INTOLERABLE: 'Intolerable',
@@ -123,9 +124,11 @@ export async function render(outlet) {
   }
 
   const { reporting, register, indicators, changes, actions, window: win } = data;
+  const org = await loadOrg();
 
   outlet.innerHTML = html`
     <section class="panel">
+      ${printId(org, `The risk picture — the ${win.days} days to ${win.to.slice(0, 10)}`)}
       <header class="page-head">
         <span class="eyebrow">Safety assurance</span>
         <h1>The risk picture</h1>

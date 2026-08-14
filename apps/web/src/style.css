@@ -637,6 +637,66 @@ html { scroll-padding-top: var(--us-chrome); }
   details { display: block !important; }
   details > summary { display: none !important; }
   .card { box-shadow: none !important; }
+
+  /* ============================================================
+     THE PRINTED PACK IS THE ARTEFACT THAT REACHES A REGULATOR.
+
+     Everything else in this product is read on a screen by somebody
+     who can scroll, search and click. /sms and /picture get printed,
+     handed over, and read as loose paper by a person who has never
+     seen the application. That is a different document, and these are
+     the rules it needs.
+     ============================================================ */
+
+  /* A RECORD SPLIT ACROSS A PAGE BREAK is the visible quality failure
+     in a printed pack: half a finding on one page, its owner and due
+     date on the next, and an auditor who reads them as two things.
+     Each record is one object and prints as one. */
+  .rec, .card, .picture-figure, .picture-bar, .queue__item, .sms-el {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* No single line of a paragraph stranded at the top or bottom of a
+     page. Three is the conventional floor and reads as typeset rather
+     than as flowed. */
+  p, li { orphans: 3; widows: 3; }
+
+  /* A heading at the foot of a page with its content overleaf is a
+     heading nobody connects to what follows it. */
+  h3, h4 { break-after: avoid; page-break-after: avoid; }
+
+  /* THE IDENTITY BLOCK, hidden on screen and printed at the top of the
+     document. A pack of loose pages with no operator name on them is a
+     pack an auditor cannot attribute. */
+  .print-id { display: block !important; }
+}
+
+/* Hidden entirely on screen: this exists for paper. */
+.print-id { display: none; }
+
+.print-id__org {
+  font-family: var(--us-font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.print-id__what {
+  font-weight: 700;
+  margin: .2em 0 0;
+}
+
+.print-id__meta {
+  margin: .2em 0 0;
+  font-size: .82rem;
+  color: #000;
+}
+
+.print-id__rule {
+  margin: .6em 0 1.2em;
+  border: 0;
+  border-top: 2px solid #000;
 }
 
 /* ============================================================

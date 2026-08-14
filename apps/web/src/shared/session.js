@@ -83,6 +83,11 @@ function store({ accessToken: access, refreshToken, role, orgId }) {
 }
 
 export function clearSession() {
+  /* The cached organisation name, held for the printed record and
+     loaded lazily by print-id.js — which is NOT in the entry chunk.
+     Only the key lives here, because signing out has to clear it and
+     sign-out is in the shell. */
+  localStorage.removeItem('usalamasms.org');
   accessToken = null;
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);

@@ -1059,7 +1059,51 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    ENTRY HAS NOT MOVED IN THREE RAISES. It is 213.7 of 214, where it
    was before the risk picture. Everything bought since sits on screens
    a reporter at a strip never opens. */
-const BUDGET = { entry: 214 * 1024, js: 446 * 1024, css: 56 * 1024 };
+/* CSS 56 -> 57 KB, for the printed pack. AND ENTRY BROKE ITS BUDGET ON
+   THE WAY HERE, which is the part of this receipt that matters.
+
+   WHAT HAPPENED. The printed record needs the operator's NAME, so a
+   loader for it went into session.js — and session.js is in the entry
+   chunk, because the shell needs authentication on every screen. Entry
+   came out at 214.2 KB against 214. The first time it has broken its
+   budget, and precisely the moment the two receipts above said would
+   come: entry beginning to track total is when to take something out
+   rather than buy more.
+
+   IT WAS TAKEN OUT, NOT ARGUED UP. The operator's name is needed by two
+   lazily-loaded documents and nowhere else; it had no business in the
+   shell. It moved to print-id.js, which both of those documents already
+   import, and entry returned to 213.8. Only the storage key stays in
+   session.js, because signing out has to clear it.
+
+   That is the rule doing its job for the third time, and the first time
+   it has REFUSED something rather than shaped it. The budget was not
+   raised to accommodate a mistake; the mistake was corrected.
+
+   WHAT THE CSS BUYS, AND WHO PAYS FOR IT. About 500 bytes of print
+   rules — and unlike a lazy chunk, the stylesheet is loaded on EVERY
+   page. The reporter at the strip pays for rules only a safety manager
+   uses. Stated plainly, because that is the trade:
+
+     · a record no longer splits across a page break, so half a finding
+       on one page with its owner and due date on the next stops
+       happening;
+     · orphans and widows at three, so paragraphs read as typeset
+       rather than as flowed;
+     · a heading never sits at the foot of a page with its content
+       overleaf;
+     · and an identity block printing the operator name and AOC number
+       at the top of the document.
+
+   The last is the reason for the rest. /sms and /picture are the two
+   screens an operator prints, hands over, and lets somebody read as
+   loose paper, and a pack with no operator name on it is a pack an
+   auditor cannot attribute. Half a kilobyte on every load buys the
+   artefact that reaches a regulator looking like it was meant for them.
+
+   A reporter filing offline never sees it and does pay for it. That is
+   the honest shape of the trade, and it is worth making once. */
+const BUDGET = { entry: 214 * 1024, js: 446 * 1024, css: 57 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

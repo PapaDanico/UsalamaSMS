@@ -24,6 +24,7 @@
 
 import { html, raw } from '../../shared/html.js';
 import { isSignedIn, getSession, authFetch } from '../../shared/session.js';
+import { printId, loadOrg } from '../../shared/print-id.js';
 import { SMS_COMPONENTS } from '../../../../../packages/shared/src/maturity.ts';
 import { can } from '../../../../../packages/shared/src/index.ts';
 import { currencyOf, currencySummary } from '../../../../../packages/shared/src/currency.ts';
@@ -659,7 +660,13 @@ export async function render(outlet) {
     </div>`;
   };
 
+  let org = null;
+
   const load = async () => {
+    /* Fetched with the rest rather than after them — it is one request
+       and it is cached, but a second round trip on a handset paying for
+       it is a second round trip. */
+    org = await loadOrg();
     const endpoints = [
       ...new Set(
         Object.values(SURFACES).flatMap((s) =>
@@ -787,7 +794,7 @@ export async function render(outlet) {
         <dd class="stat__label">Elements in the framework</dd></div>
     `.toString();
 
-    body.innerHTML = SMS_COMPONENTS.map(
+    body.innerHTML = printId(org, 'Safety management system record — Annex 19, twelve elements').toString() + SMS_COMPONENTS.map(
       (component) => html`<section class="doc-section" id="component-${component.id}">
         <h2><span class="mat-element__id">${component.id}</span> ${component.name}</h2>
         <p class="lede lede--tight">${component.purpose}</p>
