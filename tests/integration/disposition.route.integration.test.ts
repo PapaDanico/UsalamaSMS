@@ -295,6 +295,80 @@ describe.skipIf(!hasDatabase)("report disposition, through the real route", () =
     expect(entries.map((e) => (e.detail as { to: string }).to)).toEqual(["TRIAGED", "CLOSED"]);
   });
 
+  it("THE QUEUE IS THE OPERATOR'S, not one handset's", async () => {
+    /* The gap the README disclosed from the first release: the triage
+       screen read the device's own store, so a report filed on somebody
+       else's phone was invisible to the safety office. And the device
+       had no way to name a report to the disposition route at all — the
+       sync response returns serverUpdatedAt and never the id. Both are
+       this one endpoint. */
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    await prisma().safetyReport.create({
+      data: {
+        orgId, clientId: "filed-elsewhere", type: "MOR",
+        title: "Bird strike on departure", narrative: "Right engine, no damage found.",
+      },
+    });
+    // And one belonging to a different operator, which must not appear.
+    await prisma().safetyReport.create({
+      data: {
+        orgId: otherOrgId, clientId: "not-ours", type: "HAZARD",
+        title: "Competitor's report", narrative: "Should never be visible here.",
+      },
+    });
+
+    const body = (
+      await app.inject({
+        method: "GET", url: "/api/v1/reports/queue",
+        headers: { authorization: `Bearer ${manager}` },
+      })
+    ).json();
+
+    expect(body.reports).toHaveLength(2);
+    expect(body.reports.map((r: { clientId: string }) => r.clientId).sort())
+      .toEqual(["c-1", "filed-elsewhere"]);
+    expect(JSON.stringify(body)).not.toContain("Competitor");
+
+    // It carries the id the device needs to move a report, and the
+    // moves this caller may make.
+    const row = body.reports.find((r: { clientId: string }) => r.clientId === "c-1");
+    expect(row.id).toBe(reportId);
+    expect(row.state).toBe("SUBMITTED");
+    expect(row.available.map((a: { to: string }) => a.to)).toEqual(["TRIAGED"]);
+  });
+
+  it("THE QUEUE CARRIES NO NARRATIVE, for any report", async () => {
+    /* A list needs to identify a report, not reproduce it. Sending
+       narratives for the whole organisation to render a list puts them
+       in memory, in a cache and in a screenshot for every row nobody
+       opened — and de-identification exists precisely because that text
+       is the sensitive part. */
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const body = (
+      await app.inject({
+        method: "GET", url: "/api/v1/reports/queue",
+        headers: { authorization: `Bearer ${manager}` },
+      })
+    ).json();
+
+    expect(body.reports.length).toBeGreaterThan(0);
+    expect(JSON.stringify(body)).not.toContain("Found during the walkaround");
+    for (const r of body.reports) {
+      expect(r.narrative, "the queue is sending narratives").toBeUndefined();
+      expect(r.reporterId, "the queue is sending reporter identity").toBeUndefined();
+    }
+  });
+
+  it("refuses the queue to a role that may not read the org's reports", async () => {
+    const frontline = tokenFor(frontlineId, orgId, "FRONTLINE");
+    expect(
+      (await app.inject({
+        method: "GET", url: "/api/v1/reports/queue",
+        headers: { authorization: `Bearer ${frontline}` },
+      })).statusCode,
+    ).toBe(403);
+  });
+
   it("requires a token", async () => {
     expect(
       (await app.inject({

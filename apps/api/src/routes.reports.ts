@@ -46,6 +46,7 @@ import {
 import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
 
 const HISTORY_LIMIT = 200;
+const QUEUE_LIMIT = 500;
 
 const TransitionSchema = z.object({
   to: z.enum(REPORT_STATES),
@@ -66,6 +67,69 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
     preHandler: [authenticate],
     config: { rateLimit: { max: 120, timeWindow: "1 minute" } },
   };
+
+  /* ------------------------------------------------------------------
+     THE ORGANISATION'S QUEUE, not this handset's.
+
+     Two gaps close here at once, and they turned out to be the same
+     gap. The triage screen read the device's own store, which the
+     README has disclosed all along; and the device had no way to name a
+     report to this route at all, because the sync response returns
+     `serverUpdatedAt` and never the server's id. So the screen could
+     not have driven the disposition even if it wanted to.
+
+     ONE REQUEST, NOT ONE PER ROW. The screen merges this into what the
+     device already holds, keyed on clientId. Fetching a disposition per
+     visible report is the P-01 shape — work proportional to the queue
+     on a screen whose whole job is to show a queue.
+
+     NO NARRATIVE. The list needs to identify a report, not to reproduce
+     it. Sending narratives for the whole org to render a list would put
+     them in memory, in a cache and in a screenshot for every row nobody
+     opened — and de-identification exists precisely because that text
+     is the sensitive part.
+     ------------------------------------------------------------------ */
+  app.get("/api/v1/reports/queue", limited, async (req, reply) => {
+    const auth = req.auth!;
+    if (!can(auth.role as never, "report.read.org")) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+
+    const rows = await prisma.safetyReport.findMany({
+      where: tenantWhere(req),
+      orderBy: { createdAt: "desc" },
+      take: QUEUE_LIMIT,
+      select: {
+        id: true, clientId: true, state: true, type: true, title: true,
+        createdAt: true, isAnonymous: true, jurisdiction: true, awareAt: true,
+        occurredAt: true, location: true, phase: true,
+      },
+    });
+
+    return reply.send({
+      /* Stated rather than left to be inferred from a round number. A
+         truncated queue that looks complete is how a report at the
+         bottom stops existing. */
+      truncated: rows.length === QUEUE_LIMIT,
+      reports: rows.map((r) => ({
+        id: r.id,
+        clientId: r.clientId,
+        state: r.state,
+        type: r.type,
+        title: r.title,
+        createdAt: r.createdAt.toISOString(),
+        isAnonymous: r.isAnonymous,
+        jurisdiction: r.jurisdiction,
+        awareAt: r.awareAt?.toISOString() ?? null,
+        occurredAt: r.occurredAt?.toISOString() ?? null,
+        location: r.location,
+        phase: r.phase,
+        available: transitionsFrom(r.state as ReportState)
+          .filter((t) => can(auth.role as never, t.needs))
+          .map((t) => ({ to: t.to, label: t.label, requiresNote: t.requiresNote })),
+      })),
+    });
+  });
 
   /* ------------------------------------------------------------------
      What may be done to this report, by THIS caller.

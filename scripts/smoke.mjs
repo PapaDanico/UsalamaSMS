@@ -3297,6 +3297,107 @@ try {
     assert(faults.length === 0, faults.join('\n         '));
   });
 
+  await check('THE QUEUE NEVER PASSES ONE HANDSET OFF AS THE OPERATOR', async () => {
+    /* CHARTER RULE 8, ON THE SCREEN WHOSE JOB IS TO CARRY IT.
+
+       The triage queue reads the device's own store and now layers the
+       organisation's on top when the safety office can be reached.
+       When it CANNOT be reached, the failure mode that matters is not
+       an error message — it is silence. A safety manager sees a list,
+       reads it as the operator's queue, and concludes that nothing was
+       filed elsewhere. The device's answer presented as the
+       organisation's is exactly the shape of the smoke check that once
+       reported "nothing was sent" about a send it had itself prevented.
+
+       Two states are asserted here because the honest sentence differs
+       between them, and the wrong one in either place is a lie of a
+       different kind:
+
+         · SIGNED OUT — the screen must not claim to be the operator's
+           queue, and must say what signing in would add;
+         · SIGNED IN BUT REFUSED — the safety office was asked and did
+           not answer, which is the state that must never be silent.
+
+       Stubbed with service workers blocked, for the reason the check
+       above spells out: page.route() does not intercept a service
+       worker's requests, and asserting through one is how a check
+       reports a pass on a defect it never reached. */
+    const bare = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+    let refused = false;
+
+    let signedOutText = '';
+    let signedInText = '';
+    try {
+      // ---- signed out -------------------------------------------------
+      await probe.goto(BASE + '/triage', { waitUntil: 'networkidle' });
+      await probe.evaluate(() => localStorage.clear());
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(400);
+      signedOutText = await probe.evaluate(() => document.body.innerText);
+
+      // ---- signed in, safety office refuses ---------------------------
+      await probe.route('**/api/v1/auth/refresh', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'stub', refreshToken: 'stub2',
+            role: 'SAFETY_MANAGER', orgId: 'org-1'
+          })
+        })
+      );
+      await probe.route('**/api/v1/reports/queue', (r) => {
+        refused = true;
+        return r.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+      });
+      await probe.evaluate(() => {
+        localStorage.setItem(
+          'usalamasms.session',
+          JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+        );
+        localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+      });
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      signedInText = await probe.evaluate(() => document.body.innerText);
+    } finally {
+      await bare.close();
+    }
+
+    const faults = [];
+
+    if (!/this device/i.test(signedOutText)) {
+      faults.push(
+        'signed out, the queue does not say it is showing this device only — a safety ' +
+          "manager would read one handset's reports as the operator's"
+      );
+    }
+    if (!/sign in/i.test(signedOutText)) {
+      faults.push('signed out, the queue does not say that signing in shows the whole queue');
+    }
+
+    /* THE GUARD THAT MAKES THE SECOND HALF MEAN ANYTHING. If the stub
+       was never called, the screen was never refused and a pass here
+       says nothing at all. */
+    if (!refused) {
+      faults.push(
+        'the stubbed /api/v1/reports/queue was never called, so the screen was never ' +
+          'refused and this half of the check tested nothing'
+      );
+    } else if (!/could not be reached/i.test(signedInText)) {
+      faults.push(
+        'signed in, the safety office refused and the screen said nothing about it — ' +
+          'this is the queue presenting a partial answer as a complete one'
+      );
+    }
+
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
   await check('NOTHING IS DESTROYED WITHOUT ASKING — every screen, not three of four', async () => {
     /* FOUND BY PRESSING EVERY BUTTON IN THE PRODUCT, which is not
        something the suite had ever done.

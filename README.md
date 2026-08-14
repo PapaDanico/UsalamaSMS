@@ -76,8 +76,19 @@ does **not** substitute for it: the `SUPABASE_DATABASE_URL` it injects
 is the REST API base, not a connection string, so both `core.ts` and
 the function check the scheme rather than trusting the name. See
 [`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md), which also carries the
-one-time Prisma baseline the hosted schema needs. The triage queue reads
-this device rather than the organisation.
+one-time Prisma baseline the hosted schema needs.
+
+**The triage queue is the operator's now, not one handset's** — a
+standing disclosure in this file since the first release, and it turned
+out to be the same gap as the disposition: the sync response returns
+`serverUpdatedAt` and never the server's id, so the device could not
+name a report to any route. One endpoint closes both. The device's own
+store still renders first and without waiting, the organisation's queue
+is layered over it keyed on `clientId` — a union, never an assignment —
+and when the safety office cannot be reached the screen **says so**
+rather than showing one phone's reports as though they were the
+operator's. A smoke check asserts exactly that, in both the signed-out
+and the refused states.
 
 **A report can now be dispositioned**, which it could not before: the
 five `ReportState` values had been in the schema since the first
@@ -108,7 +119,7 @@ npm test               # 348 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
-npm run test:integration   # 167 checks against a real Postgres
+npm run test:integration   # 170 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
@@ -116,7 +127,7 @@ npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 63 checks, including filing a report with the network cut and
+— 64 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 
@@ -132,7 +143,7 @@ appeared after the fact, and its Reload button posted to
 did nothing at all. The worker waits now, the person decides, and four
 checks across two builds keep it that way.
 
-Bundle: **211 KB entry JS + 48 KB CSS**, which is **75 KB over the wire**
+Bundle: **213.5 KB entry JS + 53.6 KB CSS**, which is **75 KB over the wire**
 gzipped, against budgets the build enforces and refuses to raise
 silently. Every route past the first paint is lazily loaded, so the
 entry figure is what a person filing a report at a strip actually pays.

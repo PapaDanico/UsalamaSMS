@@ -831,7 +831,55 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    The rule remains: entry beginning to track total is the moment to
    take something out rather than buy more. A dependency, a polyfill or
    a component library still buys nothing. */
-const BUDGET = { entry: 214 * 1024, js: 422 * 1024, css: 54 * 1024 };
+/* TOTAL 422 -> 426 KB, for the report disposition. ENTRY UNMOVED at
+   213.5 KB, for the seventh raise running.
+
+   MEASURED FIRST THIS TIME, because the receipt two raises ago
+   misdiagnosed an 82-byte entry move as hoisting when it was
+   chunk-registry overhead, and the lesson recorded then was to measure
+   the built chunks before believing any story about them — including
+   one written in this file. Built at the merge base, built again, and
+   differenced:
+
+     triage chunk   8,686 -> 12,655   +3,969 bytes
+     total js     431,594 -> 435,449  +3,855 bytes
+
+   The total grew LESS than the one chunk did, so the rest of the
+   bundle came down slightly. All of the weight is in the lazy route
+   that gained the feature, and none of it is anywhere else. That is
+   the shape a raise should have, and it is the reason to measure
+   rather than to reason about it.
+
+   WHAT IT BUYS. ReportState has had five values since the first
+   migration and four were unreachable, because no route wrote the
+   column. Every report ever filed was SUBMITTED, permanently. The
+   queue could only grow, and element 2.1's own evidence line asks for
+   a report rate "that is trending". This is the screen that moves a
+   report: triaged, investigated, closed with a statement of what was
+   done, reopened with a reason.
+
+   It also closes the gap the README has disclosed since the first
+   release — the queue read this handset rather than the operator. It
+   now reads both, unioned on clientId, and says so when the safety
+   office cannot be reached rather than showing one device's reports as
+   though they were the organisation's.
+
+   WHAT IT DELIBERATELY DOES NOT BUY. The state machine itself is NOT
+   in this bundle. The browser renders the moves the SERVER says this
+   person may make, so the permission matrix exists once; shipping
+   disposition.ts to the client would have cost another ~4 KB and
+   bought a second copy of the matrix that could disagree with the
+   first. Checked in the built output: the module is in no chunk.
+
+   THE STOPPING CONDITION IS STILL NOT MET, and seven raises is exactly
+   when to check rather than assume. ENTRY is 213.5 KB, where it was
+   six raises ago. A reporter at a strip files a report; they do not
+   open the triage queue, and everything bought since has landed on
+   screens only a safety manager opens.
+
+   The rule is unchanged: entry beginning to track total is the moment
+   to take something out rather than buy more. */
+const BUDGET = { entry: 214 * 1024, js: 426 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

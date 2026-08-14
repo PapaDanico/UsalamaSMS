@@ -1310,6 +1310,46 @@ html { scroll-padding-top: var(--us-chrome); }
   border-top: 1px solid var(--us-border);
 }
 
+/* Two action rows can stack on one card — the disposition and the
+   retry — and two rules between them reads as a table. Only the first
+   carries the rule. */
+.queue__actions + .queue__actions {
+  margin-top: var(--us-space-2);
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* WHAT HAPPENED TO THE REPORT, as a line of its own rather than a
+   fourth badge. The sync badge above answers "did it arrive"; this
+   answers "what was done about it", and running them together is how
+   a safety manager reads "sent" as "handled". */
+.queue__state {
+  margin: var(--us-space-3) 0 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+}
+
+.queue__state-label {
+  font-weight: 700;
+  color: var(--us-text);
+}
+
+/* AWAITING TRIAGE IS THE ONE THAT NEEDS THE EYE, and CLOSED is the one
+   that should recede. Neither is an error — a report filed a minute ago
+   is correctly awaiting triage — so the distinction is carried by a
+   rule and by weight rather than by the error colour, which stays
+   reserved for something being wrong. Colour is never the only channel:
+   the words say it first. */
+.queue__state[data-state='SUBMITTED'] {
+  border-left: 3px solid var(--us-teal);
+  padding-left: var(--us-space-3);
+}
+
+.queue__state[data-state='CLOSED'] .queue__state-label {
+  font-weight: 400;
+  color: var(--us-text-secondary);
+}
+
 .queue__error {
   margin: var(--us-space-2) 0 0;
   font-size: var(--us-text-sm);

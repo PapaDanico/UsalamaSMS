@@ -706,6 +706,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
     serverRoutes: [
       "/api/v1/sync/batch",
       "/api/v1/sms/voluntary",
+      "/api/v1/reports/queue",
       "/api/v1/reports/:id/disposition",
     ],
     has:
@@ -719,11 +720,9 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "rather than typed.",
     missing:
       "Proactive and predictive identification — surveys, flight data, and the analysis " +
-      "Doc 10159 asks for. Disposition is a connected act: a report can be FILED from a " +
-      "strip with no signal, but not triaged or closed from one. And the disposition is " +
-      "reachable through the API before it is reachable on the triage screen — the record " +
-      "is there and the buttons are not, which is stated here rather than left to be " +
-      "discovered.",
+      "Doc 10159 asks for. And disposition is a connected act: the queue shows this " +
+      "handset's reports offline and says so, but the operator's whole queue, and moving " +
+      "a report through it, need a connection.",
     href: "/report",
   },
   {
