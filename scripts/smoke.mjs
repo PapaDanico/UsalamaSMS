@@ -3717,6 +3717,187 @@ try {
     assert(faults.length === 0, faults.join('\n         '));
   });
 
+  await check('THE OCCURRENCE IS CODED IN ICAO\'S CATEGORIES, WITH THE CAVEAT ATTACHED', async () => {
+    /* WHAT A STATE FILES, which is not what this product's six report
+       types say. ADREP — maintained by EASA as ECCAIRS, occurrence
+       categories from the CAST/ICAO Common Taxonomy Team — is the
+       taxonomy an authority classifies under, and until this shipped
+       the module carrying those codes was imported by nothing at all.
+
+       FOUR PROPERTIES, and three of them are about honesty rather than
+       about the feature working:
+
+         · MORE THAN ONE CODE. CICTT's own usage notes are explicit that
+           a runway excursion which became a loss of control is coded as
+           BOTH. A picker that took one would discard the second half of
+           exactly the occurrences worth learning from, and the array
+           reaching the wire is where that is provable;
+         · THE CODE AND ITS NAME. "RE" is legible only to somebody who
+           already knows the taxonomy, and this screen is read by people
+           learning it — the same rule as every status badge here
+           carrying a word beside its colour;
+         · THE CAVEAT IS ON SCREEN WHERE THE CHOICE IS MADE. This
+           product carries the categories' names and NOT their
+           definitions, and a definition is what decides a borderline
+           case. A picker that presents twenty categories as though they
+           were fully specified is the one way this feature could do
+           harm;
+         · AND IT DOES NOT MOVE THE REPORT. Classifying is not a
+           disposition. If this ever posts a state change, a safety
+           officer correcting a mis-coded closed report would reopen and
+           re-close it, leaving two transitions describing an
+           investigation that never happened. */
+    const bare = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+    let sent = null;
+    let dispositionCalls = 0;
+    let panelText = '';
+    let chipText = '';
+
+    try {
+      await probe.route('**/api/v1/auth/refresh', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'stub', refreshToken: 'stub2',
+            role: 'SAFETY_MANAGER', orgId: 'org-1'
+          })
+        })
+      );
+      await probe.route('**/api/v1/reports/queue', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            truncated: false,
+            reports: [{
+              id: 'srv-1',
+              clientId: 'cli-1',
+              state: 'TRIAGED',
+              type: 'MOR',
+              title: 'Long landing, runway 06',
+              createdAt: new Date().toISOString(),
+              isAnonymous: false,
+              jurisdiction: 'KE',
+              awareAt: null, occurredAt: null, location: null, phase: null,
+              // Already carries one code, so the panel has to render an
+              // EXISTING classification rather than only an empty one.
+              cicttCodes: ['RE'],
+              available: []
+            }]
+          })
+        })
+      );
+      /* Any disposition POST is a failure of the fourth property, so it
+         is counted rather than stubbed away silently. */
+      await probe.route('**/api/v1/reports/*/disposition', (r) => {
+        dispositionCalls += 1;
+        return r.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+      });
+      await probe.route('**/api/v1/reports/*/codes', async (r) => {
+        sent = { method: r.request().method(), body: r.request().postDataJSON() };
+        return r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ cicttCodes: sent.body?.cicttCodes ?? [] })
+        });
+      });
+
+      await probe.goto(BASE + '/triage', { waitUntil: 'networkidle' });
+      await probe.evaluate(() => {
+        localStorage.setItem(
+          'usalamasms.session',
+          JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+        );
+        localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+      });
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForSelector('.queue__classify', { timeout: 5000 });
+
+      chipText = await probe.evaluate(
+        () => document.querySelector('.queue__codes')?.innerText ?? ''
+      );
+
+      await probe.click('.queue__classify > summary');
+      await probe.waitForTimeout(200);
+      panelText = await probe.evaluate(
+        () => document.querySelector('.queue__classify')?.innerText ?? ''
+      );
+
+      // Add a second category to the one already there, then save.
+      await probe.check('.queue__classify input[value="LOC-I"]');
+      await probe.click('.queue__classify button[type="submit"]');
+      await probe.waitForTimeout(700);
+    } finally {
+      await bare.close();
+    }
+
+    const faults = [];
+
+    if (!sent) {
+      faults.push(
+        'no request reached /api/v1/reports/:id/codes — the panel rendered but saving it ' +
+          'went nowhere, and every assertion below would have passed on a screen that ' +
+          'cannot record a classification at all'
+      );
+    } else {
+      if (sent.method !== 'PUT') {
+        faults.push(`the classification was sent as ${sent.method}, not PUT`);
+      }
+      const codes = sent.body?.cicttCodes ?? [];
+      if (!codes.includes('LOC-I')) {
+        faults.push(`the code just ticked did not reach the wire: ${JSON.stringify(codes)}`);
+      }
+      /* THE ONE THAT MATTERS. Keeping RE while adding LOC-I is the
+         multiple-coding rule holding end to end; a picker that replaced
+         the existing code would pass a naive "the new code was sent"
+         assertion and silently discard the first half of the
+         occurrence. */
+      if (!codes.includes('RE')) {
+        faults.push(
+          `the existing code was dropped when a second was added — sent ${JSON.stringify(codes)}. ` +
+            'CICTT codes a runway excursion that became a loss of control as BOTH, and ' +
+            'this is where that rule is either kept or quietly broken'
+        );
+      }
+    }
+
+    if (dispositionCalls > 0) {
+      faults.push(
+        'classifying the occurrence also posted a disposition — coding is not a state ' +
+          'change, and a report whose codes are corrected must not gain a transition ' +
+          'describing an investigation that never happened'
+      );
+    }
+
+    if (!/\bRE\b/.test(chipText) || !/runway excursion/i.test(chipText)) {
+      faults.push(
+        `the existing classification does not show its published name: ${JSON.stringify(chipText)}. ` +
+          'A bare code is legible only to somebody who already knows the taxonomy'
+      );
+    }
+
+    if (!/definition/i.test(panelText)) {
+      faults.push(
+        'the picker does not say that this product carries the categories’ names and ' +
+          'NOT their definitions — a definition is what decides a borderline case, and ' +
+          'twenty categories presented as fully specified is the one way this does harm'
+      );
+    }
+    if (!/both|every category that applies/i.test(panelText)) {
+      faults.push(
+        'the picker does not say more than one category may apply, so a safety officer ' +
+          'reads it as pick-one and records half the occurrence'
+      );
+    }
+
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
   await check('NOTHING IS DESTROYED WITHOUT ASKING — every screen, not three of four', async () => {
     /* FOUND BY PRESSING EVERY BUTTON IN THE PRODUCT, which is not
        something the suite had ever done.

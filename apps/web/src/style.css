@@ -1379,6 +1379,126 @@ html { scroll-padding-top: var(--us-chrome); }
   border-top: 0;
 }
 
+/* ============================================================
+   WHAT THE STATE FILES IT UNDER — the ICAO occurrence categories.
+
+   Its own block above the actions, because it answers a different
+   question from either of them: the sync badge says whether the report
+   arrived, the disposition says what was done about it, and this says
+   what KIND of occurrence it was in the taxonomy an authority actually
+   files. Three answers running together is how one gets read as
+   another.
+   ============================================================ */
+.queue__coding {
+  margin-top: var(--us-space-4);
+  padding-top: var(--us-space-4);
+  border-top: 1px solid var(--us-border);
+}
+
+.queue__codes {
+  list-style: none;
+  margin: 0 0 var(--us-space-2);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+}
+
+/* THE CODE AND ITS NAME, never the code alone. "RE" is legible only to
+   somebody who already knows the taxonomy, and this screen is read by
+   people learning it — the same reason every status badge here carries
+   a word beside its colour. */
+.queue__code {
+  font-size: var(--us-text-xs);
+  line-height: var(--us-leading-snug);
+  background: var(--us-surface-sunk);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-sm);
+  padding: var(--us-space-1) var(--us-space-2);
+  color: var(--us-text-secondary);
+}
+
+.queue__code b {
+  color: var(--us-text-primary);
+  font-weight: 700;
+}
+
+/* NOT AN ERROR, and it must not read as one. A report filed an hour ago
+   is correctly unclassified; the colour that says "something is wrong"
+   here would make every new report look like a fault. */
+.queue__uncoded {
+  margin: 0 0 var(--us-space-2);
+  font-size: var(--us-text-xs);
+  color: var(--us-text-tertiary);
+}
+
+.queue__classify > summary {
+  font-size: var(--us-text-sm);
+  font-weight: 600;
+  color: var(--us-accent-text);
+  cursor: pointer;
+  padding: var(--us-space-1) 0;
+}
+
+.queue__cat {
+  border: 0;
+  border-top: 1px solid var(--us-border);
+  margin: var(--us-space-3) 0 0;
+  padding: var(--us-space-2) 0 0;
+}
+
+.queue__cat legend {
+  font-size: var(--us-text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+  padding: 0;
+}
+
+/* A whole row is the target, not the 16px box. Twenty of these are
+   tapped by somebody holding a phone in one hand. */
+.queue__cat-opt {
+  display: flex;
+  gap: var(--us-space-2);
+  align-items: flex-start;
+  padding: var(--us-space-2) 0;
+  min-height: 44px;
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+  cursor: pointer;
+}
+
+.queue__cat-opt input {
+  margin-top: 2px;
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.queue__cat-opt b {
+  font-weight: 700;
+  color: var(--us-text-primary);
+}
+
+.queue__cat-note {
+  margin: var(--us-space-3) 0 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+}
+
+/* THE CAVEAT TRAVELS WITH THE CODES. This product carries the category
+   names and NOT their definitions, and a definition is what decides a
+   borderline case. Smaller than the choices, never hidden behind one
+   more disclosure: somebody picking a marginal category is exactly who
+   needs to read it. */
+.queue__cat-caveat {
+  margin: var(--us-space-2) 0 var(--us-space-3);
+  font-size: var(--us-text-xs);
+  line-height: var(--us-leading-normal);
+  color: var(--us-text-tertiary);
+}
+
 /* WHAT HAPPENED TO THE REPORT, as a line of its own rather than a
    fourth badge. The sync badge above answers "did it arrive"; this
    answers "what was done about it", and running them together is how

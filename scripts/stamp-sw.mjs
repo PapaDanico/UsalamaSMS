@@ -1202,7 +1202,42 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    THE RULE IS UNCHANGED FOR EVERYTHING ELSE. Entry is 214.8 of 215 and
    the next thing that wants space still takes something out first. */
-const BUDGET = { entry: 215 * 1024, js: 458 * 1024, css: 57 * 1024 };
+
+/* TOTAL 458 -> 466 KB and CSS 57 -> 59 KB, for the codes a State files.
+   ENTRY IS UNCHANGED AT 214.8, and that is the whole argument.
+
+   WHAT IT BUYS. This product classifies a report with its own six
+   types, which describe what kind of REPORT arrived. That is not what
+   an authority files. ICAO's ADREP taxonomy — maintained in detail by
+   EASA as ECCAIRS, with occurrence categories from the CAST/ICAO Common
+   Taxonomy Team — is, and an operator whose reports carry no code hands
+   its State data somebody has to re-code by hand. Hand-coding drifts.
+
+   WHERE THE WEIGHT WENT, MEASURED RATHER THAN ASSUMED. The triage chunk
+   went 14.5 -> 21.3 KB and every other JS chunk was untouched; the
+   taxonomy appears in exactly one chunk, checked by grepping the built
+   output for a code rather than by trusting the import graph. That is
+   the module, twenty grouped choices of markup, the caveat and the
+   handler.
+
+   AND IT IS IN THE TRIAGE CHUNK BY DESIGN, NOT BY LUCK. Coding an
+   occurrence to ADREP is a trained judgement made after reading a
+   narrative — the safety office's job, not the reporter's, which is the
+   same reason the report form does not ask whether an event meets Annex
+   13's definition of an accident. Putting the picker on the form would
+   have been both the wrong product decision and seven kilobytes onto
+   the one chunk a reporter at a remote strip downloads. The two
+   answers agreed, which is usually the sign the reasoning is right.
+
+   THE CSS RAISE IS THE PART TO BE UNCOMFORTABLE ABOUT, and it is
+   recorded rather than waved through. There is ONE stylesheet, so the
+   1.6 KB of classification-panel rules is paid by every reporter on
+   first load for a panel only the safety office ever opens. That is
+   the known cost of a single stylesheet and it was accepted once
+   before, for the printed pack. It should not be accepted a third
+   time: if the next screen wants CSS a reporter cannot see, the answer
+   is to split the stylesheet, not to raise this number again. */
+const BUDGET = { entry: 215 * 1024, js: 466 * 1024, css: 59 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

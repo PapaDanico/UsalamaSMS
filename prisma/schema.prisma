@@ -238,6 +238,35 @@ model SafetyReport {
   phase        FlightPhase?
   hrcTags      String[]
 
+  // ---------------- What the State files it under ----------------
+  //
+  // ICAO occurrence categories, from the CAST/ICAO Common Taxonomy
+  // Team. This product's six report TYPES describe what kind of report
+  // arrived; they are not what a State files. ADREP — maintained in
+  // detail by EASA as the ECCAIRS taxonomy — is, and an operator whose
+  // reports carry no code hands its authority data somebody re-codes by
+  // hand.
+  //
+  // AN ARRAY, AND THAT IS THE TAXONOMY'S OWN RULE RATHER THAN A
+  // CONVENIENCE. CICTT's usage notes are explicit that a runway
+  // excursion which became a loss of control is coded as BOTH, because
+  // the taxonomy exists for accident prevention and every pertinent
+  // element should be recorded. One code per report would discard the
+  // second half of exactly the occurrences worth learning from.
+  //
+  // WRITTEN BY THE SAFETY OFFICE, NOT BY THE REPORTER. It is set
+  // through the disposition, which is the moment somebody trained
+  // classifies the occurrence for onward filing. A reporter at a strip
+  // has not made that determination and must not be made to — the same
+  // reasoning that keeps the Annex 13 occurrence class off the form.
+  //
+  // NO FOREIGN KEY, DELIBERATELY. The code list this product carries is
+  // incomplete by admission, so an operator sending a legitimate CICTT
+  // code the product has not got yet is a gap in the product, not an
+  // error in the report. The occurrence is recorded and the gap is
+  // reported — see unrecognised() in packages/shared/src/cictt.ts.
+  cicttCodes   String[]
+
   // ------------------------ Confidentiality ------------------------
   isAnonymous           Boolean   @default(false)
   // Null when anonymous, and null again — permanently — once a VCR has

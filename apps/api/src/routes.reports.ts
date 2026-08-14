@@ -43,10 +43,20 @@ import {
   REPORT_STATES,
   type ReportState,
 } from "../../../packages/shared/src/disposition";
+import { unrecognised } from "../../../packages/shared/src/cictt";
 import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
 
 const HISTORY_LIMIT = 200;
 const QUEUE_LIMIT = 500;
+
+/* ONE DECLARATION, read by both routes below. De-duplicated so a client
+   cannot write RE twice, bounded so it cannot write an unbounded array,
+   and upper-cased because CICTT codes are published in upper case and
+   `re` and `RE` are not two categories. */
+const CicttCodes = z
+  .array(z.string().trim().toUpperCase().min(1).max(16))
+  .max(12)
+  .transform((codes) => [...new Set(codes)]);
 
 const TransitionSchema = z.object({
   to: z.enum(REPORT_STATES),
@@ -60,7 +70,29 @@ const TransitionSchema = z.object({
      one another's disposition. Optional, because a single-operator
      safety office should not have to send it. */
   fromState: z.enum(REPORT_STATES).optional(),
+  /* THE ICAO OCCURRENCE CATEGORIES, set by the safety office as part of
+     the disposition rather than by the reporter on the form.
+
+     Coding an occurrence to ADREP is a trained judgement about what
+     happened, made after somebody has read the narrative. Asking a
+     reporter at a strip to pick from twenty categories would be the
+     same mistake as asking them whether the event meets Annex 13's
+     definition of an accident, and the form already refuses that one.
+
+     NOT VALIDATED AGAINST THE LIST HERE. The list is incomplete by
+     admission, so an unknown code is recorded and REPORTED back rather
+     than rejected — see the response below. Bounded and de-duplicated
+     so a client cannot write an unbounded array, and normalised to
+     upper case because CICTT codes are published in upper case and
+     `re` and `RE` are not two categories. */
+  cicttCodes: CicttCodes.optional(),
 });
+
+/* The same field, REQUIRED, for the route that does nothing else.
+   Both routes read one declaration: two copies of the bound and the
+   upper-casing are two copies that come to disagree, and the one that
+   drifts is whichever is edited second. */
+const CodesSchema = z.object({ cicttCodes: CicttCodes });
 
 export async function reportRoutes(app: FastifyInstance): Promise<void> {
   const limited = {
@@ -102,7 +134,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
       select: {
         id: true, clientId: true, state: true, type: true, title: true,
         createdAt: true, isAnonymous: true, jurisdiction: true, awareAt: true,
-        occurredAt: true, location: true, phase: true,
+        occurredAt: true, location: true, phase: true, cicttCodes: true,
       },
     });
 
@@ -124,6 +156,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
         occurredAt: r.occurredAt?.toISOString() ?? null,
         location: r.location,
         phase: r.phase,
+        cicttCodes: r.cicttCodes,
         available: transitionsFrom(r.state as ReportState)
           .filter((t) => can(auth.role as never, t.needs))
           .map((t) => ({ to: t.to, label: t.label, requiresNote: t.requiresNote })),
@@ -151,7 +184,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
        row exists. */
     const report = await prisma.safetyReport.findFirst({
       where: { ...tenantWhere(req), id },
-      select: { id: true, state: true, createdAt: true },
+      select: { id: true, state: true, createdAt: true, cicttCodes: true },
     });
     if (!report) return reply.code(404).send({ error: "not_found" });
 
@@ -165,6 +198,9 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({
       state: report.state,
       filedAt: report.createdAt.toISOString(),
+      /* Read back so the screen renders the coding that EXISTS rather
+         than the coding somebody last submitted from this browser. */
+      cicttCodes: report.cicttCodes,
       available: transitionsFrom(report.state as ReportState)
         .filter((t) => can(auth.role as never, t.needs))
         .map((t) => ({
@@ -187,6 +223,74 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
         at: h.at.toISOString(),
         by: h.byUserId,
       })),
+    });
+  });
+
+  /* ------------------------------------------------------------------
+     CODE IT, WITHOUT MOVING IT.
+
+     Codes ride the disposition below, because triage is the natural
+     moment to classify: somebody has just read the narrative. That
+     alone is not enough. A report closed last month and coded RE when
+     it should have been RE and LOC-I has to be correctable, and the
+     only route to the column was a state change — so fixing a
+     classification would have meant reopening a closed report and
+     closing it again, leaving two transitions in the history that
+     describe an investigation that never happened.
+
+     A classification is not a state change, so it gets its own verb.
+
+     `report.triage` is the authority, not `report.close`: coding is the
+     same judgement as triage — what kind of occurrence is this — and
+     the person who does one is the person who does the other.
+     ------------------------------------------------------------------ */
+  app.put("/api/v1/reports/:id/codes", limited, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const auth = req.auth!;
+    if (!can(auth.role as never, "report.triage")) {
+      return reply.code(403).send({
+        error: "forbidden",
+        message:
+          "Classifying an occurrence to ICAO's categories is held by the roles that " +
+          "triage reports.",
+      });
+    }
+
+    const parsed = CodesSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid", detail: parsed.error.flatten() });
+    }
+
+    const report = await prisma.safetyReport.findFirst({
+      where: { ...tenantWhere(req), id },
+      select: { id: true, cicttCodes: true },
+    });
+    if (!report) return reply.code(404).send({ error: "not_found" });
+
+    const before = report.cicttCodes;
+    await prisma.$transaction(async (tx) => {
+      await tx.safetyReport.update({
+        where: { id: report.id },
+        data: { cicttCodes: { set: parsed.data.cicttCodes } },
+      });
+      await appendAuditTx(tx, {
+        orgId: auth.org,
+        userId: auth.sub,
+        action: "report.classify",
+        entityType: "SafetyReport",
+        entityId: report.id,
+        /* BOTH SIDES OF THE CHANGE. How an occurrence is coded decides
+           what the State is told about it, so "was RE, is now RE and
+           LOC-I" is the auditable fact — a record of the new value
+           alone cannot answer whether a category was removed. */
+        detail: { from: before, to: parsed.data.cicttCodes },
+      });
+    });
+
+    const unknown = unrecognised(parsed.data.cicttCodes);
+    return reply.send({
+      cicttCodes: parsed.data.cicttCodes,
+      ...(unknown.length ? { unrecognisedCodes: unknown } : {}),
     });
   });
 
@@ -259,9 +363,24 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
           byUserId: auth.sub,
         },
       });
+      /* The codes ride the same transaction as the move, so a report
+         cannot end up classified by a disposition that did not happen.
+
+         `undefined` means the caller did not mention codes and the
+         existing ones stand; an empty ARRAY means the safety office
+         cleared them deliberately. Those are different intentions and
+         Prisma already distinguishes them — collapsing both to "leave
+         alone" would make removing a wrong code impossible, and
+         collapsing both to "clear" would silently wipe the coding every
+         time somebody added a note. */
       await tx.safetyReport.update({
         where: { id: report.id },
-        data: { state: parsed.data.to },
+        data: {
+          state: parsed.data.to,
+          ...(parsed.data.cicttCodes === undefined
+            ? {}
+            : { cicttCodes: { set: parsed.data.cicttCodes } }),
+        },
       });
       await appendAuditTx(tx, {
         orgId: auth.org,
@@ -274,10 +393,30 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
            narrative permission — see NARRATIVE_PERMISSIONS. The move is
            the auditable fact; the note lives on the row that the same
            tenancy check already guards. */
-        detail: { from, to: parsed.data.to },
+        detail: {
+          from,
+          to: parsed.data.to,
+          /* The codes ARE in the audit detail where the note is not.
+             The note can quote a narrative; a category code cannot —
+             it is a classification, not content, and how an occurrence
+             was coded for onward filing to the State is exactly the
+             kind of decision an audit trail exists to hold. */
+          ...(parsed.data.cicttCodes === undefined
+            ? {}
+            : { cicttCodes: parsed.data.cicttCodes }),
+        },
       });
       return row;
     });
+
+    /* WHAT THIS PRODUCT DID NOT RECOGNISE, reported rather than
+       refused. The code list here is incomplete by admission, so an
+       operator sending a legitimate CICTT code this build has not got
+       yet has found a gap in the software — not made an error in their
+       report. The occurrence is stored intact with the code they gave
+       it, and the gap comes back in the response so a screen can say
+       so instead of pretending the code was understood. */
+    const unknown = parsed.data.cicttCodes ? unrecognised(parsed.data.cicttCodes) : [];
 
     return reply.code(201).send({
       state: parsed.data.to,
@@ -287,6 +426,8 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
         note: moved.note,
         at: moved.at.toISOString(),
       },
+      ...(parsed.data.cicttCodes === undefined ? {} : { cicttCodes: parsed.data.cicttCodes }),
+      ...(unknown.length ? { unrecognisedCodes: unknown } : {}),
     });
   });
 }

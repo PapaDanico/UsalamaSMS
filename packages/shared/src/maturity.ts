@@ -723,6 +723,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "/api/v1/sms/voluntary",
       "/api/v1/reports/queue",
       "/api/v1/reports/:id/disposition",
+      "/api/v1/reports/:id/codes",
     ],
     has:
       "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +
@@ -732,12 +733,18 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "scored. And a disposition: every report is triaged, investigated, closed with a " +
       "statement of what was done, or reopened with a reason — each move recorded against " +
       "the person who made it, so time from report to closure is computed from the record " +
-      "rather than typed.",
+      "rather than typed. Each occurrence is also classified to ICAO's own categories, from " +
+      "the CAST/ICAO Common Taxonomy Team — which is what a State files, rather than this " +
+      "product's six report types — with more than one code where more than one applies, " +
+      "because that is the taxonomy's own rule.",
     missing:
       "Proactive and predictive identification — surveys, flight data, and the analysis " +
       "Doc 10159 asks for. And disposition is a connected act: the queue shows this " +
       "handset's reports offline and says so, but the operator's whole queue, and moving " +
-      "a report through it, need a connection.",
+      "a report through it, need a connection. The occurrence categories carry their " +
+      "codes and published names but NOT their definitions, and the list is shorter than " +
+      "CICTT 4.8 — a definition is what decides a borderline case, so it is cited rather " +
+      "than paraphrased, and the screen says so where somebody is choosing.",
     href: "/report",
   },
   {

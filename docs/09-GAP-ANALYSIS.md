@@ -136,23 +136,48 @@ says so in the type. The duty is certain because Annex 13 is; the
 domestic regulation that gives it effect has not been read here. Stated
 rather than assumed — the same discipline as `governedByUnread`.
 
-### 2.4 · Occurrence coding — the regulator's own taxonomy · MATERIAL
+### 2.4 · Occurrence coding — CLOSED, 14 August 2026
 
-The product classifies a report with its own six types. That is not
-what a State files. ICAO's ADREP taxonomy, maintained by EASA as
-ECCAIRS, with occurrence categories from the CAST/ICAO Common Taxonomy
-Team, is how every State classifies an occurrence when reporting to
-ICAO.
+The product classifies a report with its own six types. That is not what
+a State files. ICAO's ADREP taxonomy, maintained by EASA as ECCAIRS,
+with occurrence categories from the CAST/ICAO Common Taxonomy Team, is
+how every State classifies an occurrence when reporting to ICAO — and
+`cictt.ts` carried those codes while being imported by nothing at all.
 
-`packages/shared/src/cictt.ts` exists and carries codes and labels but
-**is wired into nothing** — no schema column, no form control, no API
-field. An operator whose reports carry no CICTT code hands its State
-data somebody has to re-code by hand.
+It is now a column on the report, written by the safety office at
+disposition and correctable afterwards through a verb of its own.
+**Coding is not a state change**: a report closed last month and coded
+wrongly has to be fixable without reopening and re-closing it, which
+would leave two transitions in the history describing an investigation
+that never happened.
 
-The module deliberately carries codes and names but **not definitions**,
-and declares `CICTT_VERIFIED_AGAINST_PRIMARY = false`. A category's
-definition decides the borderline case; paraphrasing one from a summary
-would look authoritative and classify a marginal occurrence wrongly.
+**On the triage screen and not on the report form**, which is both the
+right product decision and the right engineering one. Coding to ADREP is
+a trained judgement made after reading a narrative; a reporter at a
+strip has not made it, for the same reason the form does not ask whether
+an event meets Annex 13's definition of an accident. It also keeps a
+seven-kilobyte taxonomy out of the one chunk that reporter downloads —
+entry held flat at 214.8 KB across the change. When the product answer
+and the budget answer agree, the reasoning is usually right.
+
+**More than one code, because that is the taxonomy's own rule.** CICTT's
+usage notes are explicit that a runway excursion which became a loss of
+control is coded as BOTH. A smoke check ticks a second category on a
+report that already carries one and asserts both reach the wire —
+mutation-checked by making the picker replace rather than add, which is
+exactly the defect a naive "the new code was sent" assertion would miss.
+
+**What is still partial, and says so on screen.** The module carries
+codes and published names but *not* definitions, and declares
+`CICTT_VERIFIED_AGAINST_PRIMARY = false`. A definition decides the
+borderline case; paraphrasing one from a secondary source would look
+authoritative and classify a marginal occurrence wrongly. The caveat is
+rendered in the picker itself, where somebody is choosing — asserted,
+and mutation-checked by deleting it.
+
+An unknown code is **recorded and reported, never refused**. The list is
+incomplete by admission, so a legitimate CICTT code this build lacks is
+a gap in the software, not an error in the report.
 
 ### 2.5 · Voluntary reporting — CLOSED
 
@@ -338,16 +363,13 @@ Ordered by leverage, not by size.
 2. **A person registers the sender ID.** Unblocks alerting, which
    closes four computed-but-undelivered warnings, moves element 4.1
    toward BUILT, and fills the one row every incumbent has.
-3. **Wire CICTT.** The taxonomy module exists and reaches nothing.
-   Schema, form and API — it is the highest-value regulatory gap that
-   needs no external permission.
-4. **Per-tenant configuration, with the line enforced structurally.**
+3. **Per-tenant configuration, with the line enforced structurally.**
    Preference in the tenant record; law in the shared modules.
-5. **Run axe over the rendered states.** The one quality dimension with
+4. **Run axe over the rendered states.** The one quality dimension with
    no coverage at all.
-6. **Delete synchronisation**, before a second device per operator is
+5. **Delete synchronisation**, before a second device per operator is
    realistic.
-7. **A second jurisdiction**, when somebody can read the instrument.
+6. **A second jurisdiction**, when somebody can read the instrument.
 
 Items 1 and 2 are not engineering and are the two that unblock the
 most. That is the finding this analysis exists to surface: **the
