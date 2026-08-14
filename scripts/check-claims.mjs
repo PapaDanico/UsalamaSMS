@@ -1370,6 +1370,88 @@ assert(
   );
 }
 
+/* ---------------- A HANDOFF IS NOT AN ALERT ----------------
+   The share control hands a computed warning to WhatsApp or a mail
+   client. It reaches somebody who has ALREADY OPENED THE SCREEN — it
+   removes the retyping, not the checking.
+
+   THE ONE WAY IT DOES HARM IS BY BEING MISTAKEN FOR THE THING IT
+   STANDS IN FOR. An operator who believes they are being alerted stops
+   looking, and then the first they hear of a lapsed licence or a
+   missed reporting deadline is from the authority. That is a worse
+   position than having no share button, because the button bought the
+   belief.
+
+   So two things are asserted. Element 4.1 must still say the warning
+   does not arrive — the coverage figure does not move for this, and a
+   future edit that quietly closes 4.1 on the strength of a share sheet
+   fails here. And the copy must not use the vocabulary of notification:
+   a button that says "notify the safety manager" is a promise this
+   cannot keep.
+   --------------------------------------------------------------- */
+{
+  const covSrc = read('packages/shared/src/maturity.ts');
+  /* Located by index rather than by a regex over braces: the entries
+     contain nested objects and template strings, and a brace-counting
+     pattern that looked right matched the wrong block and reported 4.1
+     as no longer PARTIAL while it plainly was. A window from the id to
+     the next id is unambiguous. */
+  /* SEARCHED INSIDE `COVERAGE`, not across the file. `id: "4.1"` appears
+     twice — once in the twelve-element FRAMEWORK list, which carries a
+     question and an evidence line and no state at all, and once in
+     COVERAGE, which is the one this assertion is about. Anchoring on
+     the first occurrence found the framework entry, saw no
+     state: "PARTIAL" in it, and reported that 4.1 had been closed while
+     it plainly had not. A false failure is not a harmless one: it
+     teaches whoever meets it that this gate cries wolf. */
+  const covStart = covSrc.indexOf('export const COVERAGE');
+  const inCoverage = covStart >= 0 ? covSrc.slice(covStart) : '';
+  const at41 = inCoverage.indexOf('id: "4.1"');
+  const at42 = inCoverage.indexOf('id: "4.2"');
+  const training = at41 >= 0 && at42 > at41 ? inCoverage.slice(at41, at42) : '';
+  assert(
+    "element 4.1's coverage entry was located",
+    training.length > 0,
+    'no 4.1 entry in COVERAGE — this gate has lost its subject (rule 11)'
+  );
+  assert(
+    'ELEMENT 4.1 STILL SAYS THE WARNING DOES NOT ARRIVE',
+    /state:\s*"PARTIAL"/.test(training),
+    'element 4.1 is no longer PARTIAL. A share sheet is not alerting: it reaches ' +
+      'somebody who has already opened the screen. If real delivery has shipped, this ' +
+      'assertion should be changed deliberately in the same commit — not discovered ' +
+      'to have been passing'
+  );
+
+  /* The copy, on the component and on every screen that hosts it.
+     Comments stripped first: this file and that one argue about
+     alerting constantly, and a gate that read the prose would fail on
+     the paragraph explaining why the prose matters. */
+  const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const hosts = [
+    'apps/web/src/components/Handoff.js',
+    'packages/shared/src/handoff.ts',
+  ];
+  const overclaims = [];
+  for (const rel of hosts) {
+    const code = strip(read(rel));
+    /* Matched inside quoted strings only — the words are legitimate in
+       an identifier or a type name, and only reach a person as copy. */
+    for (const m of code.matchAll(/['"`]([^'"`]{4,})['"`]/g)) {
+      if (/\b(alert|notif(y|ies|ication)|remind(er|s)?)\b/i.test(m[1])) {
+        overclaims.push(`${rel}: ${JSON.stringify(m[1].slice(0, 60))}`);
+      }
+    }
+  }
+  assert(
+    'THE SHARE CONTROL DOES NOT SPEAK THE LANGUAGE OF NOTIFICATION',
+    overclaims.length === 0,
+    `${overclaims.join('; ')} — this control cannot notify anybody. It composes a ` +
+      'sentence for a person who is already looking at the screen, and copy that says ' +
+      'otherwise sells a promise the product does not keep'
+  );
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);

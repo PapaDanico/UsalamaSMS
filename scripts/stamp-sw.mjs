@@ -1294,7 +1294,39 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    NOT A CSS RAISE. The previous receipt's rule stands: the next CSS
    raise splits the stylesheet first. This is JS, and it is nine
    hundred bytes to stop a runway incursion being filed as "other". */
-const BUDGET = { entry: 215 * 1024, js: 472 * 1024, css: 60 * 1024 };
+/* TOTAL 472 -> 475 KB for the handoff. CSS NOT RAISED, AND THAT IS THE
+   part of this receipt worth reading.
+
+   The previous CSS receipt said: "if the next screen wants CSS a
+   reporter cannot see, the answer is to split the stylesheet, not to
+   raise this number again." This feature came in 0.2 KB over. The
+   choice was to split the sheet — a change to how every screen loads,
+   made incidentally, at the end of a long session — or to build the
+   strip on `.notice`, which already exists and already looks right.
+   Reusing it cost three declarations instead of fifteen and left CSS at
+   59.9 of 60. The rule was met rather than argued with, which is what a
+   rule written down two commits earlier is for.
+
+   WHAT THE JS BUYS. Four things in this product are computed and
+   delivered to nobody: lapsing training, an unverified emergency
+   contact, an approaching reporting deadline, an overdue corrective
+   action. Real delivery is SMS and it is blocked on credentials that
+   must not travel through a chat log. This is the part that needs
+   none — the Web Share API and a mailto: link are both client-side, so
+   the product writes the sentence and the safety manager sends it from
+   whatever they already have open, which in this market is WhatsApp.
+
+   IT IS NOT ALERTING AND THE BUDGET SHOULD NOT PRETEND IT IS. It
+   reaches somebody who has already opened the screen. Element 4.1 stays
+   PARTIAL, the coverage figure does not move, and two claims assertions
+   hold both of those — because the way this feature does harm is by
+   being mistaken for the thing it stands in for.
+
+   WHERE THE WEIGHT WENT, MEASURED. The triage chunk went 21.3 -> 25.4
+   KB and the composer appears in exactly one chunk, checked by grepping
+   the built output. ENTRY UNCHANGED AT 214.8 for the sixth change
+   running: a reporter at a strip does not open the triage queue. */
+const BUDGET = { entry: 215 * 1024, js: 475 * 1024, css: 60 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

@@ -33,6 +33,13 @@ const SRC = 'apps/web/src';
    through. */
 const HOOKS = new Map([
   [
+    'handoff',
+    'The delegated-listener selector on the share button. The button is ' +
+      'visually a .btn .btn-ghost .btn-sm and styling it again here would be a ' +
+      'second opinion about how a button looks — this class exists only so one ' +
+      'listener per outlet can find every share button, present and future.',
+  ],
+  [
     'print-id-slot',
     'A JS insertion point, not a visual. The four screens that render ' +
       'synchronously put an empty div here and attachPrintId() fills it once ' +
