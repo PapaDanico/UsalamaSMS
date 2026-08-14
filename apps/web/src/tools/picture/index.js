@@ -122,7 +122,7 @@ export async function render(outlet) {
     return;
   }
 
-  const { reporting, register, indicators, changes, window: win } = data;
+  const { reporting, register, indicators, changes, actions, window: win } = data;
 
   outlet.innerHTML = html`
     <section class="panel">
@@ -139,7 +139,7 @@ export async function render(outlet) {
       <!-- WHAT NEEDS ATTENTION, FIRST AND ONLY IF THERE IS ANY. An
            empty attention panel with three reassuring zeroes in it is
            the thing that makes a dashboard stop being read. -->
-      ${attention({ register, indicators, changes, reporting })}
+      ${attention({ register, indicators, changes, reporting, actions })}
 
       <h2>Reporting</h2>
       <div class="picture-grid">
@@ -161,6 +161,27 @@ export async function render(outlet) {
       <p class="picture-note">${TREND_TEXT[reporting.trend]}.</p>
 
       ${bars('The queue', reporting.queue.by, STATE_LABEL)}
+
+      <h2 id="actions">Corrective actions</h2>
+      ${actions.total === 0
+        ? html`<p class="lede">
+            Nothing recorded. An action raised against a report, a finding, a
+            register entry or a change is tracked here to closure and to
+            verification — which is what "mitigations tracked to closure" means
+            in element 2.2's evidence.
+          </p>`
+        : html`
+            <div class="picture-grid">
+              ${figure('Outstanding', actions.outstanding, `of ${actions.total} recorded`)}
+              ${figure('Overdue', actions.overdue, 'past a date somebody chose')}
+              ${figure('Awaiting verification', actions.awaitingVerification, 'done, not yet checked')}
+            </div>
+            ${actions.truncated
+              ? html`<p class="notice">
+                  Showing the first actions only. These counts are a floor.
+                </p>`
+              : ''}
+          `}
 
       <h2>The register</h2>
       ${register.open.total === 0
@@ -211,8 +232,32 @@ export async function render(outlet) {
    is a statistic; "3 risks are owned below the authority their band
    requires — open the register" is a next step.
    ------------------------------------------------------------------ */
-function attention({ register, indicators, changes, reporting }) {
+function attention({ register, indicators, changes, reporting, actions }) {
   const items = [];
+
+  /* OVERDUE ACTIONS FIRST. Everything else on this list is a state of
+     the record; this one is a promise the operator made and has not
+     kept, with a date attached. It is the item an auditor opens with. */
+  if (actions.overdue > 0) {
+    items.push(html`<li>
+      <strong>${actions.overdue} corrective action${actions.overdue === 1 ? ' is' : 's are'} past their due date.</strong>
+      <a href="#actions">See the actions below</a>.
+    </li>`);
+  }
+  if (actions.undated > 0) {
+    items.push(html`<li>
+      <strong>${actions.undated} outstanding action${actions.undated === 1 ? ' has' : 's have'} no due date.</strong>
+      An action with no date is not late and never will be — "by when?" is the
+      question an auditor asks next. <a href="#actions">See the actions below</a>.
+    </li>`);
+  }
+  if (actions.awaitingVerification > 0) {
+    items.push(html`<li>
+      <strong>${actions.awaitingVerification} action${actions.awaitingVerification === 1 ? ' is' : 's are'} done and not yet verified.</strong>
+      Element 3.3's evidence is findings closed <em>and verified</em>, by somebody
+      other than whoever did the work. <a href="#actions">See the actions below</a>.
+    </li>`);
+  }
 
   const below = register.holderGaps.filter((g) => g.verdict === 'below').length;
   if (below > 0) {

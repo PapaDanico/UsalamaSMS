@@ -34,12 +34,14 @@ import { spiVerdict } from "../../../packages/shared/src/spi";
 import {
   tally, sampleOf, trendOf, holderGaps, reportCount,
 } from "../../../packages/shared/src/picture";
+import { summarise as summariseActions } from "../../../packages/shared/src/capa";
 import { prisma, authenticate, tenantWhere } from "./core";
 
 /** Ninety days: a quarter, which is the cadence an SMS review runs on. */
 const DEFAULT_WINDOW_DAYS = 90;
 const MAX_WINDOW_DAYS = 730;
 const REGISTER_LIMIT = 500;
+const ACTION_LIMIT = 1000;
 
 const REPORT_STATES = [
   "SUBMITTED", "TRIAGED", "UNDER_INVESTIGATION", "ACTIONS_OPEN", "CLOSED",
@@ -70,7 +72,7 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
     const from = new Date(to.getTime() - days * DAY);
     const where = tenantWhere(req);
 
-    const [byState, filed, closures, monthly, register, indicators, changes] =
+    const [byState, filed, closures, monthly, register, indicators, changes, actions] =
       await Promise.all([
         /* THE WHOLE QUEUE, not the window. "How many are open" is a
            question about now, and a report filed four months ago and
@@ -129,6 +131,17 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
            list of omissions. */
         prisma.changeAssessment.count({
           where: { ...where, status: "IN_EFFECT", reviewedOn: null },
+        }),
+
+        /* THE CAPA LOOP'S OWN QUESTION: what did we undertake to do, and
+           is it done. Fetched as rows rather than counted in SQL because
+           overdue is DERIVED from the due date against today — there is
+           no status column to GROUP BY, deliberately, since a stored one
+           would still say OPEN the day after the date passed. */
+        prisma.correctiveAction.findMany({
+          where,
+          take: ACTION_LIMIT,
+          select: { dueOn: true, completedOn: true, verifiedOn: true, cancelledOn: true },
         }),
       ]);
 
@@ -198,6 +211,10 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
       },
       indicators: { total: indicators.length, alerting },
       changes: { inEffectUnreviewed: changes },
+      actions: {
+        ...summariseActions(actions, to),
+        truncated: actions.length === ACTION_LIMIT,
+      },
     });
   });
 }

@@ -137,6 +137,7 @@ model Org {
   changes          ChangeAssessment[]
   documentReads    DocumentAcknowledgement[]
   reportMoves      ReportTransition[]
+  actions          CorrectiveAction[]
 }
 
 model User {
@@ -168,6 +169,8 @@ model User {
   changesApproved   ChangeAssessment[]        @relation("changeApprover")
   documentReads     DocumentAcknowledgement[]
   reportMoves       ReportTransition[]
+  actionsCompleted  CorrectiveAction[]        @relation("actionCompleter")
+  actionsVerified   CorrectiveAction[]        @relation("actionVerifier")
 
   @@index([orgId, role])
 }
@@ -251,6 +254,7 @@ model SafetyReport {
   feedback    SafetyCommunication[]
   hazards     Hazard[]
   transitions ReportTransition[]
+  actions     CorrectiveAction[]
 
   // DELIBERATELY NOT A COLUMN: regulatorDeadline.
   //
@@ -321,6 +325,82 @@ model ReportTransition {
   /// indicator aggregates over.
   @@index([orgId, reportId, at])
   @@index([orgId, toState, at])
+}
+
+/// A corrective or preventive action — the CAPA loop.
+///
+/// WHAT WAS MISSING. The product could record that something was DONE:
+/// a note on a report's closure, a `correctiveAction` string on an
+/// audit finding, `controls` on a register entry. What it could not do
+/// was treat the action itself as an object with an owner, a date and a
+/// verification. So "fit a guard to the fuel bowser by month end" lived
+/// as prose inside whichever record mentioned it, invisible to any
+/// question of the form "what is outstanding".
+///
+/// ONE TABLE, FOUR SOURCES, EXACTLY ONE SET. An action arising from a
+/// report, a finding, a register entry or a change is the same kind of
+/// object, and splitting it four ways would give an operator four lists
+/// and no answer across the SMS. The "exactly one" is a CHECK
+/// constraint in the migration, not a convention — a convention is what
+/// a second developer does not know about.
+///
+/// NO STATUS COLUMN, DELIBERATELY. Charter rule 6, and here it is not a
+/// nicety: a stored "OPEN" is still OPEN the day after the due date
+/// passes, so the one state an operator needs — overdue — is the one a
+/// stored status cannot produce without a nightly job this product does
+/// not have. statusOf() in packages/shared/src/capa.ts derives it from
+/// the dates on every read.
+///
+/// completedById AND verifiedById ARE BOTH RESTRICT, like the audit
+/// chain. Who did the work and who checked it are part of the record,
+/// and an offboarded person having done either remains true.
+model CorrectiveAction {
+  id    String @id @default(uuid())
+  orgId String
+
+  /// Exactly one of these four is set. See the CHECK in the migration.
+  reportId  String?
+  findingId String?
+  riskId    String?
+  changeId  String?
+
+  action String @db.Text
+
+  /// A post code with a free-text escape, matching the register: a
+  /// small operator's real titles are not this product's enum, and
+  /// refusing an unrecognised one pushes the answer into a name box.
+  ownerPost String
+  dueOn     DateTime?
+
+  completedOn    DateTime?
+  completedById  String?
+  completionNote String?   @db.Text
+
+  verifiedOn       DateTime?
+  verifiedById     String?
+  verificationNote String?   @db.Text
+
+  /// Cancelling is a recorded decision, not a delete. An operator that
+  /// decided against a control has made a safety decision, and the
+  /// reason is the part an auditor asks for.
+  cancelledOn     DateTime?
+  cancelledReason String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org         Org               @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  report      SafetyReport?     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  finding     AuditFinding?     @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  risk        RiskAssessment?   @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  change      ChangeAssessment? @relation(fields: [changeId], references: [id], onDelete: Cascade)
+  completedBy User?             @relation("actionCompleter", fields: [completedById], references: [id], onDelete: Restrict)
+  verifiedBy  User?             @relation("actionVerifier", fields: [verifiedById], references: [id], onDelete: Restrict)
+
+  /// The question this table exists to answer: what is outstanding, and
+  /// what is late.
+  @@index([orgId, dueOn, completedOn])
+  @@index([orgId, reportId])
 }
 
 model Hazard {
@@ -396,7 +476,8 @@ model RiskAssessment {
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 
-  hazard Hazard @relation(fields: [hazardId], references: [id], onDelete: Cascade)
+  hazard  Hazard             @relation(fields: [hazardId], references: [id], onDelete: Cascade)
+  actions CorrectiveAction[]
 
   @@index([orgId, tolerability])
   // The two queries a safety office actually runs against a register:
@@ -741,8 +822,9 @@ model ChangeAssessment {
   updatedAt DateTime     @updatedAt
   createdAt DateTime     @default(now())
 
-  org        Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  approvedBy User? @relation("changeApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  org        Org                @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  approvedBy User?              @relation("changeApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  actions    CorrectiveAction[]
 
   @@index([orgId, status])
   @@index([orgId, effectiveFrom])
@@ -921,8 +1003,9 @@ model AuditFinding {
   verifiedOn       DateTime?
   createdAt        DateTime        @default(now())
 
-  org        Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  verifiedBy User? @relation("findingVerifier", fields: [verifiedById], references: [id], onDelete: Restrict)
+  org        Org                @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  verifiedBy User?              @relation("findingVerifier", fields: [verifiedById], references: [id], onDelete: Restrict)
+  actions    CorrectiveAction[]
 
   @@index([orgId, closedOn, dueBy])
   @@index([orgId, elementId])

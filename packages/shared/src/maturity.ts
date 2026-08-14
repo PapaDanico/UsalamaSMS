@@ -743,12 +743,16 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        That is what `serverRoutes` below now exists to stop, and the
        reason it is a field rather than a promise. */
     state: "BUILT",
-    serverRoutes: ["/api/v1/register"],
+    serverRoutes: ["/api/v1/register", "/api/v1/actions"],
     has:
       "The Doc 9859 5x5 matrix, a risk assessor, and a risk register with initial and " +
       "residual bands, owners, review dates and acceptance — held for the operator so " +
       "the safety office can read it and an inspector can be shown it, with the bands " +
-      "computed by the same scale the matrix renders.",
+      "computed by the same scale the matrix renders. And this element's other half, " +
+      "\"mitigations tracked to closure\": a corrective action is its own record with an " +
+      "owner, a due date, a completion and a verification by somebody other than " +
+      "whoever did the work — overdue derived from the date on every read rather than " +
+      "stored, because a stored status still says open the day after the date passes.",
     missing:
       "Hazards reaching it from the reporting queue rather than being typed again — a " +
       "register entry still records where it came from so that difference stays " +
@@ -865,11 +869,14 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        performs — because a safety manager verifying their own finding
        closed is the finding, not the evidence. */
     state: "BUILT",
-    serverRoutes: ["/api/v1/sms/findings"],
+    serverRoutes: ["/api/v1/sms/findings", "/api/v1/actions"],
     has:
       "Internal audit findings with a severity, an owning post and a due date; the " +
       "corrective action taken; closure; and verification by key management rather than " +
-      "by whoever raised and closed it.",
+      "by whoever raised and closed it. A finding's actions are now tracked individually " +
+      "as well, each with its own owner, date and separate verification, and counted " +
+      "alongside every other outstanding action in the operator's risk picture rather " +
+      "than only inside the audit that raised them.",
     missing:
       "The audit programme's schedule. The product holds what an audit found and what " +
       "was done about it, not when the next one falls due.",

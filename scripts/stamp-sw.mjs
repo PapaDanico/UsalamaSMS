@@ -925,7 +925,47 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    in the argument. Not folded into a raise for something else.
 
    A dependency, a polyfill or a component library still buys nothing. */
-const BUDGET = { entry: 214 * 1024, js: 436 * 1024, css: 56 * 1024 };
+/* TOTAL 436 -> 438 KB, for the CAPA loop. ENTRY UNMOVED at 213.7, AND
+   THAT IS THE POINT OF THIS ENTRY IN THE LEDGER.
+
+   The receipt above said the next DESTINATION does not get added on
+   these terms, because entry had 300 bytes left. This is not a
+   destination. The corrective actions were going to be /actions with
+   its own nav item — which would have cost another ~200 bytes of entry
+   for the label, on the rule I had just written — so they went onto the
+   risk picture instead, under an in-page anchor.
+
+   That is a better answer on its own merits and not only on the budget:
+   "what is outstanding" is an assurance question, and the risk picture
+   is the assurance screen. Two screens would have split one question.
+
+     picture chunk   8,384 -> 10,096   +1,712 bytes
+     entry         218,801 -> 218,801  UNMOVED
+     capa.ts                            in NO browser chunk
+
+   capa.ts is server-only, deliberately and checked in the built output:
+   the screen renders a summary the API computed, so the status
+   arithmetic exists once. The same choice as disposition.ts, for the
+   same reason — a second copy in the browser is the copy that
+   disagrees.
+
+   WHAT IT BUYS. The product could record that something was DONE — a
+   note on a closure, a string on a finding, controls on a register
+   entry — and could not treat the action as an object with an owner, a
+   date and a verification. So an undertaking lived as prose inside
+   whichever record mentioned it, and no screen could answer "what is
+   outstanding". It is the second half of two elements already claimed:
+   2.2's evidence is "mitigations tracked to closure" and 3.3's is
+   "findings closed AND VERIFIED".
+
+   And the rule that makes the loop worth anything: an action cannot be
+   verified by the person who completed it. Mutation-checked in both the
+   unit suite and the integration suite.
+
+   THE ENTRY RULE STANDS AND HAS NOW BEEN APPLIED ONCE. 300 bytes of
+   headroom. The next thing that wants a nav item takes something out
+   first, or argues the entry budget up in its own receipt. */
+const BUDGET = { entry: 214 * 1024, js: 438 * 1024, css: 56 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
