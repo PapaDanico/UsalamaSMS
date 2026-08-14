@@ -811,6 +811,60 @@ assert(
     contradictions.join("; ") +
       " — this is the 2.2 defect: the coverage page understating the product to a regulator",
   );
+
+  /* ============================================================
+     AND THE OPPOSITE QUESTION: does the API hold anything no element
+     admits to?
+
+     THE DEFECT THIS EXISTS FOR. Element 2.1 read "the answers are the
+     operator's own to write down elsewhere until this holds them" one
+     commit after /api/v1/sms/voluntary shipped and held them. Every
+     assertion above passed on it, because all three start from the
+     routes an entry NAMES — and 2.1 named none for that capability.
+
+     Silence is the cheaper way to understate. The 2.2 defect had to
+     write three false clauses to go wrong; this one only had to leave
+     a sentence alone. So the direction of the check is reversed here:
+     start from what the API registers, and require that some element
+     own it.
+
+     SUB-PATHS COUNT AS OWNED. /api/v1/spi/:id/periods is the same
+     capability as /api/v1/spi, and making every entry recite its own
+     sub-routes would be noise that the next reader deletes. What must
+     be named is a capability with no named parent at all — which is
+     exactly the shape /api/v1/sms/voluntary had.
+     ============================================================ */
+  const NOT_AN_ELEMENT = new Map([
+    ["/api/v1/auth/login", "Authentication is how an operator reaches the SMS, not part of it."],
+    ["/api/v1/auth/logout", "As above."],
+    ["/api/v1/auth/refresh", "As above."],
+    ["/api/v1/auth/me", "As above."],
+    ["/api/v1/export", "Evidence extraction spans every element rather than belonging to one."],
+  ]);
+
+  const named = new Set(
+    entries.flatMap((e) => [...e.text.matchAll(/"(\/api\/[^"]+)"/g)].map((m) => m[1])),
+  );
+  const owned = (route) =>
+    named.has(route) ||
+    [...named].some((n) => route.startsWith(`${n}/`)) ||
+    NOT_AN_ELEMENT.has(route);
+
+  const unclaimed = [...registered].filter((r) => !owned(r)).sort();
+
+  assert(
+    "the exemption list is exemptions, not a second route table",
+    NOT_AN_ELEMENT.size < registered.size / 2,
+    `${NOT_AN_ELEMENT.size} of ${registered.size} routes are exempt — at that ratio ` +
+      "this check passes by exempting whatever it would otherwise fail on",
+  );
+  assert(
+    "NO CAPABILITY IS REGISTERED BY THE API THAT NO ELEMENT ADMITS TO HOLDING",
+    unclaimed.length === 0,
+    `${unclaimed.join(", ")} — the API holds this and the coverage page does not say so. ` +
+      "That is the 2.2 defect arriving by omission rather than by a false sentence: an " +
+      "operator reads /coverage to know what it can evidence, and this is evidence it has",
+  );
 }
 
 if (failures.length > 0) {

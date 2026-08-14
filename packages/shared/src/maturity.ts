@@ -692,17 +692,29 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   },
   {
     id: "2.1",
+    /* THE SECOND HALF OF THIS ENTRY WAS STALE BY ONE COMMIT, in the
+       same direction and on the same surface as the 2.2 defect. It read
+       "the answers are the operator's own to write down elsewhere until
+       this holds them" AFTER /api/v1/sms/voluntary shipped and held
+       them. The route gate below could not see it: that gate asks
+       whether an element names a route while claiming device-only
+       storage, and this entry named no route for the capability at all.
+       Silence is the cheaper way to understate, so the gate now also
+       asks the opposite question — whether the API registers anything
+       no element admits to. See check-claims.mjs. */
     state: "BUILT",
-    serverRoutes: ["/api/v1/sync/batch"],
+    serverRoutes: ["/api/v1/sync/batch", "/api/v1/sms/voluntary"],
     has:
       "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +
-      "hash-chained record, with the regulatory window computed per jurisdiction.",
+      "hash-chained record, with the regulatory window computed per jurisdiction. And " +
+      "the operator's own answers to the six things regulation 13(3) of L.N. 32/2026 " +
+      "requires a voluntary reporting system to define, held for the organisation with " +
+      "the unanswered ones named rather than scored.",
     missing:
       "Proactive and predictive identification — surveys, flight data, and the analysis " +
-      "Doc 10159 asks for. And somewhere to record the six things regulation 13(3) of " +
-      "L.N. 32/2026 requires a voluntary reporting system to define: /methodology now " +
-      "quotes all six with their sub-paragraphs, and the answers are the operator's own " +
-      "to write down elsewhere until this holds them.",
+      "Doc 10159 asks for. And a disposition: a report arrives, and nothing in the " +
+      "product moves it to triaged, investigated or closed, so the queue records what " +
+      "was filed rather than what was done about it.",
     href: "/report",
   },
   {

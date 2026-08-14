@@ -151,8 +151,14 @@ that block a feature comparison.
   assesses the change an operator brings it; it does not know that
   operator's threshold for significance, and guessing would either
   flood the register or miss the change that mattered.
+- **A report can never leave `SUBMITTED`.** Five states in the enum,
+  one reachable, no route that writes the column. See §8.3 — this is
+  the largest gap in the product and it is upstream of the next two
+  entries.
 - **Indicators are typed, not fed** from the reporting queue, so an
-  indicator can disagree with the reports behind it.
+  indicator can disagree with the reports behind it. Report rate is
+  derivable today; time-to-closure is not, and cannot be until the
+  entry above is fixed.
 
 ---
 
@@ -258,3 +264,61 @@ typed is a dashboard nobody trusts twice.
 
 Sources: ICAO Doc 9859 4th ed.; Flight Safety Foundation "Unleashing
 SPIs"; EASA AloSP guidance.
+
+### 8.3 Correcting §8.2, the same day — half of it was wrong
+
+Written above: report rate and time-to-closure are both computable from
+"`SafetyReport.createdAt`, its state transitions". I went to implement
+it and **there are no state transitions.** Checked, not assumed:
+
+- `ReportState` has five values — `SUBMITTED`, `TRIAGED`,
+  `UNDER_INVESTIGATION`, `ACTIONS_OPEN`, `CLOSED` — and the schema
+  defaults to `SUBMITTED`;
+- **no route anywhere writes that column.** `routes.sync.ts` maps
+  `safetyReport:UPDATE` to a `report.triage` permission, and the branch
+  that would use it falls through to `rejected` with the comment
+  "field-level update handlers are added per entity. Until one exists
+  for this entity, the honest answer is rejected";
+- the /triage screen's `state` filter is `syncState` — queued or synced
+  on the handset — not `ReportState`. Different column, same word;
+- so **every report in the system is `SUBMITTED` and always will be.**
+  Four of the five states are unreachable.
+
+**Report rate survives** — it is a count of `createdAt` over a period
+against the operator's own exposure, and that needs nothing new.
+**Time-to-closure does not**, because nothing ever closes. Building an
+indicator on `updatedAt` would be worse than not building it:
+`updatedAt` also moves when a report is de-identified, so the number
+would silently measure the safety office's redaction turnaround and
+present it as investigation speed.
+
+**And the larger finding is not the indicator.** A reporting system
+where a report arrives and is never dispositioned is the filing cabinet
+`spi.ts` already warns about, one layer down. Element 2.1's own
+evidence line asks for "a report rate per 1,000 hours or per departure
+that is trending"; you cannot trend a queue that only grows. The
+coverage entry for 2.1 now says this in `missing` rather than leaving
+it to be discovered.
+
+**Ranked above the dashboard, and above the derived indicators**, since
+both of those need a disposition to describe. What it needs: a
+transition route that records who moved a report, from which state to
+which, and when — the transition being the record, not a `closedAt`
+column, because a column answers "when" and an inspector asks "by whom,
+and what did you do".
+
+### 8.4 A coverage-page defect found by looking for this one
+
+Element 2.1 read "the answers are the operator's own to write down
+elsewhere until this holds them" **one commit after
+`/api/v1/sms/voluntary` shipped and held them.** The 2.2 defect again —
+understating the product on the one surface whose job is honest
+disclosure — and the route gate written to catch 2.2 could not see it,
+because that gate starts from the routes an entry NAMES and 2.1 named
+none for the capability.
+
+Silence is the cheaper way to understate: 2.2 had to write three false
+clauses, this one only had to leave a sentence alone. The gate now also
+runs in reverse — **every route the API registers must be named by some
+element, be a sub-path of one, or sit in an exemption list with a
+stated reason** — and mutation-checked by putting the defect back.

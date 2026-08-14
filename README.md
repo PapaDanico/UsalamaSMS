@@ -89,7 +89,7 @@ for the operator rather than on one device, which is what regulation
 npm install
 npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 66 assertions that the registries match the docs
+npm run check:claims   # 68 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm test               # 331 unit tests
 npm run typecheck      # tsc --noEmit, strict
