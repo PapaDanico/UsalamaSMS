@@ -926,16 +926,22 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        training matrix useful, which is being told before the expiry
        rather than after it. */
     state: "PARTIAL",
-    serverRoutes: ["/api/v1/sms/training"],
+    serverRoutes: ["/api/v1/sms/training", "/api/v1/digest"],
     has:
       "A training matrix: person, course, completion and expiry, with each person's own " +
-      "record visible to them and the whole matrix to those who manage it.",
+      "record visible to them and the whole matrix to those who manage it \u2014 and a " +
+      "role-keyed curriculum behind it, so the matrix answers WHO IS MISSING SOMETHING " +
+      "THEIR ROLE REQUIRES rather than only what has expired. A gap is a row that does " +
+      "not exist, and free text could never have been asked that question. The daily " +
+      "digest is computed and readable at /api/v1/digest, counts only.",
     missing:
-      "Reaching somebody who does not open the screen. The matrix now anticipates \u2014 " +
-      "each row is current, lapsing soon or lapsed, against a window proportional to " +
-      "its own validity, with the count and the next lapse stated above the list. What " +
-      "it does not do is arrive: there is no digest, no email and no push, so a currency " +
-      "still lapses quietly for an operator who does not look.",
+      "Delivery. The digest exists and can be looked at; what it cannot do is ARRIVE \u2014 " +
+      "no schedule, no address to send to, and no key in the environment \u2014 so a " +
+      "currency still lapses quietly for an operator who does not look. The provider " +
+      "adapter is written and reports NOT_CONFIGURED rather than appearing to work. " +
+      "Its deadline section is also empty on purpose: nothing records that an occurrence " +
+      "was notified to the authority, so every notified report would read OVERDUE for " +
+      "ever, and a warning that is always on is one people stop reading.",
     href: "/sms",
   },
   {

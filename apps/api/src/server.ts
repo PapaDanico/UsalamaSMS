@@ -24,6 +24,7 @@ import { changeRoutes } from "./routes.change";
 import { reportRoutes } from "./routes.reports";
 import { configRoutes } from "./routes.config";
 import { pictureRoutes } from "./routes.picture";
+import { digestRoutes } from "./routes.digest";
 import { actionRoutes } from "./routes.actions";
 import { erpRoutes } from "./routes.erp";
 import { exportRoutes } from "./routes.export";
@@ -235,6 +236,7 @@ export async function build(): Promise<FastifyInstance> {
   await app.register(reportRoutes);
   await app.register(configRoutes);
   await app.register(pictureRoutes);
+  await app.register(digestRoutes);
   await app.register(actionRoutes);
   await app.register(erpRoutes);
   await app.register(exportRoutes);
