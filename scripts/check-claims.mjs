@@ -1005,6 +1005,86 @@ assert(
   );
 }
 
+/* ---------------- The gap analysis's own numbers ----------------
+   docs/09-GAP-ANALYSIS.md is a document ABOUT the product's shortfalls,
+   which makes a stale figure in it worse than a stale figure anywhere
+   else: it would overstate or understate a gap, and somebody would plan
+   against it. Its own header promises every figure is computed or cited.
+   This is the mechanism that keeps that promise.
+
+   ONLY THE LOAD-BEARING ONES. The file marks descriptive figures "(as
+   at this date)" and those are deliberately not gated — a gate over
+   every number in a prose document is a gate that fails on a sentence
+   being reworded, and one that fails for the wrong reason gets deleted.
+   What is gated is what a reader would act on: the element coverage,
+   the split behind it, and the count of jurisdictions the registry
+   actually holds.
+   ---------------------------------------------------------------- */
+{
+  const gaps = read('docs/09-GAP-ANALYSIS.md');
+  const covSrc = read('packages/shared/src/maturity.ts');
+
+  /* BUILT / PARTIAL counted off the COVERAGE array's own entries. The
+     module is TypeScript and this gate is a plain script, so the states
+     are counted from the source rather than imported — the same
+     technique the route gates above use, and it fails loudly if the
+     shape changes rather than silently reading zero. */
+  const covBlock = /export const COVERAGE[\s\S]*?\n\]\);/.exec(covSrc)?.[0] ?? '';
+  assert(
+    'the COVERAGE array was located in maturity.ts',
+    covBlock.length > 0,
+    'could not find `export const COVERAGE` — this gate has lost its subject (rule 11)'
+  );
+  const builtActual = (covBlock.match(/state:\s*"BUILT"/g) ?? []).length;
+  const partialActual = (covBlock.match(/state:\s*"PARTIAL"/g) ?? []).length;
+  const coveredActual = builtActual + partialActual / 2;
+
+  const statedSplit = /\*\*(\d+) built, (\d+) partial\. Coverage (\d+) of 12\*\*/.exec(gaps);
+  assert(
+    'the gap analysis states the element split and coverage',
+    Boolean(statedSplit),
+    'docs/09-GAP-ANALYSIS.md no longer states "N built, N partial. Coverage N of 12"'
+  );
+  if (statedSplit) {
+    assert(
+      'gap analysis element split matches maturity.ts',
+      Number(statedSplit[1]) === builtActual && Number(statedSplit[2]) === partialActual,
+      `the analysis says ${statedSplit[1]} built and ${statedSplit[2]} partial; ` +
+        `COVERAGE holds ${builtActual} and ${partialActual}`
+    );
+    assert(
+      'gap analysis coverage figure matches the computation',
+      Number(statedSplit[3]) === coveredActual,
+      `the analysis says ${statedSplit[3]} of 12; built + partial/2 is ${coveredActual}`
+    );
+  }
+
+  /* The jurisdiction count, which is the analysis's largest strategic
+     claim. Counted off the registry's own keys — adding Tanzania must
+     move the sentence that says one country is one country, because
+     that sentence is the reason somebody would prioritise adding it. */
+  const regSrc = read('packages/shared/src/regulations.ts');
+  const regBlock = /export const MOR_OBLIGATIONS[\s\S]*?\n};/.exec(regSrc)?.[0] ?? '';
+  assert(
+    'the MOR_OBLIGATIONS registry was located',
+    regBlock.length > 0,
+    'could not find `export const MOR_OBLIGATIONS` — this gate has lost its subject (rule 11)'
+  );
+  const rowsActual = (regBlock.match(/^\s{2}[A-Z]{2,4}:\s*\{/gm) ?? []).length;
+  const rowsStated = /carries \*\*(\w+) rows:/.exec(gaps)?.[1];
+  const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8 };
+  assert(
+    'the gap analysis states how many jurisdiction rows the registry holds',
+    Boolean(rowsStated) && rowsStated.toLowerCase() in WORDS,
+    'docs/09-GAP-ANALYSIS.md no longer states the registry row count in words'
+  );
+  assert(
+    'gap analysis jurisdiction count matches the registry',
+    WORDS[String(rowsStated).toLowerCase()] === rowsActual,
+    `the analysis says ${rowsStated} rows; MOR_OBLIGATIONS defines ${rowsActual}`
+  );
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);

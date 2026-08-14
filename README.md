@@ -143,7 +143,7 @@ which are a person's job and not a coding task. See
 npm install
 npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 73 assertions that the registries match the docs
+npm run check:claims   # 80 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm test               # 417 unit tests
 npm run typecheck      # tsc --noEmit, strict
