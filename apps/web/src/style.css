@@ -2274,6 +2274,45 @@ html { scroll-padding-top: var(--us-chrome); }
   color: var(--us-sand);
 }
 
+/* THE HERO IS WHERE THE IDENTITY ACTUALLY LIVES, and until now it did
+   not live anywhere.
+
+   The brand masters in docs/brand/ are a gold shield carrying the grey
+   crowned crane over a runway, a wordmark, and the line "Safety born of
+   African soil", set against a Rift Valley sunset. The product shipped
+   a 34px mark in the header and nothing else — every other surface was
+   charcoal with two teal washes, which is a competent dark band and is
+   not this product's face. Somebody who had seen the deck and then
+   opened the site would not know they were the same thing.
+
+   THE SUNSET IS A GRADIENT, NOT A PHOTOGRAPH, and that is the whole
+   reason it fits. The splash master is 139 KB; public/ has 1.6 KB of
+   its budget left, and a hero image is the wrong thing to spend it on
+   for a reporter on a rural link. Four colour stops cost eighty bytes
+   and carry the same horizon.
+
+   IT STAYS DARK WHERE THE TEXT IS. The stops hold near-indigo through
+   the top seventy per cent — the eyebrow, the heading and the lede all
+   sit there — and only reach the burnt orange below the buttons. That
+   is not a stylistic choice: Savannah Gold on the terracotta end is
+   about 2.6:1, and the eyebrow is gold. The accessibility sweep over
+   twenty-one screens is what decides whether this is right, and it was
+   run against this gradient rather than around it. */
+.band-dark--hero {
+  background:
+    linear-gradient(180deg, #0f1430 0%, #171a38 46%, #3a2247 74%, #7d3a29 100%);
+}
+.band-dark--hero .us-mark { display: block; margin-bottom: var(--us-space-3); }
+/* The tagline is the master's, set in the display face and italic as
+   the deck sets it. It is the one line on the site that says what the
+   product is FOR rather than what it does. */
+.tagline {
+  font-family: var(--us-font-display);
+  font-style: italic;
+  font-size: var(--us-text-lg);
+  color: var(--us-gold);
+  margin: 0 0 var(--us-space-4);
+}
 .band-dark h1,
 .band-dark h2 { color: var(--us-sand); }
 .band-dark .lede { color: rgb(var(--us-sand-rgb) / 0.86); }
