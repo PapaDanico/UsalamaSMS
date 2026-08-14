@@ -22,6 +22,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import { attachPrintId } from '../../shared/print-id.js';
 import { isSignedIn, authFetch } from '../../shared/session.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
@@ -220,6 +221,7 @@ export function render(outlet) {
       <div class="wrap">
         <span class="eyebrow">Toolkit</span>
         <h1>Risk register</h1>
+      <div class="print-id-slot"></div>
         <p class="lede">
           Hazard, consequence, controls, residual risk — with an owner and a
           review date, which are the two fields an auditor checks first. The
@@ -607,6 +609,13 @@ export function render(outlet) {
   syncReviewBy();
 
   outlet.querySelector('#reg-print').addEventListener('click', () => window.print());
+
+  /* THE PACK IS ATTRIBUTED, or it carries no header at all. Not awaited:
+     this screen renders instantly and must keep doing so, and an
+     identity block that only matters on paper is not worth a network
+     round trip in front of it. If the name never arrives the slot stays
+     empty, which is the refusal printId() already implements. */
+  void attachPrintId(outlet, 'Risk register — hazards, assessed and re-assessed');
 
   repaint();
 

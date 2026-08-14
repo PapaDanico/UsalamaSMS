@@ -22,6 +22,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import { attachPrintId } from '../../shared/print-id.js';
 import {
   SMS_COMPONENTS,
   MATURITY_LEVELS,
@@ -463,6 +464,7 @@ export function render(outlet) {
       <div class="wrap">
         <span class="eyebrow">Toolkit</span>
         <h1>SMS maturity assessment</h1>
+      <div class="print-id-slot"></div>
         <p class="lede">
           Twelve questions against the ICAO SMS framework's four components. It
           produces a position per component and a work list — not a score to put
@@ -659,6 +661,13 @@ export function render(outlet) {
   });
 
   outlet.querySelector('#mat-print').addEventListener('click', () => window.print());
+
+  /* THE PACK IS ATTRIBUTED, or it carries no header at all. Not awaited:
+     this screen renders instantly and must keep doing so, and an
+     identity block that only matters on paper is not worth a network
+     round trip in front of it. If the name never arrives the slot stays
+     empty, which is the refusal printId() already implements. */
+  void attachPrintId(outlet, 'SMS maturity assessment');
 
   outlet.querySelector('#mat-clear').addEventListener('click', () => {
     /* ASK FIRST, like every other destructive control in the product.

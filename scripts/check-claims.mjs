@@ -1085,6 +1085,159 @@ assert(
   );
 }
 
+/* ---------------- The operator's own copy is complete ----------------
+   The terms of use say an operator can hold its own copy, "which is the
+   only form of data ownership that survives a vendor". Charter rule 7:
+   a claim on a customer surface is kept by a mechanism.
+
+   THE MECHANISM WAS A LIST, AND A LIST HAS NO OPINION ABOUT WHAT IS NOT
+   ON IT. Nine tenant-owned collections were absent from the export —
+   the indicators regulation 9(5) requires, their periods, the voluntary
+   scheme regulation 13(3) requires, change assessments, the emergency
+   contact directory, corrective actions, the disposition history and
+   both acknowledgement records. Each arrived after the route was
+   written; none was added to it; nothing went red.
+
+   So the schema is the source of truth and this gate is the diff. A
+   model carrying `orgId` is tenant-owned safety record, and it must
+   either be READ by the export or be NAMED in EXPORT_EXCLUSIONS with a
+   reason. Neither is a build failure.
+
+   ASSERTED OVER THE SCHEMA RATHER THAN OVER A LIST OF MODELS, for the
+   same reason the RLS test asserts over pg_tables: a list is exactly
+   what failed here, and encoding the current answer into the guard
+   reproduces the defect one level up.
+   --------------------------------------------------------------- */
+{
+  const schema = read('prisma/schema.prisma');
+  const exportSrc = read('apps/api/src/routes.export.ts');
+
+  const models = [...schema.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)];
+  assert(
+    'Prisma models were found to diff the export against',
+    models.length > 0,
+    'no `model X {` blocks in prisma/schema.prisma — this gate has lost its subject (rule 11)'
+  );
+
+  /* Tenant-owned means it carries orgId. That is the same definition
+     tenantWhere() uses at runtime, so the gate and the query agree on
+     what "this operator's data" means. */
+  const tenantOwned = models.filter(([, , body]) => /^\s*orgId\s/m.test(body)).map(([, n]) => n);
+  assert(
+    'tenant-owned models were identified',
+    tenantOwned.length > 5,
+    `only ${tenantOwned.length} models carry orgId — the detection is wrong, not the schema`
+  );
+
+  const excluded = new Set(
+    [...(/EXPORT_EXCLUSIONS[\s\S]*?\n\}\);/.exec(exportSrc)?.[0] ?? '')
+      .matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1])
+  );
+
+  const absent = tenantOwned.filter((m) => {
+    const client = m[0].toLowerCase() + m.slice(1);
+    return !new RegExp(`prisma\\.${client}\\.find`).test(exportSrc) && !excluded.has(m);
+  });
+  assert(
+    'THE OPERATOR\'S OWN COPY HOLDS EVERY TENANT-OWNED COLLECTION',
+    absent.length === 0,
+    `${absent.join(', ')} — tenant-owned and neither exported nor listed in ` +
+      'EXPORT_EXCLUSIONS. The terms promise an operator its own copy; a collection ' +
+      'that is silently absent from that file is the promise failing by omission, ' +
+      'which is how nine of them went missing before this gate existed'
+  );
+
+  /* And the other direction: an exclusion for a model that no longer
+     exists is a reason nobody will ever re-read, sitting in a file that
+     looks maintained. Rule 11 from the other side. */
+  const stale = [...excluded].filter((m) => !tenantOwned.includes(m) && !new RegExp(`^model ${m} `, 'm').test(schema));
+  assert(
+    'no exclusion names a model the schema does not define',
+    stale.length === 0,
+    `${stale.join(', ')} — excluded from the export, but no such model exists`
+  );
+}
+
+/* ---------------- Every printable screen is attributable ------------
+   A screen with a print button produces a document that leaves the
+   building as loose paper. printId() exists so an auditor can tell
+   whose pack it is — the org id in the token is a uuid, useless on
+   paper — and it refuses to render at all when the name is unknown,
+   because half-attributed is the version filed under the wrong
+   operator.
+
+   IT WAS ON TWO OF SIX. The four without it were the risk register, the
+   indicators, the safety risk assessment and the maturity assessment —
+   which is to say, the four documents an auditor is most likely to be
+   handed. Nothing was wrong with the reasoning; it simply was not
+   carried across as each screen gained its button, and no check knew
+   the button existed.
+
+   SO THE BUTTONS ARE DISCOVERED, NOT LISTED. Any module calling
+   window.print() must also reach printId, directly or through
+   attachPrintId. The seventh screen to gain a print button fails the
+   build until it is attributable too.
+   --------------------------------------------------------------- */
+{
+  const toolsDir = resolve(ROOT, 'apps/web/src/tools');
+  const modules = readdirSync(toolsDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => `apps/web/src/tools/${d.name}/index.js`);
+
+  const printable = [];
+  for (const rel of modules) {
+    let src;
+    try { src = read(rel); } catch { continue; }
+    if (/window\.print\(\)/.test(src)) printable.push([rel, src]);
+  }
+  assert(
+    'screens with a print button were discovered',
+    printable.length > 0,
+    'no module calls window.print() — this gate has lost its subject (rule 11)'
+  );
+
+  /* THE EXCEPTION IS DECLARED IN THE MODULE, NOT HERE, and that is the
+     lesson from EXPORT_EXCLUSIONS. A skip-list living in the gate is
+     invisible to whoever edits the screen; a marker in the file is read
+     by the next person to touch it.
+
+     A module that genuinely should not carry an operator's name says so
+     with `PRINT-ID: not an operator document`, followed by the reason.
+     /pages is the real case — it prints this product's own
+     documentation, and stamping a customer's name on UsalamaSMS's
+     methodology page would be a false attribution rather than a missing
+     one.
+
+     /picture prints through the browser chrome rather than a button and
+     already calls printId, so it is covered from the other direction:
+     reaching printId is what is asserted, not owning a button. */
+  /* COMMENTS ARE STRIPPED BEFORE THE CODE TEST, and finding out why is
+     the reason this paragraph exists. The first version of this gate
+     matched the raw source, and it passed against a register with its
+     attachPrintId import and call both deleted — because the comment
+     explaining the call still contained the word `printId()`. A gate
+     satisfiable by prose about the thing is a gate that cannot fail,
+     which is the one failure mode this repository treats as worse than
+     having no gate at all.
+
+     The MARKER is matched against the raw source deliberately: it is a
+     declaration, and a declaration belongs in a comment. Only the claim
+     to have implemented something has to be made in code. */
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const EXEMPT = /PRINT-ID:\s*not an operator document/;
+  const unattributed = printable
+    .filter(([, src]) => !/\b(printId|attachPrintId)\b/.test(code(src)) && !EXEMPT.test(src))
+    .map(([rel]) => rel.split('/').at(-2));
+  assert(
+    'EVERY PRINTABLE SCREEN CAN BE ATTRIBUTED TO AN OPERATOR',
+    unattributed.length === 0,
+    `${unattributed.join(', ')} — has a print button and never reaches printId. ` +
+      'A pack handed to an auditor with no operator name on it cannot be attributed, ' +
+      'and this is how four of six screens came to be that way: the button was added, ' +
+      'the header was not, and nothing knew the button existed'
+  );
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);
