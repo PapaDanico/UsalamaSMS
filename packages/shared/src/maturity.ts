@@ -776,17 +776,22 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "The Doc 9859 5x5 matrix, a risk assessor, and a risk register with initial and " +
       "residual bands, owners, review dates and acceptance — held for the operator so " +
       "the safety office can read it and an inspector can be shown it, with the bands " +
-      "computed by the same scale the matrix renders. And this element's other half, " +
+      "computed by the same scale the matrix renders. A hazard can be raised straight " +
+      "from the report that revealed it, and every entry records whether it came from " +
+      "the reporting queue or was entered directly — which is the difference between " +
+      "element 2.1 working and a register somebody sat down and imagined. And this element's other half, " +
       "\"mitigations tracked to closure\": a corrective action is its own record with an " +
       "owner, a due date, a completion and a verification by somebody other than " +
       "whoever did the work — overdue derived from the date on every read rather than " +
       "stored, because a stored status still says open the day after the date passes.",
     missing:
-      "Hazards reaching it from the reporting queue rather than being typed again — a " +
-      "register entry still records where it came from so that difference stays " +
-      "visible. Deletion does not synchronise either: an entry removed on one device " +
-      "reappears from the server on another, which is the safe direction and not the " +
-      "finished one.",
+      "Deletion does not synchronise: an entry removed on one device reappears from " +
+      "the server on another, which is the safe direction and not the finished one. " +
+      "And a hazard raised from a report is linked to it by ID only — the register " +
+      "cannot show the report beside the hazard, because a register is printed and " +
+      "shown to an inspector while a narrative is protected and may be anonymous. " +
+      "Following the link is a job for the queue, where the permission to read a " +
+      "narrative is already enforced.",
     href: "/toolkits/register",
   },
   {
@@ -1041,6 +1046,12 @@ export interface RiskEntry {
   readonly assessmentId?: string;
   readonly acceptedBy?: string;
   readonly acceptedAt?: string;
+  /* WHERE THE HAZARD CAME FROM. "REPORT" when it was raised from
+     something somebody filed, "REGISTER" when it was typed. The report's
+     ID and nothing of its content — a register is printed and shown to
+     an inspector, and a narrative is protected. */
+  readonly source?: string;
+  readonly fromReportId?: string;
   readonly createdAt: string;
 }
 
@@ -1115,6 +1126,8 @@ export function normaliseEntry(raw: unknown): RiskEntry | null {
     assessmentId: opt(e.assessmentId),
     acceptedBy: opt(e.acceptedBy),
     acceptedAt: opt(e.acceptedAt),
+    source: opt(e.source),
+    fromReportId: opt(e.fromReportId),
     createdAt: str(e.createdAt),
   };
 }

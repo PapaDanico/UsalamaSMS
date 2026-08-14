@@ -479,6 +479,27 @@ describe('normalising an entry that came back from storage', () => {
     expect(e.acceptedAt).toBe('2026-08-14');
   });
 
+  it('KEEPS WHERE THE HAZARD CAME FROM', () => {
+    /* The same trap as the acceptance fields, one change later. Every
+       entry passes through this function and it builds a new object
+       field by field, so provenance dropped here is provenance the
+       register cannot render however faithfully the route returns it —
+       and "raised from a report" is the difference between element 2.1
+       working and a register somebody imagined. */
+    const e = normaliseEntry({
+      id: 'r1',
+      source: 'REPORT',
+      fromReportId: '11111111-2222-3333-4444-555555555555',
+    })!;
+    expect(e.source).toBe('REPORT');
+    expect(e.fromReportId).toBe('11111111-2222-3333-4444-555555555555');
+
+    // And a hazard somebody typed carries neither.
+    const typed = normaliseEntry({ id: 'r2', source: 'REGISTER' })!;
+    expect(typed.source).toBe('REGISTER');
+    expect(typed.fromReportId).toBeUndefined();
+  });
+
   it('leaves a device-only entry with nothing to sign against', () => {
     // The absence is load-bearing: no assessmentId is how the screen
     // knows an entry has never reached the safety office, and therefore

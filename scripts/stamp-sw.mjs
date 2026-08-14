@@ -1368,7 +1368,44 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    ENTRY UNCHANGED AT 214.8 KB for the seventh change running. A
    reporter at a remote strip does not open the risk register. */
-const BUDGET = { entry: 215 * 1024, js: 478 * 1024, css: 60 * 1024 };
+/* TOTAL 478 -> 481 KB for the join between the two halves of this
+   product. AND ENTRY MOVED, 214.8 -> 214.9, for the first time in eight
+   changes — which is the number in this block worth reading.
+
+   WHAT WAS NOT CONNECTED. `Hazard.reportId` has been in the schema
+   since the first migration and nothing had ever written it. Reports
+   arrived, were triaged, coded to ICAO's categories and dispositioned;
+   the register held whatever somebody remembered to type again. So an
+   operator's register was a list of hazards it imagined rather than the
+   ones its own people found, which is the finding element 2.1 exists to
+   prevent — and /coverage had been saying so in 2.2's own words for
+   three releases.
+
+   A hazard can now be raised from the report that revealed it, every
+   entry records whether it came from the queue or was entered directly,
+   and the register can answer the question an auditor actually asks:
+   how much of this did your people find.
+
+   WHAT DOES NOT TRAVEL IS THE NARRATIVE, and the weight reflects that.
+   The link is an ID. The hazard's words are the safety officer's own,
+   because a register is printed and shown to an inspector while a
+   report is protected and may be anonymous. An integration check
+   mutation-tested that: restoring the obvious implementation — copy the
+   report's narrative into the hazard — takes it red on a colleague's
+   name appearing in a register.
+
+   THE ENTRY 0.1 KB IS THE ROUTER, AND IT BOUGHT A DEFECT FIX. The
+   navigator stripped every query string: `normalise()` correctly
+   removes ? and # to match a route, and the stripped result was then
+   pushed to history as the whole URL. So a link pasted into the address
+   bar kept its query and the same link clicked inside the product lost
+   it. Nothing had used one until this change, which is why it had never
+   been seen. Entry now has 0.1 KB of headroom and the next change to
+   the shell has to find savings rather than assume room.
+
+   The rest is the register and triage chunks, both lazily loaded: a
+   reporter at a remote strip opens neither. */
+const BUDGET = { entry: 215 * 1024, js: 481 * 1024, css: 60 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

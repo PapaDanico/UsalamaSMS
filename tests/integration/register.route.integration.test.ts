@@ -172,14 +172,120 @@ describe.skipIf(!hasDatabase)("the risk register, through the real route", () =>
   });
 
   it("marks a typed hazard as coming from the register, not from a report", async () => {
-    /* The reporting queue is not wired into this yet and /coverage says
-       so. The source field is what will make that difference visible
-       when it is, rather than a migration guessing later. */
     const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
     await post("/api/v1/register", manager, ENTRY);
     const hazard = await prisma().hazard.findFirstOrThrow({ where: { orgId } });
     expect(hazard.source).toBe("REGISTER");
     expect(hazard.reportId).toBeNull();
+  });
+
+  /* ============================================================
+     RAISED FROM A REPORT — the join this product did not have.
+
+     `Hazard.reportId` has been in the schema since the first migration
+     and NOTHING HAS EVER WRITTEN IT. Every hazard in every register was
+     typed by hand while the reports that should have produced them sat
+     in the queue, which is the finding element 2.1 exists to prevent:
+     hazard identification is meant to be fed by the reporting system.
+
+     WHAT MUST NOT TRAVEL is the report's content. A register is
+     printed, taken to a meeting and shown to an inspector; a narrative
+     is protected and may be anonymous. So the link is an ID, the
+     hazard's words are the safety officer's own, and the assertions
+     below check the second half as hard as the first.
+     ============================================================ */
+  describe("raised from a report", () => {
+    const filedReport = async (oid: string, uid: string) =>
+      (
+        await prisma().safetyReport.create({
+          data: {
+            orgId: oid,
+            reporterId: uid,
+            clientId: crypto.randomUUID(),
+            type: "HAZARD",
+            title: "Flock of ibis on the 06 threshold at first light",
+            narrative:
+              "Second morning running. Kip on the early turn said the same thing happened " +
+              "to him on Tuesday and nobody had told dispatch.",
+            jurisdiction: "KE",
+            awareAt: new Date(),
+          },
+        })
+      ).id;
+
+    it("LINKS THE HAZARD TO THE REPORT AND CARRIES NONE OF ITS WORDS", async () => {
+      const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+      const reportId = await filedReport(orgId, frontlineId);
+
+      const res = await post("/api/v1/register", manager, {
+        ...ENTRY,
+        hazard: "Bird activity on the 06 approach at first light",
+        consequence: "Ingestion on short final leading to loss of thrust below 500 ft.",
+        fromReportId: reportId,
+      });
+      expect(res.statusCode).toBe(201);
+
+      const hazard = await prisma().hazard.findFirstOrThrow({ where: { orgId } });
+      expect(hazard.reportId).toBe(reportId);
+      expect(hazard.source).toBe("REPORT");
+
+      /* THE HALF THAT MATTERS MORE. The narrative names a colleague and
+         describes when he was on duty — at a six-aircraft operator that
+         identifies him. None of it may reach a register. */
+      const stored = `${hazard.title}\n${hazard.description}`;
+      expect(stored).not.toContain("Kip");
+      expect(stored).not.toContain("Tuesday");
+      expect(stored).not.toContain("nobody had told dispatch");
+
+      // And the same holds for what the screen reads back.
+      const [entry] = (await get("/api/v1/register", manager)).json().entries;
+      expect(entry.source).toBe("REPORT");
+      expect(entry.fromReportId).toBe(reportId);
+      expect(`${entry.hazard}\n${entry.consequence}`).not.toContain("Kip");
+    });
+
+    it("REFUSES ANOTHER OPERATOR'S REPORT BY NAME, rather than on a constraint", async () => {
+      /* reportId is a foreign key, so an id from another tenant would
+         either be accepted — putting one operator's report in another's
+         register — or fail with a database error the caller cannot act
+         on. Neither is an answer. */
+      const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+      const theirs = await filedReport(otherOrgId, otherManagerId);
+
+      const res = await post("/api/v1/register", manager, { ...ENTRY, fromReportId: theirs });
+      expect(res.statusCode).toBe(404);
+      expect(res.json().error).toBe("report_not_found");
+      expect(await prisma().hazard.count({ where: { orgId } })).toBe(0);
+    });
+
+    it("refuses a report id that does not exist at all", async () => {
+      const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+      const res = await post("/api/v1/register", manager, {
+        ...ENTRY,
+        fromReportId: "11111111-2222-3333-4444-555555555555",
+      });
+      expect(res.statusCode).toBe(404);
+      expect(await prisma().hazard.count({ where: { orgId } })).toBe(0);
+    });
+
+    it("lets one report raise more than one hazard", async () => {
+      /* Deliberately not idempotent on the report. One occurrence
+         routinely reveals several hazards — the bird activity, and the
+         fact that the previous sighting never reached dispatch — and
+         refusing the second would push it into a free-text register
+         entry with no link at all. */
+      const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+      const reportId = await filedReport(orgId, frontlineId);
+
+      await post("/api/v1/register", manager, { ...ENTRY, hazard: "Bird activity", fromReportId: reportId });
+      await post("/api/v1/register", manager, {
+        ...ENTRY, hazard: "Sightings not reaching dispatch", fromReportId: reportId,
+      });
+
+      const raised = await prisma().hazard.findMany({ where: { orgId, reportId } });
+      expect(raised).toHaveLength(2);
+      expect(raised.every((h) => h.source === "REPORT")).toBe(true);
+    });
   });
 
   it("requires a token", async () => {
