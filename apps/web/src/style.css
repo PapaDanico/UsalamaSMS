@@ -1541,6 +1541,27 @@ html { scroll-padding-top: var(--us-chrome); }
   margin: var(--us-space-3) 0 0;
 }
 
+/* THE ONE NOTICE IN THIS PRODUCT THAT IS ABOUT MINUTES.
+
+   Every other message here can wait for the person to finish what they
+   are doing. An accident notification to the investigation authority
+   cannot, and the styling says so once — a red rule and weight, not a
+   fill, because the text is a sentence somebody has to read carefully
+   under the worst conditions they will ever use this product in.
+
+   EMPTY BY DEFAULT AND INVISIBLE WHEN EMPTY. It is populated only when
+   a jurisdiction that has an investigation authority is selected, and
+   an empty bordered box on a form is a box that trains people to
+   ignore the filled one. */
+.notice--urgent:empty {
+  display: none;
+}
+
+.notice--urgent {
+  border-left: 4px solid var(--us-state-error);
+  background: var(--us-surface-2);
+}
+
 .picture-note {
   margin: var(--us-space-3) 0;
   font-size: var(--us-text-sm);

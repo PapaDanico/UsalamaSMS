@@ -637,3 +637,76 @@ describe("the Second Schedule to L.N. 32/2026", () => {
     expect([...components].sort()).toEqual(["1", "2", "3", "4"]);
   });
 });
+
+/* ============================================================
+   THE ANNEX 13 NOTIFICATION IS NOT THE OCCURRENCE REPORT.
+
+   The most consequential thing this module could get wrong, and it was
+   getting it wrong by omission. Regulation 12(1) gives an accident 24
+   hours to reach KCAA. Annex 13 gives the accident INVESTIGATION
+   authority no such window — the duty is immediate, it is owed to a
+   different organisation, and a reporter who reads "24 hours" off the
+   form after an accident could reasonably conclude they had a day.
+   ============================================================ */
+describe("who else has to be told, and when", () => {
+  it("KENYA CARRIES AN INVESTIGATION AUTHORITY SEPARATE FROM THE REGULATOR", () => {
+    const ke = MOR_OBLIGATIONS.KE;
+    expect(ke.authority).toMatch(/Civil Aviation Authority/);
+    expect(ke.accidentNotification).toBeDefined();
+    expect(
+      ke.accidentNotification!.authority,
+      "the investigation authority must not be the same body as the regulator",
+    ).not.toBe(ke.authority);
+    expect(ke.accidentNotification!.authority).toMatch(/Accident Investigation/i);
+  });
+
+  it("applies to accidents and serious incidents, not to every occurrence", () => {
+    /* An incident under regulation 12(1) is reported to KCAA within 72
+       hours and is not an Annex 13 notification. Showing the urgent
+       block on everything would make it furniture. */
+    const applies = MOR_OBLIGATIONS.KE.accidentNotification!.appliesTo;
+    expect(applies).toContain("ACCIDENT");
+    expect(applies).toContain("SERIOUS_INCIDENT");
+    expect(applies).not.toContain("INCIDENT");
+  });
+
+  it("CARRIES NO TELEPHONE NUMBER, and that is the check", () => {
+    /* An accident notification line copied into a source file by
+       somebody who never dialled it is the one number in this product
+       where being wrong is not measured in inconvenience. The
+       authority publishes its own; this carries the link and the
+       operator's own directory carries the confirmed number.
+
+       Asserted over the WHOLE row rather than one field, so a number
+       cannot arrive in `note` or `basis` either. */
+    const serialised = JSON.stringify(MOR_OBLIGATIONS.KE.accidentNotification);
+    expect(
+      serialised,
+      "a telephone number reached the regulatory registry — it must live in the " +
+        "operator's own verified contact directory, not in this file",
+    ).not.toMatch(/\+?\d[\d\s().-]{7,}/);
+  });
+
+  it("points at the authority's own published contacts over https", () => {
+    const url = MOR_OBLIGATIONS.KE.accidentNotification!.url;
+    expect(url).toMatch(/^https:\/\//);
+    expect(url).toContain("aaid");
+  });
+
+  it("SAYS WHETHER THE DOMESTIC INSTRUMENT WAS READ, rather than implying it", () => {
+    /* Annex 13 and the authority's own published role are certain; the
+       Kenyan regulation number imposing the duty is not, and this
+       product does not invent citations. Same discipline as
+       clockStartUnstated. */
+    const n = MOR_OBLIGATIONS.KE.accidentNotification!;
+    expect(typeof n.domesticInstrumentRead).toBe("boolean");
+    if (!n.domesticInstrumentRead) {
+      expect(n.basis, "an unread domestic instrument must still name what the duty rests on")
+        .toMatch(/Annex 13/);
+    }
+  });
+
+  it("says the duty is immediate rather than restating the report window", () => {
+    expect(MOR_OBLIGATIONS.KE.accidentNotification!.note).toMatch(/immediate/i);
+  });
+});

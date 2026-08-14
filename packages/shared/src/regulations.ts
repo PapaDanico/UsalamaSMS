@@ -176,6 +176,62 @@ export interface ReportingObligation {
    */
   readonly reviewCycleMonths: number;
   readonly note?: string;
+
+  /**
+   * The OTHER notification, owed to a different body on a different
+   * clock. Present only where the State's investigation authority is
+   * known; absent is "we have not established one", never "there is
+   * none".
+   */
+  readonly accidentNotification?: AccidentNotification;
+}
+
+/**
+ * Notification to the State's accident INVESTIGATION authority.
+ *
+ * NOT THE SAME DUTY AS THE ROW IT HANGS OFF. Everything else in
+ * `ReportingObligation` describes the mandatory occurrence report owed
+ * to the civil aviation AUTHORITY — the regulator. Annex 13 to the
+ * Chicago Convention puts a second, independent duty on the operator
+ * for accidents and serious incidents: tell the body that investigates
+ * them, and tell it immediately.
+ *
+ * They are separate organisations, and conflating them is the error
+ * this type exists to prevent. Kenya's KCAA regulates; the Aircraft
+ * Accident Investigation Department, under the Ministry of Roads and
+ * Transport, investigates. An operator who reads "24 hours" off the
+ * regulation 12(1) row and concludes it has a day before anybody needs
+ * telling has been misled by an omission in this file.
+ *
+ * NO TELEPHONE NUMBER APPEARS HERE, and there is a test that says so.
+ * The authority publishes its own contacts and they change; a number
+ * copied into software by somebody who never dialled it is the one
+ * number in this product where being wrong is not measured in
+ * inconvenience. `url` points at where the authority publishes them.
+ * A number an operator has actually confirmed belongs in that
+ * operator's own emergency contact directory (element 1.4), which
+ * tracks how long it has been since anybody checked.
+ */
+export interface AccidentNotification {
+  /** The body that investigates, named as it names itself. */
+  readonly authority: string;
+  /** Where that body publishes its own contact details. */
+  readonly url: string;
+  /** The occurrence classes this duty attaches to. */
+  readonly appliesTo: ReadonlyArray<string>;
+  /** What imposes it. */
+  readonly basis: string;
+  /**
+   * Whether the DOMESTIC instrument giving effect to Annex 13 has been
+   * read against this row.
+   *
+   * FALSE is the honest state for Kenya: the duty is certain because
+   * Annex 13 is, and the domestic regulation that implements it has not
+   * been read here. Same discipline as `governedByUnread` above — say
+   * where the claim came from, and say what sits above it unchecked.
+   */
+  readonly domesticInstrumentRead: boolean;
+  readonly note?: string;
 }
 
 /**
@@ -244,6 +300,29 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
       "24 hours for all of them, from KCAA Advisory Circular CAA-AC-SMS004A " +
       "(January 2023) — guidance, and now superseded. Regulation 18 of these " +
       "Regulations revokes L.N. 91/2018.",
+
+    /* THE SECOND CALL, and the reason this field exists at all.
+       Regulation 12(1) above is owed to KCAA. Annex 13 puts an
+       independent duty on the operator to notify the investigators,
+       and the AAID is a different organisation under a different
+       ministry. Immediately, and not within any of the three periods
+       above — the periods are about the paperwork to the regulator.
+
+       THE PROSE STAYS SHORT because this module is in the entry chunk
+       that a reporter at a remote strip downloads before filing
+       anything. The reasoning belongs in comments, which minify away;
+       string values do not. Raising the entry budget to carry an
+       argument is a cost paid by the person this product exists for. */
+    accidentNotification: {
+      authority: "Aircraft Accident Investigation Department (AAID), Kenya",
+      url: "https://aaid.transport.go.ke/",
+      appliesTo: ["ACCIDENT", "SERIOUS_INCIDENT"],
+      basis: "Annex 13 to the Convention on International Civil Aviation.",
+      domesticInstrumentRead: false,
+      note:
+        "Immediate, and separate from the report to the Authority. Confirm their " +
+        "numbers from the AAID and record them in your emergency contact directory.",
+    },
   },
 
 };

@@ -2475,6 +2475,79 @@ try {
     );
   });
 
+  await check('THE FORM SAYS THE INVESTIGATORS ARE TOLD SEPARATELY, AND IMMEDIATELY', async () => {
+    /* THE MOST CONSEQUENTIAL SENTENCE ON THIS SCREEN, and it was
+       missing entirely.
+
+       The deadline hint beside it is about the MANDATORY OCCURRENCE
+       REPORT to the civil aviation authority — 24 hours for an
+       accident under regulation 12(1). An accident is ALSO notified to
+       the State's accident investigation body under Annex 13: a
+       different organisation, a different duty, and a clock measured
+       in minutes. A reporter who reads "24 hours" after an accident
+       and concludes they have a day has been misled by an omission.
+
+       ASSERTED ON THE RENDERED SCREEN rather than on the module,
+       because the module has carried the right answer since the row
+       was written and the screen is where somebody reads it. And the
+       NO-NUMBER rule is asserted here too: the authority publishes its
+       own contacts, and a number typed into this product by somebody
+       who never dialled it is the one number where being wrong is not
+       measured in inconvenience.
+
+       THE PAGE IS PUT BACK BEFORE THE ASSERTIONS RUN, exactly as the
+       check above this one does it. The checks that follow continue on
+       the page they were left on rather than navigating themselves, so
+       a check that reads a different screen and returns without
+       restoring it fails its three successors on a selector timeout
+       and reports four faults for one defect. That happened when this
+       check was added, and the four-line failure hid which one was
+       real. */
+    const cameFrom = page.url();
+    await page.goto(BASE + '/report', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(300);
+
+    const urgent = await page.evaluate(() => {
+      const el = document.querySelector('#aaid-hint');
+      return {
+        text: el?.innerText ?? '',
+        href: el?.querySelector('a[href^="https"]')?.getAttribute('href') ?? '',
+        visible: el ? getComputedStyle(el).display !== 'none' : false
+      };
+    });
+
+    const faults = [];
+    if (!urgent.visible || !urgent.text.trim()) {
+      faults.push('the form says nothing about notifying the accident investigation authority');
+    }
+    if (!/immediat/i.test(urgent.text)) {
+      faults.push(
+        'the notice does not say the duty is immediate — beside a 24-hour deadline, ' +
+          'silence about timing reads as "within 24 hours"'
+      );
+    }
+    if (!/investigation/i.test(urgent.text)) {
+      faults.push('the notice does not name the investigation authority as a separate body');
+    }
+    if (!/^https:\/\//.test(urgent.href)) {
+      faults.push('the notice carries no link to where that authority publishes its contacts');
+    }
+    /* NO TELEPHONE NUMBER ON THE SCREEN EITHER. The unit suite asserts
+       this over the registry; a number could still be typed into the
+       markup, and that is the copy a reporter would actually dial. */
+    if (/\+?\d[\d\s().-]{7,}/.test(urgent.text)) {
+      faults.push(
+        'a telephone number is printed on the form — it belongs in the operator\'s own ' +
+          'verified contact directory, confirmed by somebody who dialled it'
+      );
+    }
+
+    await page.goto(cameFrom, { waitUntil: 'networkidle' });
+    await page.waitForSelector('#deadline-calc', { timeout: 5000 });
+
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
   await check('THE REPORT FORM NAMES THE SHORTEST PERIOD AS THE SHORTEST', async () => {
     /* THE HIGHEST-TRAFFIC COMPLIANCE CLAIM IN THE PRODUCT, and until
        now nothing checked it. Mutating the countdown to read the widest
