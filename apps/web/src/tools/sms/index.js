@@ -663,10 +663,6 @@ export async function render(outlet) {
   let org = null;
 
   const load = async () => {
-    /* Fetched with the rest rather than after them — it is one request
-       and it is cached, but a second round trip on a handset paying for
-       it is a second round trip. */
-    org = await loadOrg();
     const endpoints = [
       ...new Set(
         Object.values(SURFACES).flatMap((s) =>
@@ -674,8 +670,22 @@ export async function render(outlet) {
         )
       )
     ];
-    await Promise.all(
-      endpoints.map(async (url) => {
+    /* THE ORGANISATION IS FETCHED ALONGSIDE THE RECORD, not before it.
+
+       Written first as `org = await loadOrg()` on the line above this
+       one, with a comment claiming it was fetched "with the rest" — it
+       was not, it was fetched BEFORE the rest and made every load of
+       this screen wait a round trip on a request nothing on the page
+       renders until the end. That is the shape session.js already has a
+       long comment about: doubling the requests on the heaviest screen
+       in the product is the part a reporter on a metered connection
+       pays for.
+
+       A claim in a comment that the code does not keep is worse than no
+       comment, because the next reader believes it. */
+    await Promise.all([
+      loadOrg().then((o) => { org = o; }),
+      ...endpoints.map(async (url) => {
         try {
           const res = await authFetch(url);
           if (!res.ok) {
@@ -689,8 +699,8 @@ export async function render(outlet) {
              worse answer than saying the record could not be read. */
           state[url] = { error: 'unreachable' };
         }
-      })
-    );
+      }),
+    ]);
 
     /* The voluntary scheme, fetched with the rest rather than after
        them. It is a SINGLETON, not a collection, so it sits outside the

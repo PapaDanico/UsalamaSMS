@@ -34,12 +34,22 @@ prints the new password once into the terminal of whoever runs it.
 password must not travel through a chat log the way the old one did.
 That is the whole reason it prints to a terminal and stores nothing.
 
-### 1.2 The privacy notice understates its own safeguard
+### 1.2 ~~The privacy notice understates its own safeguard~~ · DONE
 
-Kenya's L.N. 32/2026, Third Schedule, paragraph 3.1 Note 2 names
-**de-identification** as an authoritative safeguard for protecting
-safety data. The privacy notice says the weaker "we de-identify".
-Naming the instrument is both more accurate and stronger. Cheap.
+**Closed 14 August 2026, and this entry was wrong about the problem.**
+It recorded that the notice said the weaker "we de-identify". The
+notice did not mention de-identification AT ALL — the strongest
+protection this product offers, absent from the document an operator's
+lawyer reads, while the about page described it.
+
+It now cites L.N. 32 of 2026, Third Schedule, paragraph 3.1 Note 2, and
+a claims assertion holds the citation rather than the word, because
+"we de-identify" would pass a search for the word and is exactly what
+this replaced.
+
+**The lesson worth keeping: an item in this file is a note, not a
+finding.** Check the thing itself before acting on what was written
+about it.
 
 ### 1.3 The C-01 re-identification check passed vacuously
 
@@ -178,15 +188,19 @@ that block a feature comparison.
   Five states, four unreachable, no route writing the column. The
   transition history now exists and time-to-closure is derived from it,
   from the FIRST closure.
-- **Indicators are still typed, not fed** from the reporting queue, so
-  an indicator can disagree with the reports behind it. Report rate is
-  derivable today and is not yet wired to the indicator screen — the
-  risk picture computes it, the SPI screen does not read it. That seam
-  is the next cheap thing.
-- **Nothing verifies a contact automatically.** The directory computes
-  staleness but nobody is told about it unless they open /sms. Same
-  shape as 4.1's training warning, and it is closed by the same SMS
-  channel.
+- ~~Indicators are typed, not fed.~~ **Narrowed 14 August 2026.** The
+  indicator screen will now count the reports that arrived in a period
+  and show the figure beside the field. It does not fill it in, and
+  that is the finished state rather than a half-measure: an indicator
+  counts a particular thing, and a quarter's report count is not that
+  thing unless the operator says so. What remains is not a gap.
+- **Nothing tells anybody a contact has gone stale** unless they open
+  /sms. The directory computes it; nobody is notified. Same shape as
+  4.1's training warning, and it closes on the same SMS channel — so
+  these two are one piece of work, not two.
+- **The ERP document itself is not held**, and §2 explains why that is
+  a decision rather than debt. Recorded here so nobody re-opens it as
+  an oversight.
 
 ---
 
