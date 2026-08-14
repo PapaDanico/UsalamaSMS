@@ -130,6 +130,7 @@ model Org {
   accountabilities Accountability[]
   appointments     Appointment[]
   exercises        EmergencyExercise[]
+  emergencyContacts EmergencyContact[]
   documents        ControlledDocument[]
   findings         AuditFinding[]
   training         TrainingRecord[]
@@ -171,6 +172,7 @@ model User {
   reportMoves       ReportTransition[]
   actionsCompleted  CorrectiveAction[]        @relation("actionCompleter")
   actionsVerified   CorrectiveAction[]        @relation("actionVerifier")
+  contactsVerified  EmergencyContact[]        @relation("contactVerifier")
 
   @@index([orgId, role])
 }
@@ -923,6 +925,72 @@ model EmergencyExercise {
   org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@index([orgId, heldOn])
+}
+
+/// Element 1.4 — WHO TO CALL, IN WHAT ORDER, WITH WHAT AUTHORITY.
+///
+/// The exercise record above answers what an inspector asks. This
+/// answers what an operator needs at three in the morning, and it is
+/// the half element 1.4's coverage entry has named as missing since it
+/// was written.
+///
+/// SCOPED NARROW ON PURPOSE. Not a document editor: an ERP is a manual
+/// with call-out trees, checklists and diagrams, and a worse version of
+/// a Word file helps nobody. The directory is the part that goes stale
+/// fastest, is needed fastest, and that a document cannot enforce.
+///
+/// verifiedOn IS THE WHOLE POINT. A contact directory is not wrong when
+/// it is written; it goes wrong quietly. The duty officer's number
+/// changes, the handling agent is bought, the doctor retires — and none
+/// of that produces an event inside this product. Staleness is COMPUTED
+/// against this date on every read (see packages/shared/src/erp.ts); a
+/// stored "current" flag would say current forever.
+///
+/// NO STATUS COLUMN, for that reason. Charter rule 6.
+model EmergencyContact {
+  id    String @id @default(uuid())
+  orgId String
+
+  name String
+  /// What they are for — "KCAA duty officer", "handling agent, Wilson",
+  /// "next of kin coordinator". Free text: an operator's real call list
+  /// is not this product's enum.
+  role String
+
+  organisation String?
+  phone        String
+  altPhone     String?
+  email        String?
+
+  /// Position in the call-out tree. Nullable, and sorted LAST when
+  /// absent rather than first — a naive ascending sort on a nullable
+  /// column puts the unordered contacts at the top of a list whose
+  /// entire meaning is the order.
+  callOrder Int?
+
+  /// What this contact can actually authorise or release. The
+  /// difference between a number and a useful number at 3am: knowing
+  /// whether the person answering can move an aircraft, release a
+  /// statement, or only take a message.
+  authority String? @db.Text
+  notes     String? @db.Text
+
+  /// When somebody last confirmed this number reaches this person.
+  /// Null means never — reported as its own state, not folded into
+  /// stale, because the two need different things from a person.
+  verifiedOn   DateTime?
+  verifiedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org        Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  verifiedBy User? @relation("contactVerifier", fields: [verifiedById], references: [id], onDelete: Restrict)
+
+  /// The order the directory is read in, and the query that finds what
+  /// has gone stale.
+  @@index([orgId, callOrder])
+  @@index([orgId, verifiedOn])
 }
 
 /// Element 1.5 — SMS documentation, under control.

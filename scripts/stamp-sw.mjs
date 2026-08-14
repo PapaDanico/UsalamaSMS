@@ -965,7 +965,55 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    THE ENTRY RULE STANDS AND HAS NOW BEEN APPLIED ONCE. 300 bytes of
    headroom. The next thing that wants a nav item takes something out
    first, or argues the entry budget up in its own receipt. */
-const BUDGET = { entry: 214 * 1024, js: 438 * 1024, css: 56 * 1024 };
+/* TOTAL 438 -> 442 KB, for the emergency contact directory. ENTRY
+   UNMOVED at 213.7 for the second raise running, and for the same
+   reason: this is not a destination either.
+
+     sms chunk   21,690 -> 25,509   +3,819 bytes
+     total js   446,992 -> 451,350  +4,358 bytes
+     css         56,734 ->  57,041    +307 bytes
+     entry      218,801 -> 218,801  UNMOVED
+     erp.ts                          in NO browser chunk
+
+   AND THE FIRST ATTEMPT TO MEASURE THIS WAS WRONG, which is worth
+   recording because it produced a plausible answer. `git stash`
+   reported every delta as ZERO — sms chunk +0, total +0, css +0 — and
+   zero is exactly what a well-split change is supposed to look like at
+   entry, so it read as a good result. It was not: stash leaves
+   UNTRACKED files in place, every new file here was untracked, and so
+   both "builds" were the same tree. `git stash -u` gave the real
+   numbers above.
+
+   That is the third time a receipt in this file has been measured
+   rather than reasoned about, and the second time measuring caught
+   something reasoning would have shipped. The rule stands: build both
+   sides, difference them, and check the tool did what you think.
+
+   WHAT IT BUYS. Element 1.4 to BUILT, and the coverage figure to 11 of
+   12. The product held the EXERCISE record — what an inspector asks —
+   and not the contact directory, which is what an operator needs at
+   three in the morning. Annex 19's element is "COORDINATION of
+   emergency response planning", and coordination is a list of people
+   outside the organisation who have agreed to answer.
+
+   The feature is not the list; it is `verifiedOn`. A contact directory
+   is not wrong when it is written, it goes wrong quietly, and the
+   operator finds out which numbers still work during the emergency. So
+   staleness is computed against each contact's own last verification
+   on every read, a new contact is never recorded as confirmed, and a
+   confirmation cannot be backdated. No status column exists to go stale
+   beside the numbers.
+
+   IT DID NOT BECOME A SCREEN, for the second time running. /erp with a
+   nav item would have cost ~200 bytes of entry against 300 remaining.
+   It went onto /sms under element 1.4, which is where it belongs
+   anyway — the exercise and the directory are two halves of one
+   element, and splitting them would put half of 1.4's evidence where
+   nobody looking at 1.4 would find it.
+
+   ENTRY IS STILL 213.7 OF 214. The rule has now shaped two consecutive
+   features and both are better for it. */
+const BUDGET = { entry: 214 * 1024, js: 442 * 1024, css: 56 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

@@ -1356,6 +1356,28 @@ html { scroll-padding-top: var(--us-chrome); }
   color: var(--us-state-error);
 }
 
+/* A SECOND COLLECTION UNDER ONE ELEMENT — only 1.4 has one.
+
+   Separated by a rule and indented, not boxed. A card inside a card
+   reads as a different KIND of record, and the whole point is that the
+   contact directory and the exercise log are two halves of the same
+   element. */
+.sms-secondary {
+  margin-top: var(--us-space-5);
+  padding-top: var(--us-space-4);
+  border-top: 1px solid var(--us-border);
+}
+
+.sms-secondary > h4 {
+  margin: 0 0 var(--us-space-3);
+  font-family: var(--us-font);
+  font-size: var(--us-text-sm);
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--us-text-secondary);
+}
+
 /* =====================================================================
    THE RISK PICTURE.
 
