@@ -56,6 +56,7 @@ export const EXPECTED_TABLES: ReadonlyArray<string> = Object.freeze([
   "SyncReceipt",
   "TrainingRecord",
   "User",
+  "VoluntaryScheme",
 ]);
 
 /**

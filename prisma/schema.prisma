@@ -125,6 +125,7 @@ model Org {
 
   // The other eight Annex 19 elements.
   policies         SafetyPolicy[]
+  voluntaryScheme  VoluntaryScheme?
   policyReads      PolicyAcknowledgement[]
   accountabilities Accountability[]
   appointments     Appointment[]
@@ -542,6 +543,53 @@ model AuditLog {
 /// has no history, and the question an auditor asks is "what did it say
 /// when the decision was taken". Superseding writes a new row; the old
 /// one keeps its signature and its dates.
+/// Regulation 13(3) of L.N. 32/2026 — the six things a service
+/// provider's voluntary reporting system must DEFINE, and 13(2)'s
+/// protection, held as the operator's own words.
+///
+/// ONE ROW PER OPERATOR, hence the unique orgId. This is not a log of
+/// attempts; it is the current definition of the scheme, and a second
+/// row would mean an operator whose voluntary system is defined twice
+/// and differently — which is the thing an inspector would find.
+///
+/// EVERY FIELD IS NULLABLE, deliberately. An operator part-way through
+/// defining its scheme has a real and common state, and forcing all six
+/// at once would either block them from recording any of it or invite
+/// placeholder text. What must never happen is the PRODUCT deciding an
+/// undefined field is defined: unanswered() in packages/shared computes
+/// which are still missing, and reports them as missing rather than
+/// scoring them.
+///
+/// 13(2) IS PROSE, NOT A CHECKBOX. "Non-punitive and affording
+/// protection to the sources" is a property the scheme must have, and a
+/// tickbox saying so is a self-certification that looks like compliance
+/// and evidences nothing. The operator states HOW.
+model VoluntaryScheme {
+  id           String   @id @default(uuid())
+  orgId        String   @unique
+  /// 13(3)(a) — the objective of the system.
+  objective    String?  @db.Text
+  /// 13(3)(b) — the sectors or areas it covers.
+  scope        String?  @db.Text
+  /// 13(3)(c) — who can report.
+  whoMayReport String?  @db.Text
+  /// 13(3)(d) — when to report.
+  whenToReport String?  @db.Text
+  /// 13(3)(e) — how reports are processed.
+  howProcessed String?  @db.Text
+  /// 13(3)(f) — the manager to be contacted. A POST, not a person, so
+  /// the scheme survives the individual leaving.
+  contactPost  String?  @db.Text
+  /// 13(2) — how the scheme is non-punitive and protects its sources.
+  protection   String?  @db.Text
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+}
+
 model SafetyPolicy {
   id            String    @id @default(uuid())
   orgId         String

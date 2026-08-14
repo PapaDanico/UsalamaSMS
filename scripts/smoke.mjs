@@ -3378,6 +3378,74 @@ try {
     }
   });
 
+  await check('A LIST OF LINKS IS NOT A SENTENCE — table-of-contents targets clear 24px', async () => {
+    /* FOUND BY MEASURING EVERY ROUTE RATHER THAN THE ONE WITH THE FORM
+       ON IT. The check above is thorough and lives entirely on
+       /report; the reference pages were never measured, and their
+       tables of contents were 17px tall — the line box of the text and
+       nothing more — stacked vertically on a 390px screen. On
+       /coverage that is eighteen destinations four pixels apart, being
+       aimed at by a safety manager holding a phone.
+
+       WHY THIS IS A REAL FINDING AND THE PROSE LINKS ARE NOT. WCAG 2.2
+       SC 2.5.8 exempts targets "in a sentence or block of text", and
+       this product's inline links properly rely on that — an earlier
+       sweep flagged eighty-eight "failures" that were all inline prose
+       and all correct. A table of contents has no sentence around it.
+       It is navigation, the exception does not reach it, and the
+       distinction is why this check selects `.toc a` rather than every
+       anchor on the page. Do not widen it to `a`: that measures the
+       exempt case and teaches everyone to ignore the result.
+
+       24 rather than the 44 asserted on the report form. The form is
+       operated in a hangar, possibly gloved, against a running
+       deadline; a contents list is read sitting down. Both numbers are
+       deliberate.
+
+       AND IT LIVES DOWN HERE, not beside the 44px check it belongs
+       with, for the reason recorded twice already in this file: the
+       checks up there share one page sitting on the report form.
+       Written there, this navigated to four reference pages and took
+       seven of them down with it — the form checks are not
+       independent, and a check that fails its neighbours reports a
+       defect in the wrong place. */
+    const TOC_ROUTES = ['/coverage', '/about', '/templates', '/methodology'];
+    const small = [];
+    let measured = 0;
+
+    for (const route of TOC_ROUTES) {
+      await page.goto(BASE + route, { waitUntil: 'networkidle' });
+      const found = await page.evaluate(() =>
+        [...document.querySelectorAll('.toc a')]
+          .filter((el) => {
+            const b = el.getBoundingClientRect();
+            return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+          })
+          .map((el) => {
+            const b = el.getBoundingClientRect();
+            return { h: Math.round(b.height), t: (el.textContent ?? '').trim().slice(0, 40) };
+          })
+      );
+      measured += found.length;
+      for (const f of found) {
+        if (f.h < 24) small.push(`${route} "${f.t}" is ${f.h}px high`);
+      }
+    }
+
+    /* Charter rule 11. If the selector stops matching — the class is
+       renamed, the contents lists are dropped — this check measures
+       nothing and passes, which is how a guard quietly retires. */
+    assert(
+      measured >= 20,
+      `measured only ${measured} contents links across ${TOC_ROUTES.length} routes; ` +
+        'this check would pass by finding nothing'
+    );
+    assert(
+      small.length === 0,
+      `${small.length} contents link(s) under 24px:\n         ${small.slice(0, 8).join('\n         ')}`
+    );
+  });
+
   await check('EVERY INTERNAL LINK RESOLVES, AND EVERY FRAGMENT HAS A TARGET', async () => {
     const origin = `http://localhost:${PORT}`;
 

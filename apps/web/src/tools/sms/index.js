@@ -26,6 +26,7 @@ import { html, raw } from '../../shared/html.js';
 import { isSignedIn, getSession, authFetch } from '../../shared/session.js';
 import { SMS_COMPONENTS } from '../../../../../packages/shared/src/maturity.ts';
 import { can } from '../../../../../packages/shared/src/index.ts';
+import { currencyOf, currencySummary } from '../../../../../packages/shared/src/currency.ts';
 
 /* Which element each surface belongs to, so the screen is assembled
    from the framework rather than from a list somebody typed in this
@@ -211,22 +212,96 @@ const RENDER = {
       </article>`;
     }),
 
+  /* ELEMENT 4.1, THE ANTICIPATION HALF.
+
+     This compared two date STRINGS and rendered lapsed or current —
+     which is precisely what /coverage said was missing: "an expired
+     row is visible to somebody who opens the screen; nothing tells an
+     operator a currency is about to lapse". A recurrent lapsing next
+     Tuesday looked identical to one lapsing in a year, so the only way
+     to act in time was to open the screen on the right day and do the
+     subtraction by eye.
+
+     currencyOf() computes four states from the dates already stored,
+     with a window proportional to each record's own validity — the
+     reasoning is in currency.ts and the short end is the point. The
+     summary above the list is the number a safety manager actually
+     wants, because "is there anything I must do about training" is one
+     question and two counts make it a subtraction.
+
+     The badge still carries a WORD as well as a colour. Amber alone is
+     a state a colour-blind reader does not have. */
   training: (rows) => {
-    const today = new Date().toISOString().slice(0, 10);
-    return rows.map((t) => {
-      const lapsed = t.expiresOn && t.expiresOn.slice(0, 10) < today;
-      return html`<article class="rec" data-state="${lapsed ? 'open' : 'ok'}">
-        <div class="rec__head"><h4>${t.user?.name ?? 'Unnamed'}</h4>
-          <span class="badge" data-status="${lapsed ? 'ALERT' : 'SAFE'}">
-            <span class="badge__label">${lapsed ? 'lapsed' : 'current'}</span>
-          </span></div>
-        <p class="rec__meta">
-          <span>${t.course}</span>
-          <span>completed ${fmtDate(t.completedOn)}</span>
-          <span>${t.expiresOn ? `expires ${fmtDate(t.expiresOn)}` : 'no expiry'}</span>
-        </p>
-      </article>`;
-    });
+    const today = new Date();
+    const records = rows.map((t) => ({
+      row: t,
+      verdict: currencyOf(
+        {
+          completedOn: new Date(t.completedOn),
+          expiresOn: t.expiresOn ? new Date(t.expiresOn) : null
+        },
+        today
+      )
+    }));
+    const summary = currencySummary(
+      records.map((r) => ({
+        completedOn: new Date(r.row.completedOn),
+        expiresOn: r.row.expiresOn ? new Date(r.row.expiresOn) : null
+      })),
+      today
+    );
+
+    const BADGE = { LAPSED: 'ALERT', DUE_SOON: 'CAUTION', CURRENT: 'SAFE', NO_EXPIRY: 'OFFLINE' };
+    const WORD = {
+      LAPSED: 'lapsed',
+      DUE_SOON: 'lapses soon',
+      CURRENT: 'current',
+      NO_EXPIRY: 'no expiry'
+    };
+
+    const head = summary.total
+      ? html`<p class="note" data-currency-summary>
+          <b
+            >${summary.needsAttention
+              ? `${summary.needsAttention} of ${summary.total} need attention`
+              : 'Nothing lapsing'}</b
+          >
+          ${summary.lapsed ? `${summary.lapsed} lapsed. ` : ''}${summary.dueSoon
+            ? `${summary.dueSoon} lapse within their warning window. `
+            : ''}${summary.soonestDays !== null
+            ? `The next is ${summary.soonestDays === 0 ? 'today' : `in ${summary.soonestDays} day${summary.soonestDays === 1 ? '' : 's'}`}.`
+            : 'No record here carries an expiry date.'}
+        </p>`
+      : '';
+
+    return [
+      head,
+      ...records.map(({ row: t, verdict }) => {
+        const state = verdict.state;
+        return html`<article
+          class="rec"
+          data-state="${state === 'CURRENT' || state === 'NO_EXPIRY' ? 'ok' : 'open'}"
+        >
+          <div class="rec__head">
+            <h4>${t.user?.name ?? 'Unnamed'}</h4>
+            <span class="badge" data-status="${BADGE[state]}">
+              <span class="badge__label">${WORD[state]}</span>
+            </span>
+          </div>
+          <p class="rec__meta">
+            <span>${t.course}</span>
+            <span>completed ${fmtDate(t.completedOn)}</span>
+            <span>${t.expiresOn ? `expires ${fmtDate(t.expiresOn)}` : 'no expiry'}</span>
+            ${state === 'DUE_SOON'
+              ? html`<span>in ${verdict.daysLeft} day${verdict.daysLeft === 1 ? '' : 's'}</span>`
+              : ''}
+            ${state === 'LAPSED'
+              ? html`<span>${Math.abs(verdict.daysLeft)} day${verdict.daysLeft === -1 ? '' : 's'} ago</span>`
+              : ''}
+          </p>
+        </article>`;
+      })
+    ];
   },
 
   communications: (rows) =>
