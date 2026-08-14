@@ -135,6 +135,7 @@ model Org {
   training         TrainingRecord[]
   communications   SafetyCommunication[]
   changes          ChangeAssessment[]
+  documentReads    DocumentAcknowledgement[]
 }
 
 model User {
@@ -156,14 +157,15 @@ model User {
 
   // Named relations, because a user can appear against one table in
   // more than one role and Prisma cannot guess which is which.
-  policiesSigned    SafetyPolicy[]          @relation("policySignatory")
+  policiesSigned    SafetyPolicy[]            @relation("policySignatory")
   policyReads       PolicyAcknowledgement[]
-  appointments      Appointment[]           @relation("appointee")
-  documentsApproved ControlledDocument[]    @relation("documentApprover")
-  findingsVerified  AuditFinding[]          @relation("findingVerifier")
-  training          TrainingRecord[]        @relation("trainee")
-  communications    SafetyCommunication[]   @relation("communicator")
-  changesApproved   ChangeAssessment[]      @relation("changeApprover")
+  appointments      Appointment[]             @relation("appointee")
+  documentsApproved ControlledDocument[]      @relation("documentApprover")
+  findingsVerified  AuditFinding[]            @relation("findingVerifier")
+  training          TrainingRecord[]          @relation("trainee")
+  communications    SafetyCommunication[]     @relation("communicator")
+  changesApproved   ChangeAssessment[]        @relation("changeApprover")
+  documentReads     DocumentAcknowledgement[]
 
   @@index([orgId, role])
 }
@@ -797,11 +799,46 @@ model ControlledDocument {
   supersededOn DateTime?
   createdAt    DateTime  @default(now())
 
-  org        Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  approvedBy User? @relation("documentApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  org        Org                       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  approvedBy User?                     @relation("documentApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  reads      DocumentAcknowledgement[]
 
   @@unique([orgId, reference, version])
   @@index([orgId, reviewBy])
+}
+
+/// Element 1.5 — who has read which REVISION of a controlled document.
+///
+/// THE UNIQUE CONSTRAINT IS ON THE DOCUMENT ROW, AND THAT IS THE WHOLE
+/// POINT. ControlledDocument is unique on (orgId, reference, version),
+/// so every revision is its own row — which means an acknowledgement
+/// keyed on documentId is keyed on a REVISION. Reading revision 3 does
+/// not mark you as having read revision 4.
+///
+/// That is not a detail. It is what document control means and what
+/// distinguishes a register of documents from a distribution record: an
+/// operator that revises its SMS manual needs to know who has read the
+/// version now in force, not who once read something with the same
+/// title. A per-document key would report full coverage the moment a
+/// revision shipped, which is the reassuring answer and the wrong one.
+///
+/// Mirrors PolicyAcknowledgement deliberately, down to the cascade
+/// choices: the acknowledgement dies with its document and NEVER with
+/// its user, because who read a revision is part of the record and an
+/// offboarded person having read it remains true.
+model DocumentAcknowledgement {
+  id             String   @id @default(uuid())
+  orgId          String
+  documentId     String
+  userId         String
+  acknowledgedAt DateTime @default(now())
+
+  org      Org                @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  document ControlledDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([documentId, userId])
+  @@index([orgId, acknowledgedAt])
 }
 
 /// Element 3.3 — continuous improvement. An internal SMS audit finding,

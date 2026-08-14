@@ -680,11 +680,14 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
     state: "PARTIAL",
     serverRoutes: ["/api/v1/sms/documents"],
     has:
-      "Document control: reference, version, who approved it and when, and the date the " +
-      "next review falls due.",
+      "A controlled document register — reference, revision, approver, review date \u2014 " +
+      "with a supersession that retires the previous revision, and a record of who has " +
+      "read the revision NOW IN FORCE. Reading one revision does not mark anybody as " +
+      "having read the next.",
     missing:
-      "The documents. The product controls the register of them, does not store their " +
-      "content, and does not distribute them or record who has read each one.",
+      "The documents themselves. The product controls the register and the distribution " +
+      "record; it does not store the content, so the manual still lives wherever the " +
+      "operator keeps it and this points at which revision that should be.",
     href: "/sms",
   },
   {

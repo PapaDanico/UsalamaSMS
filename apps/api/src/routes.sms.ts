@@ -480,9 +480,68 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
       where: { ...tenantWhere(req), supersededOn: null },
       orderBy: [{ reference: "asc" }],
       take: LIST_LIMIT,
-      include: { approvedBy: { select: { name: true } } },
+      /* The count, and whether the CALLER has read it. Element 1.5 is
+         about distribution, and both numbers are the distribution: how
+         many have read the revision in force, and whether the person
+         looking at the screen is one of them. Counted per revision,
+         because that is what the row is. */
+      include: {
+        approvedBy: { select: { name: true, role: true } },
+        _count: { select: { reads: true } },
+        reads: { where: { userId: req.auth!.sub }, select: { acknowledgedAt: true }, take: 1 },
+      },
     });
     return reply.send({ documents: rows });
+  });
+
+  /* WHO HAS READ THIS REVISION — the half that turns a register into a
+     distribution record.
+
+     document.read, not document.manage. The person acknowledging is the
+     person who read it, and requiring a manager's permission to say "I
+     have read the manual" would mean the safety office recording it on
+     everybody's behalf, which is a record of what the safety office
+     believes rather than of what happened.
+
+     IDEMPOTENT. Reading twice is not two readings, and the unique
+     constraint on (documentId, userId) says so in the database as well.
+     A second acknowledgement returns the FIRST one's timestamp rather
+     than moving it — when somebody read the revision is the fact, and
+     re-opening a document should not rewrite it.
+     ===================================================================== */
+  app.post("/api/v1/sms/documents/:id/read", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "document.read")) return reply.code(403).send({ error: "forbidden" });
+    const { id } = req.params as { id: string };
+
+    const doc = await prisma.controlledDocument.findFirst({
+      where: { ...tenantWhere(req), id },
+      select: { id: true },
+    });
+    if (!doc) return reply.code(404).send({ error: "not_found" });
+
+    const existing = await prisma.documentAcknowledgement.findFirst({
+      where: { documentId: doc.id, userId: req.auth!.sub },
+      select: { acknowledgedAt: true },
+    });
+    if (existing) {
+      return reply.send({ acknowledgedAt: existing.acknowledgedAt, alreadyRead: true });
+    }
+
+    const saved = await prisma.$transaction(async (tx) => {
+      const row = await tx.documentAcknowledgement.create({
+        data: { orgId: req.auth!.org, documentId: doc.id, userId: req.auth!.sub },
+      });
+      await appendAuditTx(tx, {
+        orgId: req.auth!.org,
+        userId: req.auth!.sub,
+        action: "document.read",
+        entityType: "ControlledDocument",
+        entityId: doc.id,
+      });
+      return row;
+    });
+
+    return reply.code(201).send({ acknowledgedAt: saved.acknowledgedAt, alreadyRead: false });
   });
 
   app.post("/api/v1/sms/documents", limited, async (req, reply) => {
