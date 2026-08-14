@@ -422,7 +422,17 @@ assert(
   'no *.test.ts found under tests/ — this gate asserts a count over them'
 );
 
-const listed = spawnSync('npx', ['vitest', 'list'], { encoding: 'utf8', cwd: ROOT });
+/* The installed binary by path, through this same node, rather than
+   `npx vitest`. npx resolves through PATH and a package manager, both of
+   which differ between a laptop and a CI runner — and a resolution
+   failure here returns no lines, which the assertion below would read
+   as "the runner collected nothing" rather than as "the count is
+   wrong". Deterministic invocation keeps that failure honest. */
+const listed = spawnSync(
+  process.execPath,
+  [resolve(ROOT, 'node_modules/vitest/vitest.mjs'), 'list'],
+  { encoding: 'utf8', cwd: ROOT }
+);
 const testCount = (listed.stdout ?? '')
   .split('\n')
   .filter((l) => /^tests\/.+ > /.test(l)).length;

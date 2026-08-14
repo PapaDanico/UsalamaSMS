@@ -69,8 +69,25 @@ jobs:
       # product is sold on, so they are checked against dist/ and not
       # against source.
       - run: npx playwright install --with-deps chromium
-      - run: npm run build
-      - run: npm run smoke
+
+      # `verify`, NOT `build && smoke`, and the difference was two gates
+      # that ran nowhere.
+      #
+      # This step used to be `npm run build` followed by `npm run smoke`,
+      # which is most of what verify does and not all of it. verify also
+      # runs the accessibility sweep and the two-version PWA update
+      # gate — so both of those existed, passed locally, were described
+      # in the README, and had no opinion whatsoever about a pull
+      # request. The update gate had been in that position since it was
+      # written; the a11y sweep joined it the day it was added, by
+      # being wired into the one command CI did not call.
+      #
+      # A gate that cannot fail the thing it guards is the failure mode
+      # this repository treats as worse than having no gate. Naming the
+      # composite command rather than its parts is also what stops it
+      # happening again: the next gate added to verify is in CI the same
+      # day, without anybody remembering to add a line here.
+      - run: npm run verify
 
   # A gate is worth what its failure is worth, and a gate nobody has
   # watched fail is a gate nobody has tested. These two cases assert that
