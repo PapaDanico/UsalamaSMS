@@ -78,16 +78,28 @@ class Router {
       const path = normalise(href);
       if (!this.routes.has(path)) return; // let the server answer
 
-      /* THE FRAGMENT SURVIVES. normalise() strips it — correctly, since
-         a route is a path — and the first version of this handler threw
-         it away with it. So the footer's "/#deadlines", which is the
-         link to the regulatory basis and the most consequential thing
-         in the footer, navigated to the landing page and scrolled to
-         the top. It had never once worked. */
-      const hash = href.includes('#') ? href.slice(href.indexOf('#')) : '';
+      /* THE WHOLE HREF GOES TO navigate(), which is the fix for the
+         same defect twice.
 
+         normalise() strips ? and # — correctly, since a route is
+         matched on its path — and this handler used to rebuild the URL
+         from the STRIPPED result. The first casualty was the fragment:
+         the footer's "/#deadlines", the link to the regulatory basis
+         and the most consequential thing down there, navigated to the
+         landing page and scrolled to the top. It had never once worked,
+         and it was fixed by re-attaching the hash here.
+
+         The query string was the identical bug sitting beside the
+         identical fix, unnoticed because nothing used one until the
+         triage queue started handing the register a report to raise a
+         hazard from. Re-attaching the search too would have been a
+         third copy of the same three lines.
+
+         So the href travels intact and navigate() does the parsing,
+         once. Two places splitting a URL is how the two came to
+         disagree about which parts of it matter. */
       event.preventDefault();
-      this.navigate(path + hash);
+      this.navigate(href);
     });
 
     this.render();
@@ -101,10 +113,27 @@ class Router {
   navigate(path, { replace = false } = {}) {
     const input = String(path);
     const hash = input.includes('#') ? input.slice(input.indexOf('#')) : '';
-    const target = normalise(input);
-    const url = target + hash;
+    /* THE QUERY STRING SURVIVES THE NAVIGATION, and until this line it
+       did not. `normalise()` strips ? and # because a route is matched
+       on its path — that part is right — but the result was then pushed
+       to history as the whole URL, so every query string was discarded
+       the moment a link was followed inside the app. A link pasted into
+       the address bar kept it and the same link clicked in the product
+       lost it, which is the kind of difference nobody reproduces.
 
-    if (target === this.path) {
+       Nothing used one until now, which is why it went unnoticed: the
+       first caller is the triage queue handing the register a report to
+       raise a hazard from, and it carries an ID rather than any of the
+       report's content precisely because a URL is written to history,
+       to a referrer header, and over somebody's shoulder. */
+    const withoutHash = hash ? input.slice(0, input.indexOf('#')) : input;
+    const search = withoutHash.includes('?')
+      ? withoutHash.slice(withoutHash.indexOf('?'))
+      : '';
+    const target = normalise(input);
+    const url = target + search + hash;
+
+    if (target === this.path && search === window.location.search) {
       /* Same route. If a fragment came with it, this is an in-page
          move and re-rendering would destroy the element being scrolled
          to — the same defect popstate had. Without one it is a request

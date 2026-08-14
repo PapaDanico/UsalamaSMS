@@ -824,6 +824,27 @@ function row(r) {
             >
               Record an action
             </button>
+            <!-- RAISE A HAZARD FROM THE REPORT THAT REVEALED IT.
+
+                 The join this product did not have. Hazard.reportId has
+                 been in the schema since the first migration and nothing
+                 ever wrote it, so every register was a list of hazards
+                 somebody remembered to type — while the reports that
+                 should have produced them sat in this queue. Element 2.1
+                 asks for hazard identification FED by reporting, and
+                 /coverage has been saying so in 2.2's own words.
+
+                 IT CARRIES AN ID AND NOTHING ELSE. The register is
+                 printed and shown to an inspector; a narrative is
+                 protected and may be anonymous. So this link puts no
+                 content in the URL either — the register screen finds
+                 the report in the queue it already reads. -->
+            <a
+              class="btn btn-ghost btn-sm"
+              href="/toolkits/register?from=${r.serverId}"
+            >
+              Raise a hazard
+            </a>
           </div>`
         : ''}
 

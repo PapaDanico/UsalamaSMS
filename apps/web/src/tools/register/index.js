@@ -204,6 +204,14 @@ function Row(entry) {
     <p class="reg-entry__meta">
       <span>${entry.owner || 'No owner'}</span>
       <span>review by ${entry.reviewBy || 'no date'}</span>
+      <!-- WHERE IT CAME FROM. The question an auditor asks about a
+           register is not only what is in it — it is how much of it the
+           operator's own people found. A register of hazards somebody
+           sat down and imagined is a different artefact from one fed by
+           reporting, and only one of them is element 2.1 working. -->
+      <span class="reg-entry__nores"
+        >${entry.source === 'REPORT' ? 'raised from a report' : 'entered directly'}</span
+      >
       <button type="button" class="btn btn-ghost btn-sm" data-remove="${entry.id}">Remove</button>
     </p>
 
@@ -258,6 +266,22 @@ export function render(outlet) {
      with partial distribution and a register that claims full. */
   let deviceOnly = [];
 
+  /* ------------------------------------------------------------
+     THE REPORT THIS ENTRY IS BEING RAISED FROM, if the safety officer
+     arrived here from the queue rather than from the menu.
+
+     AN ID AND NOTHING ELSE travels in the URL, deliberately. A URL is
+     written to browser history, sent as a referrer and read over
+     somebody's shoulder — and the title of a fatigue report is the
+     sentence that identifies its author at a six-aircraft operator.
+     The wording of the hazard is written here, by the person raising
+     it, which is also what an SMS asks for: a hazard is the general
+     condition abstracted from one or more reports, not a copy of one.
+
+     Cleared once the entry is filed, so a second hazard typed in the
+     same sitting is not silently attributed to the same report. */
+  let fromReportId = new URLSearchParams(window.location.search).get('from') || '';
+
   /* Assigned at the bottom of this function, once the elements it
      repaints exist. Declared here so the acceptance handler can close
      over it — a signature is one of the two things on this screen that
@@ -288,6 +312,24 @@ export function render(outlet) {
            reader turn over to find the register. -->
       <aside class="toc mat-result no-print">
         <h2 class="section-title">Add an entry</h2>
+        <!-- ARRIVED FROM THE QUEUE, and said so before anything is
+             typed. Without this the link is invisible until after the
+             entry is filed, and somebody who opened the register from
+             the menu in another tab would have no way to tell the two
+             situations apart.
+
+             IT NAMES NO REPORT. Not the title, not the reporter, not
+             the date — a hazard is being written here for a register
+             that gets printed, and the report it came from is protected
+             and may be anonymous. The person raising it has just read
+             the report in the queue; they do not need it repeated. -->
+        ${fromReportId
+          ? html`<p class="notice">
+              Raising this from a report in the queue. Write the hazard as the
+              <strong>general condition</strong> — the register is read by people who
+              cannot see the report, and it is shown to an inspector.
+            </p>`
+          : ''}
         <form id="reg-form" novalidate>
           <label class="field">
             <span class="field-label">The hazard *</span>
@@ -504,12 +546,18 @@ export function render(outlet) {
         owner,
         reviewBy,
         status: f.status.value,
+        ...(fromReportId ? { fromReportId, source: 'REPORT' } : {}),
         createdAt: new Date().toISOString()
       },
       ...entries
     ];
     const stored = save(entries);
     form.reset();
+    /* One report, one raising. Leaving this set would attribute the
+       next hazard typed in the same sitting to a report it has nothing
+       to do with — a wrong link in a register is worse than no link,
+       because it is the one an inspector follows. */
+    fromReportId = '';
     repaint();
 
     /* THE SERVER IS THE RECORD WHEN THERE IS ONE. Same shape as the
@@ -536,7 +584,8 @@ export function render(outlet) {
             : {}),
           ...(added.owner ? { owner: added.owner } : {}),
           ...(added.reviewBy ? { reviewBy: added.reviewBy } : {}),
-          status: added.status
+          status: added.status,
+          ...(added.fromReportId ? { fromReportId: added.fromReportId } : {})
         })
       })
         .then(async (res) => {

@@ -4087,6 +4087,47 @@ try {
     );
   });
 
+  await check('A LINK KEEPS ITS QUERY STRING, THE SAME WAY IT KEEPS ITS FRAGMENT', async () => {
+    /* THE DEFECT THIS EXISTS FOR, and it is the second time the same
+       one shipped. The router's click handler rebuilt the URL from
+       normalise(href) — which strips ? and #, correctly, because a
+       route is matched on its path. The fragment was re-attached after
+       the footer's "/#deadlines" was found never to have worked once.
+       The query string was the identical bug sitting beside the
+       identical fix, unnoticed for as long as nothing used one.
+
+       Something uses one now: the triage queue hands the register a
+       report to raise a hazard from, and the id travels in the query
+       because a URL is written to history and read over a shoulder,
+       while a report title is protected content.
+
+       Asserted through a real click rather than by calling navigate(),
+       because the click handler is the half that was wrong — a test
+       against navigate() would have passed on the broken build. */
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+    await page.evaluate(() => {
+      const a = document.createElement('a');
+      a.id = 'smoke-query-link';
+      a.href = '/toolkits/register?from=smoke-probe#anchor-probe';
+      a.textContent = 'probe';
+      document.body.appendChild(a);
+    });
+    await page.click('#smoke-query-link');
+    await page.waitForTimeout(300);
+
+    const landed = await page.evaluate(() => ({
+      path: location.pathname,
+      search: location.search,
+      hash: location.hash,
+    }));
+    assert(landed.path === '/toolkits/register', `a link went to ${landed.path}`);
+    assert(
+      landed.search === '?from=smoke-probe',
+      `the query string was ${JSON.stringify(landed.search)} after following a link`
+    );
+    assert(landed.hash === '#anchor-probe', 'the fragment was dropped');
+  });
+
   await check('EVERY INTERNAL LINK RESOLVES, AND EVERY FRAGMENT HAS A TARGET', async () => {
     const origin = `http://localhost:${PORT}`;
 

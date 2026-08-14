@@ -97,6 +97,31 @@ const EntrySchema = z.object({
   owner: z.string().trim().max(160).optional(),
   reviewBy: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   status: z.enum(SETTABLE_ON_CREATE).default("OPEN"),
+  /* ------------------------------------------------------------------
+     THE REPORT THIS CAME OUT OF.
+
+     `Hazard.reportId` and `Hazard.source` have been in the schema since
+     the first migration and nothing has ever written the first one. So
+     every hazard in every register was typed by hand, and the two
+     halves of this product did not touch: reports arrived, were
+     triaged, coded to ICAO's categories and dispositioned, while the
+     register held whatever somebody remembered to write down again.
+
+     That is the finding element 2.1 exists to prevent — hazard
+     identification is meant to be FED by the reporting system — and
+     /coverage has been saying so in element 2.2's `missing` field in
+     the meantime.
+
+     WHAT DOES NOT TRAVEL IS THE NARRATIVE, and that is the whole
+     design of this field. A register is printed, taken to a meeting and
+     shown to an inspector; a report narrative is protected, may be
+     anonymous, and is de-identified before it goes anywhere wider. So
+     the link is an ID and nothing else. The hazard's own words are
+     written by the person raising it, which is also what an SMS
+     actually asks for: a hazard is the general condition a safety
+     officer abstracts from one or more reports, not a copy of one.
+     ------------------------------------------------------------------ */
+  fromReportId: z.string().uuid().optional(),
 }).refine(
   (e) => Boolean(e.residualSeverity) === Boolean(e.residualLikelihood),
   { message: "A residual position needs both a severity and a likelihood, or neither." },
@@ -161,6 +186,13 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
           id: h.id,
           assessmentId: a.id,
           hazard: h.title,
+          /* WHERE IT CAME FROM, rendered rather than inferred. An
+             operator asked "how much of your register came from your
+             own people" has to be able to answer it, and a register
+             that cannot tell a typed hazard from a reported one cannot.
+             The report's ID travels; nothing of its content does. */
+          source: h.source,
+          fromReportId: h.reportId ?? undefined,
           consequence: a.consequence,
           severity: a.severity,
           likelihood: a.likelihood,
@@ -215,6 +247,27 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
           }
         : {};
 
+    /* THE REPORT IS CHECKED IN THIS TENANT BEFORE IT IS LINKED, not
+       trusted from the body. `reportId` is a foreign key, so a stranger's
+       id would either be accepted — putting one operator's report id in
+       another's register — or fail with a constraint error the caller
+       cannot act on. Neither is an answer, so it is looked up under
+       tenantWhere and refused by name. */
+    if (e.fromReportId) {
+      const report = await prisma.safetyReport.findFirst({
+        where: { ...tenantWhere(req), id: e.fromReportId },
+        select: { id: true },
+      });
+      if (!report) {
+        return reply.code(404).send({
+          error: "report_not_found",
+          message:
+            "That report is not one of this operator's. A register entry can only be " +
+            "raised from a report the safety office actually holds.",
+        });
+      }
+    }
+
     const created = await prisma.$transaction(async (tx) => {
       const hazard = await tx.hazard.create({
         data: {
@@ -222,9 +275,11 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
           title: e.hazard,
           description: e.consequence,
           /* Named so the register can tell a hazard somebody typed from
-             one that arrived on a report. The reporting queue is not
-             wired into this yet, and /coverage says so. */
-          source: "REGISTER",
+             one that arrived on a report — and so an operator can be
+             asked the question an auditor actually asks, which is what
+             proportion of its register came from its own people. */
+          ...(e.fromReportId ? { reportId: e.fromReportId } : {}),
+          source: e.fromReportId ? "REPORT" : "REGISTER",
         },
       });
       const assessment = await tx.riskAssessment.create({
@@ -258,6 +313,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         id: created.hazard.id,
         assessmentId: created.assessment.id,
         hazard: created.hazard.title,
+        source: created.hazard.source,
+        fromReportId: created.hazard.reportId ?? undefined,
         consequence: created.assessment.consequence,
         severity: created.assessment.severity,
         likelihood: created.assessment.likelihood,
