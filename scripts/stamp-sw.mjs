@@ -1326,7 +1326,49 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    KB and the composer appears in exactly one chunk, checked by grepping
    the built output. ENTRY UNCHANGED AT 214.8 for the sixth change
    running: a reporter at a strip does not open the triage queue. */
-const BUDGET = { entry: 215 * 1024, js: 475 * 1024, css: 60 * 1024 };
+/* TOTAL 475 -> 478 KB for risk acceptance as an act. CSS NOT RAISED
+   AGAIN, and the JS was cut in half before the number was touched.
+
+   WHAT THE PRODUCT COULD NOT DO. Nothing in it could accept a risk.
+   `acceptedById` and `acceptedAt` had been on the schema since the
+   first migration and no code had ever written either; the acceptance
+   permissions were in the matrix and no route read them; and the
+   register took `status` from the request body, so any holder of
+   `hazard.manage` — the Safety Officer included — could file the
+   reddest cell on the Doc 9859 matrix already marked ACCEPTED, signed
+   by nobody. The screen offered a dropdown headed "Accepted by" that
+   wrote a post somebody chose from a list.
+
+   A name typed into a box is not a signature. What the 3 KB buys is
+   the act: a route that checks the permission, refuses the red band to
+   everybody including the accountable executive, enforces RA 1210's
+   escalation so an amber risk needs the post that can spend the money,
+   requires the ALARP statement the SRA has always required and the
+   register never inherited, records who signed and when, and names the
+   band in the audit trail. Ten integration checks against a real
+   Postgres cover it.
+
+   TWO THINGS WERE REMOVED FROM THE WIRE ON THE WAY, which is why this
+   is 3 KB and not 5.
+
+   The CSS went 0.3 KB over first. The signature line now reuses
+   `.verified`, `.reg-entry__nores` and `.reg-entry__flag` — the green
+   "somebody signed this", the small tertiary aside and the ochre
+   warning sentence that this exact card already used — so CSS is back
+   at 59.9 of 60 and the standing rule that the next raise splits the
+   stylesheet is still unspent.
+
+   The authority ladder itself never reaches a browser. It went into
+   packages/shared/src/signature.ts, imported only by the two routes
+   that enforce it, because holder.ts is imported by two web chunks and
+   freezes a record at module scope that Rollup cannot shake. The
+   bundle argument and the design argument agreed: the client must not
+   decide who may sign, it must send the act and show the server's
+   answer — which names the post that has to sign instead.
+
+   ENTRY UNCHANGED AT 214.8 KB for the seventh change running. A
+   reporter at a remote strip does not open the risk register. */
+const BUDGET = { entry: 215 * 1024, js: 478 * 1024, css: 60 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

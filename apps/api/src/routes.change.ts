@@ -35,6 +35,10 @@ import {
   type Severity,
   type Likelihood,
 } from "@usalamasms/shared";
+/* Relative rather than through the barrel, for the reason set out in
+   routes.register.ts: the barrel reaches the report form's entry
+   chunk and this module cannot be tree-shaken. */
+import { refuseSignature } from "../../../packages/shared/src/signature";
 import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
 
 const LIST_LIMIT = 200;
@@ -207,13 +211,29 @@ export async function changeRoutes(app: FastifyInstance): Promise<void> {
        sufficiently senior" — it is not acceptable at any level of
        benefit. The position that governs is the residual one where
        there is one, because that is what the controls leave behind. */
+    /* THE SAME RULE THE REGISTER ENFORCES, from the same module, so
+       there is one answer in this product to "who is senior enough".
+
+       This is where the red refusal now comes from too. It used to be
+       written out here, correctly, and separately — two files agreeing
+       by coincidence about the most consequential refusal either makes.
+       `refuseSignature` returns `not_ownable` for INTOLERABLE with the
+       same sentence, and `below_authority` for a tolerable change
+       somebody below the accountable executive tried to sign, which is
+       what this route could not see before: `moc.approve` is held by
+       KEY_MANAGEMENT as well, so a head of department could sign for an
+       amber change that RA 1210 puts a tier above them. */
     const governing = change.residualTolerability ?? change.tolerability;
-    if (governing === "INTOLERABLE") {
-      return reply.code(409).send({
-        error: "intolerable",
+    const refusal = refuseSignature(governing, req.auth!.role);
+    if (refusal) {
+      return reply.code(refusal.error === "not_ownable" ? 409 : 403).send({
+        error: refusal.error === "not_ownable" ? "intolerable" : refusal.error,
+        requires: refusal.requires,
         message:
-          "This change carries an intolerable risk after its controls. It cannot be " +
-          "approved — the controls have to change, not the signature.",
+          refusal.error === "not_ownable"
+            ? "This change carries an intolerable risk after its controls. It cannot be " +
+              "approved — the controls have to change, not the signature."
+            : refusal.message,
       });
     }
 

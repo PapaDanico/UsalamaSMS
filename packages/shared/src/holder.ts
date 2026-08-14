@@ -22,9 +22,15 @@
    it. The register then reads as managed and is not.
 
    WHAT THIS MODULE DOES AND DOES NOT DO. It computes the MINIMUM post
-   for a band and reports whether a proposed owner clears it. It does
-   not silently reassign, and it does not refuse — see the note on
-   `meetsRequirement` for why that judgement sits with the caller.
+   for a band, reports whether a proposed OWNER clears it, and refuses a
+   SIGNATURE that does not. The two halves are different on purpose: an
+   owner is a post an operator types and may legitimately be a title
+   this product has never heard of, so there the answer is reported and
+   the caller decides; a signature is made by an authenticated user
+   holding a role from the matrix, where there is nothing to guess and
+   the rule is enforced — by signature.ts, which is a separate module so
+   that the authority ladder never reaches a browser. It never silently
+   reassigns either one.
 
    THE MAPPING IS OURS AND IS LABELLED AS SUCH. RA 1210 governs UK
    military aviation and its Duty Holder construct has no equivalent in
@@ -110,8 +116,10 @@ export function requiredHolder(band: Tolerability): HolderRequirement {
  * is how a register stops recording who owns anything.
  *
  * So: an unrecognised post returns `unknown`, and the caller decides.
- * The screen states the requirement beside the field; the CHANGE route,
- * where approval is a real permission and not free text, enforces it.
+ * The screen states the requirement beside the field. Where the answer
+ * is NOT free text — a signature act performed by an authenticated user
+ * holding a role — the rule is enforced rather than reported, by
+ * `refuseSignature` in signature.ts.
  */
 export function meetsRequirement(
   band: Tolerability,

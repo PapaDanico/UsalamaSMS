@@ -185,4 +185,199 @@ describe.skipIf(!hasDatabase)("the risk register, through the real route", () =>
   it("requires a token", async () => {
     expect((await app.inject({ method: "GET", url: "/api/v1/register" })).statusCode).toBe(401);
   });
+
+  /* ============================================================
+     ACCEPTING A RISK — the act, and the four refusals around it.
+
+     WHAT THIS SUITE EXISTS FOR. Before it, `acceptedById` and
+     `acceptedAt` had been in the schema since the first migration and
+     no code had ever written either; `risk.accept.tolerable` was in the
+     matrix and no route read it; and `status` came off the request
+     body, so any holder of `hazard.manage` — which includes the Safety
+     Officer — could file the reddest cell on the Doc 9859 matrix
+     already marked ACCEPTED.
+
+     The register then read "accepted" against a risk nobody with the
+     standing to accept it had ever seen, which is precisely what the
+     escalation rule in holder.ts was written to prevent while nothing
+     called it.
+     ============================================================ */
+  describe("acceptance", () => {
+    let officerId: string;
+    let execId: string;
+
+    beforeEach(async () => {
+      officerId = (
+        await prisma().user.create({
+          data: {
+            orgId, email: "officer@a.test", passwordHash: "x",
+            name: "Grace Wanjiru", role: "SAFETY_OFFICER" as never,
+          },
+        })
+      ).id;
+      execId = (
+        await prisma().user.create({
+          data: {
+            orgId, email: "ae@a.test", passwordHash: "x",
+            name: "Daniel Mwangi", role: "ACCOUNTABLE_EXECUTIVE" as never,
+          },
+        })
+      ).id;
+    });
+
+    /** File an entry and return the assessment id the accept route takes. */
+    const file = async (overrides: Record<string, unknown> = {}): Promise<string> => {
+      const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+      const res = await post("/api/v1/register", manager, { ...ENTRY, ...overrides });
+      expect(res.statusCode).toBe(201);
+      return res.json().entry.assessmentId;
+    };
+
+    it("REFUSES TO TAKE 'ACCEPTED' FROM THE REQUEST BODY", async () => {
+      /* The defect this whole block was written for. A safety officer
+         holds hazard.manage, so they could file this — and the entry
+         would read as signed off by nobody. */
+      const officer = tokenFor(officerId, orgId, "SAFETY_OFFICER");
+      const res = await post("/api/v1/register", officer, {
+        ...ENTRY,
+        severity: "A_CATASTROPHIC",
+        likelihood: "FREQUENT",
+        residualSeverity: "A_CATASTROPHIC",
+        residualLikelihood: "FREQUENT",
+        status: "ACCEPTED",
+      });
+      expect(res.statusCode).toBe(400);
+
+      // And nothing was written under any other status either.
+      expect(await prisma().riskAssessment.count({ where: { orgId } })).toBe(0);
+    });
+
+    it("records WHO signed and WHEN, which is the line an auditor reads", async () => {
+      const id = await file({
+        residualSeverity: "D_MINOR", residualLikelihood: "IMPROBABLE", // green
+      });
+      const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+      const res = await post(`/api/v1/register/${id}/accept`, manager, {});
+      expect(res.statusCode).toBe(200);
+
+      const row = await prisma().riskAssessment.findFirstOrThrow({ where: { id } });
+      expect(row.acceptedById).toBe(managerId);
+      expect(row.acceptedAt).toBeInstanceOf(Date);
+      expect(row.status).toBe("ACCEPTED");
+
+      // And the screen can name them without a second request.
+      const [entry] = (await get("/api/v1/register", manager)).json().entries;
+      expect(entry.acceptedBy).toBe("manager@a.test");
+      expect(entry.acceptedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it("REFUSES AN AMBER RISK TO THE SAFETY MANAGER — RA 1210's escalation", async () => {
+      /* The differentiator, enforced. A tolerable risk is being
+         accepted because reducing it further is not reasonably
+         practicable: a judgement about money against safety, which
+         belongs with the post that can spend it. The refusal names that
+         post rather than saying "forbidden". */
+      const id = await file(); // B_HAZARDOUS x REMOTE residual = amber
+      const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+      const res = await post(`/api/v1/register/${id}/accept`, manager, {
+        alarpJustification: "Bird control contract in place and reviewed weekly.",
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().error).toBe("below_authority");
+      expect(res.json().requires).toBe("ACCOUNTABLE_EXECUTIVE");
+
+      const row = await prisma().riskAssessment.findFirstOrThrow({ where: { id } });
+      expect(row.acceptedById).toBeNull();
+      expect(row.status).not.toBe("ACCEPTED");
+    });
+
+    it("lets the accountable executive sign the same amber risk", async () => {
+      const id = await file();
+      const exec = tokenFor(execId, orgId, "ACCOUNTABLE_EXECUTIVE");
+      const res = await post(`/api/v1/register/${id}/accept`, exec, {
+        alarpJustification: "Bird control contract in place and reviewed weekly.",
+      });
+      expect(res.statusCode).toBe(200);
+
+      const row = await prisma().riskAssessment.findFirstOrThrow({ where: { id } });
+      expect(row.acceptedById).toBe(execId);
+      expect(row.alarpJustification).toContain("Bird control contract");
+    });
+
+    it("REFUSES AN AMBER RISK WITH NO ALARP STATEMENT, even to the executive", async () => {
+      /* RiskAssessInputSchema has required this since the SRA was
+         written. The register was built with its own schema and never
+         inherited it, so the one band where ALARP is the whole question
+         could be signed with nothing said. */
+      const id = await file();
+      const exec = tokenFor(execId, orgId, "ACCOUNTABLE_EXECUTIVE");
+      const res = await post(`/api/v1/register/${id}/accept`, exec, {});
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toBe("alarp_required");
+
+      const row = await prisma().riskAssessment.findFirstOrThrow({ where: { id } });
+      expect(row.acceptedAt).toBeNull();
+    });
+
+    it("REFUSES AN INTOLERABLE RISK TO EVERYBODY, the executive included", async () => {
+      /* Doc 9859's red band is not "acceptable with a senior enough
+         signature". Escalating it would turn a refusal into a queue. */
+      const id = await file({
+        severity: "A_CATASTROPHIC", likelihood: "FREQUENT",
+        residualSeverity: "A_CATASTROPHIC", residualLikelihood: "OCCASIONAL",
+      });
+      const exec = tokenFor(execId, orgId, "ACCOUNTABLE_EXECUTIVE");
+      const res = await post(`/api/v1/register/${id}/accept`, exec, {
+        alarpJustification: "Everything reasonably practicable has been done.",
+      });
+      expect(res.statusCode).toBe(409);
+      expect(res.json().error).toBe("not_ownable");
+      expect(res.json().message).toContain("controls have to change");
+    });
+
+    it("REFUSES THE SAFETY OFFICER OUTRIGHT — no acceptance permission at all", async () => {
+      const id = await file({
+        residualSeverity: "D_MINOR", residualLikelihood: "IMPROBABLE",
+      });
+      const officer = tokenFor(officerId, orgId, "SAFETY_OFFICER");
+      expect((await post(`/api/v1/register/${id}/accept`, officer, {})).statusCode).toBe(403);
+    });
+
+    it("will not overwrite a signature by accepting twice", async () => {
+      const id = await file({
+        residualSeverity: "D_MINOR", residualLikelihood: "IMPROBABLE",
+      });
+      const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+      expect((await post(`/api/v1/register/${id}/accept`, manager, {})).statusCode).toBe(200);
+
+      const exec = tokenFor(execId, orgId, "ACCOUNTABLE_EXECUTIVE");
+      const second = await post(`/api/v1/register/${id}/accept`, exec, {});
+      expect(second.statusCode).toBe(409);
+      expect(second.json().error).toBe("already_accepted");
+
+      const row = await prisma().riskAssessment.findFirstOrThrow({ where: { id } });
+      expect(row.acceptedById).toBe(managerId);
+    });
+
+    it("cannot accept another operator's risk", async () => {
+      const id = await file({
+        residualSeverity: "D_MINOR", residualLikelihood: "IMPROBABLE",
+      });
+      const outsider = tokenFor(otherManagerId, otherOrgId, "SAFETY_MANAGER");
+      expect((await post(`/api/v1/register/${id}/accept`, outsider, {})).statusCode).toBe(404);
+    });
+
+    it("names the band it was accepted in, in the audit trail", async () => {
+      /* "risk.accept" alone cannot answer the question an inspector
+         actually asks, which is who accepted the amber ones. */
+      const id = await file();
+      const exec = tokenFor(execId, orgId, "ACCOUNTABLE_EXECUTIVE");
+      await post(`/api/v1/register/${id}/accept`, exec, {
+        alarpJustification: "Reviewed weekly; further reduction not reasonably practicable.",
+      });
+      const actions = (await prisma().auditLog.findMany({ where: { orgId } })).map((a) => a.action);
+      expect(actions).toContain("risk.accept.tolerable");
+    });
+  });
 });

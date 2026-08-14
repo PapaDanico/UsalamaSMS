@@ -2178,10 +2178,33 @@ try {
     await page.evaluate(() => localStorage.removeItem('usalamasms.register'));
     await page.reload({ waitUntil: 'networkidle' });
 
-    for (const name of ['owner', 'acceptedBy', 'reviewInterval']) {
+    for (const name of ['owner', 'reviewInterval']) {
       const tag = await page.locator(`#reg-form [name="${name}"]`).evaluate((el) => el.tagName);
       assert(tag === 'SELECT', `${name} is a ${tag}, and it has a bounded vocabulary`);
     }
+
+    /* AND THERE IS NO "ACCEPTED BY" FIELD, which is the stronger form of
+       the same rule. This check used to assert that `acceptedBy` was a
+       SELECT rather than a text box — a bounded vocabulary for a fact
+       that should never have been collected on this form at all.
+
+       Accepting a risk is a signature. It is now its own act against the
+       row, performed by the person signing, checked on the server
+       against the permission, the band and RA 1210's escalation, and
+       recorded with their identity and the moment. A dropdown on the
+       creation form let whoever typed the entry name somebody else as
+       having accepted it, with nothing checked and nobody recorded.
+
+       So the assertion is inverted rather than deleted: if a field like
+       that ever comes back, this fails. */
+    assert(
+      (await page.locator('#reg-form [name="acceptedBy"]').count()) === 0,
+      'the register form collects an acceptance as a field again — it is a signature, not a value'
+    );
+    assert(
+      (await page.locator('#reg-form select[name="status"] option[value="ACCEPTED"]').count()) === 0,
+      'ACCEPTED is offered as a status somebody can choose, which is an unsigned acceptance'
+    );
 
     // The review DATE is computed from the interval, never typed
     // alongside it — two fields that can disagree is one field too many.

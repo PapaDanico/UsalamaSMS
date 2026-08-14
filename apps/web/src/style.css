@@ -3389,6 +3389,24 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .reg-entry__escalation strong { color: var(--us-charcoal); }
 
+/* THE SIGNATURE LINE HAS NO RULES OF ITS OWN, deliberately.
+
+   It is a second `.reg-entry__meta` row, and the three things in it
+   reuse `.verified` (the green, weighted "somebody signed this" already
+   used by the audit findings), `.reg-entry__nores` (the small tertiary
+   aside already used for "no controls assessed yet") and
+   `.reg-entry__flag` (the ochre sentence already used for "intolerable
+   and not accepted").
+
+   Four new rules were written first and took CSS to 60.2 KB against a
+   60 KB ceiling. The receipt from two changes ago says the next CSS
+   raise splits the stylesheet first, and splitting it incidentally at
+   the end of a long change is how a rule like that stops meaning
+   anything. Every one of these states already had a visual language on
+   this exact card; using it costs nothing and, more to the point,
+   makes an acceptance look like the other facts about the entry rather
+   than like a control bolted on beside them. */
+
 .sms-scheme {
   margin-top: var(--us-space-4);
   padding-top: var(--us-space-4);

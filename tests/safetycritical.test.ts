@@ -1,16 +1,23 @@
 // Safety-critical unit tests — risk matrix, reporting deadlines, RBAC.
 import { describe, it, expect } from "vitest";
 import {
-  riskScore, tolerability, can, acceptanceAuthority,
+  riskScore, tolerability, can,
   reportingDeadline, deadlineStatus, isStale, isProvisional, isProvisionalObligation,
   MOR_OBLIGATIONS, JURISDICTIONS, PERMISSIONS, NARRATIVE_PERMISSIONS,
   RiskAssessInputSchema, CreateReportSchema,
   type Severity, type Likelihood, type Role,
 } from "../packages/shared/src/index";
 import { SMS_ELEMENTS } from "../packages/shared/src/maturity";
+import { refuseSignature, bandsSignableBy } from "../packages/shared/src/signature";
 
 const SEVS: Severity[] = ["A_CATASTROPHIC","B_HAZARDOUS","C_MAJOR","D_MINOR","E_NEGLIGIBLE"];
 const LIKS: Likelihood[] = ["FREQUENT","OCCASIONAL","REMOTE","IMPROBABLE","EXTREMELY_IMPROBABLE"];
+
+/* Read from the matrix rather than typed out. A list of roles somebody
+   remembered is how a role added later escapes every assertion below —
+   the same shape as the ten-table list that let eight tables arrive
+   outside the RLS posture. */
+const ROLE_NAMES = Object.keys(PERMISSIONS) as Role[];
 
 describe("the scale REFUSES what is not on it", () => {
   /* Found by writing an SRA test that expected a null and got a band.
@@ -112,9 +119,23 @@ describe("risk matrix (Doc 9859 4th Ed, 5x5)", () => {
   });
 
   it("routes acceptance to the right authority", () => {
-    expect(acceptanceAuthority("INTOLERABLE")).toBe("risk.accept.intolerable");
-    expect(acceptanceAuthority("TOLERABLE")).toBe("risk.accept.tolerable");
-    expect(acceptanceAuthority("ACCEPTABLE")).toBeNull();
+    /* THIS TEST USED TO ASSERT THE OPPOSITE OF THE RULE, which is why
+       it is worth keeping rather than deleting with the function it
+       covered. It read:
+
+         acceptanceAuthority("INTOLERABLE") === "risk.accept.intolerable"
+
+       — a permission for accepting a risk the manual says is not
+       acceptable at any level of benefit. It passed for years because
+       it tested that a function returned a string, and the string it
+       returned was the wrong idea.
+
+       The authority now comes from holder.ts, is checked at both places
+       a risk can be signed for, and refuses the red band to everybody. */
+    expect(refuseSignature("INTOLERABLE", "ACCOUNTABLE_EXECUTIVE")?.error).toBe("not_ownable");
+    expect(refuseSignature("TOLERABLE", "ACCOUNTABLE_EXECUTIVE")).toBeNull();
+    expect(refuseSignature("TOLERABLE", "SAFETY_MANAGER")?.error).toBe("below_authority");
+    expect(refuseSignature("ACCEPTABLE", "SAFETY_MANAGER")).toBeNull();
   });
 });
 
@@ -396,10 +417,49 @@ describe("RBAC matrix", () => {
     expect(can("FRONTLINE","report.create")).toBe(true);
   });
 
-  it("only the Accountable Executive can accept INTOLERABLE risk", () => {
-    expect(can("ACCOUNTABLE_EXECUTIVE","risk.accept.intolerable")).toBe(true);
-    expect(can("SAFETY_MANAGER","risk.accept.intolerable")).toBe(false);
-    expect(can("KEY_MANAGEMENT","risk.accept.intolerable")).toBe(false);
+  it("nobody can accept an INTOLERABLE risk, the accountable executive included", () => {
+    /* The old version of this asserted that the accountable executive
+       COULD, on the strength of a permission no route ever read. Doc
+       9859's red band is not a seniority question — it is not
+       acceptable at any level of benefit — so the refusal is the same
+       for every role in the matrix, and this asserts it over all of
+       them rather than over the three somebody thought of. */
+    for (const role of ROLE_NAMES) {
+      expect(refuseSignature("INTOLERABLE", role)?.error, role).toBe("not_ownable");
+    }
+  });
+
+  it("every role granted risk acceptance can exercise it on some band", () => {
+    /* BOTH DIRECTIONS OF THE SAME DRIFT. A permission the authority
+       rule refuses on every band is a grant that cannot be used — the
+       matrix promising an operator something the product will always
+       refuse, which is the "capability with no reachable surface"
+       defect pointing the other way.
+
+       It is a live risk here rather than a theoretical one: the amber
+       band requires the accountable executive, and three roles hold
+       `risk.accept.tolerable`. The other two keep the grant because
+       they can still accept a green risk — if that ever stops being
+       true, this fails rather than leaving a dead promise in the
+       matrix. */
+    for (const role of ROLE_NAMES) {
+      if (!can(role, "risk.accept.tolerable")) continue;
+      expect(
+        bandsSignableBy(role),
+        `${role} is granted risk.accept.tolerable and can sign for no band at all`,
+      ).not.toHaveLength(0);
+    }
+  });
+
+  it("every band a risk can be in has somebody who may sign for it", () => {
+    // The other half: a band no role in the matrix can accept is a
+    // register entry that can never leave OPEN.
+    for (const band of ["ACCEPTABLE", "TOLERABLE"] as const) {
+      const signatories = ROLE_NAMES.filter(
+        (r) => can(r, "risk.accept.tolerable") && refuseSignature(band, r) === null,
+      );
+      expect(signatories, `no role can accept a ${band} risk`).not.toHaveLength(0);
+    }
   });
 
   it("regulator inspector is read/oversight only", () => {

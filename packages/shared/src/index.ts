@@ -57,19 +57,26 @@ export const TolerabilityEnum = z.enum(["INTOLERABLE", "TOLERABLE", "ACCEPTABLE"
 // without the validation library. Re-exported here so existing call
 // sites are unaffected.
 export * from "./risk";
-import { tolerability, type Tolerability } from "./risk";
-import type { Permission } from "./permissions";
+import { tolerability } from "./risk";
 
-/**
- * Who may accept a given risk. Derived from tolerability rather than
- * stored per-assessment, so a matrix change cannot leave a stale
- * approval authority behind on an old row.
- */
-export function acceptanceAuthority(t: Tolerability): Permission | null {
-  if (t === "INTOLERABLE") return "risk.accept.intolerable";
-  if (t === "TOLERABLE") return "risk.accept.tolerable";
-  return null; // ACCEPTABLE needs no acceptance decision
-}
+/* `acceptanceAuthority()` USED TO LIVE HERE, and its deletion is the
+   point rather than a tidy-up.
+
+   It mapped a band to the permission that could accept it, had no
+   caller outside its own test, and returned `risk.accept.intolerable`
+   for the red band — a permission the product has now removed, because
+   there is no act to grant. Three modules therefore held an opinion
+   about who may accept a risk: this one, the permission matrix, and
+   holder.ts, and the first two disagreed with the third.
+
+   Two are enough, and they answer different questions:
+
+     permissions.ts — MAY THIS ROLE DO THIS KIND OF THING AT ALL;
+     holder.ts      — IS IT SENIOR ENOUGH FOR THIS BAND.
+
+   Both are checked, in that order, at each of the two places a risk can
+   be signed for. A function that answered a third version of the
+   question was how they were allowed to drift. */
 
 // --------------------------- RBAC matrix -----------------------------
 export * from "./permissions";
