@@ -3556,6 +3556,7 @@ try {
     let refused = false;
     let signedOutText = '';
     let refusedText = '';
+    let malformedText = '';
 
     try {
       await probe.goto(BASE + '/picture', { waitUntil: 'networkidle' });
@@ -3588,6 +3589,31 @@ try {
       await probe.reload({ waitUntil: 'networkidle' });
       await probe.waitForTimeout(700);
       refusedText = await probe.evaluate(() => document.body.innerText);
+      /* AND A 200 THAT IS NOT A PICTURE, which is a different failure
+         from a refusal and used to be a WHITE SCREEN.
+
+         The screen indexes into `window`, `reporting` and `register`
+         without checking any of them, so a 200 carrying a body this
+         build does not understand threw on the first read and rendered
+         nothing at all — with the honest "could not be reached" panel
+         already written, a few lines above, unreached.
+
+         THE CHECK ABOVE COULD NOT SEE IT, and that is why this one
+         exists: it stubs a 503, and every other assertion in this file
+         stubs a WELL-FORMED body. The shape smoke asserts is the shape
+         smoke supplies, which is exactly the blind spot. Found by
+         driving the built app against an API answering `{}`.
+
+         Real rather than theoretical: an older client meeting a changed
+         route, a captive portal answering 200 with its own page, a
+         partial deploy. */
+      await probe.unroute('**/api/v1/picture*');
+      await probe.route('**/api/v1/picture*', (r) =>
+        r.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+      );
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      malformedText = await probe.evaluate(() => document.body.innerText);
     } finally {
       await bare.close();
     }
@@ -3596,6 +3622,18 @@ try {
 
     if (!/sign in/i.test(signedOutText)) {
       faults.push('signed out, the risk picture does not say to sign in');
+    }
+
+    if (!/\S/.test(malformedText.replace(/UsalamaSMS|Menu|Privacy|Terms/g, '').trim())) {
+      faults.push(
+        'a 200 the app cannot read rendered a blank page — the failure panel it ' +
+          'already has was never reached'
+      );
+    } else if (!/needs updating|cannot read|could not be reached/i.test(malformedText)) {
+      faults.push(
+        'a 200 the app cannot read rendered something, but never said the picture ' +
+          'could not be drawn'
+      );
     }
 
     if (!refused) {
