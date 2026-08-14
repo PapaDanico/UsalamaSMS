@@ -199,3 +199,62 @@ It is a snapshot, not a standard. Delete an item when it is done rather
 than ticking it, and add the date when something is learned that
 changes an entry. A list that only grows is a list nobody reads — which
 is the same failure mode as a gate that never goes red.
+
+---
+
+## 8. Research, 14 August 2026 — added as it was done
+
+### 8.1 The MAA, second pass
+
+The first pass surfaced only ASIMS and the DASOR. Pushed for more, and
+**RA 1210 "Ownership and Management of Operating Risk (Risk to Life)"**
+is where the transferable mechanism actually is:
+
+> High and Medium risks are managed by the Operating Duty Holder; Low
+> risks by the Delivery Duty Holder. Duty Holders assure themselves the
+> risk is ALARP **and** the exposure is Tolerable.
+
+Doc 9859 tells an operator what a risk IS and is close to silent on who
+may carry it. **Shipped** as `packages/shared/src/holder.ts` — a floor
+rather than a slot, stated rather than enforced, with the mapping
+labelled as ours because RA 1210 governs UK military aviation and its
+Duty Holder construct has no Kenyan civil equivalent.
+
+**Still on the table from the MAA:** RA 1210 requires risk decisions to
+be "recorded and communicated across all relevant stakeholders", and the
+MAA aggregates DASORs into a **risk picture** for oversight. That is a
+dashboard, and it is simultaneously the SMS Pro / Q-Pulse benchmark gap.
+Next thing to take from them.
+
+Sources: RA 1210 Issue 10; RA 1230; MAA01 Regulatory Principles.
+
+### 8.2 Safety performance indicators — and a gap that is cheaper than recorded
+
+ICAO's SMM gives only **generic** SPI examples; each organisation must
+develop its own. Two consequences, and the second is a correction to
+this document.
+
+**A blank page problem this product already knows how to solve.** An
+operator told to "define an indicator" faces the same blank page that
+twelve elements presented, and the answer there was the templates
+registry. Suggested starter SPIs, by operator type, would be the same
+move. Published examples worth borrowing for a small operator: voluntary
+reports per pilot per quarter, **time from report to closure**, squawk
+rate per flight hour, MEL deferral rate, first-attempt check pass rate.
+
+**AND THE §5 ENTRY ABOUT INDICATORS BEING TYPED RATHER THAN FED IS TOO
+PESSIMISTIC.** Two of the most valuable SPIs in that list —
+**report rate** and **time from report to closure** — are computable
+from data the product ALREADY HOLDS: `SafetyReport.createdAt`, its
+state transitions, and the org's own headcount. No new schema, no
+typing, no reconciliation gap.
+
+That reframes the work. "Feed indicators from the reporting queue"
+sounded like a sync problem and was recorded as one. It is really a
+**derived-indicator** problem, and the product's own charter rule 6 —
+compute, never store — is exactly the shape of the answer. It should be
+taken before any dashboard work, because a dashboard whose numbers are
+typed is a dashboard nobody trusts twice.
+
+Sources: ICAO Doc 9859 4th ed.; Flight Safety Foundation "Unleashing
+SPIs"; EASA AloSP guidance.
