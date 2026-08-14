@@ -1,12 +1,17 @@
 /* ============================================================
    Triage queue.
 
-   Reads the LOCAL store, not the server. That is not a limitation of
-   this build — it is what makes the screen usable on the same handset
-   that filed the reports, with the same connectivity assumptions. A
-   triage view that needs the network is a triage view that is blank
-   exactly when someone is standing in a hangar wondering what came in
-   overnight.
+   LOCAL FIRST, then the organisation on top of it. The device's own
+   store is what renders, always and without waiting — a triage view
+   that NEEDS the network is a triage view that is blank exactly when
+   someone is standing in a hangar wondering what came in overnight.
+   The safety office's queue is layered over that when it can be
+   reached, and its absence is stated rather than hidden.
+
+   (This paragraph read "reads the LOCAL store, not the server" until
+   the organisation's queue landed. It is corrected here rather than
+   left, because a file's opening comment is the first thing the next
+   reader believes.)
 
    What it shows, and why each column earns its place:
 
@@ -23,6 +28,18 @@
    greyed-out name, no "hidden" placeholder. A UI that shows a disabled
    field where a name would be is a UI that tells everyone a name exists
    somewhere, which is most of the way to asking for it.
+
+   AND NOW THE ORGANISATION'S QUEUE TOO, merged in rather than swapped
+   for. The device store stays the base and the server is layered on
+   top, keyed on clientId — the same union-by-id the toolkits were
+   corrected to after assigning the org's list straight over the
+   device's would have destroyed unsent work for every existing user at
+   once. Offline, this screen degrades to exactly what it was: the
+   handset's own reports, with the sync strip that says so.
+
+   THE DISPOSITION LIVES ON THE SERVER, so its buttons appear only on
+   rows the server knows about. A report still in the outbox has no row
+   to move, and offering to close it would be offering to lose it.
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
@@ -33,6 +50,7 @@ import {
   toOptions, labelFor
 } from '../../../../../packages/shared/src/taxonomy.ts';
 import { db, retryReport } from '../../shared/offline.ts';
+import { isSignedIn, authFetch } from '../../shared/session.js';
 import {
   reportingDeadline,
   deadlineStatus,
@@ -47,11 +65,82 @@ const TYPE_LABEL = Object.fromEntries(
   REPORT_TYPES.map((t) => [t.code, t.label.split(' — ')[0]])
 );
 
+/* The disposition states in an operator's words. Enumerated rather than
+   prettified from the enum: "ACTIONS_OPEN" title-cased is "Actions
+   Open", which is not what a safety manager would say and not what the
+   state means. */
+const DISPOSITION_LABEL = {
+  SUBMITTED: 'Awaiting triage',
+  TRIAGED: 'Triaged',
+  UNDER_INVESTIGATION: 'Under investigation',
+  ACTIONS_OPEN: 'Actions outstanding',
+  CLOSED: 'Closed'
+};
+
 /* The filter state lives at module scope so it survives a re-render
    after a filter changes. Kept deliberately small — three dimensions is
    what a queue of this size needs, and a filter bar with nine controls
    is one nobody uses. */
 const filters = { type: '', state: '', location: '' };
+
+/* ============================================================
+   THE ORGANISATION'S QUEUE, fetched alongside the device's.
+
+   UNION, NOT ASSIGNMENT, and that distinction has already cost this
+   product once: both server-backed toolkits assigned the org's list
+   straight over the device's and persisted the result, which would have
+   destroyed every existing user's unsent work the first time they
+   opened the screen. The device store is the base here and is never
+   written by this function.
+
+   A FAILURE HERE IS NOT AN EMPTY ORGANISATION. It returns null, the
+   screen says the safety office could not be reached, and the device's
+   own reports still render. Silently showing the handset's queue as
+   though it were the operator's would be the worse half of charter
+   rule 8.
+   ============================================================ */
+async function fetchOrgQueue() {
+  if (!isSignedIn() || !navigator.onLine) return null;
+  try {
+    const res = await authFetch('/api/v1/reports/queue');
+    if (!res.ok) return null;
+    const body = await res.json();
+    return Array.isArray(body.reports) ? body : null;
+  } catch {
+    // Offline, DNS, a proxy, a 500 — all the same to this screen, and
+    // all of them mean "we do not know", not "there is nothing".
+    return null;
+  }
+}
+
+/* Merge, keyed on clientId. Device fields win for everything the device
+   authored; the server contributes only what the device cannot know —
+   its own id for the row, the disposition state, and which moves this
+   person may make. A server row with no local counterpart is appended,
+   because a report filed on somebody else's handset is still this
+   operator's report and the old screen simply could not see it. */
+function merge(local, remote) {
+  if (!remote) return local.map((r) => ({ ...r, origin: 'device' }));
+  const byClientId = new Map(remote.reports.map((r) => [r.clientId, r]));
+  const merged = local.map((r) => {
+    const server = byClientId.get(r.clientId);
+    byClientId.delete(r.clientId);
+    return server
+      ? { ...r, origin: 'both', serverId: server.id, state: server.state, available: server.available }
+      : { ...r, origin: 'device' };
+  });
+  for (const server of byClientId.values()) {
+    merged.push({
+      ...server,
+      // Reports that arrived from elsewhere are, by definition, sent.
+      syncState: 'synced',
+      createdAtLocal: server.createdAt,
+      serverId: server.id,
+      origin: 'server'
+    });
+  }
+  return merged;
+}
 
 export async function render(outlet) {
   let reports;
@@ -74,8 +163,9 @@ export async function render(outlet) {
     return;
   }
 
+  const remote = await fetchOrgQueue();
   const now = new Date();
-  const all = reports.map((r) => decorate(r, now)).sort(compare);
+  const all = merge(reports, remote).map((r) => decorate(r, now)).sort(compare);
   const rows = all.filter(matchesFilters);
 
   /* Aerodrome options are drawn from what is actually in the queue
@@ -93,14 +183,37 @@ export async function render(outlet) {
   outlet.innerHTML = html`
     <section class="panel">
       <header class="page-head">
-        <span class="eyebrow">This device</span>
-        <h1>Reports on this device</h1>
+        <span class="eyebrow">${remote ? 'This operator' : 'This device'}</span>
+        <h1>${remote ? 'The reporting queue' : 'Reports on this device'}</h1>
         <p class="lede">
-          Everything filed on this handset, sent or not. A report that has
-          not reached the safety office has not been made, and the strip
-          above is what says so.
+          ${remote
+            ? html`Everything this operator has filed, wherever it was filed
+                from, plus anything still waiting to leave this handset. A
+                report that has not reached the safety office has not been
+                made, and the strip on each card is what says so.`
+            : html`Everything filed on this handset, sent or not. A report that
+                has not reached the safety office has not been made, and the
+                strip above is what says so.`}
         </p>
       </header>
+
+      <!-- CHARTER RULE 8, ON THE SCREEN. Showing the handset's reports
+           as though they were the operator's, when the safety office
+           could not be reached, is the failure this whole product is
+           built against. It says so instead. -->
+      ${!remote
+        ? html`<p class="notice">
+            ${isSignedIn()
+              ? 'Showing this device only — the safety office could not be reached. Reports filed elsewhere are not in this list, and a report cannot be triaged or closed until there is a connection.'
+              : 'Showing this device only. Sign in to see the whole operator’s queue and to triage, investigate or close a report.'}
+          </p>`
+        : ''}
+      ${remote?.truncated
+        ? html`<p class="notice">
+            Showing the most recent reports only. Older ones exist and are
+            not in this list.
+          </p>`
+        : ''}
 
       <!-- COLLAPSED BY DEFAULT. Three stacked dropdowns are a full
            handset screen, and they were pushing every report below the
@@ -223,6 +336,70 @@ function bindOnce(outlet) {
       return;
     }
 
+    /* ------------------------------------------------------------
+       Move a report.
+
+       THE NOTE IS ASKED FOR BEFORE THE REQUEST, not after a 400. The
+       server refuses a closure with no note and that refusal is the
+       control; asking here as well is the difference between a form
+       that helps and a form that scolds. Both still run — the browser
+       one can be skipped, the server one cannot.
+
+       prompt() rather than a modal, deliberately and for now. It is
+       the one dialog that is always keyboard-reachable, always
+       announced, and cannot be rendered behind the sticky chrome — and
+       a hand-built modal that traps focus badly on the screen a safety
+       manager works a queue on is worse than a plain one.
+       ------------------------------------------------------------ */
+    const mover = event.target.closest?.('[data-move]');
+    if (mover) {
+      let note;
+      if (mover.dataset.note === 'yes') {
+        note = window.prompt(
+          `${mover.textContent.trim()}\n\nWhat was done? This is recorded against your name and is what the next person to read this report will see.`
+        );
+        // Cancelled. Not an empty note — the person changed their mind,
+        // and sending a refusal they would then have to read is noise.
+        if (note === null) return;
+        if (!note.trim()) {
+          window.alert('A note is needed. A closure with no statement of what was done tells the next reader nothing.');
+          return;
+        }
+      }
+      const label = mover.textContent;
+      mover.disabled = true;
+      mover.textContent = 'Saving…';
+      try {
+        const res = await authFetch(`/api/v1/reports/${mover.dataset.move}/disposition`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            to: mover.dataset.to,
+            fromState: mover.dataset.from,
+            ...(note ? { note } : {})
+          })
+        });
+        if (!res.ok) {
+          /* The server's own sentence, shown as written. It says which
+             permission is needed, or which moves are legal, or that
+             somebody else has moved the report — all three of which are
+             more useful than "something went wrong". */
+          const body = await res.json().catch(() => ({}));
+          window.alert(body.message ?? 'The safety office could not be reached. Nothing was changed.');
+        }
+      } catch {
+        window.alert('The safety office could not be reached. Nothing was changed.');
+      } finally {
+        mover.disabled = false;
+        mover.textContent = label;
+        // Re-render either way: the report moved or it did not, and both
+        // are things this screen must show rather than leave a button
+        // guessing about.
+        await render(outlet);
+      }
+      return;
+    }
+
     const copy = event.target.closest?.('[data-copy]');
     if (copy) {
       const report = await db.reports.where('clientId').equals(copy.dataset.copy).first();
@@ -274,11 +451,19 @@ function decorate(report, now) {
 
 /** Overdue first, then unsent, then newest. */
 function compare(a, b) {
+  /* CLOSED SINKS, whatever else is true of it. A closed report with an
+     overdue regulatory clock is a report whose deadline was missed and
+     dealt with; leaving it at the top of the queue pushes live work
+     below the fold, which is how the ranking stops being read at all.
+     Everything above it keeps the order it had: the regulatory clock
+     first, then unsent, then untriaged, then newest. */
   const rank = (r) =>
-    r.deadline?.status === 'OVERDUE' ? 0
-      : r.deadline?.status === 'DUE_SOON' || r.deadline?.status === 'WITHOUT_DELAY' ? 1
-        : r.syncState !== 'synced' ? 2
-          : 3;
+    r.state === 'CLOSED' ? 5
+      : r.deadline?.status === 'OVERDUE' ? 0
+        : r.deadline?.status === 'DUE_SOON' || r.deadline?.status === 'WITHOUT_DELAY' ? 1
+          : r.syncState !== 'synced' ? 2
+            : r.state === 'SUBMITTED' ? 3
+              : 4;
   const d = rank(a) - rank(b);
   if (d !== 0) return d;
   return String(b.createdAtLocal).localeCompare(String(a.createdAtLocal));
@@ -331,6 +516,35 @@ function row(r) {
            person standing there needs the words out of the device and
            into a phone call, and refusing them that is how an
            occurrence ends up unreported rather than merely unsent. -->
+      <!-- WHAT HAPPENED TO IT, and what may happen next.
+
+           Only on rows the server knows about: a report still in the
+           outbox has no row to move, and offering to close it would be
+           offering to lose it. The available moves come from the server
+           rather than being worked out here, so buttons cannot disagree
+           with the permission matrix — a second copy of that matrix in
+           the browser is the copy that goes stale. -->
+      ${r.state
+        ? html`<p class="queue__state" data-state="${r.state}">
+            <span class="queue__state-label">${DISPOSITION_LABEL[r.state] ?? r.state}</span>
+          </p>`
+        : ''}
+
+      ${r.available?.length
+        ? html`<div class="queue__actions">
+            ${r.available.map(
+              (a) => html`<button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                data-move="${r.serverId}"
+                data-to="${a.to}"
+                data-from="${r.state}"
+                data-note="${a.requiresNote ? 'yes' : 'no'}"
+              >${a.label}</button>`
+            )}
+          </div>`
+        : ''}
+
       ${r.syncState === 'error' || r.syncState === 'conflict'
         ? html`<div class="queue__actions">
             <button

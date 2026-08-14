@@ -831,7 +831,141 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    The rule remains: entry beginning to track total is the moment to
    take something out rather than buy more. A dependency, a polyfill or
    a component library still buys nothing. */
-const BUDGET = { entry: 214 * 1024, js: 422 * 1024, css: 54 * 1024 };
+/* TOTAL 422 -> 426 KB, for the report disposition. ENTRY UNMOVED at
+   213.5 KB, for the seventh raise running.
+
+   MEASURED FIRST THIS TIME, because the receipt two raises ago
+   misdiagnosed an 82-byte entry move as hoisting when it was
+   chunk-registry overhead, and the lesson recorded then was to measure
+   the built chunks before believing any story about them — including
+   one written in this file. Built at the merge base, built again, and
+   differenced:
+
+     triage chunk   8,686 -> 12,655   +3,969 bytes
+     total js     431,594 -> 435,449  +3,855 bytes
+
+   The total grew LESS than the one chunk did, so the rest of the
+   bundle came down slightly. All of the weight is in the lazy route
+   that gained the feature, and none of it is anywhere else. That is
+   the shape a raise should have, and it is the reason to measure
+   rather than to reason about it.
+
+   WHAT IT BUYS. ReportState has had five values since the first
+   migration and four were unreachable, because no route wrote the
+   column. Every report ever filed was SUBMITTED, permanently. The
+   queue could only grow, and element 2.1's own evidence line asks for
+   a report rate "that is trending". This is the screen that moves a
+   report: triaged, investigated, closed with a statement of what was
+   done, reopened with a reason.
+
+   It also closes the gap the README has disclosed since the first
+   release — the queue read this handset rather than the operator. It
+   now reads both, unioned on clientId, and says so when the safety
+   office cannot be reached rather than showing one device's reports as
+   though they were the organisation's.
+
+   WHAT IT DELIBERATELY DOES NOT BUY. The state machine itself is NOT
+   in this bundle. The browser renders the moves the SERVER says this
+   person may make, so the permission matrix exists once; shipping
+   disposition.ts to the client would have cost another ~4 KB and
+   bought a second copy of the matrix that could disagree with the
+   first. Checked in the built output: the module is in no chunk.
+
+   THE STOPPING CONDITION IS STILL NOT MET, and seven raises is exactly
+   when to check rather than assume. ENTRY is 213.5 KB, where it was
+   six raises ago. A reporter at a strip files a report; they do not
+   open the triage queue, and everything bought since has landed on
+   screens only a safety manager opens.
+
+   The rule is unchanged: entry beginning to track total is the moment
+   to take something out rather than buy more. */
+/* TOTAL 426 -> 436 KB and CSS 54 -> 56 KB, for the risk picture.
+   ENTRY MOVED, 213.5 -> 213.7, FOR THE FIRST TIME IN SEVEN RAISES —
+   and that is the part of this receipt worth reading.
+
+   MEASURED, as the last one was:
+
+     picture chunk        0 ->  8,384   a new lazily-loaded route
+     entry          218,600 -> 218,801  +201 bytes
+     css             53.6KB ->  55.4KB  +1.8 KB
+
+   WHAT THE 201 BYTES ACTUALLY ARE. Checked in the built entry chunk
+   rather than assumed: the string "The risk picture" twice — once as
+   the sitemap label the header and footer render from, once as the
+   route title. Neither picture.ts nor the screen is in entry; grepped
+   for, and absent. So the entry cost of a new destination is its NAME,
+   which is the floor and cannot be optimised away short of not having
+   the destination.
+
+   WHAT IT BUYS. The MAA aggregates what its reporting system brings in
+   into a risk picture and uses that to decide where to look next; RA
+   1210 requires risk decisions to be "recorded and communicated across
+   all relevant stakeholders", and a decision communicated one row at a
+   time has not been communicated. It is also the largest single gap
+   against SMS Pro, Q-Pulse, Centrik and iQSMS, all four of which lead
+   with a dashboard.
+
+   And it carries the one thing none of those four has: which risks are
+   owned BELOW the authority their band requires. Every incumbent shows
+   a register by band. None asks whether the name in the owner box is
+   senior enough to carry the row, because Doc 9859 does not ask it.
+
+   THE STOPPING CONDITION IS NOW IN SIGHT, and this is the receipt that
+   has to say so plainly rather than the one after it. Entry is 213.7 of
+   214: THREE HUNDRED BYTES. Six receipts have said "entry has not
+   moved" and used that to justify the raise; this one cannot, and the
+   rule those receipts wrote was that entry beginning to track total is
+   the moment to take something out rather than buy more.
+
+   So the next destination does not get added on these terms. Either
+   something comes out of entry first — the sitemap's labels are the
+   obvious candidate, since they are strings rendered into a menu that
+   is already lazily hinted — or the entry budget gets argued up on its
+   own merits, in its own receipt, with the reporter at the strip named
+   in the argument. Not folded into a raise for something else.
+
+   A dependency, a polyfill or a component library still buys nothing. */
+/* TOTAL 436 -> 438 KB, for the CAPA loop. ENTRY UNMOVED at 213.7, AND
+   THAT IS THE POINT OF THIS ENTRY IN THE LEDGER.
+
+   The receipt above said the next DESTINATION does not get added on
+   these terms, because entry had 300 bytes left. This is not a
+   destination. The corrective actions were going to be /actions with
+   its own nav item — which would have cost another ~200 bytes of entry
+   for the label, on the rule I had just written — so they went onto the
+   risk picture instead, under an in-page anchor.
+
+   That is a better answer on its own merits and not only on the budget:
+   "what is outstanding" is an assurance question, and the risk picture
+   is the assurance screen. Two screens would have split one question.
+
+     picture chunk   8,384 -> 10,096   +1,712 bytes
+     entry         218,801 -> 218,801  UNMOVED
+     capa.ts                            in NO browser chunk
+
+   capa.ts is server-only, deliberately and checked in the built output:
+   the screen renders a summary the API computed, so the status
+   arithmetic exists once. The same choice as disposition.ts, for the
+   same reason — a second copy in the browser is the copy that
+   disagrees.
+
+   WHAT IT BUYS. The product could record that something was DONE — a
+   note on a closure, a string on a finding, controls on a register
+   entry — and could not treat the action as an object with an owner, a
+   date and a verification. So an undertaking lived as prose inside
+   whichever record mentioned it, and no screen could answer "what is
+   outstanding". It is the second half of two elements already claimed:
+   2.2's evidence is "mitigations tracked to closure" and 3.3's is
+   "findings closed AND VERIFIED".
+
+   And the rule that makes the loop worth anything: an action cannot be
+   verified by the person who completed it. Mutation-checked in both the
+   unit suite and the integration suite.
+
+   THE ENTRY RULE STANDS AND HAS NOW BEEN APPLIED ONCE. 300 bytes of
+   headroom. The next thing that wants a nav item takes something out
+   first, or argues the entry budget up in its own receipt. */
+const BUDGET = { entry: 214 * 1024, js: 438 * 1024, css: 56 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

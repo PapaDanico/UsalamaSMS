@@ -203,7 +203,7 @@ export const SECTIONS = [
       },
       {
         href: '/triage',
-        label: 'Reports on this device',
+        label: 'The reporting queue',
         short: 'Triage',
         inHeader: true
       }
@@ -237,6 +237,16 @@ export const SECTIONS = [
     title: 'Show it is working',
     working: true,
     items: [
+      {
+        /* FIRST IN THIS GROUP, and first is the argument. "Show it is
+           working" is a question about the whole operator, and every
+           other item here answers part of it — this is the one that
+           answers it in one page. */
+        href: '/picture',
+        label: 'The risk picture',
+        short: 'Risk picture',
+        inHeader: true
+      },
       {
         href: '/toolkits/spi',
         label: 'Safety performance indicators',

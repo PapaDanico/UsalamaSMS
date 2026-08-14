@@ -1505,6 +1505,38 @@ try {
       const body = r.postData();
       if (body && /"?el-|maturity|"1\.1"/.test(body)) leaked.push(new URL(r.url()).pathname);
     };
+
+    /* ==============================================================
+       PARKED SOMEWHERE QUIET FIRST, AND THE LISTENERS ATTACHED AFTER.
+
+       This check went red the day /triage started fetching the
+       organisation's queue, reporting:
+
+         the assessment made 1 API request(s): GET /api/v1/reports/queue
+
+       The maturity screen had not made that request. The PREVIOUS check
+       left the shared page on a screen that fetches, the fetch was
+       still in flight when this one attached its listeners, and it
+       landed inside the observation window — so a true claim about the
+       maturity assessment was failed by another screen's traffic, and
+       two later checks failed downstream of it.
+
+       The comment above already names two things that are NOT the
+       assessment phoning home, on the grounds that a check counting
+       them would fail on correct behaviour. This is a third: a request
+       another screen started before this one was opened. It is excluded
+       the same way, and by isolation rather than by a filter — a filter
+       naming /reports/queue would go stale the moment a fourth screen
+       fetches something, which is precisely how this arrived.
+
+       So: navigate somewhere with no network of its own, let the page
+       go idle, and only then start watching. Nothing about what this
+       check asserts is relaxed — it still fails on any API request the
+       maturity screen itself makes.
+       ============================================================== */
+    await page.goto(BASE + '/glossary', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(300);
+
     page.on('request', watch);
     page.on('request', watchBody);
 
@@ -3294,6 +3326,205 @@ try {
         );
       }
     }
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
+  await check('THE RISK PICTURE SHOWS NOTHING RATHER THAN SOMETHING STALE', async () => {
+    /* THE ONE SCREEN IN THIS PRODUCT AN OPERATOR SHOWS TO SOMEBODY
+       ELSE. Everything else here is worked on; this is presented, and
+       the difference decides how it must fail.
+
+       Every other screen degrades to what the device holds, and that is
+       right for them: a register you can read offline is better than no
+       register. It is WRONG here. This page is an aggregate, and a
+       stale aggregate is indistinguishable from a current one — there
+       is no row to check it against, no sync badge, nothing on the
+       screen that would tell a safety manager the figure they are
+       reading out to an authority is four days old.
+
+       So the property is the refusal: when the safety office cannot be
+       reached, the page says so and shows no numbers at all. Asserted
+       with the API stubbed to fail, with service workers blocked so the
+       stub is actually reached — the lesson from the read-never-deletes
+       check two above. */
+    const bare = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+    let refused = false;
+    let signedOutText = '';
+    let refusedText = '';
+
+    try {
+      await probe.goto(BASE + '/picture', { waitUntil: 'networkidle' });
+      await probe.evaluate(() => localStorage.clear());
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(400);
+      signedOutText = await probe.evaluate(() => document.body.innerText);
+
+      await probe.route('**/api/v1/auth/refresh', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'stub', refreshToken: 'stub2',
+            role: 'SAFETY_MANAGER', orgId: 'org-1'
+          })
+        })
+      );
+      await probe.route('**/api/v1/picture*', (r) => {
+        refused = true;
+        return r.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+      });
+      await probe.evaluate(() => {
+        localStorage.setItem(
+          'usalamasms.session',
+          JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+        );
+        localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+      });
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      refusedText = await probe.evaluate(() => document.body.innerText);
+    } finally {
+      await bare.close();
+    }
+
+    const faults = [];
+
+    if (!/sign in/i.test(signedOutText)) {
+      faults.push('signed out, the risk picture does not say to sign in');
+    }
+
+    if (!refused) {
+      faults.push(
+        'the stubbed /api/v1/picture was never called, so the page was never refused ' +
+          'and this check tested nothing'
+      );
+    } else {
+      if (!/could not be reached/i.test(refusedText)) {
+        faults.push('the safety office refused and the page did not say so');
+      }
+      if (!/out of date|stale/i.test(refusedText)) {
+        faults.push(
+          'the page does not say WHY it is blank rather than cached — a reader who ' +
+            'assumes it is merely slow will refresh and trust whatever appears'
+        );
+      }
+      /* NO FIGURES. The refusal must not render a grid of zeroes beside
+         it: a zero on a dashboard reads as a measurement, and "0 open
+         intolerable risks" next to an error message is the worst
+         sentence this product could print. */
+      if (/\bopen entries by band\b|\bawaiting triage\b/i.test(refusedText)) {
+        faults.push(
+          'the page rendered its figures alongside the failure — an aggregate it does ' +
+            'not have, shown as though it did'
+        );
+      }
+    }
+
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
+  await check('THE QUEUE NEVER PASSES ONE HANDSET OFF AS THE OPERATOR', async () => {
+    /* CHARTER RULE 8, ON THE SCREEN WHOSE JOB IS TO CARRY IT.
+
+       The triage queue reads the device's own store and now layers the
+       organisation's on top when the safety office can be reached.
+       When it CANNOT be reached, the failure mode that matters is not
+       an error message — it is silence. A safety manager sees a list,
+       reads it as the operator's queue, and concludes that nothing was
+       filed elsewhere. The device's answer presented as the
+       organisation's is exactly the shape of the smoke check that once
+       reported "nothing was sent" about a send it had itself prevented.
+
+       Two states are asserted here because the honest sentence differs
+       between them, and the wrong one in either place is a lie of a
+       different kind:
+
+         · SIGNED OUT — the screen must not claim to be the operator's
+           queue, and must say what signing in would add;
+         · SIGNED IN BUT REFUSED — the safety office was asked and did
+           not answer, which is the state that must never be silent.
+
+       Stubbed with service workers blocked, for the reason the check
+       above spells out: page.route() does not intercept a service
+       worker's requests, and asserting through one is how a check
+       reports a pass on a defect it never reached. */
+    const bare = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+    let refused = false;
+
+    let signedOutText = '';
+    let signedInText = '';
+    try {
+      // ---- signed out -------------------------------------------------
+      await probe.goto(BASE + '/triage', { waitUntil: 'networkidle' });
+      await probe.evaluate(() => localStorage.clear());
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(400);
+      signedOutText = await probe.evaluate(() => document.body.innerText);
+
+      // ---- signed in, safety office refuses ---------------------------
+      await probe.route('**/api/v1/auth/refresh', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'stub', refreshToken: 'stub2',
+            role: 'SAFETY_MANAGER', orgId: 'org-1'
+          })
+        })
+      );
+      await probe.route('**/api/v1/reports/queue', (r) => {
+        refused = true;
+        return r.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+      });
+      await probe.evaluate(() => {
+        localStorage.setItem(
+          'usalamasms.session',
+          JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+        );
+        localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+      });
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      signedInText = await probe.evaluate(() => document.body.innerText);
+    } finally {
+      await bare.close();
+    }
+
+    const faults = [];
+
+    if (!/this device/i.test(signedOutText)) {
+      faults.push(
+        'signed out, the queue does not say it is showing this device only — a safety ' +
+          "manager would read one handset's reports as the operator's"
+      );
+    }
+    if (!/sign in/i.test(signedOutText)) {
+      faults.push('signed out, the queue does not say that signing in shows the whole queue');
+    }
+
+    /* THE GUARD THAT MAKES THE SECOND HALF MEAN ANYTHING. If the stub
+       was never called, the screen was never refused and a pass here
+       says nothing at all. */
+    if (!refused) {
+      faults.push(
+        'the stubbed /api/v1/reports/queue was never called, so the screen was never ' +
+          'refused and this half of the check tested nothing'
+      );
+    } else if (!/could not be reached/i.test(signedInText)) {
+      faults.push(
+        'signed in, the safety office refused and the screen said nothing about it — ' +
+          'this is the queue presenting a partial answer as a complete one'
+      );
+    }
+
     assert(faults.length === 0, faults.join('\n         '));
   });
 

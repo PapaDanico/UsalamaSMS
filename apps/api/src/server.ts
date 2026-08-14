@@ -22,6 +22,8 @@ import { spiRoutes } from "./routes.spi";
 import { registerRoutes } from "./routes.register";
 import { changeRoutes } from "./routes.change";
 import { reportRoutes } from "./routes.reports";
+import { pictureRoutes } from "./routes.picture";
+import { actionRoutes } from "./routes.actions";
 import { exportRoutes } from "./routes.export";
 import { rateLimitKey } from "./rate-limit-key";
 import { missingTables } from "./schema-guard";
@@ -229,6 +231,8 @@ export async function build(): Promise<FastifyInstance> {
   await app.register(registerRoutes);
   await app.register(changeRoutes);
   await app.register(reportRoutes);
+  await app.register(pictureRoutes);
+  await app.register(actionRoutes);
   await app.register(exportRoutes);
 
   // Regulator oversight: verify an org's audit chain by content.
