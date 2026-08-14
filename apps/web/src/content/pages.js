@@ -510,6 +510,33 @@ export const PRIVACY = {
         operators, sold, or used to train anything.</p>`
     },
     {
+      id: 'deidentification',
+      title: 'De-identification, and the instrument behind it',
+      body: `
+        <p>Before a report circulates beyond the safety office, a
+        de-identification pass removes the details that would identify the
+        person who filed it. That is not a courtesy this product invented.
+        Kenya's <strong>Civil Aviation (Safety Management) Regulations, 2025
+        (L.N. 32 of 2026)</strong> names de-identification in the Third
+        Schedule, paragraph 3.1 Note 2, as a safeguard for protecting safety
+        data — so what happens here is the instrument's own answer, not ours.</p>
+
+        <p>Two things follow, and both are mechanisms rather than
+        undertakings. The removal is <strong>permanent</strong>: identifiers
+        are deleted, never encrypted for later recovery, because a key that
+        exists is a key that can be compelled. And the pass
+        <strong>refuses</strong> rather than proceeding when it cannot scrub
+        something cleanly — a named reviewer has to accept what is left, and
+        that acceptance is recorded.</p>
+
+        <p>The honest limit, stated because a notice that only lists strengths
+        is not one you can check: a narrative specific enough to be useful may
+        still identify its author inside a small operator. De-identification
+        removes names, not circumstances. That is why a person reviews every
+        report before it is shared, and why the reporting form says so on the
+        screen where somebody is deciding whether to file.</p>`
+    },
+    {
       id: 'accounts',
       title: 'Accounts',
       body: `
