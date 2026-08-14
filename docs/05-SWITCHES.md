@@ -4,10 +4,27 @@
 `05-SWITCHES.md`, which exists because a product's most dangerous
 statements are the true ones that quietly stop being true.*
 
-Every claim below is accurate on **11 August 2026** and will not stay
+Every claim below is accurate on **14 August 2026** and will not stay
 accurate on its own. Each has a flag that controls it, an owner, and a
 test that fails when the claim rots. A claim without all three is a
 comment.
+
+**A resolved switch is DELETED, not ticked.** One was, on 14 August
+2026: *"Icons are SVG only, so iOS gets no home-screen icon"*, which
+had stopped being true. The PNG suite shipped, `index.html` carries the
+`apple-touch-icon`, and a smoke check asserts the manifest advertises
+raster icons that exist — while this file still said the suite was SVG
+only and that the test was *"none yet"*.
+
+That is worth recording rather than quietly correcting. This document
+exists because *"a product's most dangerous statements are the true ones
+that quietly stop being true"*, and one of them was in here. A file that
+catalogues rot is not exempt from it.
+
+`scripts/check-switches.mjs` now runs in `npm run check`. It derives the
+count on the README's front page rather than trusting it, refuses a
+switch that declares no flag or no test, and fails the build when a
+calendar expiry below has passed.
 
 ---
 
@@ -100,15 +117,35 @@ and by roughly 2028 it is false — the incumbents will have shipped it.
 **The flag:** the date itself. There is nothing to compute; the calendar
 does it.
 
+<!-- EXPIRES: 2026-11-26 -->
+
 **What must happen:** by Q1 2027 the strategy's headline claim moves
 from *"native to the new standard"* to whatever is then true — most
 likely accumulated operator-years of safety intelligence, which is a
 data-moat claim rather than a compliance one.
 
-**The test:** none, and that is a gap this file records rather than
-hides. A doc-level claim about market timing cannot be asserted in a
-unit test without inventing a fact for the test to read. The mitigation
-is that it is written down here with its expiry date on the face of it.
+**The test:** `scripts/check-switches.mjs` reads the `EXPIRES` marker
+above and fails the build on 26 November 2026.
+
+This entry used to read *"none, and that is a gap this file records
+rather than hides"*, on the reasoning that a doc-level claim about
+market timing cannot be asserted without inventing a fact for the test
+to read. **That reasoning was wrong, and it was wrong in the way this
+whole file is about.** No fact needs inventing: the expiry is a date,
+today is a date, and the comparison is the entire test. What could not
+be asserted was whether the *positioning* is still persuasive — a
+judgement — and the impossibility of testing the judgement was allowed
+to excuse not testing the date.
+
+Re-verified on 14 August 2026 against ICAO's published adoption record
+as reported by several States and vendors: adopted 23 June 2025,
+effective 4 November 2025, applicable 26 November 2026, producing the
+third edition. **The State Letter itself has not been read here** —
+network egress from the build environment blocks icao.int and every
+mirror tried — so these dates are corroborated across independent
+secondary sources rather than taken from the primary. Same standard as
+`CICTT_VERIFIED_AGAINST_PRIMARY` and `governedByUnread`: say where the
+figure came from, and say what sits above it unread.
 
 ---
 
@@ -196,37 +233,7 @@ narrow by construction and they only cover the paths that exist today.
 
 ---
 
-## 6. Icons are SVG only, so iOS gets no home-screen icon
-
-**The claim:** `docs/04-BRAND.md` describes an icon suite generated from
-one geometry source, and `scripts/build-icons.mjs` generates it.
-
-**Why it expires:** the suite is **SVG only**. Chrome and Android accept
-SVG icons in a web app manifest; iOS does not, and an iPhone user who
-adds UsalamaSMS to their home screen gets a screenshot tile rather than
-the mark. Rasterising needs a browser or an image library — the sibling product gets
-PNGs nearly free because it already carries Playwright for
-pre-rendering, and this project carries neither and did not add a
-200-package dependency to produce six files.
-
-**The flag:** the absence of `*.png` under `apps/web/public/icons/`, and
-the absence of an `apple-touch-icon` link in `index.html`.
-
-**What must happen:** before any iOS user is asked to install this,
-either add Playwright as a build dependency and rasterise (the sibling product's
-`scripts/build-icons.mjs` is the reference) or commit hand-produced PNGs
-and accept that they are generated artefacts nobody can regenerate —
-which the brand document explicitly forbids, so the first option is the
-real one.
-
-**The test:** none yet, and it is named here rather than hidden. The
-honest guard would assert that the manifest's icon list matches the
-files on disk; worth adding to `scripts/check-claims.mjs` when the PNGs
-land.
-
----
-
-## 7. The stand-in typeface
+## 6. The stand-in typeface
 
 **The claim:** `docs/04-BRAND.md` states the licensed geometric sans is
 not in this repository and DM Sans — the face the JK & Associates platform
@@ -250,7 +257,7 @@ rather than discovered to be a forty-file one.
 
 ---
 
-## 8. The database exists; nothing serves it
+## 7. The database exists; nothing serves it
 
 **The claim:** UsalamaSMS has a hosted Postgres — Supabase project
 `UsalamaSMS` (`wbixxhpaswstaphfsowz`, eu-north-1, Postgres 17), schema
@@ -293,6 +300,13 @@ setup. The service-role key bypasses RLS entirely, which is to say it
 bypasses the whole confidentiality posture the previous point
 established. Nothing in this codebase uses either.
 
+**The flag:** the `not_configured` branch in
+`netlify/functions/api.mts`. While `DATABASE_URL` is absent the function
+answers **503 `not_configured`**, naming what is missing rather than
+failing obscurely — so the claim "nothing serves it" is true exactly
+while that response is what the deployed API returns. The day a real
+request gets a real answer, this entry is resolved and gets deleted.
+
 **What must happen:** set `DATABASE_URL` to Supabase's transaction
 pooler URI, set `JWT_SECRET` and `DEIDENT_SALT`, all three as secret
 environment variables on the Netlify project, rotate Supabase's JWT
@@ -308,7 +322,7 @@ without inventing a fact for the test to read.
 
 ---
 
-## 9. The unwritten counts
+## 8. The unwritten counts
 
 **The claim:** charter rule 10 — counts about the product are computed,
 not typed.
@@ -318,6 +332,13 @@ has no marketing surface making numeric claims, so there is nothing to
 compute and `scripts/check-claims.mjs` has little to do. The first
 landing page that says "eleven registration prefixes" or "five
 jurisdictions" is where the rule starts to bite.
+
+**The flag:** the assertion list `scripts/check-claims.mjs` prints on
+every run. Each derived count appears there by name; a number that
+reaches a customer surface without one is the claim expiring. The gate
+cannot see a count nobody told it about, which is why this entry exists
+at all — the flag is a discipline with a mechanism behind it, not a
+mechanism on its own.
 
 **What must happen:** before any such page ships, the number must derive
 from `MOR_OBLIGATIONS` / `REGISTRATION_PREFIXES` and the build must fail
@@ -329,7 +350,7 @@ an assertion per public claim as claims appear.
 
 ---
 
-## 10. The refresh token is in localStorage
+## 9. The refresh token is in localStorage
 
 **The claim:** a signed-in device can send what it has queued, and the
 session survives a reload.
@@ -353,6 +374,11 @@ not done because it needs a cookie-parsing path and CSRF protection the
 API does not have, and shipping a half-built version of that would be
 worse than shipping the honest simple one.
 
+**The flag:** `REFRESH_KEY` in `apps/web/src/shared/session.js`, and the
+`localStorage` calls that read and write it. The claim holds precisely
+while that key is stored by the browser rather than set as an httpOnly
+cookie by the server; when the write disappears, the entry is resolved.
+
 **What bounds the damage meanwhile:** the access token expires in
 fifteen minutes and never touches disk. The refresh token rotates on
 every use, and a replayed one revokes every session that user has — so a
@@ -373,7 +399,7 @@ guard that argues against its own resolution.
 
 ---
 
-## 11. Registration redaction is scoped to Kenya
+## 10. Registration redaction is scoped to Kenya
 
 **The claim:** de-identification removes aircraft registrations from a
 narrative before it leaves the safety office.
