@@ -35,12 +35,16 @@ owner with no policies locks the application out of its own database.
 **Supabase's own security advisor also says otherwise**, and will keep
 saying it. `mcp__Supabase__get_advisors` reports
 `rls_enabled_no_policy` at level INFO against **every** table, with a
-remediation link to a page about writing policies. Re-checked on 12
-August 2026 after the nine Annex 19 tables landed: **nineteen** notices,
-all of them that one, and they are the *entire* security finding list —
-no errors and no warnings. Nineteen INFO notices describing the
-intended state is a clean bill of health for this architecture, not a
-to-do list.
+remediation link to a page about writing policies. Re-checked on 14
+August 2026, after the report transitions, the corrective actions and
+the emergency contact directory landed: **twenty-six** notices, all of
+them that one, and they are the *entire* security finding list — no
+errors and no warnings. Twenty-six INFO notices describing the intended
+state is a clean bill of health for this architecture, not a to-do
+list.
+
+(It read nineteen on 12 August. The number moves every time a table is
+added, which is the point made below: the count is not the check.)
 
 The number is written here as a count and will go stale again. What
 does not go stale is the shape: EVERY table carries this notice and
