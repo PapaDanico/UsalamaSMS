@@ -26,6 +26,11 @@ import type { FastifyInstance } from "fastify";
 import { can } from "@usalamasms/shared";
 import { digestFor, isWorthSending } from "../../../packages/shared/src/digest";
 import { currencyOf } from "../../../packages/shared/src/currency";
+import {
+  deadlineStatus,
+  reportingDeadline,
+  MOR_OBLIGATIONS,
+} from "../../../packages/shared/src/regulations";
 import { prisma, authenticate } from "./core";
 import { mailConfigFromEnv } from "./mail";
 
@@ -55,7 +60,23 @@ export async function digestRoutes(app: FastifyInstance): Promise<void> {
        finding by injecting the clock instead of reading it. */
     const now = new Date();
 
-    const [training, untriaged, overdue] = await Promise.all([
+    const org = await prisma.org.findUnique({
+      where: { id: auth.org },
+      select: { jurisdiction: true },
+    });
+    if (!org) return reply.code(404).send({ error: "not_found" });
+
+    const [open, training, untriaged, overdue] = await Promise.all([
+      /* OCCURRENCES THAT STILL OWE A NOTIFICATION. The predicate is
+         `reportedToAuthorityAt: null`, which is the column that did not
+         exist when this route was first written and is the whole reason
+         the deadline section was empty. Indexed with orgId. */
+      prisma.safetyReport.findMany({
+        where: { orgId: auth.org, type: "MOR", reportedToAuthorityAt: null },
+        select: { occurredAt: true, awareAt: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+      }),
       /* Bounded: a digest that has to read ten thousand rows to say
          "12" is a digest that times out on the day it matters most. */
       prisma.trainingRecord.findMany({
@@ -78,27 +99,34 @@ export async function digestRoutes(app: FastifyInstance): Promise<void> {
       return { state: verdict.state, daysLeft: verdict.daysLeft };
     });
 
+    /* THE SECTION THAT USED TO BE EMPTY, and it is worth recording why
+       it is safe to populate now.
+
+       An occurrence the operator DID notify no longer appears here at
+       all — it is excluded by the query, because notifying it writes
+       the column. Before that column existed, every notified report
+       would have read OVERDUE every day for ever, which is the
+       always-on signal currency.ts argues against and this module was
+       written to avoid. The fix was never a smarter filter here; it was
+       having somewhere to record the discharge.
+
+       `submittedAt` is deliberately NOT passed to deadlineStatus. That
+       parameter means "the duty was discharged", and every row reaching
+       this line is one where it demonstrably was not. */
+    const obligation = MOR_OBLIGATIONS[org.jurisdiction];
+    const deadlines = open.map((r) => {
+      const { due } = reportingDeadline(org.jurisdiction, {
+        occurredAt: r.occurredAt ?? r.createdAt,
+        awareAt: r.awareAt ?? r.createdAt,
+      });
+      return {
+        status: deadlineStatus(due, now, { obligation }),
+        daysLeft: due === null ? 0 : Math.ceil((due.getTime() - now.getTime()) / 86_400_000),
+      };
+    });
+
     const digest = digestFor({
-      /* EMPTY, AND THIS IS THE ONE THING ON THIS ROUTE WORTH ARGUING
-         WITH. digest.ts supports a DEADLINE kind and the deadline
-         engine is the most carefully tested thing in the repository.
-         The DATA is not there: SafetyReport has no field recording that
-         an occurrence was notified to the authority, and `deadlineStatus`
-         is called nowhere in the API.
-
-         Without a discharge field, an occurrence the operator DID
-         notify — by telephone, which is how L.N. 32 expects the urgent
-         classes to be reported — has a window that simply passes, and
-         would be reported OVERDUE in this digest EVERY DAY FOREVER.
-         That is the always-on signal currency.ts argues against and
-         this module was written to avoid, so including it would make
-         the feature actively worse than omitting it.
-
-         The fix is a `reportedToAuthorityAt` on SafetyReport plus the
-         triage action that sets it — a schema change and a screen, not
-         a line here. Until then this section stays empty rather than
-         wrong, and the coverage entry keeps saying what is missing. */
-      deadlines: [],
+      deadlines,
       currencies,
       untriaged,
       overdueActions: Array.from({ length: overdue }, () => ({ daysLeft: -1 })),

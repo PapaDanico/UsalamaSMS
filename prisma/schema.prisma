@@ -194,6 +194,7 @@ model User {
   documentsApproved ControlledDocument[]      @relation("documentApprover")
   findingsVerified  AuditFinding[]            @relation("findingVerifier")
   training          TrainingRecord[]          @relation("trainee")
+  authorityNotices  SafetyReport[]            @relation("authorityNotifier")
   communications    SafetyCommunication[]     @relation("communicator")
   changesApproved   ChangeAssessment[]        @relation("changeApprover")
   documentReads     DocumentAcknowledgement[]
@@ -305,11 +306,35 @@ model SafetyReport {
   deIdentifiedAt        DateTime?
   deIdentifiedNarrative String?   @db.Text
 
+  /// WHEN THE AUTHORITY WAS NOTIFIED, AND WHO SAYS SO.
+  ///
+  /// The product computed reporting deadlines from the day it shipped
+  /// and had nowhere to record that one had been MET. `deadlineStatus`
+  /// takes a `submittedAt` meaning "discharged" and was called from
+  /// nowhere in the API, so every occurrence's window simply passed —
+  /// and a notified report was indistinguishable from a forgotten one.
+  ///
+  /// IT IS A CLAIM ABOUT AN ACT OUTSIDE THIS SYSTEM. L.N. 32 expects
+  /// the urgent classes by telephone; nothing here places the call. So
+  /// this records WHEN the operator says they notified, WHO recorded
+  /// that, and the authority's own reference where one was given —
+  /// which is the part that makes it evidence rather than an assertion.
+  ///
+  /// NULLABLE FOREVER. Most reports are not occurrences and owe nobody
+  /// a notification; a default would turn "not applicable" into "done".
+  reportedToAuthorityAt   DateTime?
+  reportedToAuthorityById String?
+  /// The authority's acknowledgement, as they issued it. Never sent in
+  /// a digest — see packages/shared/src/digest.ts on what leaves the
+  /// access control.
+  authorityReference      String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   org         Org                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
   reporter    User?                 @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  reportedBy  User?                 @relation("authorityNotifier", fields: [reportedToAuthorityById], references: [id], onDelete: Restrict)
   feedback    SafetyCommunication[]
   hazards     Hazard[]
   transitions ReportTransition[]

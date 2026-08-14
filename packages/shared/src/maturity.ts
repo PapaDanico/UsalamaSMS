@@ -730,6 +730,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "/api/v1/reports/queue",
       "/api/v1/reports/:id/disposition",
       "/api/v1/reports/:id/codes",
+      "/api/v1/reports/:id/notified",
     ],
     has:
       "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +
@@ -742,7 +743,9 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "rather than typed. Each occurrence is also classified to ICAO's own categories, from " +
       "the CAST/ICAO Common Taxonomy Team — which is what a State files, rather than this " +
       "product's six report types — with more than one code where more than one applies, " +
-      "because that is the taxonomy's own rule.",
+      "because that is the taxonomy's own rule. The discharge is recorded too — when the " +
+      "authority was told and by whom, which is a claim about a call this product did not " +
+      "place rather than proof of one, so a reported occurrence stops counting down.",
     missing:
       "Proactive and predictive identification — surveys, flight data, and the analysis " +
       "Doc 10159 asks for. And disposition is a connected act: the queue shows this " +
