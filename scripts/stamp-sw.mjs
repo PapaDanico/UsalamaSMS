@@ -965,7 +965,145 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    THE ENTRY RULE STANDS AND HAS NOW BEEN APPLIED ONCE. 300 bytes of
    headroom. The next thing that wants a nav item takes something out
    first, or argues the entry budget up in its own receipt. */
-const BUDGET = { entry: 214 * 1024, js: 438 * 1024, css: 56 * 1024 };
+/* TOTAL 438 -> 442 KB, for the emergency contact directory. ENTRY
+   UNMOVED at 213.7 for the second raise running, and for the same
+   reason: this is not a destination either.
+
+     sms chunk   21,690 -> 25,509   +3,819 bytes
+     total js   446,992 -> 451,350  +4,358 bytes
+     css         56,734 ->  57,041    +307 bytes
+     entry      218,801 -> 218,801  UNMOVED
+     erp.ts                          in NO browser chunk
+
+   AND THE FIRST ATTEMPT TO MEASURE THIS WAS WRONG, which is worth
+   recording because it produced a plausible answer. `git stash`
+   reported every delta as ZERO — sms chunk +0, total +0, css +0 — and
+   zero is exactly what a well-split change is supposed to look like at
+   entry, so it read as a good result. It was not: stash leaves
+   UNTRACKED files in place, every new file here was untracked, and so
+   both "builds" were the same tree. `git stash -u` gave the real
+   numbers above.
+
+   That is the third time a receipt in this file has been measured
+   rather than reasoned about, and the second time measuring caught
+   something reasoning would have shipped. The rule stands: build both
+   sides, difference them, and check the tool did what you think.
+
+   WHAT IT BUYS. Element 1.4 to BUILT, and the coverage figure to 11 of
+   12. The product held the EXERCISE record — what an inspector asks —
+   and not the contact directory, which is what an operator needs at
+   three in the morning. Annex 19's element is "COORDINATION of
+   emergency response planning", and coordination is a list of people
+   outside the organisation who have agreed to answer.
+
+   The feature is not the list; it is `verifiedOn`. A contact directory
+   is not wrong when it is written, it goes wrong quietly, and the
+   operator finds out which numbers still work during the emergency. So
+   staleness is computed against each contact's own last verification
+   on every read, a new contact is never recorded as confirmed, and a
+   confirmation cannot be backdated. No status column exists to go stale
+   beside the numbers.
+
+   IT DID NOT BECOME A SCREEN, for the second time running. /erp with a
+   nav item would have cost ~200 bytes of entry against 300 remaining.
+   It went onto /sms under element 1.4, which is where it belongs
+   anyway — the exercise and the directory are two halves of one
+   element, and splitting them would put half of 1.4's evidence where
+   nobody looking at 1.4 would find it.
+
+   ENTRY IS STILL 213.7 OF 214. The rule has now shaped two consecutive
+   features and both are better for it. */
+/* TOTAL 442 -> 446 KB, for the de-identification notice and the
+   indicator feed. ENTRY UNMOVED at 213.7 for the THIRD raise running,
+   and CSS unmoved — neither of these is a new screen.
+
+     pages chunk  27,965 -> 29,510  +1,545   the privacy section
+     spi chunk    22,069 -> 23,993  +1,924   the observed-count control
+     total       451,350 -> 454,996 +3,646
+     entry       218,801 -> 218,801  UNMOVED
+     css          57,041 -> 57,041   UNMOVED
+
+   THE FIRST TWO ATTEMPTS TO MEASURE THIS BOTH REPORTED ZERO, for two
+   different reasons, and both looked like a clean result:
+
+     · `git stash` without -u leaves untracked files in place, so both
+       builds were the same tree. That one is recorded in the receipt
+       above; it happened again here before it was remembered.
+     · reverting only pages.js to measure its chunk in isolation made
+       the CLAIMS GATE FAIL — the assertion added in the same change
+       requires the privacy notice to cite L.N. 32 — so `npm run build`
+       refused and dist was left holding the previous build. The gate
+       working correctly presented as a zero delta.
+
+   The numbers above are measured against a5a9d84, the commit that set
+   the 442 budget, with everything since applied. They add up:
+   1,545 + 1,924 = 3,469 of 3,646, the remaining 177 being chunk
+   registry across 23 chunks. A receipt whose parts do not sum to its
+   total is a receipt that has not been checked.
+
+   WHAT IT BUYS. The privacy notice did not mention de-identification at
+   all — the strongest protection this product offers, absent from the
+   document an operator's lawyer reads. It now names L.N. 32 of 2026's
+   Third Schedule, paragraph 3.1 Note 2, which makes the safeguard the
+   instrument's answer rather than a courtesy we chose, and states the
+   limit as well as the mechanism.
+
+   And the indicator screen will now count the reports that arrived in a
+   period. That is the "indicators are typed, not fed" debt, paid down
+   as far as it honestly can be: the figure is OFFERED beside the field
+   and never filled in, because an indicator counts a particular thing
+   and a quarter's report count is not that thing unless the operator
+   says so. A label the product cannot date is refused rather than
+   guessed at.
+
+   ENTRY HAS NOT MOVED IN THREE RAISES. It is 213.7 of 214, where it
+   was before the risk picture. Everything bought since sits on screens
+   a reporter at a strip never opens. */
+/* CSS 56 -> 57 KB, for the printed pack. AND ENTRY BROKE ITS BUDGET ON
+   THE WAY HERE, which is the part of this receipt that matters.
+
+   WHAT HAPPENED. The printed record needs the operator's NAME, so a
+   loader for it went into session.js — and session.js is in the entry
+   chunk, because the shell needs authentication on every screen. Entry
+   came out at 214.2 KB against 214. The first time it has broken its
+   budget, and precisely the moment the two receipts above said would
+   come: entry beginning to track total is when to take something out
+   rather than buy more.
+
+   IT WAS TAKEN OUT, NOT ARGUED UP. The operator's name is needed by two
+   lazily-loaded documents and nowhere else; it had no business in the
+   shell. It moved to print-id.js, which both of those documents already
+   import, and entry returned to 213.8. Only the storage key stays in
+   session.js, because signing out has to clear it.
+
+   That is the rule doing its job for the third time, and the first time
+   it has REFUSED something rather than shaped it. The budget was not
+   raised to accommodate a mistake; the mistake was corrected.
+
+   WHAT THE CSS BUYS, AND WHO PAYS FOR IT. About 500 bytes of print
+   rules — and unlike a lazy chunk, the stylesheet is loaded on EVERY
+   page. The reporter at the strip pays for rules only a safety manager
+   uses. Stated plainly, because that is the trade:
+
+     · a record no longer splits across a page break, so half a finding
+       on one page with its owner and due date on the next stops
+       happening;
+     · orphans and widows at three, so paragraphs read as typeset
+       rather than as flowed;
+     · a heading never sits at the foot of a page with its content
+       overleaf;
+     · and an identity block printing the operator name and AOC number
+       at the top of the document.
+
+   The last is the reason for the rest. /sms and /picture are the two
+   screens an operator prints, hands over, and lets somebody read as
+   loose paper, and a pack with no operator name on it is a pack an
+   auditor cannot attribute. Half a kilobyte on every load buys the
+   artefact that reaches a regulator looking like it was meant for them.
+
+   A reporter filing offline never sees it and does pay for it. That is
+   the honest shape of the trade, and it is worth making once. */
+const BUDGET = { entry: 214 * 1024, js: 446 * 1024, css: 57 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

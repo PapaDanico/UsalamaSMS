@@ -1,5 +1,12 @@
 # Open work, as at 14 August 2026
 
+**Revised the same day, twice.** Sections 2, 4 and 5 were rewritten
+after element 1.4 closed and the coverage figure moved to 11 of 12.
+The file's own rule is to delete an item when it is done rather than
+ticking it — followed here, except where a struck-through line records
+something that was the largest gap in the product and should not simply
+vanish.
+
 Written because a session's worth of findings that live only in a chat
 log are findings that get lost. Everything here came out of one working
 day; the task list holds most of it, and the items in §1 are the ones
@@ -27,12 +34,22 @@ prints the new password once into the terminal of whoever runs it.
 password must not travel through a chat log the way the old one did.
 That is the whole reason it prints to a terminal and stores nothing.
 
-### 1.2 The privacy notice understates its own safeguard
+### 1.2 ~~The privacy notice understates its own safeguard~~ · DONE
 
-Kenya's L.N. 32/2026, Third Schedule, paragraph 3.1 Note 2 names
-**de-identification** as an authoritative safeguard for protecting
-safety data. The privacy notice says the weaker "we de-identify".
-Naming the instrument is both more accurate and stronger. Cheap.
+**Closed 14 August 2026, and this entry was wrong about the problem.**
+It recorded that the notice said the weaker "we de-identify". The
+notice did not mention de-identification AT ALL — the strongest
+protection this product offers, absent from the document an operator's
+lawyer reads, while the about page described it.
+
+It now cites L.N. 32 of 2026, Third Schedule, paragraph 3.1 Note 2, and
+a claims assertion holds the citation rather than the word, because
+"we de-identify" would pass a search for the word and is exactly what
+this replaced.
+
+**The lesson worth keeping: an item in this file is a note, not a
+finding.** Check the thing itself before acting on what was written
+about it.
 
 ### 1.3 The C-01 re-identification check passed vacuously
 
@@ -51,37 +68,44 @@ nobody has loaded the live site and looked at it. Worth one human pass.
 
 ---
 
-## 2. ICAO Annex 19 — 10.5 of 12
+## 2. ICAO Annex 19 — 11 of 12
 
-Nine built, three partial. What each partial actually lacks, in the
-order I would take them:
+**Revised 14 August 2026.** Ten built, two partial. Element 1.4 closed
+that day — the contact directory shipped, and it was scoped exactly as
+this section said to scope it: who to call, in what order, with what
+authority, and NOT a document editor. The remaining two:
 
-### 2.1 Element 1.5 · SMS documentation — the biggest single gap
+### 2.1 Element 1.5 · SMS documentation
 
-The product controls the REGISTER of documents; it does not store their
-content, distribute them, or record who has read each one. This is also
-the largest competitive gap: document control is Web Manuals' entire
-business and one of Q-Pulse's differentiators.
+Distribution landed — `DocumentAcknowledgement`, keyed on the REVISION
+rather than the document, so reading revision 3 does not mark anybody
+as having read revision 4. What is still missing is the CONTENT: the
+product controls the register and the distribution record, not the
+manual itself.
 
-The mechanism already exists — `PolicyAcknowledgement` records who has
-read a safety policy. Extending that pattern to controlled documents is
-the cheapest route to both the element and the benchmark.
+Whether that is worth closing is now a real question rather than an
+obvious yes. Document control is Web Manuals' entire business and a
+Q-Pulse differentiator, so it is a competitive gap — but the same
+argument that kept the ERP document out of 1.4 applies here, and it
+applied well. A place to type a manual would be a worse version of the
+file an operator already keeps.
 
-### 2.2 Element 1.4 · Emergency response planning
+### 2.2 Element 4.1 · Training — the infrastructure decision is made
 
-The product records that an operator EXERCISED a plan; it does not hold
-the plan, or the contact directory behind it. Scope carefully: the
-valuable half is the **contact directory** (who to call, in what order,
-with what authority), not a document editor.
+The matrix anticipates: every row is current, lapsing soon or lapsed,
+against a window proportional to its own validity. What it does not do
+is **arrive**.
 
-### 2.3 Element 4.1 · Training — needs an infrastructure decision first
+**DECIDED 14 August 2026: SMS delivery**, not email and not web push.
+It is the only channel that reaches somebody without a smartphone,
+which is the operator this product is for. Africa's Talking over Twilio
+for a Kenyan operator, on cost and on sender-ID turnaround.
 
-The matrix now anticipates: every row is current, lapsing soon or
-lapsed, against a window proportional to its own validity. What it does
-not do is **arrive**. Closing this needs email or web-push — a
-provider, a sender domain, deliverability — which is a decision about
-infrastructure and cost, not a coding task. Do not start it until that
-decision is made.
+What is still needed is not a coding task and must not be done by an
+agent: a sender ID registration and API credentials. **Credentials do
+not travel through a chat log** — same rule as the database password,
+see §1.1. Until a person does that, 4.1 stays partial and the coverage
+figure caps at 11.5 of 12.
 
 ---
 
@@ -122,16 +146,25 @@ Air Safety, gov.uk "reporting air safety concerns".
 Established this session against SMS Pro, Ideagen Q-Pulse, Vistair
 Centrik and ASQS iQSMS.
 
+**Revised 14 August 2026.** Four of the eight rows moved in one day.
+
 | Capability | Them | Here |
 |---|---|---|
 | Occurrence reporting | yes | yes — **offline-first, which none of them do** |
+| Report disposition | yes | yes — triage → investigate → close/reopen, verified moves |
 | Risk register, matrix | yes | yes |
-| SPI / KPI | yes, with dashboards | series yes, dashboard no |
-| **Alerting / notification** | core to all four | **absent — §2.3** |
-| Audit & finding / CAPA | yes | findings yes, no CAPA loop |
-| Document control | yes | register only — §2.1 |
-| ERP | yes | exercise only — §2.2 |
+| SPI / KPI | yes, with dashboards | **yes, with a dashboard** |
+| **Alerting / notification** | core to all four | **absent — §2.2, now unblocked** |
+| Audit & finding / CAPA | yes | **yes** — actions with owner, date, separate verification |
+| Document control | yes | register + distribution; not content — §2.1 |
+| ERP | yes | **exercise + contact directory** |
 | Training records | yes | yes, anticipating, not arriving |
+| **Owner seniority vs risk band** | **none of them** | **yes — RA 1210** |
+
+That last row is the one to defend in a sale. Every incumbent shows a
+register by band; none asks whether the name in the owner box is senior
+enough to carry the row, because Doc 9859 does not ask it and RA 1210
+does.
 
 **The strategic read, unchanged: do not chase suite parity.** The
 defensible position is the one none of them hold — the small African
@@ -151,14 +184,23 @@ that block a feature comparison.
   assesses the change an operator brings it; it does not know that
   operator's threshold for significance, and guessing would either
   flood the register or miss the change that mattered.
-- **A report can never leave `SUBMITTED`.** Five states in the enum,
-  one reachable, no route that writes the column. See §8.3 — this is
-  the largest gap in the product and it is upstream of the next two
-  entries.
-- **Indicators are typed, not fed** from the reporting queue, so an
-  indicator can disagree with the reports behind it. Report rate is
-  derivable today; time-to-closure is not, and cannot be until the
-  entry above is fixed.
+- ~~A report can never leave `SUBMITTED`.~~ **Closed 14 August 2026.**
+  Five states, four unreachable, no route writing the column. The
+  transition history now exists and time-to-closure is derived from it,
+  from the FIRST closure.
+- ~~Indicators are typed, not fed.~~ **Narrowed 14 August 2026.** The
+  indicator screen will now count the reports that arrived in a period
+  and show the figure beside the field. It does not fill it in, and
+  that is the finished state rather than a half-measure: an indicator
+  counts a particular thing, and a quarter's report count is not that
+  thing unless the operator says so. What remains is not a gap.
+- **Nothing tells anybody a contact has gone stale** unless they open
+  /sms. The directory computes it; nobody is notified. Same shape as
+  4.1's training warning, and it closes on the same SMS channel — so
+  these two are one piece of work, not two.
+- **The ERP document itself is not held**, and §2 explains why that is
+  a decision rather than debt. Recorded here so nobody re-opens it as
+  an oversight.
 
 ---
 

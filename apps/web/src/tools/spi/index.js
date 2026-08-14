@@ -309,6 +309,24 @@ function IndicatorCard(ind) {
         <input class="input-field" name="exposure" type="number" min="0" step="1" required />
       </label>
       <button type="submit" class="btn btn-secondary btn-sm">Add period</button>
+      <!-- HOW MANY REPORTS ACTUALLY ARRIVED, on request.
+
+           The debt this pays down is "indicators are typed, not fed": an
+           operator types an event count while the reports it came from
+           sit in the same database, so the indicator can disagree with
+           the queue behind it and nobody finds out until an inspector
+           adds them up.
+
+           IT OFFERS, IT DOES NOT FILL IN, and it is a button rather
+           than something that happens on blur for exactly that reason.
+           An indicator counts a PARTICULAR thing, and the number of
+           reports filed in a quarter is not that thing unless the
+           operator says it is. Silently filling the field would replace
+           a transcription error with a category error, which is worse
+           because it looks right. -->
+      <button type="button" class="btn btn-ghost btn-sm" data-observed="${ind.id}">
+        How many reports?
+      </button>
       <button type="button" class="btn btn-ghost btn-sm" data-remove="${ind.id}">Remove</button>
       <!-- The error belongs to THIS form. It used to be written into the
            one live region at the bottom of the page, inside "Add an
@@ -622,6 +640,53 @@ export function render(outlet) {
         error.textContent = r.message;
       }
     });
+  });
+
+  /* ------------------------------------------------------------------
+     "How many reports?" — the answer, beside the field, never in it.
+
+     One delegated listener on the list, like every other control here:
+     the indicators re-render on every save, so per-button listeners
+     would be re-attached each time. That is the P-01 shape the triage
+     queue was fixed for.
+
+     THE CAVEAT IS SHOWN WITH THE NUMBER, from the server rather than
+     restated here. A count that appears with no qualification is a
+     count somebody types straight in.
+     ------------------------------------------------------------------ */
+  list.addEventListener('click', async (event) => {
+    const btn = event.target.closest?.('[data-observed]');
+    if (!btn) return;
+    const id = btn.dataset.observed;
+    const form = list.querySelector(`[data-add-period="${CSS.escape(id)}"]`);
+    const out = list.querySelector(`[data-error="${CSS.escape(id)}"]`);
+    if (!form || !out) return;
+
+    const label = form.elements.label.value.trim();
+    if (!label) {
+      out.textContent = 'Type the period first — the count is for a date range, and the label is what names it.';
+      return;
+    }
+
+    const was = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Counting…';
+    try {
+      const res = await authFetch(`/api/v1/spi/observed?label=${encodeURIComponent(label)}`);
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 422) {
+        out.textContent = body.message ?? 'That period cannot be turned into a date range.';
+      } else if (!res.ok) {
+        out.textContent = 'The safety office could not be reached, so nothing was counted.';
+      } else {
+        out.textContent = `${body.total} report${body.total === 1 ? '' : 's'} arrived in ${label}. ${body.caveat}`;
+      }
+    } catch {
+      out.textContent = 'The safety office could not be reached, so nothing was counted.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = was;
+    }
   });
 
   list.addEventListener('submit', (event) => {

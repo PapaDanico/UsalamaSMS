@@ -24,6 +24,7 @@
 
 import { html, raw } from '../../shared/html.js';
 import { isSignedIn, getSession, authFetch } from '../../shared/session.js';
+import { printId, loadOrg } from '../../shared/print-id.js';
 import { SMS_COMPONENTS } from '../../../../../packages/shared/src/maturity.ts';
 import { can } from '../../../../../packages/shared/src/index.ts';
 import { currencyOf, currencySummary } from '../../../../../packages/shared/src/currency.ts';
@@ -70,7 +71,29 @@ const SURFACES = {
     endpoint: '/api/v1/sms/exercises',
     collection: 'exercises',
     action: 'Record an exercise',
-    permission: 'erp.manage'
+    permission: 'erp.manage',
+    /* ELEMENT 1.4 IS TWO RECORDS, AND ONLY THIS ONE HAS TWO.
+
+       The exercise answers what an INSPECTOR asks — was a plan
+       exercised, what did it find, did the plan change. The contact
+       directory answers what an OPERATOR needs at three in the
+       morning: who to call, in what order, with what authority.
+       Annex 19's element is "COORDINATION of emergency response
+       planning", and coordination is a list of people outside the
+       organisation who have agreed to answer.
+
+       Kept as a second collection under one element rather than
+       promoted to its own screen, because they are one element and
+       splitting them would put half of 1.4's evidence where nobody
+       looking at 1.4 would find it. */
+    secondary: {
+      key: 'contacts',
+      endpoint: '/api/v1/sms/contacts',
+      collection: 'contacts',
+      title: 'The contact directory',
+      action: 'Add a contact',
+      permission: 'erp.manage'
+    }
   },
   '1.5': {
     key: 'documents',
@@ -128,6 +151,23 @@ const fmtDate = (v) => {
    a policy is read for its signature, a finding for whether it was
    verified, a training record for whether it has lapsed.
    --------------------------------------------------------------- */
+/* THE DIRECTORY'S OWN VOCABULARY. "Never confirmed" is deliberately not
+   the same badge as "out of date": one needs somebody to establish the
+   contact exists at all, the other needs a call. Colour is never the
+   only channel — the label says it. */
+const FRESH_LABEL = {
+  CURRENT: 'confirmed',
+  DUE_SOON: 'confirm soon',
+  STALE: 'out of date',
+  NEVER_VERIFIED: 'never confirmed'
+};
+const FRESH_STATUS = {
+  CURRENT: 'SAFE',
+  DUE_SOON: 'CAUTION',
+  STALE: 'ALERT',
+  NEVER_VERIFIED: 'ALERT'
+};
+
 const RENDER = {
   policy: (rows) =>
     rows.map(
@@ -165,6 +205,33 @@ const RENDER = {
           <span>since ${fmtDate(a.appointedOn)}</span>
           <span>${a.letterRef ? `letter ${a.letterRef}` : 'no letter reference'}</span>
         </p>
+      </article>`
+    ),
+
+  contacts: (rows) =>
+    rows.map(
+      (c) => html`<article class="rec" data-state="${c.freshness === 'CURRENT' ? 'ok' : 'open'}">
+        <div class="rec__head">
+          <h4>${c.callOrder ? `${c.callOrder}. ` : ''}${c.name}</h4>
+          <span class="badge" data-status="${FRESH_STATUS[c.freshness]}">
+            <span class="badge__label">${FRESH_LABEL[c.freshness]}</span>
+          </span>
+        </div>
+        <p class="rec__body"><strong>${c.role}</strong>${c.organisation ? ` · ${c.organisation}` : ''}</p>
+        <!-- A TELEPHONE LINK, because this list is read on a handset by
+             somebody who needs to dial it, not copy it out. -->
+        <p class="rec__body"><a href="tel:${c.phone.replace(/[^+0-9]/g, '')}">${c.phone}</a>${c.altPhone ? ` · ${c.altPhone}` : ''}</p>
+        ${c.authority ? html`<p class="rec__body"><strong>Can authorise:</strong> ${c.authority}</p>` : ''}
+        <p class="rec__meta">
+          <span>${c.verifiedOn ? `Confirmed ${fmtDate(c.verifiedOn)}` : 'Never confirmed'}</span>
+        </p>
+        ${allow('erp.manage')
+          ? html`<p class="rec__meta no-print">
+              <button type="button" class="btn btn-ghost btn-sm" data-verify-contact="${c.id}">
+                I have confirmed this number
+              </button>
+            </p>`
+          : ''}
       </article>`
     ),
 
@@ -338,6 +405,20 @@ const FORMS = {
     { name: 'userId', label: 'Person', type: 'people', required: true },
     { name: 'appointedOn', label: 'Appointed on', type: 'date', required: true },
     { name: 'letterRef', label: 'Appointment letter reference' }
+  ],
+  contacts: [
+    { name: 'name', label: 'Name', required: true },
+    { name: 'role', label: 'What they are for', required: true,
+      placeholder: 'KCAA duty officer' },
+    { name: 'organisation', label: 'Organisation' },
+    /* NOT type="tel" AND NOT VALIDATED. A call list holds satellite
+       numbers, extensions, radio frequencies and "ask Wilson tower for
+       the duty engineer". A field that refuses any of those pushes the
+       real answer into the notes, where nobody dials it from. */
+    { name: 'phone', label: 'Number to call', required: true },
+    { name: 'altPhone', label: 'Second number' },
+    { name: 'callOrder', label: 'Position in the call-out order', type: 'number' },
+    { name: 'authority', label: 'What they can authorise', type: 'textarea', rows: 2 }
   ],
   exercises: [
     { name: 'scenario', label: 'Scenario', type: 'textarea', rows: 3, required: true },
@@ -579,10 +660,32 @@ export async function render(outlet) {
     </div>`;
   };
 
+  let org = null;
+
   const load = async () => {
-    const endpoints = [...new Set(Object.values(SURFACES).map((s) => s.endpoint))];
-    await Promise.all(
-      endpoints.map(async (url) => {
+    const endpoints = [
+      ...new Set(
+        Object.values(SURFACES).flatMap((s) =>
+          s.secondary ? [s.endpoint, s.secondary.endpoint] : [s.endpoint]
+        )
+      )
+    ];
+    /* THE ORGANISATION IS FETCHED ALONGSIDE THE RECORD, not before it.
+
+       Written first as `org = await loadOrg()` on the line above this
+       one, with a comment claiming it was fetched "with the rest" — it
+       was not, it was fetched BEFORE the rest and made every load of
+       this screen wait a round trip on a request nothing on the page
+       renders until the end. That is the shape session.js already has a
+       long comment about: doubling the requests on the heaviest screen
+       in the product is the part a reporter on a metered connection
+       pays for.
+
+       A claim in a comment that the code does not keep is worse than no
+       comment, because the next reader believes it. */
+    await Promise.all([
+      loadOrg().then((o) => { org = o; }),
+      ...endpoints.map(async (url) => {
         try {
           const res = await authFetch(url);
           if (!res.ok) {
@@ -596,8 +699,8 @@ export async function render(outlet) {
              worse answer than saying the record could not be read. */
           state[url] = { error: 'unreachable' };
         }
-      })
-    );
+      }),
+    ]);
 
     /* The voluntary scheme, fetched with the rest rather than after
        them. It is a SINGLETON, not a collection, so it sits outside the
@@ -632,6 +735,60 @@ export async function render(outlet) {
     return { rows: payload[surface.collection] ?? [] };
   };
 
+  /* ------------------------------------------------------------------
+     A SECOND COLLECTION UNDER ONE ELEMENT.
+
+     Only 1.4 has one, and the reason is in the descriptor: the exercise
+     answers the inspector's question and the directory answers the
+     operator's, and they are one element. Rendered beneath the primary
+     rather than beside it, so an element that has both reads as one
+     record with two parts.
+
+     THE DIRECTORY'S VERDICT IS SHOWN EVEN WHEN IT IS EMPTY, and that is
+     the opposite of the generic empty state above. "Nothing recorded
+     against this element yet" is a fair description of no exercises; it
+     is a misleading description of no contacts, because an empty
+     directory is not a neutral starting point — it is a plan that
+     connects to nobody.
+     ------------------------------------------------------------------ */
+  const secondaryBlock = (sec) => {
+    const payload = state[sec.endpoint];
+    const rows = payload?.error ? [] : (payload?.[sec.collection] ?? []);
+    const verdict = payload?.error ? null : payload?.directory;
+
+    return html`
+      <div class="sms-secondary">
+        <h4>${sec.title}</h4>
+
+        ${payload?.error
+          ? html`<p class="notice notice--error">
+              ${payload.error === 'forbidden'
+                ? 'Your role does not include reading the contact directory.'
+                : 'The contact directory could not be read. That is not the same as it being empty — do not treat it as such.'}
+            </p>`
+          : html`
+              ${verdict?.concern
+                ? html`<p class="notice">${verdict.concern}</p>`
+                : ''}
+              ${rows.length
+                ? html`<div class="rec-list">${RENDER[sec.key](rows)}</div>`
+                : ''}
+            `}
+
+        ${allow(sec.permission)
+          ? html`<details class="sms-add no-print">
+              <summary>${sec.action}</summary>
+              <form data-post="${sec.key}" novalidate>
+                ${FORMS[sec.key].map((f) => Field(f, people))}
+                <button type="submit" class="btn btn-primary btn-sm">${sec.action}</button>
+                <p class="field-error" data-err="${sec.key}" role="status" aria-live="polite"></p>
+              </form>
+            </details>`
+          : ''}
+      </div>
+    `;
+  };
+
   const repaint = () => {
     let held = 0;
     for (const id of Object.keys(SURFACES)) {
@@ -647,7 +804,7 @@ export async function render(outlet) {
         <dd class="stat__label">Elements in the framework</dd></div>
     `.toString();
 
-    body.innerHTML = SMS_COMPONENTS.map(
+    body.innerHTML = printId(org, 'Safety management system record — Annex 19, twelve elements').toString() + SMS_COMPONENTS.map(
       (component) => html`<section class="doc-section" id="component-${component.id}">
         <h2><span class="mat-element__id">${component.id}</span> ${component.name}</h2>
         <p class="lede lede--tight">${component.purpose}</p>
@@ -694,6 +851,8 @@ export async function render(outlet) {
               : count
                 ? html`<div class="rec-list">${RENDER[surface.key](r.rows)}</div>`
                 : html`<p class="empty-state"><span>Nothing recorded against this element yet.</span></p>`}
+
+            ${surface.secondary ? secondaryBlock(surface.secondary) : ''}
 
             ${allow(surface.permission)
               ? html`<details class="sms-add no-print">
@@ -764,7 +923,18 @@ export async function render(outlet) {
     const elementId = form?.dataset?.post;
     if (!elementId) return;
     event.preventDefault();
-    const surface = SURFACES[elementId];
+    /* A SECONDARY COLLECTION POSTS UNDER ITS OWN KEY, not under an
+       element id — 1.4 has two forms and one element, so keying both on
+       "1.4" would put the contact into the exercises endpoint and
+       return a validation error that looks like a problem with the
+       form. Resolved here rather than by giving the secondary a fake
+       element id, which is the version that goes wrong silently. */
+    const surface =
+      SURFACES[elementId] ??
+      Object.values(SURFACES)
+        .map((x) => x.secondary)
+        .find((sec) => sec && sec.key === elementId);
+    if (!surface) return;
     const err = body.querySelector(`[data-err="${elementId}"]`);
     const say = (m) => {
       if (err) err.textContent = m;
@@ -788,8 +958,16 @@ export async function render(outlet) {
       }
       /* A date input gives YYYY-MM-DD; the API takes an instant. Sent as
          UTC midnight rather than local, so the same record does not
-         change date when it is read in another timezone. */
-      payload[f.name] = f.type === 'date' ? `${value}T00:00:00.000Z` : value;
+         change date when it is read in another timezone.
+
+         AND A NUMBER INPUT GIVES A STRING. zod's z.number() refuses "1"
+         and the 400 that comes back reads as a validation problem with
+         the field rather than with the type — coerced here, once, for
+         every form rather than in the one that noticed. */
+      payload[f.name] =
+        f.type === 'date' ? `${value}T00:00:00.000Z`
+          : f.type === 'number' ? Number(value)
+            : value;
     }
     say('');
 
@@ -830,6 +1008,37 @@ export async function render(outlet) {
        accepted. getElementById does not parse its argument. */
     const back = document.getElementById(`element-${elementId}`)?.querySelector('.sms-add');
     if (back) back.open = false;
+  });
+
+  /* CONFIRMING A NUMBER. One delegated listener, because the directory
+     re-renders on every save and per-row listeners would be re-attached
+     each time — the P-01 shape the triage queue was fixed for. */
+  body.addEventListener('click', async (event) => {
+    const btn = event.target.closest?.('[data-verify-contact]');
+    if (!btn) return;
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const res = await authFetch(
+        `/api/v1/sms/contacts/${btn.dataset.verifyContact}/verify`,
+        { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }
+      );
+      if (!res.ok) {
+        window.alert(
+          res.status === 403
+            ? 'Your role cannot confirm a contact.'
+            : 'That was not accepted. Nothing was changed.'
+        );
+      }
+    } catch {
+      window.alert('Could not reach the safety office. Nothing was changed.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+      await load();
+      repaint();
+    }
   });
 
   outlet.querySelector('#sms-print').addEventListener('click', () => window.print());

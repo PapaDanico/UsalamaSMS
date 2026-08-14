@@ -654,20 +654,35 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   },
   {
     id: "1.4",
-    /* PARTIAL, and the half that is missing is the larger one. What the
-       product holds is the EXERCISE record — that one was held, what it
-       found, and whether the plan changed as a result, which is the
-       question an inspector actually asks. What it does not hold is the
-       plan being exercised, or the contact directory whose eleven
-       months out of date is the finding this record exists to capture. */
-    state: "PARTIAL",
-    serverRoutes: ["/api/v1/sms/exercises"],
+    /* MOVED TO BUILT, and the reason is the same one this table has used
+       throughout: the missing half is now held ON THE SERVER, not
+       missing.
+
+       The previous entry named two absent things — "the plan itself and
+       the contact directory behind it" — and treated them as one gap.
+       They are not the same size or the same kind. Annex 19's element
+       is "COORDINATION of emergency response planning", and
+       coordination is the directory: who is called, in what order, and
+       what they can authorise. The plan document is the operator's
+       manual, and this product deliberately does not become a document
+       editor to hold it — see `missing`, which now says which of the
+       two is still outside and why that is a choice rather than a
+       shortfall. */
+    state: "BUILT",
+    serverRoutes: ["/api/v1/sms/exercises", "/api/v1/sms/contacts"],
     has:
-      "Emergency response exercises: the scenario, who took part, what it found, and " +
-      "whether the plan was changed as a result.",
+      "Emergency response exercises — the scenario, who took part, what it found, and " +
+      "whether the plan was changed as a result — and the contact directory the plan " +
+      "depends on: who to call, in what order, with what authority, each contact " +
+      "carrying the date somebody last confirmed the number reaches them. Staleness is " +
+      "computed against that date on every read, a new contact is never recorded as " +
+      "confirmed, and a confirmation cannot be backdated.",
     missing:
-      "The plan itself and the contact directory behind it. The product records that " +
-      "an operator exercised a plan; it does not hold the plan.",
+      "The plan document itself, and that is a scoping decision rather than a gap: an " +
+      "ERP is a manual of call-out trees, checklists and diagrams, and a place to type " +
+      "all that would be a worse version of the file an operator already keeps. What is " +
+      "held here is the part a document cannot enforce — whether the numbers in it still " +
+      "work.",
     href: "/sms",
   },
   {
@@ -804,10 +819,13 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "the register by band, indicators over an alert level, and which risks are owned " +
       "below the authority their band requires \u2014 computed on every read, never stored.",
     missing:
-      "Indicators fed from the reporting queue rather than typed in \u2014 the counts " +
-      "are the operator's own, entered by hand, so an indicator can disagree with the " +
-      "reports behind it until somebody reconciles them. Not part of this element's " +
-      "evidence, and real work all the same. And the picture reports a report COUNT " +
+      "Indicators fed from the reporting queue AUTOMATICALLY. The screen will now count " +
+      "the reports that arrived in a period and put the figure beside the field, so the " +
+      "reconciliation an operator used to do from memory is one button \u2014 but it does " +
+      "not fill the field in, and that is deliberate rather than unfinished: an " +
+      "indicator counts a particular thing, and the number of reports filed in a " +
+      "quarter is not that thing unless the operator says it is. And the picture " +
+      "reports a report COUNT " +
       "rather than Doc 9859's rate per 1,000 hours, because this product does not hold " +
       "your flying hours; it says so on the page rather than dividing by days and " +
       "calling the result a rate.",

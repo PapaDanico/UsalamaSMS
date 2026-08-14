@@ -474,6 +474,53 @@ assert(
   `README says ${integrationStated}, the suites define ${integrationCount}`
 );
 
+/* ============================================================
+   THE PRIVACY NOTICE NAMES THE INSTRUMENT ITS SAFEGUARD COMES FROM.
+
+   The notice described what the product does with a report and said
+   nothing at all about de-identification — the strongest protection it
+   offers, and the one Kenya's own regulations name. L.N. 32 of 2026,
+   Third Schedule, paragraph 3.1 Note 2 identifies de-identification as
+   a safeguard for protecting safety data, so this is the instrument's
+   answer rather than a courtesy this product invented, and saying so is
+   both more accurate and stronger.
+
+   ASSERTED AGAINST THE CITATION, NOT AGAINST THE WORD. "We de-identify"
+   would pass a search for "de-identif" and is exactly the weaker claim
+   this replaced. What has to survive is the reference an operator's
+   lawyer can look up.
+   ============================================================ */
+{
+  const pages = read('apps/web/src/content/pages.js');
+  /* WHITESPACE-NORMALISED BEFORE MATCHING. The first version of this
+     tested the raw source and failed on "Third Schedule" — which is
+     present, and wrapped across a line break with eight spaces of
+     indent in the middle of it. A gate that only passes when prose is
+     laid out a particular way is a gate that makes people fight the
+     line wrapping instead of writing the sentence, and the citation is
+     what matters, not where the editor broke the line. */
+  const privacy = pages
+    .slice(pages.indexOf('export const PRIVACY'), pages.indexOf('export const TERMS'))
+    .replace(/\s+/g, ' ');
+  assert(
+    'the privacy notice was located at all',
+    privacy.length > 500,
+    `read ${privacy.length} characters of PRIVACY — this check would pass by finding nothing`,
+  );
+  assert(
+    'THE PRIVACY NOTICE CITES THE INSTRUMENT BEHIND DE-IDENTIFICATION',
+    /L\.N\. 32 of 2026/.test(privacy) && /Third Schedule/.test(privacy),
+    'the notice describes de-identification without naming L.N. 32 of 2026 and its Third ' +
+      'Schedule — which is the weaker claim, and the one an operator cannot check',
+  );
+  assert(
+    'and states the limit rather than only the safeguard',
+    /may still identify|removes names, not circumstances/i.test(privacy),
+    'the notice claims de-identification without the caveat the reporting form already ' +
+      'carries: a narrative specific enough to be useful may identify its author anyway',
+  );
+}
+
 /* ---------------- The coverage figure ----------------
 
    The most consequential number this repository publishes. "N of 12"

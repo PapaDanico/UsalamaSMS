@@ -3329,6 +3329,122 @@ try {
     assert(faults.length === 0, faults.join('\n         '));
   });
 
+  await check('A PRINTED PACK IS ATTRIBUTED, OR IT CARRIES NO HEADER AT ALL', async () => {
+    /* /sms and /picture are the two screens an operator prints, hands
+       over, and lets somebody read as loose paper. A pack with no
+       operator name on it cannot be attributed; the org id in the token
+       is a uuid, which is useless on paper.
+
+       THE PROPERTY IS THE REFUSAL AS MUCH AS THE HEADER. A block saying
+       "UsalamaSMS operator" over somebody's audit pack is worse than no
+       block — a document is attributed or it is not, and
+       half-attributed is the version that gets filed under the wrong
+       operator. So this asserts BOTH: the name appears when the server
+       knows it, and nothing appears when it does not.
+
+       Service workers blocked so the stubs are actually reached — the
+       lesson from the read-never-deletes check below. */
+    const bare = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+    let named = '';
+    let anonymous = '';
+    let meCalled = 0;
+
+    const signIn = async () => {
+      await probe.evaluate(() => {
+        localStorage.setItem(
+          'usalamasms.session',
+          JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+        );
+        localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+        localStorage.removeItem('usalamasms.org');
+      });
+    };
+
+    try {
+      await probe.route('**/api/v1/auth/refresh', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'stub', refreshToken: 'stub2',
+            role: 'SAFETY_MANAGER', orgId: 'org-1'
+          })
+        })
+      );
+      // Everything else on the screen answers empty; only /me matters here.
+      await probe.route('**/api/v1/sms/**', (r) =>
+        r.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+      );
+
+      // ---- the server knows the name --------------------------------
+      await probe.route('**/api/v1/auth/me', (r) => {
+        meCalled += 1;
+        return r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            userId: 'u1', orgId: 'org-1', role: 'SAFETY_MANAGER',
+            orgName: 'Kabete Air Charter', aocNumber: 'KE-AOC-042'
+          })
+        });
+      });
+      await probe.goto(BASE + '/sms', { waitUntil: 'networkidle' });
+      await signIn();
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      named = await probe.evaluate(
+        () => document.querySelector('.print-id')?.innerText ?? ''
+      );
+
+      // ---- the server does not ---------------------------------------
+      await probe.unroute('**/api/v1/auth/me');
+      await probe.route('**/api/v1/auth/me', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ userId: 'u1', orgId: 'org-1', role: 'SAFETY_MANAGER' })
+        })
+      );
+      await signIn();
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      anonymous = await probe.evaluate(
+        () => document.querySelectorAll('.print-id').length
+      );
+    } finally {
+      await bare.close();
+    }
+
+    const faults = [];
+    if (meCalled === 0) {
+      faults.push(
+        'the stubbed /api/v1/auth/me was never called, so the screen was never given a ' +
+          'name and this check tested nothing'
+      );
+    }
+    if (!/Kabete Air Charter/.test(named)) {
+      faults.push(
+        `the print header does not carry the operator name — a printed pack cannot be ` +
+          `attributed. It read: ${JSON.stringify(named)}`
+      );
+    }
+    if (!/KE-AOC-042/.test(named)) {
+      faults.push('the print header omits the AOC number, which is what a regulator files under');
+    }
+    if (anonymous !== 0) {
+      faults.push(
+        'a print header rendered with no operator name — half-attributed is the version ' +
+          'that gets filed under the wrong operator'
+      );
+    }
+
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
   await check('THE RISK PICTURE SHOWS NOTHING RATHER THAN SOMETHING STALE', async () => {
     /* THE ONE SCREEN IN THIS PRODUCT AN OPERATOR SHOWS TO SOMEBODY
        ELSE. Everything else here is worked on; this is presented, and

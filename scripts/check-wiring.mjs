@@ -36,14 +36,41 @@
    CSS.escape. Do not rename the elements to remove the dots; the dots
    are ICAO's numbering and this product does not get to change it.
    ============================================================ */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const SCREEN = 'apps/web/src/tools/sms/index.js';
-const ROUTES = 'apps/api/src/routes.sms.ts';
+
+/* EVERY ROUTE FILE, not routes.sms.ts alone.
+
+   This read one file until the emergency contact directory landed in
+   routes.erp.ts, and then reported that the screen "reads
+   /api/v1/sms/contacts, which apps/api/src/routes.sms.ts does not
+   register" — which was true of that file and false of the API. A gate
+   that fails on correct wiring teaches people to move code to satisfy
+   it, and the code was in the right place.
+
+   Widening it is not relaxing it: every endpoint must still be
+   registered, with the right method, somewhere the API actually
+   registers it. What changes is that "somewhere" is now the API rather
+   than one file of it — the same source check-claims.mjs reads for the
+   coverage routes, and for the same reason. */
+const ROUTE_DIR = 'apps/api/src';
+const ROUTE_FILES = readdirSync(ROUTE_DIR)
+  .filter((f) => f.startsWith('routes.') && f.endsWith('.ts'))
+  .map((f) => `${ROUTE_DIR}/${f}`);
+const ROUTES = ROUTE_FILES.join(', ');
 
 const screen = readFileSync(SCREEN, 'utf8');
-const routes = readFileSync(ROUTES, 'utf8');
+const routes = ROUTE_FILES.map((f) => readFileSync(f, 'utf8')).join('\n');
 const problems = [];
+
+if (ROUTE_FILES.length < 4) {
+  console.error(
+    `check:wiring — found only ${ROUTE_FILES.length} route file(s) in ${ROUTE_DIR}.`
+  );
+  console.error('A gate that reads almost nothing passes almost everything. Refusing to.');
+  process.exit(1);
+}
 
 /* ---- 1. every endpoint the screen names must exist in the API ---- */
 

@@ -49,21 +49,24 @@ them — alongside a glossary, tutorials, FAQ, about, privacy and terms.
 
 **`/coverage` is the one to read before adopting anything.** It states,
 element by element against Annex 19's twelve, what is built here and
-what is only partial — and the figure it reports, **10.5 of 12**, is
+what is only partial — and the figure it reports, **11 of 12**, is
 computed from the same declaration the table renders rather than typed
-beside it. Nine elements are built and three are partial; a partial
+beside it. Ten elements are built and two are partial; a partial
 element counts a half, which is where the figure comes from.
 
 That figure moved from 2.5 when `/sms` gave eight elements a
 server-held record, again when the register joined the indicators on
 the server, and again when an indicator gained the record of what was
 done the last time one crossed, and again when the change assessment
-moved off the handset. The three that stay partial say plainly what
-they still lack: the emergency plan itself, the documents behind the
-document register, and a warning that reaches somebody who does not
-open the training screen. An operator adopting
-this as its sole SMS would still have gaps to answer for, and
-`/coverage` names every one of them.
+moved off the handset, and again when the emergency contact directory
+gave element 1.4 the half it was missing. The two that stay partial say
+plainly what they still lack: the documents behind the document
+register, and a warning that reaches somebody who does not open the
+training screen. An operator adopting this as its sole SMS would still
+have gaps to answer for, and `/coverage` names every one of them —
+including the one thing 1.4 deliberately does **not** hold, the ERP
+document itself, because a place to type call-out trees and diagrams
+would be a worse version of the file an operator already keeps.
 
 **Nearly deployable.** The hosted database exists (Supabase, eu-north-1,
 schema applied and baselined, RLS deny-by-default) and the API ships as
@@ -113,13 +116,13 @@ L.N. 32/2026 asks for. See `docs/02-STRATEGY.md`.
 npm install
 npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 68 assertions that the registries match the docs
+npm run check:claims   # 71 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
-npm test               # 389 unit tests
+npm test               # 411 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
-npm run test:integration   # 194 checks against a real Postgres
+npm run test:integration   # 207 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
@@ -127,7 +130,7 @@ npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 65 checks, including filing a report with the network cut and
+— 66 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 
