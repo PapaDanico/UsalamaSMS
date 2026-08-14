@@ -31,7 +31,17 @@ const SRC = 'apps/web/src';
    other than appearance, and each has to say which — an allowlist that
    accepts a name without a reason is how the next .wrap gets waved
    through. */
-const HOOKS = new Map();
+const HOOKS = new Map([
+  [
+    'print-id-slot',
+    'A JS insertion point, not a visual. The four screens that render ' +
+      'synchronously put an empty div here and attachPrintId() fills it once ' +
+      'the operator name arrives; what lands inside is .print-id, which IS ' +
+      'styled. Giving the slot itself a rule would put a box on the page in ' +
+      'the interval before the fetch returns, and an empty box above a risk ' +
+      'register is exactly the half-attributed header printId() refuses.',
+  ],
+]);
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {

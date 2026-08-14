@@ -1,10 +1,21 @@
 /* ============================================================
    THE IDENTITY BLOCK ON A PRINTED DOCUMENT.
 
-   /sms and /picture are the two screens an operator prints, hands over,
-   and lets somebody read as loose paper. A pack with no operator name
-   on it is a pack an auditor cannot attribute, and the org id in the
-   token is a uuid, which is useless on paper.
+   SIX SCREENS CARRY A PRINT BUTTON. This block was on two of them.
+
+   The four without it were the risk register, the safety performance
+   indicators, the safety risk assessment and the maturity assessment —
+   which is to say, the four documents an auditor is most likely to be
+   handed. The reasoning below was written for /sms and /picture and
+   applies unchanged to all six; it simply was not carried across as
+   each screen gained its button. A smoke check now discovers the print
+   buttons rather than naming them, so the seventh screen to gain one
+   fails the build until it is attributed too.
+
+   An operator prints these, hands them over, and lets somebody read
+   them as loose paper. A pack with no operator name on it is a pack an
+   auditor cannot attribute, and the org id in the token is a uuid,
+   which is useless on paper.
 
    IT RENDERS NOTHING WHEN THE NAME IS UNKNOWN. A header saying
    "UsalamaSMS operator" over somebody's audit pack is worse than no
@@ -87,4 +98,61 @@ export function printId(org, what) {
       <hr class="print-id__rule" />
     </div>
   `;
+}
+
+/**
+ * The operator's name IF IT IS ALREADY KNOWN. Never a request.
+ *
+ * `loadOrg()` reads this cache and falls back to the network. That is
+ * right for /sms and /picture, which need a session to show anything at
+ * all. It is WRONG for the device-local toolkits, and a smoke check
+ * says so out loud: the maturity assessment asserts it sends NOTHING,
+ * and wiring loadOrg() into it made the screen issue two GETs to
+ * /api/v1/auth/me and turned that check red.
+ *
+ * The assertion is not fussiness. An operator fills in the maturity
+ * assessment while deciding whether to trust this product — before
+ * there is an account, and often before there is any intention of
+ * creating one. A screen that phones home during that is a screen that
+ * has answered the question being asked of it, in the wrong direction.
+ * Element 2.2's register and the risk assessment are on the device for
+ * the same reason.
+ *
+ * So attribution on those screens is opportunistic: if the safety
+ * manager has been to /sms in this browser the name is in hand and the
+ * pack is attributed; if not, nothing renders. That is the same refusal
+ * printId() already implements, arrived at without a request.
+ */
+function cachedOrg() {
+  try {
+    const held = localStorage.getItem(ORG_KEY);
+    if (!held) return null;
+    const parsed = JSON.parse(held);
+    return parsed?.orgName ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fill a screen's `.print-id-slot` with the identity block.
+ *
+ * WHY A SLOT RATHER THAN AN AWAIT. /sms and /picture render
+ * asynchronously and can await `loadOrg()` before building their
+ * markup. The register, the indicators, the risk assessment and the
+ * maturity assessment all render SYNCHRONOUSLY and instantly, and three
+ * of the four work with no session at all. Making them await anything
+ * to print a header would trade a real property — the screen is there
+ * the moment you open it — for one that only matters on paper.
+ *
+ * DEFAULTS TO THE CACHE AND NOTHING ELSE. `allowFetch` is opt-in and is
+ * for screens that are already talking to the server on this render, so
+ * that one more round trip changes nothing about what the screen does.
+ * Passing it on a device-local toolkit would undo the property above.
+ */
+export async function attachPrintId(outlet, what, { allowFetch = false, fetcher = fetch } = {}) {
+  const slot = outlet.querySelector('.print-id-slot');
+  if (!slot) return;
+  const org = allowFetch ? await loadOrg(fetcher) : cachedOrg();
+  slot.innerHTML = printId(org, what).toString();
 }

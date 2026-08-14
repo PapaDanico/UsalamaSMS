@@ -28,6 +28,7 @@ import { createServer } from 'node:http';
 import { readFile, cp, rm, readdir, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { chromium } from 'playwright';
+import { findChromium } from './lib/chromium.mjs';
 
 const PORT = 4399;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -119,8 +120,11 @@ const server = createServer(async (req, res) => {
 });
 await new Promise((r) => server.listen(PORT, r));
 
+/* Resolved, not guessed. This line used to fall back to
+   '/opt/pw-browsers/chromium' — one development container's layout,
+   written as though it were a default. See scripts/lib/chromium.mjs. */
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium'
+  executablePath: findChromium()
 });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const page = await context.newPage();

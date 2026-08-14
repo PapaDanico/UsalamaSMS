@@ -154,9 +154,11 @@ Centrik and ASQS iQSMS.
 | Report disposition | yes | yes — triage → investigate → close/reopen, verified moves |
 | Risk register, matrix | yes | yes |
 | SPI / KPI | yes, with dashboards | **yes, with a dashboard** |
-| **Alerting / notification** | core to all four | **absent — §2.2, now unblocked** |
+| **Alerting / notification** | core to all four | **absent — §2.2, blocked on a person** |
 | Audit & finding / CAPA | yes | **yes** — actions with owner, date, separate verification |
 | Document control | yes | register + distribution; not content — §2.1 |
+| Occurrence coding to ADREP / CICTT | yes | **yes, 33 categories** — and EASA's ECCAIRS runs on the same taxonomy |
+| Configurable matrix and vocabulary | yes | **yes — relabel only, never redefine** |
 | ERP | yes | **exercise + contact directory** |
 | Training records | yes | yes, anticipating, not arriving |
 | **Owner seniority vs risk band** | **none of them** | **yes — RA 1210** |
@@ -176,10 +178,15 @@ that block a feature comparison.
 
 ## 5. Product debt
 
-- **No delete synchronisation.** An entry removed on one device
-  reappears from the server on another. Deliberate and documented — the
-  safe direction — but it needs a tombstone or a delete endpoint before
-  more than one device per operator is realistic.
+- **No delete synchronisation**, and reading the sync path on 14 August
+  2026 reframed it. This is not a missing DELETE branch in a mature
+  engine: `/api/v1/sync/batch` is **CREATE-only by construction**.
+  `UPDATE` reaches the route, is authorised, detects conflicts and
+  writes a conflict receipt — and then falls through to `rejected` with
+  a comment saying that is the honest answer until a field-level
+  handler exists for the entity. So deletes and updates are one absent
+  capability, not two gaps. **See §9 for the design and the four traps
+  that are in that code already.**
 - **Which changes require an assessment** is not defined. The product
   assesses the change an operator brings it; it does not know that
   operator's threshold for significance, and guessing would either
@@ -197,7 +204,21 @@ that block a feature comparison.
 - **Nothing tells anybody a contact has gone stale** unless they open
   /sms. The directory computes it; nobody is notified. Same shape as
   4.1's training warning, and it closes on the same SMS channel — so
-  these two are one piece of work, not two.
+  these two are one piece of work, not two. **Blocked on a person**:
+  the sender ID and credentials must not travel through a chat log.
+- ~~The operator cannot use its own words.~~ **Closed 14 August 2026.**
+  Post titles, risk-scale wording, aerodromes, aircraft and the review
+  cycle are the operator's. What must never be configurable is enforced
+  structurally rather than stated — see `packages/shared/src/tenant.ts`
+  and the three claims assertions over it.
+- ~~Occurrences are not coded to the taxonomy a State files.~~
+  **Closed 14 August 2026**, on the triage screen rather than the
+  report form, because coding to ADREP is the safety office's trained
+  judgement and not a reporter's.
+- ~~No accessibility sweep has ever been run.~~ **Closed 14 August
+  2026.** `check:a11y` runs axe over every rendered screen at WCAG 2.1
+  AA in `verify`. The first run found sixty-five violations; all were
+  fixed, none excused.
 - **The ERP document itself is not held**, and §2 explains why that is
   a decision rather than debt. Recorded here so nobody re-opens it as
   an oversight.
@@ -364,3 +385,81 @@ clauses, this one only had to leave a sentence alone. The gate now also
 runs in reverse — **every route the API registers must be named by some
 element, be a sub-path of one, or sit in an exemption list with a
 stated reason** — and mutation-checked by putting the defect back.
+
+---
+
+## 9. Delete synchronisation — the design, and why it was not started
+
+**Written 14 August 2026 after reading `apps/api/src/routes.sync.ts`
+rather than after writing any of it.** The gap was queued as the next
+piece of work; an hour with the code says it should not be started
+casually, and this section exists so the next person begins from the
+analysis instead of from the summary in §5.
+
+### 9.1 What is actually there
+
+`/api/v1/sync/batch` is **CREATE-only**. `safetyReport:CREATE` is
+implemented. `UPDATE` is authorised, loads the row tenant-scoped,
+compares `baseVersion` against `updatedAt`, writes a conflict receipt
+when they disagree — and then returns `rejected`, with a comment
+stating that a silent success which loses the client's edit would be
+worse. `hazard` and `riskAssessment` reach the same fall-through.
+
+So this is one absent capability, not a missing branch. Anybody adding
+`DELETE` alongside a non-existent `UPDATE` is building the second
+storey of a one-storey building.
+
+### 9.2 The four traps, all already visible in that file
+
+1. **A REPLAY MUST BE IDEMPOTENT.** The outbox exists because radios
+   drop after the server commits. The conflict-receipt insert already
+   catches `P2002` and carries on, precisely for this. A delete that
+   errors on "already deleted" poisons an outbox on a device nobody can
+   reach — the failure that comment was written about.
+
+2. **THE RECEIPT MUST NOT RE-IDENTIFY AN ANONYMOUS REPORTER.** The
+   CREATE path stores a keyed device hash and nulls `userId` and
+   `deviceId` for an anonymous report. The conflict path did not, under
+   a `clientId` containing the anonymous report's own key as a prefix —
+   a join away from a list of who filed what. It was fixed; a delete
+   receipt is a third place to get it wrong, and the authority is the
+   stored row's `isAnonymous`, never anything the client sent.
+
+3. **A TOMBSTONE, NOT A ROW REMOVAL.** The audit chain is append-only
+   and `reporterId` is `SetNull` for a reason. A hard delete of a
+   safety report destroys evidence an auditor is entitled to and breaks
+   the chain that makes the rest of the record worth anything. The
+   delete a device performs is a local retraction; the server's answer
+   is a state, and every read path — the queue, the export, the risk
+   picture, the indicator counts — has to agree on excluding it.
+
+4. **THE MERGE IS A UNION, AND MUST STAY ONE.** `/triage` merges the
+   device store with the org queue keyed on `clientId`, deliberately
+   never assigning one over the other, because assignment would destroy
+   unsent work. A tombstone arriving from the server has to remove a
+   local row — which is the one case where the server *does* win — and
+   getting that backwards deletes a report that was never sent.
+
+### 9.3 What it needs, in order
+
+Schema: a deleted state plus who and when, on the entities that sync.
+Route: `DELETE` in `REQUIRED_PERMISSION` per entity, an idempotent
+handler, an anonymity-correct receipt. Reads: every query that lists
+excludes tombstones — and a gate asserting that, because the way this
+goes wrong is one query somebody forgets. Client: record the retraction
+in the outbox, and honour an arriving tombstone in the merge. Tests:
+the replay, the anonymity join, the union direction, and a smoke check
+that a delete on one device reaches another.
+
+### 9.4 Why not now
+
+It is the one change in this product where a half-measure loses a
+safety report rather than showing a wrong number, and the file it lives
+in is the densest and most carefully reasoned in the repository. The
+honest sequencing is `UPDATE` first — the capability the route already
+half-implements and openly refuses — then `DELETE` on the same
+machinery.
+
+**Multi-device is the trigger.** One handset per operator is the
+current reality and the current gap is invisible at that scale. The
+day a second device is real, this moves to the top of §1.

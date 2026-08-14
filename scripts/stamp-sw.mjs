@@ -1103,7 +1103,198 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    A reporter filing offline never sees it and does pay for it. That is
    the honest shape of the trade, and it is worth making once. */
-const BUDGET = { entry: 214 * 1024, js: 446 * 1024, css: 57 * 1024 };
+/* TOTAL 446 -> 456 KB, for two capabilities that had no interface at
+   all. ENTRY UNMOVED at 213.8 for the fourth raise running.
+
+   THIS IS NOT A FEATURE RAISE. It is the cost of making two things
+   REACHABLE that the coverage page already claimed were built:
+
+     · /api/v1/actions shipped with create, complete, verify and cancel,
+       fully tested, named in element 2.2 and 3.3 — and no screen posted
+       to any of them. The risk picture rendered "Outstanding / Overdue
+       / Awaiting verification" over a table nothing could put a row in,
+       so all three read zero permanently.
+     · /api/v1/changes was worse. Element 3.2 was marked BUILT, the
+       route was named in its coverage entry, and /sms pointed an
+       operator at /toolkits/sra — the safety risk assessment, which is
+       a different instrument answering a different question. A change
+       assessment could not be recorded, approved or reviewed from
+       anywhere in the product.
+
+     sms chunk      25,680 -> 30,023  +4,343   element 3.2 as a surface
+     picture chunk  10,237 -> 13,838  +3,601   the actions list and its work
+     triage chunk                     + ~900   raise an action from a report
+     entry         218,801 -> 218,801  UNMOVED
+     css             57.0K -> 56.9K    within budget
+
+   Both were found by a new claims assertion rather than by looking:
+   NO WRITE ROUTE EXISTS THAT NO SCREEN CAN REACH. Ten kilobytes to
+   stop the coverage page describing a product an operator cannot
+   operate is not weight, it is the difference between a claim and a
+   capability.
+
+   AND THE FIRST VERSION OF THAT GATE COULD NOT FAIL. It matched the
+   path prefix, and the risk picture READS /api/v1/actions with a GET,
+   so every write route sharing the prefix looked reachable — including
+   the four that were the reason for the check. Mutation-checking it by
+   renaming one call site left it green. The second version required
+   the method and the path to sit near each other and failed on
+   fourteen correct routes, because the SMS screen posts through a
+   descriptor and the path lives in a map far from the verb. The
+   version that shipped asserts the narrow thing that actually
+   happened twice — a route the browser has never heard of — and says
+   in its own comment what it does not catch.
+
+   ENTRY IS 213.8 OF 214 AND HAS NOT MOVED IN FOUR RAISES. */
+/* ENTRY 214 -> 215 KB. The first entry raise since the session layer,
+   and the receipt three previous ones said it would have to be: argued
+   on its own merits, with the reporter at the strip named.
+
+   WHAT IT BUYS, in one sentence: the reporter is told that an accident
+   is notified to the accident INVESTIGATION authority immediately, and
+   that this is not the 24 hours shown beside it.
+
+   WHY THAT IS WORTH ENTRY BYTES WHEN NOTHING ELSE HAS BEEN. Every
+   previous raise was refused or diverted because what it bought sat on
+   a screen only a safety manager opens, and the person paying was
+   somebody filing a report at a remote strip who would never see it.
+   This is the opposite. The deadline hint on the report form says
+   Kenya expects an accident within 24 hours — true, and about the
+   MANDATORY OCCURRENCE REPORT to KCAA. Annex 13 obliges the operator
+   to notify the AAID immediately, and to preserve the wreckage. A
+   reporter reading "24 hours" after an accident and concluding they
+   have a day has been misled by an omission on the one screen they
+   use, about the one duty where lateness is not measured in
+   inconvenience.
+
+   The person paying the two kilobytes and the person the two kilobytes
+   protect are the same person. That is the test this rule has been
+   applying all along, and it is the first time something has passed
+   it.
+
+   TRIMMED FIRST, AND THE TRIM IS RECORDED. The row went in at 215.8 KB
+   carrying four paragraphs of justification as STRING VALUES on the
+   registry object — regulations.ts is in entry, so a reporter was
+   downloading an explanation, addressed to a developer, of why a phone
+   number is absent. Comments are stripped by the bundler; string
+   values are not. Moving that prose into a comment recovered 0.7 KB
+   and left 1.1 KB.
+
+   THEN TRIMMED AGAIN, AND THE CEILING CAME DOWN WITH IT. This first
+   went in at 216 because the notice also told the reader to record the
+   number in their emergency contact directory and linked there. That
+   link was wrong twice over — the directory is behind a session and
+   this form deliberately is not, so the anchor did not exist for the
+   reader being sent to it; and the sentence was addressed to the
+   safety office while sitting on the reporter's screen. Cutting it
+   left 214.8 KB, so the budget is 215 rather than the 216 that was
+   argued for. A ceiling that stays where a raise left it after the
+   thing it was raised for has shrunk is not a budget, it is a
+   watermark — and the next change would have spent the difference
+   without ever making a case for it.
+
+   NO TELEPHONE NUMBER IS IN THE BUNDLE, asserted twice — over the
+   registry in the unit suite and over the rendered form in smoke, both
+   mutation-checked by putting a number back and watching each go red.
+   An accident notification line typed into software by somebody who
+   never dialled it is worse than no number, and the operator's own
+   contact directory is where a confirmed one belongs.
+
+   THE RULE IS UNCHANGED FOR EVERYTHING ELSE. Entry is 214.8 of 215 and
+   the next thing that wants space still takes something out first. */
+
+/* TOTAL 458 -> 466 KB and CSS 57 -> 59 KB, for the codes a State files.
+   ENTRY IS UNCHANGED AT 214.8, and that is the whole argument.
+
+   WHAT IT BUYS. This product classifies a report with its own six
+   types, which describe what kind of REPORT arrived. That is not what
+   an authority files. ICAO's ADREP taxonomy — maintained in detail by
+   EASA as ECCAIRS, with occurrence categories from the CAST/ICAO Common
+   Taxonomy Team — is, and an operator whose reports carry no code hands
+   its State data somebody has to re-code by hand. Hand-coding drifts.
+
+   WHERE THE WEIGHT WENT, MEASURED RATHER THAN ASSUMED. The triage chunk
+   went 14.5 -> 21.3 KB and every other JS chunk was untouched; the
+   taxonomy appears in exactly one chunk, checked by grepping the built
+   output for a code rather than by trusting the import graph. That is
+   the module, twenty grouped choices of markup, the caveat and the
+   handler.
+
+   AND IT IS IN THE TRIAGE CHUNK BY DESIGN, NOT BY LUCK. Coding an
+   occurrence to ADREP is a trained judgement made after reading a
+   narrative — the safety office's job, not the reporter's, which is the
+   same reason the report form does not ask whether an event meets Annex
+   13's definition of an accident. Putting the picker on the form would
+   have been both the wrong product decision and seven kilobytes onto
+   the one chunk a reporter at a remote strip downloads. The two
+   answers agreed, which is usually the sign the reasoning is right.
+
+   THE CSS RAISE IS THE PART TO BE UNCOMFORTABLE ABOUT, and it is
+   recorded rather than waved through. There is ONE stylesheet, so the
+   1.6 KB of classification-panel rules is paid by every reporter on
+   first load for a panel only the safety office ever opens. That is
+   the known cost of a single stylesheet and it was accepted once
+   before, for the printed pack. It should not be accepted a third
+   time: if the next screen wants CSS a reporter cannot see, the answer
+   is to split the stylesheet, not to raise this number again. */
+/* TOTAL 466 -> 471 KB and CSS 59 -> 60 KB, for the operator's own
+   words. ENTRY IS UNCHANGED AT 214.8 for the third change running, and
+   that is the number this rule is about.
+
+   WHAT IT BUYS. Every operator has been reading the same shipped
+   vocabulary: the same aerodromes, the same aircraft, the same post
+   titles, the same five words on the severity scale. A six-aircraft
+   Kenyan AOC does not fly to most of the shipped strips and its
+   accountable executive is called whatever its own manual calls them.
+   Every incumbent lets an operator set this without a vendor change
+   order; the benchmark is right that it is table stakes.
+
+   WHERE THE WEIGHT WENT, MEASURED. The /sms chunk went 29.3 -> 34.9 KB
+   and nothing else moved — checked by grepping the built output for a
+   string only the new form carries, rather than by trusting the import
+   graph. That is the form itself: three groups of renames, two lists,
+   and the paragraph saying what the screen cannot change.
+
+   THE SCREEN IS THE SAFETY OFFICE'S, WHICH IS WHY THIS PASSES. /sms
+   needs a session and holds the organisation's record; a reporter at a
+   remote strip never opens it and never downloads it. The same test the
+   occurrence taxonomy passed: the person paying the bytes and the
+   person the bytes serve are the same person.
+
+   THE CSS RAISE IS THE THIRD, AND THE PREVIOUS RECEIPT SAID NOT TO MAKE
+   IT. It said: "if the next screen wants CSS a reporter cannot see, the
+   answer is to split the stylesheet, not to raise this number again."
+   That was the right rule and this is 0.9 KB against it — five rules
+   for a two-column rename form. Raised rather than split because
+   splitting the stylesheet is a change to how every screen loads and
+   should not be done incidentally, inside a change about tenant
+   configuration, at the end of a long session. IT IS THE LAST ONE. The
+   next CSS raise splits the sheet first; this receipt is the record
+   that the debt was taken knowingly rather than forgotten. */
+/* TOTAL 471 -> 472 KB. 0.9 KB, for thirteen occurrence categories the
+   taxonomy has and this product did not — and one of them makes this
+   the least arguable raise in the file.
+
+   RI, RUNWAY INCURSION, WAS MISSING. It is among the most consequential
+   occurrence types in aviation. An operator classifying one found
+   nothing that fitted: the conscientious answer was OTHR and the likely
+   answer was something adjacent and wrong. A taxonomy missing its
+   highest-frequency serious category does not fail loudly — it produces
+   confidently mis-coded data, and mis-coded data is worse than absent
+   data because somebody trusts it.
+
+   The other twelve are ADRM, AMAN, ATM, EVAC, FUEL, GTOW, LOC-G, LOLI,
+   NAV, UIMC, USOS and WSTRW. Twenty categories became thirty-three.
+
+   ENTRY UNCHANGED AT 214.8 for the fourth change running, and the
+   weight is in the triage chunk where the taxonomy already lives —
+   classification is the safety office's act and a reporter at a strip
+   downloads none of it.
+
+   NOT A CSS RAISE. The previous receipt's rule stands: the next CSS
+   raise splits the stylesheet first. This is JS, and it is nine
+   hundred bytes to stop a runway incursion being filed as "other". */
+const BUDGET = { entry: 215 * 1024, js: 472 * 1024, css: 60 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

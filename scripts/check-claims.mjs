@@ -392,11 +392,29 @@ assert(
   `README says ${brandStated}, the gate reports ${brandActual}`
 );
 
-/* Test count, from the test files themselves — DISCOVERED, not listed.
-   A hardcoded file list is a guard that stops covering the moment
-   someone adds a suite, and it would have missed tests/deident-corpus
-   entirely. `it.each` blocks are counted by their case arrays so the
-   number matches what vitest reports. */
+/* Test count, ASKED OF THE RUNNER rather than parsed out of the files.
+
+   THIS GATE AGREED WITH THE README AND BOTH WERE WRONG BY SIX. It used
+   to read the sources: count `it(` lines, then find each `it.each(NAME)`
+   and count the entries of the named array by looking for lines that
+   start with `{`, `"` or `'`. That is a re-implementation of vitest's
+   collection, and a re-implementation drifts — an entry wrapped
+   differently, an array whose closing bracket does not sit on its own
+   line, a `describe.each`, and the count is quietly short. It read 431
+   while the suite ran 437, and nothing could notice, because the number
+   the gate compared the README against was produced by the same broken
+   parser. A check whose two sides come from one flawed source cannot
+   fail; that is the failure mode this repository treats as worse than
+   having no check.
+
+   `vitest list` collects the suite exactly as a run would and prints one
+   line per case. It is the runner's own answer to the question the
+   README is making a claim about, which is the same discipline the
+   brand gate uses: execute it, read the number it reports about itself,
+   never count the thing yourself.
+
+   The file discovery stays as an assertion in its own right — it is
+   what makes "no tests at all" fail loudly instead of passing as zero. */
 const testFiles = readdirSync(resolve(ROOT, 'tests')).filter((f) => f.endsWith('.test.ts'));
 assert(
   'test files were discovered',
@@ -404,26 +422,31 @@ assert(
   'no *.test.ts found under tests/ — this gate asserts a count over them'
 );
 
-const testCount = testFiles
-  .map((f) => {
-    const src = read(`tests/${f}`);
-    // Plain `it(` / `it.only(` cases.
-    let n = (src.match(/^\s*it(?:\.only)?\(/gm) ?? []).length;
-    // `it.each(ARRAY)` expands to one case per element. Count the entries
-    // of the named array rather than guessing.
-    for (const m of src.matchAll(/it\.each\((?:\.\.\.)?([A-Z_][A-Z0-9_]*)\)/g)) {
-      const arr = new RegExp(`const ${m[1]}[^=]*=\\s*\\[([\\s\\S]*?)\\n\\];`).exec(src);
-      if (arr) n += (arr[1].match(/^\s*[{"']/gm) ?? []).length;
-    }
-    return n;
-  })
-  .reduce((a, b) => a + b, 0);
+/* The installed binary by path, through this same node, rather than
+   `npx vitest`. npx resolves through PATH and a package manager, both of
+   which differ between a laptop and a CI runner — and a resolution
+   failure here returns no lines, which the assertion below would read
+   as "the runner collected nothing" rather than as "the count is
+   wrong". Deterministic invocation keeps that failure honest. */
+const listed = spawnSync(
+  process.execPath,
+  [resolve(ROOT, 'node_modules/vitest/vitest.mjs'), 'list'],
+  { encoding: 'utf8', cwd: ROOT }
+);
+const testCount = (listed.stdout ?? '')
+  .split('\n')
+  .filter((l) => /^tests\/.+ > /.test(l)).length;
+assert(
+  'the runner collected the suite and reported its cases',
+  testCount > 0,
+  '`vitest list` produced no cases — this gate cannot count what it cannot collect (rule 11)'
+);
 
 const testsStated = statedCount(/(\d+) unit tests/, 'test count');
 assert(
-  'README test count matches the test files',
+  'README test count matches what the runner collects',
   testsStated === testCount,
-  `README says ${testsStated}, the files define ${testCount}`
+  `README says ${testsStated}, the runner collects ${testCount}`
 );
 
 /* Smoke checks, counted from the suite rather than trusted. */
@@ -905,12 +928,445 @@ assert(
     `${NOT_AN_ELEMENT.size} of ${registered.size} routes are exempt — at that ratio ` +
       "this check passes by exempting whatever it would otherwise fail on",
   );
+  /* ============================================================
+     AND THE THIRD QUESTION: can a PERSON reach it?
+
+     THE DEFECT THIS EXISTS FOR. /api/v1/actions shipped with create,
+     complete, verify and cancel, fully tested, named in two coverage
+     entries — and no screen in the product posted to any of them. The
+     risk picture rendered "Outstanding / Overdue / Awaiting
+     verification" over a table nothing could put a row in, so all three
+     figures read zero permanently.
+
+     BOTH ASSERTIONS ABOVE PASSED ON IT. The first asks whether every
+     route an element names is registered: it was. The second asks
+     whether the API holds anything no element admits to: 2.2 and 3.3
+     both admitted to it. Neither has an opinion about the browser, and
+     an operator cannot use an endpoint.
+
+     This is the disposition defect one release later and one layer out.
+     That one was disclosed on /coverage while the buttons were missing;
+     this one was not, because nobody noticed the buttons were missing.
+
+     WRITE ROUTES ONLY. A GET can legitimately exist for an export, a
+     health probe or another service. A POST, PATCH or DELETE that no
+     screen calls is a capability an operator was told they have and
+     cannot use.
+     ============================================================ */
+  const web = readdirSync(resolve(ROOT, "apps/web/src"), { recursive: true })
+    .filter((f) => typeof f === "string" && /\.(js|ts)$/.test(f))
+    .map((f) => read(`apps/web/src/${f}`))
+    .join("\n");
+
+  assert(
+    "the web source was read at all",
+    web.length > 20000,
+    `read ${web.length} characters of apps/web/src — this check would pass by finding nothing`,
+  );
+
+  const writeRoutes = new Set();
+  for (const f of readdirSync(resolve(ROOT, "apps/api/src"))) {
+    if (!f.startsWith("routes.") || !f.endsWith(".ts")) continue;
+    const src = read(`apps/api/src/${f}`);
+    for (const m of src.matchAll(/app\.(?:post|put|patch|delete)\(\s*"([^"]+)"/g)) {
+      writeRoutes.add(m[1]);
+    }
+  }
+
+  /* Reached means the path appears in the web source at all.
+  
+     WHAT THIS CATCHES, AND IT IS THE DEFECT THAT ACTUALLY HAPPENED
+     TWICE: a route the browser has never heard of. /api/v1/actions
+     shipped with four verbs, two coverage entries and no caller; and
+     /api/v1/changes shipped with element 3.2 marked BUILT while the
+     SMS screen pointed an operator at /toolkits/sra, a different
+     instrument. In both cases the string appeared NOWHERE under
+     apps/web, which is what this asserts.
+     
+     WHAT IT DOES NOT CATCH, stated rather than left to be discovered:
+     a screen that only READS a collection makes the write routes on
+     that prefix look reached. A stricter version was written and
+     removed — it required the method and the path to sit near each
+     other, and it failed on fourteen correct routes, because the SMS
+     screen posts through a descriptor (`authFetch(surface.endpoint,
+     { method: 'POST' })`) and the path literal lives in a map far from
+     the verb. A gate that cries wolf on correct code is a gate
+     somebody turns off, and there is already a comment in this file
+     saying so about a different check.
+     
+     The narrow version is the one worth having. check-wiring.mjs
+     covers the method question properly for the descriptor-driven
+     screen, which is where that question is answerable.
+     
+     MUTATION-CHECK THIS BY REMOVING A PATH ENTIRELY, not by renaming
+     one call site — the second leaves the string present and the gate
+     correctly stays green. */
+  const reachable = (route) => web.includes(route.split("/:")[0]);
+
+  const NOT_FROM_A_SCREEN = new Map([
+    ["/api/v1/auth/logout", "Called by the session module, which is not a screen."],
+    ["/api/v1/sync/batch", "Called by the outbox, which is not a screen."],
+  ]);
+
+  const unreachable = [...writeRoutes]
+    .filter((r) => !reachable(r) && !NOT_FROM_A_SCREEN.has(r))
+    .sort();
+
+  assert(
+    "NO WRITE ROUTE EXISTS THAT NO SCREEN CAN REACH",
+    unreachable.length === 0,
+    `${unreachable.join(", ")} — the API accepts this and nothing in the product sends ` +
+      "it. An operator reads /coverage, is told the capability exists, and cannot use it",
+  );
+
   assert(
     "NO CAPABILITY IS REGISTERED BY THE API THAT NO ELEMENT ADMITS TO HOLDING",
     unclaimed.length === 0,
     `${unclaimed.join(", ")} — the API holds this and the coverage page does not say so. ` +
       "That is the 2.2 defect arriving by omission rather than by a false sentence: an " +
       "operator reads /coverage to know what it can evidence, and this is evidence it has",
+  );
+}
+
+/* ---------------- The gap analysis's own numbers ----------------
+   docs/09-GAP-ANALYSIS.md is a document ABOUT the product's shortfalls,
+   which makes a stale figure in it worse than a stale figure anywhere
+   else: it would overstate or understate a gap, and somebody would plan
+   against it. Its own header promises every figure is computed or cited.
+   This is the mechanism that keeps that promise.
+
+   ONLY THE LOAD-BEARING ONES. The file marks descriptive figures "(as
+   at this date)" and those are deliberately not gated — a gate over
+   every number in a prose document is a gate that fails on a sentence
+   being reworded, and one that fails for the wrong reason gets deleted.
+   What is gated is what a reader would act on: the element coverage,
+   the split behind it, and the count of jurisdictions the registry
+   actually holds.
+   ---------------------------------------------------------------- */
+{
+  const gaps = read('docs/09-GAP-ANALYSIS.md');
+  const covSrc = read('packages/shared/src/maturity.ts');
+
+  /* BUILT / PARTIAL counted off the COVERAGE array's own entries. The
+     module is TypeScript and this gate is a plain script, so the states
+     are counted from the source rather than imported — the same
+     technique the route gates above use, and it fails loudly if the
+     shape changes rather than silently reading zero. */
+  const covBlock = /export const COVERAGE[\s\S]*?\n\]\);/.exec(covSrc)?.[0] ?? '';
+  assert(
+    'the COVERAGE array was located in maturity.ts',
+    covBlock.length > 0,
+    'could not find `export const COVERAGE` — this gate has lost its subject (rule 11)'
+  );
+  const builtActual = (covBlock.match(/state:\s*"BUILT"/g) ?? []).length;
+  const partialActual = (covBlock.match(/state:\s*"PARTIAL"/g) ?? []).length;
+  const coveredActual = builtActual + partialActual / 2;
+
+  const statedSplit = /\*\*(\d+) built, (\d+) partial\. Coverage (\d+) of 12\*\*/.exec(gaps);
+  assert(
+    'the gap analysis states the element split and coverage',
+    Boolean(statedSplit),
+    'docs/09-GAP-ANALYSIS.md no longer states "N built, N partial. Coverage N of 12"'
+  );
+  if (statedSplit) {
+    assert(
+      'gap analysis element split matches maturity.ts',
+      Number(statedSplit[1]) === builtActual && Number(statedSplit[2]) === partialActual,
+      `the analysis says ${statedSplit[1]} built and ${statedSplit[2]} partial; ` +
+        `COVERAGE holds ${builtActual} and ${partialActual}`
+    );
+    assert(
+      'gap analysis coverage figure matches the computation',
+      Number(statedSplit[3]) === coveredActual,
+      `the analysis says ${statedSplit[3]} of 12; built + partial/2 is ${coveredActual}`
+    );
+  }
+
+  /* The jurisdiction count, which is the analysis's largest strategic
+     claim. Counted off the registry's own keys — adding Tanzania must
+     move the sentence that says one country is one country, because
+     that sentence is the reason somebody would prioritise adding it. */
+  const regSrc = read('packages/shared/src/regulations.ts');
+  const regBlock = /export const MOR_OBLIGATIONS[\s\S]*?\n};/.exec(regSrc)?.[0] ?? '';
+  assert(
+    'the MOR_OBLIGATIONS registry was located',
+    regBlock.length > 0,
+    'could not find `export const MOR_OBLIGATIONS` — this gate has lost its subject (rule 11)'
+  );
+  const rowsActual = (regBlock.match(/^\s{2}[A-Z]{2,4}:\s*\{/gm) ?? []).length;
+  const rowsStated = /carries \*\*(\w+) rows:/.exec(gaps)?.[1];
+  const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8 };
+  assert(
+    'the gap analysis states how many jurisdiction rows the registry holds',
+    Boolean(rowsStated) && rowsStated.toLowerCase() in WORDS,
+    'docs/09-GAP-ANALYSIS.md no longer states the registry row count in words'
+  );
+  assert(
+    'gap analysis jurisdiction count matches the registry',
+    WORDS[String(rowsStated).toLowerCase()] === rowsActual,
+    `the analysis says ${rowsStated} rows; MOR_OBLIGATIONS defines ${rowsActual}`
+  );
+}
+
+/* ---------------- The operator's own copy is complete ----------------
+   The terms of use say an operator can hold its own copy, "which is the
+   only form of data ownership that survives a vendor". Charter rule 7:
+   a claim on a customer surface is kept by a mechanism.
+
+   THE MECHANISM WAS A LIST, AND A LIST HAS NO OPINION ABOUT WHAT IS NOT
+   ON IT. Nine tenant-owned collections were absent from the export —
+   the indicators regulation 9(5) requires, their periods, the voluntary
+   scheme regulation 13(3) requires, change assessments, the emergency
+   contact directory, corrective actions, the disposition history and
+   both acknowledgement records. Each arrived after the route was
+   written; none was added to it; nothing went red.
+
+   So the schema is the source of truth and this gate is the diff. A
+   model carrying `orgId` is tenant-owned safety record, and it must
+   either be READ by the export or be NAMED in EXPORT_EXCLUSIONS with a
+   reason. Neither is a build failure.
+
+   ASSERTED OVER THE SCHEMA RATHER THAN OVER A LIST OF MODELS, for the
+   same reason the RLS test asserts over pg_tables: a list is exactly
+   what failed here, and encoding the current answer into the guard
+   reproduces the defect one level up.
+   --------------------------------------------------------------- */
+{
+  const schema = read('prisma/schema.prisma');
+  const exportSrc = read('apps/api/src/routes.export.ts');
+
+  const models = [...schema.matchAll(/^model (\w+) \{([\s\S]*?)^\}/gm)];
+  assert(
+    'Prisma models were found to diff the export against',
+    models.length > 0,
+    'no `model X {` blocks in prisma/schema.prisma — this gate has lost its subject (rule 11)'
+  );
+
+  /* Tenant-owned means it carries orgId. That is the same definition
+     tenantWhere() uses at runtime, so the gate and the query agree on
+     what "this operator's data" means. */
+  const tenantOwned = models.filter(([, , body]) => /^\s*orgId\s/m.test(body)).map(([, n]) => n);
+  assert(
+    'tenant-owned models were identified',
+    tenantOwned.length > 5,
+    `only ${tenantOwned.length} models carry orgId — the detection is wrong, not the schema`
+  );
+
+  const excluded = new Set(
+    [...(/EXPORT_EXCLUSIONS[\s\S]*?\n\}\);/.exec(exportSrc)?.[0] ?? '')
+      .matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1])
+  );
+
+  const absent = tenantOwned.filter((m) => {
+    const client = m[0].toLowerCase() + m.slice(1);
+    return !new RegExp(`prisma\\.${client}\\.find`).test(exportSrc) && !excluded.has(m);
+  });
+  assert(
+    'THE OPERATOR\'S OWN COPY HOLDS EVERY TENANT-OWNED COLLECTION',
+    absent.length === 0,
+    `${absent.join(', ')} — tenant-owned and neither exported nor listed in ` +
+      'EXPORT_EXCLUSIONS. The terms promise an operator its own copy; a collection ' +
+      'that is silently absent from that file is the promise failing by omission, ' +
+      'which is how nine of them went missing before this gate existed'
+  );
+
+  /* And the other direction: an exclusion for a model that no longer
+     exists is a reason nobody will ever re-read, sitting in a file that
+     looks maintained. Rule 11 from the other side. */
+  const stale = [...excluded].filter((m) => !tenantOwned.includes(m) && !new RegExp(`^model ${m} `, 'm').test(schema));
+  assert(
+    'no exclusion names a model the schema does not define',
+    stale.length === 0,
+    `${stale.join(', ')} — excluded from the export, but no such model exists`
+  );
+}
+
+/* ---------------- Every printable screen is attributable ------------
+   A screen with a print button produces a document that leaves the
+   building as loose paper. printId() exists so an auditor can tell
+   whose pack it is — the org id in the token is a uuid, useless on
+   paper — and it refuses to render at all when the name is unknown,
+   because half-attributed is the version filed under the wrong
+   operator.
+
+   IT WAS ON TWO OF SIX. The four without it were the risk register, the
+   indicators, the safety risk assessment and the maturity assessment —
+   which is to say, the four documents an auditor is most likely to be
+   handed. Nothing was wrong with the reasoning; it simply was not
+   carried across as each screen gained its button, and no check knew
+   the button existed.
+
+   SO THE BUTTONS ARE DISCOVERED, NOT LISTED. Any module calling
+   window.print() must also reach printId, directly or through
+   attachPrintId. The seventh screen to gain a print button fails the
+   build until it is attributable too.
+   --------------------------------------------------------------- */
+{
+  const toolsDir = resolve(ROOT, 'apps/web/src/tools');
+  const modules = readdirSync(toolsDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => `apps/web/src/tools/${d.name}/index.js`);
+
+  const printable = [];
+  for (const rel of modules) {
+    let src;
+    try { src = read(rel); } catch { continue; }
+    if (/window\.print\(\)/.test(src)) printable.push([rel, src]);
+  }
+  assert(
+    'screens with a print button were discovered',
+    printable.length > 0,
+    'no module calls window.print() — this gate has lost its subject (rule 11)'
+  );
+
+  /* THE EXCEPTION IS DECLARED IN THE MODULE, NOT HERE, and that is the
+     lesson from EXPORT_EXCLUSIONS. A skip-list living in the gate is
+     invisible to whoever edits the screen; a marker in the file is read
+     by the next person to touch it.
+
+     A module that genuinely should not carry an operator's name says so
+     with `PRINT-ID: not an operator document`, followed by the reason.
+     /pages is the real case — it prints this product's own
+     documentation, and stamping a customer's name on UsalamaSMS's
+     methodology page would be a false attribution rather than a missing
+     one.
+
+     /picture prints through the browser chrome rather than a button and
+     already calls printId, so it is covered from the other direction:
+     reaching printId is what is asserted, not owning a button. */
+  /* COMMENTS ARE STRIPPED BEFORE THE CODE TEST, and finding out why is
+     the reason this paragraph exists. The first version of this gate
+     matched the raw source, and it passed against a register with its
+     attachPrintId import and call both deleted — because the comment
+     explaining the call still contained the word `printId()`. A gate
+     satisfiable by prose about the thing is a gate that cannot fail,
+     which is the one failure mode this repository treats as worse than
+     having no gate at all.
+
+     The MARKER is matched against the raw source deliberately: it is a
+     declaration, and a declaration belongs in a comment. Only the claim
+     to have implemented something has to be made in code. */
+  const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+  const EXEMPT = /PRINT-ID:\s*not an operator document/;
+  const unattributed = printable
+    .filter(([, src]) => !/\b(printId|attachPrintId)\b/.test(code(src)) && !EXEMPT.test(src))
+    .map(([rel]) => rel.split('/').at(-2));
+  assert(
+    'EVERY PRINTABLE SCREEN CAN BE ATTRIBUTED TO AN OPERATOR',
+    unattributed.length === 0,
+    `${unattributed.join(', ')} — has a print button and never reaches printId. ` +
+      'A pack handed to an auditor with no operator name on it cannot be attributed, ' +
+      'and this is how four of six screens came to be that way: the button was added, ' +
+      'the header was not, and nothing knew the button existed'
+  );
+}
+
+/* ---------------- A TENANT CANNOT CONFIGURE THE LAW ----------------
+   An operator may set what it calls its posts, what its manual calls
+   each point on the risk scales, which strips it flies to and how long
+   its own review cycle is. It may NOT set the reporting deadlines, the
+   tolerability bands, the de-identification rule, the audit chain or
+   what the twelve Annex 19 elements mean. A product that lets a tenant
+   edit those has sold a compliance tool that cannot be relied on for
+   compliance.
+
+   THE LINE IS NOT CROSSED BY DECISION. Nobody sits down and adds a
+   configurable MOR deadline. It is crossed by a settings screen growing
+   one more field that seemed harmless — an "escalation hours", a "band
+   override for our operation", a "custom element wording" — each
+   individually arguable and collectively the end of the claim.
+
+   So the gate reads the field names. The tenant configuration, in the
+   shared module and in the Prisma model behind it, must contain no
+   field whose name belongs to the other side of the line. Names rather
+   than behaviour, deliberately: behaviour is what a reviewer checks and
+   a name is what a gate can, and the failure mode being guarded is
+   somebody adding a field in a hurry rather than somebody rewriting
+   tolerability().
+
+   AND THE ARITHMETIC MUST NOT READ THE CONFIGURATION AT ALL. risk.ts
+   computes the band on every read and is what makes two operators'
+   registers comparable to a regulator holding both. A tenant-aware
+   tolerability() would make "what band is this" a question about whose
+   database is being read.
+   --------------------------------------------------------------- */
+{
+  const tenantSrc = read('packages/shared/src/tenant.ts');
+  const schema = read('prisma/schema.prisma');
+  const riskSrc = read('packages/shared/src/risk.ts');
+
+  /* Words that name the other side of the line. Matched against FIELD
+     NAMES only — the prose in this module argues about deadlines and
+     bands constantly, and a gate that read the comments would fail on
+     the file explaining why it must not. */
+  const FORBIDDEN = [
+    'deadline', 'hours', 'tolerab', 'band', 'threshold', 'deident',
+    'anonym', 'chain', 'element', 'severityScale', 'likelihoodScale',
+    'matrix', 'jurisdiction', 'instrument',
+  ];
+
+  const iface = /export interface TenantConfig \{([\s\S]*?)\n\}/.exec(tenantSrc)?.[1] ?? '';
+  assert(
+    'the TenantConfig interface was located',
+    iface.length > 0,
+    'no `export interface TenantConfig` in tenant.ts — this gate has lost its subject (rule 11)'
+  );
+  /* Comments stripped before the names are read, for the reason the
+     print-attribution gate learned: a check satisfiable — or failable —
+     by prose about the thing is not checking the thing. */
+  const ifaceFields = [
+    ...iface.replace(/\/\*[\s\S]*?\*\//g, ' ').matchAll(/^\s*readonly (\w+)\??:/gm),
+  ].map((m) => m[1]);
+  assert(
+    'TenantConfig declares fields to check',
+    ifaceFields.length > 0,
+    'no readonly fields found on TenantConfig — the field detection is wrong, not the type'
+  );
+
+  const model = /model OrgConfig \{([\s\S]*?)\n\}/.exec(schema)?.[1] ?? '';
+  assert(
+    'the OrgConfig model was located',
+    model.length > 0,
+    'no `model OrgConfig` in prisma/schema.prisma — this gate has lost its subject (rule 11)'
+  );
+  const modelFields = [
+    ...model.replace(/^\s*\/\/.*$/gm, ' ').replace(/^\s*\/\/\/.*$/gm, ' ')
+      .matchAll(/^\s{2}(\w+)\s+\S/gm),
+  ].map((m) => m[1]);
+
+  const crossings = [...ifaceFields, ...modelFields].filter((f) =>
+    FORBIDDEN.some((w) => f.toLowerCase().includes(w.toLowerCase()))
+  );
+  assert(
+    'NO TENANT-CONFIGURABLE FIELD NAMES SOMETHING THAT IS NOT THE TENANT\'S TO DECIDE',
+    crossings.length === 0,
+    `${[...new Set(crossings)].join(', ')} — a tenant configuration field named after a ` +
+      'reporting deadline, a tolerability band, de-identification, the audit chain or an ' +
+      'element definition. Those come from the instrument, from Doc 9859, from L.N. 32 ' +
+      'and from Annex 19; an operator that can edit them has bought a compliance tool ' +
+      'that cannot be relied on for compliance'
+  );
+
+  /* The arithmetic stays tenant-blind. */
+  assert(
+    'THE RISK ARITHMETIC DOES NOT READ THE TENANT CONFIGURATION',
+    !/\btenant\b|TenantConfig|normaliseConfig|orgConfig/i.test(riskSrc),
+    'risk.ts reaches for the tenant configuration. The 5x5 and its bands are Doc 9859\'s, ' +
+      'computed on every read — a tenant-aware tolerability() makes "what band is this" a ' +
+      'question about whose database is being read, and two operators\' registers stop ' +
+      'being comparable to a regulator holding both'
+  );
+
+  /* And the labels can only ever be a RENAME: the maps are keyed by the
+     framework's own key sets, derived from the scales rather than
+     retyped, so there is no representation for a sixth severity. */
+  assert(
+    'the label maps are keyed by the framework\'s own keys, derived not retyped',
+    /SEVERITY_KEYS[\s\S]{0,120}SEVERITY_SCALE\.map/.test(tenantSrc) &&
+      /LIKELIHOOD_KEYS[\s\S]{0,120}LIKELIHOOD_SCALE\.map/.test(tenantSrc),
+    'the allowed label keys are no longer derived from the scales. A second hand-written ' +
+      'list of severity keys is a second list, and it goes stale the day a scale changes — ' +
+      'at which point a tenant can name a point the matrix does not have'
   );
 }
 

@@ -43,6 +43,18 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+/* The occurrence taxonomy, imported HERE and nowhere in the entry
+   chunk. Twenty categories with their names is a kilobyte a reporter at
+   a strip would download to file a report they will never classify —
+   and classification is the safety office's job, which is this screen.
+   Imported by path rather than through the shared index for the same
+   reason the disposition module is. */
+import {
+  CATEGORY_GROUPS,
+  categoriesIn,
+  categoryFor,
+  CICTT_CAVEAT
+} from '../../../../../packages/shared/src/cictt.ts';
 import { syncBadge, StatusBadge } from '../../components/Status.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
@@ -64,6 +76,15 @@ const STATE_LABEL = Object.fromEntries(SYNC_STATES.map((s) => [s.code, s.label])
 const TYPE_LABEL = Object.fromEntries(
   REPORT_TYPES.map((t) => [t.code, t.label.split(' — ')[0]])
 );
+
+/* A code's published name, or the code itself when this build does not
+   know it. NEVER a blank: the list here is incomplete by admission, and
+   an operator who has coded an occurrence to a legitimate category this
+   product has not got yet must still see their own classification on
+   the screen rather than an empty chip. */
+function labelForCode(code) {
+  return categoryFor(code)?.label ?? 'not in this build\u2019s list';
+}
 
 /* The disposition states in an operator's words. Enumerated rather than
    prettified from the enum: "ACTIONS_OPEN" title-cased is "Actions
@@ -126,7 +147,14 @@ function merge(local, remote) {
     const server = byClientId.get(r.clientId);
     byClientId.delete(r.clientId);
     return server
-      ? { ...r, origin: 'both', serverId: server.id, state: server.state, available: server.available }
+      ? {
+          ...r,
+          origin: 'both',
+          serverId: server.id,
+          state: server.state,
+          available: server.available,
+          cicttCodes: server.cicttCodes
+        }
       : { ...r, origin: 'device' };
   });
   for (const server of byClientId.values()) {
@@ -317,6 +345,64 @@ function bindOnce(outlet) {
     void render(outlet);
   });
 
+  /* THE CLASSIFICATION, on its own verb.
+
+     Delegated like everything else here, and submit rather than click:
+     the panel is a real form, so Enter works and the checkboxes are
+     read from the form rather than from the DOM by hand.
+
+     IT DOES NOT MOVE THE REPORT. Coding is not a state change — a
+     report closed last month and coded wrongly has to be correctable
+     without reopening it and closing it again, which would leave two
+     transitions in the history describing an investigation that never
+     happened. That is why there is a PUT for this and not a flag on the
+     disposition. */
+  outlet.addEventListener('submit', async (event) => {
+    const form = event.target?.closest?.('form[data-classify]');
+    if (!form) return;
+    event.preventDefault();
+
+    const codes = [...form.querySelectorAll('input[name="code"]:checked')].map((i) => i.value);
+    const submit = form.querySelector('button[type="submit"]');
+    const label = submit.textContent;
+    submit.disabled = true;
+    submit.textContent = 'Saving…';
+    try {
+      const res = await authFetch(`/api/v1/reports/${form.dataset.classify}/codes`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ cicttCodes: codes })
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        window.alert(
+          body.message ?? 'The safety office could not be reached. Nothing was changed.'
+        );
+        return;
+      }
+      /* THE SERVER'S OWN VERDICT ON WHAT IT DID NOT RECOGNISE, shown
+         rather than swallowed. The code list this build carries is
+         incomplete by admission, so a code it does not know is stored
+         and reported — and a safety officer who is told nothing would
+         reasonably assume the product understood a category it has
+         never heard of. */
+      const body = await res.json().catch(() => ({}));
+      if (body.unrecognisedCodes?.length) {
+        window.alert(
+          `Saved. This build does not recognise ${body.unrecognisedCodes.join(', ')} — ` +
+            'the classification is recorded exactly as you entered it, and the missing ' +
+            'category is a gap in this software rather than an error in your report.'
+        );
+      }
+    } catch {
+      window.alert('The safety office could not be reached. Nothing was changed.');
+    } finally {
+      submit.disabled = false;
+      submit.textContent = label;
+      await render(outlet);
+    }
+  });
+
   /* One delegated listener for every row, present and future. The rows
      are re-rendered on every filter change, so per-row listeners would
      be re-attached each time and the old ones would leak. */
@@ -396,6 +482,71 @@ function bindOnce(outlet) {
         // are things this screen must show rather than leave a button
         // guessing about.
         await render(outlet);
+      }
+      return;
+    }
+
+    /* ------------------------------------------------------------
+       Record a corrective action against this report.
+
+       THREE PROMPTS RATHER THAN A FORM, deliberately and for now. The
+       queue is worked on a handset, the three fields are short, and a
+       hand-built inline form on a card that re-renders after every
+       save is more ways to lose what somebody typed than it is worth.
+       The server validates all three regardless.
+       ------------------------------------------------------------ */
+    const raise = event.target.closest?.('[data-raise-action]');
+    if (raise) {
+      const what = window.prompt(
+        'What will be done about this report? One sentence — it becomes the action somebody is accountable for.'
+      );
+      if (what === null) return;
+      if (!what.trim()) {
+        window.alert('An action needs to say what will be done.');
+        return;
+      }
+      const owner = window.prompt(
+        'Which post owns it? SAFETY_MANAGER, SAFETY_OFFICER, ACCOUNTABLE_EXECUTIVE — or your own title.'
+      );
+      if (owner === null) return;
+      if (!owner.trim()) {
+        window.alert('An action with no owner is an action nobody does.');
+        return;
+      }
+      const due = window.prompt(
+        'By when? YYYY-MM-DD. Leave blank if there is genuinely no date — it is recorded as undated rather than guessed at.'
+      );
+      if (due === null) return;
+
+      raise.disabled = true;
+      const label = raise.textContent;
+      raise.textContent = 'Saving…';
+      try {
+        const res = await authFetch('/api/v1/actions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: what,
+            ownerPost: owner,
+            reportId: raise.dataset.raiseAction,
+            ...(due.trim() ? { dueOn: due.trim() } : {})
+          })
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          window.alert(
+            body.detail?.fieldErrors?.dueOn
+              ? 'That date was not understood. Use YYYY-MM-DD, or leave it blank.'
+              : (body.message ?? 'That was not accepted. Nothing was recorded.')
+          );
+        } else {
+          window.alert('Recorded. It is now on the risk picture until it is done and verified.');
+        }
+      } catch {
+        window.alert('The safety office could not be reached. Nothing was recorded.');
+      } finally {
+        raise.disabled = false;
+        raise.textContent = label;
       }
       return;
     }
@@ -528,6 +679,106 @@ function row(r) {
         ? html`<p class="queue__state" data-state="${r.state}">
             <span class="queue__state-label">${DISPOSITION_LABEL[r.state] ?? r.state}</span>
           </p>`
+        : ''}
+
+      <!-- RAISE AN ACTION FROM THE THING THAT PROMPTED IT.
+
+           An action always has a source — that is a CHECK constraint in
+           the migration, not a convention — and the natural place to
+           raise one is the report it came out of. Raising it from a
+           list of actions would ask somebody to pick a source from a
+           dropdown of every report the operator has, which is how the
+           wrong report gets attached.
+
+           Only on rows the server knows about, like the disposition:
+           an action against a report still in the outbox has nothing
+           to hang off. -->
+      <!-- WHAT THE STATE FILES IT UNDER.
+
+           The report TYPE above says what kind of report arrived. This
+           says what kind of OCCURRENCE it was, in ICAO's own categories
+           — and those are what an authority files, not this product's
+           six types. An operator whose reports carry no code hands its
+           authority data somebody re-codes by hand.
+
+           HERE AND NOT ON THE REPORT FORM. Coding to ADREP is a trained
+           judgement made after reading the narrative; a reporter at a
+           strip has not made it and must not be asked to, which is the
+           same reason the form does not ask whether the event meets
+           Annex 13's definition of an accident.
+
+           The codes render as words, not only as codes: "RE" on its own
+           is a badge only somebody who already knows the taxonomy can
+           read, and this screen is read by people learning it. -->
+      ${r.serverId
+        ? html`<div class="queue__coding">
+            ${r.cicttCodes?.length
+              ? html`<ul class="queue__codes">
+                  ${r.cicttCodes.map(
+                    (c) => html`<li class="queue__code" title="${labelForCode(c)}">
+                      <b>${c}</b> ${labelForCode(c)}
+                    </li>`
+                  )}
+                </ul>`
+              : html`<p class="queue__uncoded">Not yet classified to ICAO's categories.</p>`}
+            <!-- AN INLINE PANEL, NOT A PROMPT. Every other confirmation
+                 on this screen is a window.prompt, which is right for
+                 one line of free text and wrong for twenty grouped
+                 choices: a prompt cannot show a group, cannot show what
+                 is already selected, and cannot carry the caveat that
+                 has to travel with these codes. Details/summary rather
+                 than a modal — it keeps the choice next to the report it
+                 is about, and it works with a keyboard without any of
+                 the focus-trapping a modal would need. -->
+            <details class="queue__classify">
+              <summary>
+                ${r.cicttCodes?.length ? 'Change the classification' : 'Classify the occurrence'}
+              </summary>
+              <form data-classify="${r.serverId}">
+                ${CATEGORY_GROUPS.map(
+                  (g) => html`<fieldset class="queue__cat">
+                    <legend>${g}</legend>
+                    ${categoriesIn(g).map(
+                      (c) => html`<label class="queue__cat-opt">
+                        <input
+                          type="checkbox"
+                          name="code"
+                          value="${c.code}"
+                          ${r.cicttCodes?.includes(c.code) ? raw('checked') : ''}
+                        />
+                        <span><b>${c.code}</b> ${c.label}</span>
+                      </label>`
+                    )}
+                  </fieldset>`
+                )}
+                <!-- MORE THAN ONE IS THE TAXONOMY'S OWN RULE, said where
+                     somebody is choosing. CICTT codes a runway excursion
+                     that became a loss of control as BOTH, and a safety
+                     officer who assumes one code per occurrence records
+                     half of exactly the events worth learning from. -->
+                <p class="queue__cat-note">
+                  Pick every category that applies — a runway excursion that became a
+                  loss of control is both, and recording one loses the other.
+                </p>
+                <p class="queue__cat-caveat">${CICTT_CAVEAT}</p>
+                <button type="submit" class="btn btn-secondary btn-sm">
+                  Save the classification
+                </button>
+              </form>
+            </details>
+          </div>`
+        : ''}
+
+      ${r.serverId
+        ? html`<div class="queue__actions">
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              data-raise-action="${r.serverId}"
+            >
+              Record an action
+            </button>
+          </div>`
         : ''}
 
       ${r.available?.length

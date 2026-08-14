@@ -28,6 +28,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import { attachPrintId } from '../../shared/print-id.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
   INDICATOR_KINDS,
@@ -348,6 +349,7 @@ export function render(outlet) {
       <div class="wrap">
         <span class="eyebrow">Toolkit</span>
         <h1>Safety performance indicators</h1>
+      <div class="print-id-slot"></div>
         <p class="lede">
           Annex 19 element 3.1 asks for indicators with targets and alert levels,
           reviewed on a cadence. This computes the alert levels from your own
@@ -771,6 +773,20 @@ export function render(outlet) {
   });
 
   outlet.querySelector('#spi-print').addEventListener('click', () => window.print());
+
+  /* THE PACK IS ATTRIBUTED, or it carries no header at all. Not awaited:
+     this screen renders instantly and must keep doing so, and an
+     identity block that only matters on paper is not worth a network
+     round trip in front of it. If the name never arrives the slot stays
+     empty, which is the refusal printId() already implements. */
+  void attachPrintId(outlet, 'Safety performance indicators — regulation 9(5)', {
+    /* The only one of the four that is already fetching on this render:
+       the series is held for the operator, not the device, so the screen
+       has a session and one more round trip changes nothing about what
+       it does. The three device-local toolkits take the cache or
+       nothing. */
+    allowFetch: true,
+  });
 
   repaint();
 

@@ -33,6 +33,12 @@ import {
   VOLUNTARY_PROTECTION,
   unanswered
 } from '../../../../../packages/shared/src/voluntary.ts';
+import {
+  severityScaleFor,
+  likelihoodScaleFor,
+  postsFor,
+  MAX_LABEL
+} from '../../../../../packages/shared/src/tenant.ts';
 
 /* Which element each surface belongs to, so the screen is assembled
    from the framework rather than from a list somebody typed in this
@@ -95,6 +101,13 @@ const SURFACES = {
       permission: 'erp.manage'
     }
   },
+  '3.2': {
+    key: 'changes',
+    endpoint: '/api/v1/changes',
+    collection: 'changes',
+    action: 'Assess a change',
+    permission: 'moc.create'
+  },
   '1.5': {
     key: 'documents',
     endpoint: '/api/v1/sms/documents',
@@ -133,8 +146,16 @@ const SURFACES = {
 const ELSEWHERE = {
   '2.1': { href: '/report', label: 'Reporting is the report form and the queue' },
   '2.2': { href: '/toolkits/register', label: 'The risk register' },
-  '3.1': { href: '/toolkits/spi', label: 'Safety performance indicators' },
-  '3.2': { href: '/toolkits/sra', label: 'The safety risk assessment' }
+  '3.1': { href: '/toolkits/spi', label: 'Safety performance indicators' }
+  /* 3.2 IS NOT HERE ANY MORE, AND POINTING IT AT /toolkits/sra WAS
+     WRONG rather than merely thin. The SRA is Doc 9859's five-step
+     risk assessment; element 3.2 is the MANAGEMENT OF CHANGE — a
+     different record, answering a different question, with its own
+     table and its own route since the change assessment shipped. An
+     operator following that pointer arrived at the wrong instrument
+     and found no way to record a change at all.
+
+     It is a SURFACE now, below, like the other eight. */
 };
 
 const fmtDate = (v) => {
@@ -155,6 +176,30 @@ const fmtDate = (v) => {
    the same badge as "out of date": one needs somebody to establish the
    contact exists at all, the other needs a call. Colour is never the
    only channel — the label says it. */
+/* A change's own vocabulary. DRAFT and ASSESSED are not the same word
+   an operator would use, and IN_EFFECT with no review afterwards is the
+   state element 3.2's loose end lives in — so it reads as a caution
+   rather than as done. */
+const CHANGE_LABEL = {
+  DRAFT: 'draft',
+  ASSESSED: 'assessed, not approved',
+  APPROVED: 'approved',
+  IN_EFFECT: 'in effect',
+  REVIEWED: 'reviewed after the change'
+};
+const CHANGE_BADGE = {
+  DRAFT: 'NEUTRAL',
+  ASSESSED: 'CAUTION',
+  APPROVED: 'SAFE',
+  IN_EFFECT: 'CAUTION',
+  REVIEWED: 'SAFE'
+};
+const BAND_WORD = {
+  INTOLERABLE: 'intolerable',
+  TOLERABLE: 'tolerable',
+  ACCEPTABLE: 'acceptable'
+};
+
 const FRESH_LABEL = {
   CURRENT: 'confirmed',
   DUE_SOON: 'confirm soon',
@@ -204,6 +249,45 @@ const RENDER = {
           <span>${a.user?.name ?? 'Unnamed'}</span>
           <span>since ${fmtDate(a.appointedOn)}</span>
           <span>${a.letterRef ? `letter ${a.letterRef}` : 'no letter reference'}</span>
+        </p>
+      </article>`
+    ),
+
+  changes: (rows) =>
+    rows.map(
+      (c) => html`<article class="rec" data-state="${c.reviewedOn ? 'ok' : 'open'}">
+        <div class="rec__head">
+          <h4>${c.title}</h4>
+          <span class="badge" data-status="${CHANGE_BADGE[c.status] ?? 'NEUTRAL'}">
+            <span class="badge__label">${CHANGE_LABEL[c.status] ?? c.status}</span>
+          </span>
+        </div>
+        <p class="rec__body">${c.description}</p>
+        <!-- THE TWO DATES TOGETHER, because their ORDER is the element.
+             "A change assessment dated before it happened" is what 3.2's
+             evidence asks for, and an auditor reads these two fields
+             against each other. -->
+        <p class="rec__meta">
+          <span>assessed ${fmtDate(c.assessedOn)}</span>
+          <span>${c.effectiveFrom ? `in effect from ${fmtDate(c.effectiveFrom)}` : 'not yet in effect'}</span>
+          <span>${BAND_WORD[c.residualTolerability ?? c.tolerability] ?? ''}</span>
+        </p>
+        ${c.controls ? html`<p class="rec__body"><strong>Controls:</strong> ${c.controls}</p>` : ''}
+        ${c.approvedBy
+          ? html`<p class="rec__meta"><span>approved by ${c.approvedBy.name}</span></p>`
+          : ''}
+        ${c.reviewNotes
+          ? html`<p class="rec__body"><strong>Reviewed ${fmtDate(c.reviewedOn)}:</strong> ${c.reviewNotes}</p>`
+          : ''}
+        <p class="rec__meta no-print">
+          ${!c.approvedAt && allow('moc.approve')
+            ? html`<button type="button" class="btn btn-secondary btn-sm"
+                data-approve-change="${c.id}">Approve it</button>`
+            : ''}
+          ${c.approvedAt && !c.reviewedOn && allow('moc.create')
+            ? html`<button type="button" class="btn btn-secondary btn-sm"
+                data-review-change="${c.id}">Record the review after it</button>`
+            : ''}
         </p>
       </article>`
     ),
@@ -405,6 +489,35 @@ const FORMS = {
     { name: 'userId', label: 'Person', type: 'people', required: true },
     { name: 'appointedOn', label: 'Appointed on', type: 'date', required: true },
     { name: 'letterRef', label: 'Appointment letter reference' }
+  ],
+  changes: [
+    { name: 'title', label: 'The change', required: true,
+      placeholder: 'Second aircraft on the Lodwar route' },
+    { name: 'description', label: 'What is changing, and why', type: 'textarea', rows: 3, required: true },
+    { name: 'trigger', label: 'What kind of change', type: 'select', options: [
+      ['FLEET', 'Fleet'], ['ROUTE_OR_NETWORK', 'Route or network'],
+      ['ORGANISATION', 'Organisation'], ['KEY_PERSONNEL', 'Key personnel'],
+      ['EQUIPMENT_OR_SYSTEM', 'Equipment or system'], ['PROCEDURE', 'Procedure'],
+      ['OTHER', 'Other']
+    ] },
+    /* ASSESSED ON comes before EFFECTIVE FROM in the form because it
+       comes before it in life, and the route refuses the pair the other
+       way round — element 3.2's evidence is an assessment "dated before
+       it happened", and one dated after is a justification. Ordering
+       the fields the way the rule reads makes the refusal make sense
+       when it arrives. */
+    { name: 'assessedOn', label: 'Assessed on', type: 'date', required: true },
+    { name: 'effectiveFrom', label: 'Takes effect from (blank while it is still planned)', type: 'date' },
+    { name: 'severity', label: 'Severity', type: 'select', options: [
+      ['A_CATASTROPHIC', 'A — Catastrophic'], ['B_HAZARDOUS', 'B — Hazardous'],
+      ['C_MAJOR', 'C — Major'], ['D_MINOR', 'D — Minor'], ['E_NEGLIGIBLE', 'E — Negligible']
+    ] },
+    { name: 'likelihood', label: 'Likelihood', type: 'select', options: [
+      ['FREQUENT', 'Frequent'], ['OCCASIONAL', 'Occasional'], ['REMOTE', 'Remote'],
+      ['IMPROBABLE', 'Improbable'], ['EXTREMELY_IMPROBABLE', 'Extremely improbable']
+    ] },
+    { name: 'controls', label: 'What will control it', type: 'textarea', rows: 2 },
+    { name: 'reviewDueOn', label: 'Review it by', type: 'date' }
   ],
   contacts: [
     { name: 'name', label: 'Name', required: true },
@@ -714,6 +827,18 @@ export async function render(outlet) {
     } catch {
       state['/api/v1/sms/voluntary'] = { error: 'unreachable' };
     }
+
+    /* The operator's own vocabulary — a singleton like the scheme, and
+       fetched with the rest for the same reason: a second round trip on
+       a handset that may be paying for it. */
+    try {
+      const res = await authFetch('/api/v1/config');
+      state['/api/v1/config'] = res.ok
+        ? await res.json()
+        : { error: res.status === 403 ? 'forbidden' : 'unavailable' };
+    } catch {
+      state['/api/v1/config'] = { error: 'unreachable' };
+    }
     /* Read out of what was just loaded rather than fetched again — the
        accountabilities endpoint is already in `state`, and asking for
        it twice is a second round trip on a handset that may be paying
@@ -725,6 +850,130 @@ export async function render(outlet) {
        training can be recorded until it is. */
     const matrix = state['/api/v1/sms/accountabilities'];
     people = matrix?.error ? [] : (matrix?.people ?? []);
+  };
+
+
+  /* ------------------------------------------------------------------
+     THE OPERATOR'S OWN WORDS.
+
+     Every operator has been reading the same shipped vocabulary: the
+     same aerodromes, the same aircraft, the same post titles, the same
+     five words on the severity scale. A six-aircraft Kenyan AOC does
+     not fly to most of the shipped strips, and its accountable
+     executive is called whatever its own manual calls them. Every
+     incumbent lets an operator set this without a vendor change order.
+
+     WHAT IS NOT ON THIS SCREEN IS THE POINT, and it is said out loud
+     rather than left to be discovered. There is no field here for a
+     reporting deadline, a tolerability band, a de-identification rule
+     or an element definition — those come from the instrument, from
+     Doc 9859, from L.N. 32's Third Schedule and from Annex 19, and an
+     operator that could edit them would be holding a compliance tool
+     that cannot be relied on for compliance. A settings screen that
+     quietly grew one of those fields is exactly how this line gets
+     crossed, so a claims gate asserts their absence by name.
+
+     THE SCALES ARE RENAMED, NEVER REDEFINED. Five points stay five
+     points in the same order with the same codes, because that is what
+     `tolerability()` indexes and what a stored assessment carries — an
+     operator's renaming cannot change the band an entry graded to last
+     year, and two operators' registers stay comparable to a regulator
+     reading both.
+     ------------------------------------------------------------------ */
+  const configBlock = () => {
+    const held = state['/api/v1/config'];
+    if (held?.error) {
+      return html`<section class="doc-section" id="own-words">
+        <h2>Your own words</h2>
+        <p class="notice notice--error">
+          ${held.error === 'forbidden'
+            ? 'Your role does not include reading this operator\u2019s configuration.'
+            : 'The configuration could not be read, so this screen is showing the words this product ships rather than yours.'}
+        </p>
+      </section>`;
+    }
+    const cfg = held?.config ?? {};
+    const label = (v) => (v ?? '');
+
+    return html`<section class="doc-section" id="own-words">
+      <h2>Your own words</h2>
+      <p class="lede lede--tight">
+        What this operator calls its posts and its risk scales, and where it flies.
+        Everything here is a name; nothing here changes a number.
+      </p>
+
+      <form class="card" id="config-form">
+        <fieldset class="cfg-group">
+          <legend>Severity, as your manual words it</legend>
+          ${severityScaleFor(cfg).map(
+            (pt) => html`<label class="field field--inline">
+              <span class="field-label">${pt.code}</span>
+              <input class="input-field" name="sev.${pt.key}" maxlength="${MAX_LABEL}"
+                value="${label(cfg.severityLabels?.[pt.key])}" placeholder="${pt.label}" />
+            </label>`
+          )}
+        </fieldset>
+
+        <fieldset class="cfg-group">
+          <legend>Likelihood, as your manual words it</legend>
+          ${likelihoodScaleFor(cfg).map(
+            (pt) => html`<label class="field field--inline">
+              <span class="field-label">${pt.code}</span>
+              <input class="input-field" name="lik.${pt.key}" maxlength="${MAX_LABEL}"
+                value="${label(cfg.likelihoodLabels?.[pt.key])}" placeholder="${pt.label}" />
+            </label>`
+          )}
+        </fieldset>
+
+        <fieldset class="cfg-group">
+          <legend>Your posts, as your org chart names them</legend>
+          ${postsFor(cfg).map(
+            (r) => html`<label class="field field--inline">
+              <span class="field-label">${r.code.replace(/_/g, ' ').toLowerCase()}</span>
+              <input class="input-field" name="post.${r.code}" maxlength="${MAX_LABEL}"
+                value="${label(cfg.postTitles?.[r.code])}" placeholder="${r.label}" />
+            </label>`
+          )}
+        </fieldset>
+
+        <!-- ADDED TO THE SHIPPED LIST, NEVER REPLACING IT, and the hint
+             says so. An operator who adds one strip and loses every
+             other aerodrome from a reporter's dropdown finds out when
+             somebody cannot say where an occurrence happened. -->
+        <label class="field">
+          <span class="field-label">Your aerodromes and strips</span>
+          <textarea class="input-field" name="aerodromes" rows="3"
+            placeholder="One per line. These are ADDED to the list this product ships.">${(cfg.aerodromes ?? []).join('\n')}</textarea>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Your aircraft types</span>
+          <textarea class="input-field" name="aircraftTypes" rows="3"
+            placeholder="One per line. Added to the shipped list.">${(cfg.aircraftTypes ?? []).join('\n')}</textarea>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Your default review cycle, in days</span>
+          <input class="input-field" type="number" name="reviewDefaultDays" min="1" max="1825"
+            value="${cfg.reviewDefaultDays ?? ''}" placeholder="e.g. 180" />
+        </label>
+
+        <p class="note">
+          <b>What this screen cannot change, and why</b>
+          The reporting deadlines come from the instrument for your State and are computed
+          per occurrence class. The 5&times;5 arithmetic and the tolerability bands are ICAO
+          Doc 9859&rsquo;s. De-identification is named as a safeguard by L.N. 32 of 2026,
+          Third Schedule. What the twelve Annex&nbsp;19 elements mean is Annex&nbsp;19&rsquo;s.
+          None of those is an operator&rsquo;s to set &mdash; a compliance tool whose
+          compliance rules are editable by the party being assessed is not one &mdash;
+          so there is no field here for any of them, and a build gate asserts there
+          never is.
+        </p>
+
+        <p class="field-hint" data-err="config"></p>
+        <button type="submit" class="btn btn-primary btn-sm">Save your words</button>
+      </form>
+    </section>`;
   };
 
   const rowsFor = (elementId) => {
@@ -804,7 +1053,9 @@ export async function render(outlet) {
         <dd class="stat__label">Elements in the framework</dd></div>
     `.toString();
 
-    body.innerHTML = printId(org, 'Safety management system record — Annex 19, twelve elements').toString() + SMS_COMPONENTS.map(
+    body.innerHTML = printId(org, 'Safety management system record — Annex 19, twelve elements').toString()
+      + configBlock().toString()
+      + SMS_COMPONENTS.map(
       (component) => html`<section class="doc-section" id="component-${component.id}">
         <h2><span class="mat-element__id">${component.id}</span> ${component.name}</h2>
         <p class="lede lede--tight">${component.purpose}</p>
@@ -882,6 +1133,64 @@ export async function render(outlet) {
        what it holds, including the empty ones, so clearing a definition
        is possible and a save never waits on the other six being
        finished. */
+    if (form?.id === 'config-form') {
+      event.preventDefault();
+      const err = body.querySelector('[data-err="config"]');
+      const pick = (prefix) => {
+        const out = {};
+        for (const el of form.querySelectorAll(`input[name^="${prefix}."]`)) {
+          const v = el.value.trim();
+          /* An empty box means "use the shipped word", not "call it
+             nothing". Sending "" would be a rename to blank, and the
+             server drops it — but not sending it at all is what
+             actually expresses the intent, and it keeps removal and
+             never-set identical. */
+          if (v) out[el.name.slice(prefix.length + 1)] = v;
+        }
+        return out;
+      };
+      const lines = (name) =>
+        (form.elements[name]?.value ?? '')
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean);
+
+      const days = Number(form.elements.reviewDefaultDays?.value);
+      const payload = {
+        severityLabels: pick('sev'),
+        likelihoodLabels: pick('lik'),
+        postTitles: pick('post'),
+        aerodromes: lines('aerodromes'),
+        aircraftTypes: lines('aircraftTypes'),
+        reviewDefaultDays: Number.isFinite(days) && days > 0 ? days : undefined
+      };
+
+      try {
+        const res = await authFetch('/api/v1/config', {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          if (err) {
+            err.textContent =
+              res.status === 403
+                ? 'Your role cannot change what this operator calls things.'
+                : 'That was not accepted. Nothing was changed.';
+          }
+          return;
+        }
+        if (err) err.textContent = '';
+        await load();
+        repaint();
+      } catch {
+        if (err) {
+          err.textContent = 'The safety office could not be reached. Nothing was changed.';
+        }
+      }
+      return;
+    }
+
     if (form?.id === 'scheme-form') {
       event.preventDefault();
       const err = body.querySelector('[data-err="scheme"]');
@@ -1013,7 +1322,71 @@ export async function render(outlet) {
   /* CONFIRMING A NUMBER. One delegated listener, because the directory
      re-renders on every save and per-row listeners would be re-attached
      each time — the P-01 shape the triage queue was fixed for. */
+  /* APPROVING AND REVIEWING A CHANGE.
+
+     Two different acts by two different posts, and the buttons appear
+     only for the one this caller holds — moc.approve to approve,
+     moc.create to record the review afterwards. The server refuses the
+     other regardless; showing a button that always fails teaches
+     somebody to ignore the refusal.
+
+     APPROVAL SENDS NOTHING. The approver is the caller and the moment
+     is now — letting either be supplied would allow an approval
+     attributed to somebody who did not give it, or dated to suit. */
   body.addEventListener('click', async (event) => {
+    const change = event.target.closest?.('[data-approve-change], [data-review-change]');
+    if (change) {
+      const approving = Boolean(change.dataset.approveChange);
+      const id = change.dataset.approveChange ?? change.dataset.reviewChange;
+      let payload = {};
+
+      if (approving) {
+        if (!window.confirm(
+          'Approve this change assessment? It is recorded against your name and the current time, and it cannot be attributed to anybody else afterwards.'
+        )) return;
+      } else {
+        const notes = window.prompt(
+          'What did the review after the change find? Element 3.2 does not end when the change lands.'
+        );
+        if (notes === null) return;
+        if (!notes.trim()) {
+          window.alert('A review with no findings recorded is a review nobody can read.');
+          return;
+        }
+        payload = { reviewedOn: new Date().toISOString().slice(0, 10), reviewNotes: notes };
+      }
+
+      const label = change.textContent;
+      change.disabled = true;
+      change.textContent = 'Saving…';
+      try {
+        const res = await authFetch(
+          `/api/v1/changes/${id}/${approving ? 'approve' : 'review'}`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload)
+          }
+        );
+        if (!res.ok) {
+          /* The server's own sentence. On an approval it explains that
+             a change carrying an intolerable position cannot be
+             approved while it stands, which is the rule and is worth
+             reading in full. */
+          const answer = await res.json().catch(() => ({}));
+          window.alert(answer.message ?? 'That was not accepted. Nothing was changed.');
+        }
+      } catch {
+        window.alert('The safety office could not be reached. Nothing was changed.');
+      } finally {
+        change.disabled = false;
+        change.textContent = label;
+        await load();
+        repaint();
+      }
+      return;
+    }
+
     const btn = event.target.closest?.('[data-verify-contact]');
     if (!btn) return;
     const label = btn.textContent;

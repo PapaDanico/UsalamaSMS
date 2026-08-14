@@ -151,6 +151,18 @@ export function renderPage(outlet, page) {
     </div>
   `.toString();
 
+  /* PRINT-ID: not an operator document.
+     Every other printable screen stamps the operator's name on the page,
+     because a risk register or a set of indicators handed to an auditor
+     as loose paper has to be attributable. These pages are the opposite
+     case: the methodology, the glossary, the tutorials, the privacy
+     notice and the terms are THIS PRODUCT'S documents, not any
+     customer's. Printing "Kabete Air Charter" above UsalamaSMS's own
+     derivation of the Doc 9859 matrix would not be a missing
+     attribution, it would be a false one — and a false attribution is
+     the failure printId() refuses to commit in the other direction when
+     it renders nothing rather than "UsalamaSMS operator".
+     A claims gate reads this marker; deleting it fails the build. */
   outlet.querySelector('#print-page')?.addEventListener('click', () => window.print());
 
   /* Expand and collapse all, per question group. Two buttons rather

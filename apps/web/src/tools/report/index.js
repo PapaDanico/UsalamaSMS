@@ -89,6 +89,25 @@ export function render(outlet) {
         hint: 'An occurrence carries a reporting deadline; the others do not.'
       })}
 
+      ${/* THE ANNEX 13 NOTIFICATION, which is not the report this form
+            files. Never populated with a telephone number — see
+            renderAccidentNotification().
+
+            IT WAS WRITTEN INSIDE "Add detail (optional)", a collapsed
+            <details> below the fold, and that is where it was found:
+            the most consequential sentence on this screen, behind a
+            disclosure triangle marked optional, on a form whose whole
+            purpose is that somebody reads it in a hurry. A reporter
+            filing an accident would have read "24 hours" beside the
+            date field and closed the form having never seen that a
+            different body has to be told immediately.
+
+            So it sits here, directly under the classification and above
+            everything optional. Its own paragraph collapses to nothing
+            when empty (`.notice--urgent:empty`), so the form does not
+            carry a gap for the jurisdictions that have no such row. */ ''}
+      <p class="notice notice--urgent" id="aaid-hint"></p>
+
       ${/* THE ASTERISK GOES ON ALL THREE, and it did not. The required
             attribute was set on all three fields, so the browser and a
             screen reader both knew — and only the dropdown said so on
@@ -277,6 +296,67 @@ function wire(outlet) {
   const status = outlet.querySelector('#report-status');
   const count = outlet.querySelector('#narrative-count');
   const deadlineHint = outlet.querySelector('#deadline-hint');
+  const aaidHint = outlet.querySelector('#aaid-hint');
+
+  /* ============================================================
+     THE OTHER NOTIFICATION, which goes somewhere else and does not
+     wait for a date.
+
+     The deadline hint on this form is about the MANDATORY OCCURRENCE
+     REPORT to the civil aviation authority. An accident or serious
+     incident is ALSO notified to the State's accident INVESTIGATION
+     body under Annex 13 — a different organisation, a different duty,
+     and a clock measured in minutes rather than hours.
+
+     WRITTEN FIRST INSIDE THE DEADLINE BLOCK, AND THAT WAS WRONG. That
+     block runs only once a reporter has entered when the occurrence
+     happened, so the notice appeared after a date and not before. The
+     Annex 13 duty does not depend on the reporter having filled in a
+     field — it depends on the jurisdiction, which is known on load.
+     Caught by a smoke check that loaded the form and found nothing.
+
+     NO NUMBER IS PRINTED. The authority publishes its own, and one
+     copied into software by somebody who never dialled it is the one
+     number here where being wrong is not measured in inconvenience.
+     The link goes where they publish it.
+
+     AND IT LINKS THERE ONLY. This notice first told the reader to
+     "record it in your emergency contact directory", pointing at
+     /sms#element-1.4. Two things were wrong with that. The directory
+     lives behind a session and this form deliberately does not need
+     one, so the anchor did not exist for the reader being sent to it —
+     the link gate caught that. The deeper fault is that the sentence
+     was addressed to the safety office while sitting on the reporter's
+     screen: somebody standing beside an aircraft has one action, which
+     is to tell the investigators now. Keeping the directory prompt
+     where the directory is, on the element that already tracks how
+     long since anybody verified a number, puts each instruction in
+     front of the person who can carry it out.
+     ============================================================ */
+  function renderAccidentNotification() {
+    if (!aaidHint) return;
+    /* The same 'KE' the deadline block uses. Named here rather than
+       reached for through a helper the form does not have: this screen
+       is single-jurisdiction today and pretending otherwise with a
+       lookup that can only return one answer is the kind of flexibility
+       that reads as a feature and is not one. */
+    const notify = MOR_OBLIGATIONS.KE?.accidentNotification;
+    if (!notify) {
+      aaidHint.innerHTML = '';
+      return;
+    }
+    aaidHint.innerHTML = html`
+      <strong>An accident or serious incident is also notified to
+      ${notify.authority}, immediately.</strong>
+      That is a different duty from the report above, owed to the accident
+      investigation authority, and it does not wait for it.
+      Their contacts are published by the authority itself:
+      <a href="${notify.url}" rel="noopener noreferrer" target="_blank">${notify.url}</a>.
+    `.toString();
+  }
+
+  renderAccidentNotification();
+
 
   const narrative = form.elements.narrative;
   const occurredAt = form.elements.occurredAt;
@@ -297,6 +377,14 @@ function wire(outlet) {
     const type = form.elements.type.value;
     if (type !== 'MOR' || !occurredAt.value) {
       deadlineHint.textContent = '';
+      /* THE ANNEX 13 NOTICE IS NOT CLEARED HERE, and clearing it was the
+         second half of the same defect as writing it in this block.
+         Whether the accident investigation authority has to be told
+         does not depend on which report type is selected or on whether
+         a date has been typed — it is a standing duty for the
+         jurisdiction. This branch is the form's LOAD state, so a clear
+         here removed the notice from every reporter who had not yet
+         picked a type. */
       return;
     }
     const occurred = new Date(occurredAt.value);

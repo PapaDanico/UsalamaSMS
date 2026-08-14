@@ -416,6 +416,40 @@ p { text-wrap: pretty; }
 p { margin: 0 0 1rem; }
 a { color: var(--us-teal); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+/* ============================================================
+   A LINK INSIDE A SENTENCE IS UNDERLINED. WCAG 1.4.1.
+
+   FOUND BY THE FIRST AXE SWEEP, and it is the exact finding that
+   sweep existed to look for. This product's own rule is that colour is
+   never the only channel — every status badge carries a word, every
+   matrix cell carries its code — and inline links broke it on
+   twenty-two nodes across eleven screens. A teal link at #20605f
+   inside body copy at #5c5852 is 1.4:1 against each other, where 1.4.1
+   asks 3:1 when colour is the sole signal. Both colours are perfectly
+   legible on their own; the failure is that somebody who cannot
+   separate the two hues has nothing else to go on.
+
+   The footer's legal strip had already worked this out and fixed
+   itself in isolation, with the reasoning written down four hundred
+   lines below. Nobody applied it to the body copy, and no check knew
+   the rule existed — asserted properties are not a sweep, and this is
+   what the difference costs.
+
+   SCOPED TO PROSE, for the reason the footer gives. A link sitting on
+   its own line in a nav, a card, a table of contents or a button is
+   not a link "in a text block": there is no surrounding sentence to be
+   confused with, and underlining it is noise that makes a list of
+   destinations look like a paragraph somebody marked up wrong. `p` and
+   `li` inside prose are where the ambiguity actually is.
+   ============================================================ */
+p > a:not(.btn):not(.us-lockup),
+p a:not(.btn):not(.us-lockup),
+dd a:not(.btn):not(.us-lockup) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
 img { max-width: 100%; display: block; }
 .eyebrow { font-family: var(--us-font); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: .72rem; color: var(--us-teal); margin: 0 0 .8rem; }
 section { padding: var(--us-section) 0; }
@@ -554,7 +588,7 @@ html { scroll-padding-top: var(--us-chrome); }
    per line with no surrounding prose, so they are not links "in a text
    block" and underlining them would be noise. */
 .footer .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); gap: clamp(2rem, 5vw, 3.5rem); }
-.footer .ver { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: .77rem; color: #9a8c85; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.footer .ver { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: .77rem; color: #a89a92; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
 
 
 .footer p { font-size: .89rem; margin-bottom: .45rem; }
@@ -1379,6 +1413,126 @@ html { scroll-padding-top: var(--us-chrome); }
   border-top: 0;
 }
 
+/* ============================================================
+   WHAT THE STATE FILES IT UNDER — the ICAO occurrence categories.
+
+   Its own block above the actions, because it answers a different
+   question from either of them: the sync badge says whether the report
+   arrived, the disposition says what was done about it, and this says
+   what KIND of occurrence it was in the taxonomy an authority actually
+   files. Three answers running together is how one gets read as
+   another.
+   ============================================================ */
+.queue__coding {
+  margin-top: var(--us-space-4);
+  padding-top: var(--us-space-4);
+  border-top: 1px solid var(--us-border);
+}
+
+.queue__codes {
+  list-style: none;
+  margin: 0 0 var(--us-space-2);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+}
+
+/* THE CODE AND ITS NAME, never the code alone. "RE" is legible only to
+   somebody who already knows the taxonomy, and this screen is read by
+   people learning it — the same reason every status badge here carries
+   a word beside its colour. */
+.queue__code {
+  font-size: var(--us-text-xs);
+  line-height: var(--us-leading-snug);
+  background: var(--us-surface-sunk);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-sm);
+  padding: var(--us-space-1) var(--us-space-2);
+  color: var(--us-text-secondary);
+}
+
+.queue__code b {
+  color: var(--us-text-primary);
+  font-weight: 700;
+}
+
+/* NOT AN ERROR, and it must not read as one. A report filed an hour ago
+   is correctly unclassified; the colour that says "something is wrong"
+   here would make every new report look like a fault. */
+.queue__uncoded {
+  margin: 0 0 var(--us-space-2);
+  font-size: var(--us-text-xs);
+  color: var(--us-text-tertiary);
+}
+
+.queue__classify > summary {
+  font-size: var(--us-text-sm);
+  font-weight: 600;
+  color: var(--us-accent-text);
+  cursor: pointer;
+  padding: var(--us-space-1) 0;
+}
+
+.queue__cat {
+  border: 0;
+  border-top: 1px solid var(--us-border);
+  margin: var(--us-space-3) 0 0;
+  padding: var(--us-space-2) 0 0;
+}
+
+.queue__cat legend {
+  font-size: var(--us-text-2xs);
+  font-weight: 600;
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+  padding: 0;
+}
+
+/* A whole row is the target, not the 16px box. Twenty of these are
+   tapped by somebody holding a phone in one hand. */
+.queue__cat-opt {
+  display: flex;
+  gap: var(--us-space-2);
+  align-items: flex-start;
+  padding: var(--us-space-2) 0;
+  min-height: 44px;
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+  cursor: pointer;
+}
+
+.queue__cat-opt input {
+  margin-top: 2px;
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.queue__cat-opt b {
+  font-weight: 700;
+  color: var(--us-text-primary);
+}
+
+.queue__cat-note {
+  margin: var(--us-space-3) 0 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+}
+
+/* THE CAVEAT TRAVELS WITH THE CODES. This product carries the category
+   names and NOT their definitions, and a definition is what decides a
+   borderline case. Smaller than the choices, never hidden behind one
+   more disclosure: somebody picking a marginal category is exactly who
+   needs to read it. */
+.queue__cat-caveat {
+  margin: var(--us-space-2) 0 var(--us-space-3);
+  font-size: var(--us-text-xs);
+  line-height: var(--us-leading-normal);
+  color: var(--us-text-tertiary);
+}
+
 /* WHAT HAPPENED TO THE REPORT, as a line of its own rather than a
    fourth badge. The sync badge above answers "did it arrive"; this
    answers "what was done about it", and running them together is how
@@ -1486,6 +1640,80 @@ html { scroll-padding-top: var(--us-chrome); }
 .picture-figure__note {
   font-size: var(--us-text-sm);
   color: var(--us-text-secondary);
+}
+
+/* The corrective actions, worked from the assurance screen.
+
+   A LIST OF THINGS TO DO, not a table. Each one is a sentence somebody
+   wrote, a person who owns it and a date — and the sentence is the part
+   that matters, so it leads and the rest sits under it in a metadata
+   row. A table would put the sentence in a column and truncate it. */
+.picture-actions {
+  list-style: none;
+  padding-left: 0;
+  max-width: 68ch;
+}
+
+.picture-action {
+  padding: var(--us-space-4);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius);
+}
+
+/* OVERDUE IS THE ONLY ONE MARKED, and by a rule rather than a fill:
+   everything else on this list is somebody's ordinary work, and a list
+   where four states each have a colour is a list with no signal in it.
+   Colour is never the only channel — the badge says the word. */
+.picture-action[data-status='OVERDUE'] {
+  border-left: 3px solid var(--us-state-error);
+}
+
+.picture-action__what {
+  margin: 0 0 var(--us-space-2);
+  font-weight: 600;
+}
+
+.picture-action__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-2) var(--us-space-3);
+  margin: 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+}
+
+.picture-action__note {
+  margin: var(--us-space-2) 0 0;
+  font-size: var(--us-text-sm);
+}
+
+.picture-action__do {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+  margin: var(--us-space-3) 0 0;
+}
+
+/* THE ONE NOTICE IN THIS PRODUCT THAT IS ABOUT MINUTES.
+
+   Every other message here can wait for the person to finish what they
+   are doing. An accident notification to the investigation authority
+   cannot, and the styling says so once — a red rule and weight, not a
+   fill, because the text is a sentence somebody has to read carefully
+   under the worst conditions they will ever use this product in.
+
+   EMPTY BY DEFAULT AND INVISIBLE WHEN EMPTY. It is populated only when
+   a jurisdiction that has an investigation authority is selected, and
+   an empty bordered box on a form is a box that trains people to
+   ignore the filled one. */
+.notice--urgent:empty {
+  display: none;
+}
+
+.notice--urgent {
+  border-left: 4px solid var(--us-state-error);
+  background: var(--us-surface-2);
 }
 
 .picture-note {
@@ -2473,7 +2701,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   margin-left: var(--us-space-2);
   font-size: var(--us-text-2xs);
   font-weight: 700;
-  color: var(--us-ink-400);
+  /* --us-ink-400 measured 3.58:1 here against the warm paper. It is the
+     product's lightest ink and it is fine as a hairline or a rule; as
+     11px TEXT carrying a count somebody reads, it is under 4.5. One
+     step darker clears it without changing what the number is for. */
+  color: var(--us-ink-600);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2704,12 +2936,51 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-weight: var(--us-weight-normal);
 }
 
+/* ============================================================
+   THIS CLASS RENDERS ON TWO DIFFERENT GROUNDS, and it only ever had
+   one colour.
+
+   On /toolkits the classifier sits on the dark band, where sand at 72%
+   is right. On /toolkits/sra the same span sits on a CARD, and
+   near-white on near-white measured 1.02:1 — the verdict text on the
+   safety risk assessment, the sentence saying why an assessment cannot
+   be accepted, was invisible. Not low contrast: invisible.
+
+   Found by the first axe sweep. It was never going to be found any
+   other way: the brand gate asserts declared token pairs and this is a
+   pairing nobody declared, because the class was written for one screen
+   and reused on another with a different background six weeks later.
+
+   THE LIGHT GROUND IS THE DEFAULT and the dark band overrides it. That
+   way round deliberately — a third screen reusing this class will get
+   the readable-on-paper colour by default, and the failure mode of
+   guessing wrong becomes "slightly dark text on a dark band" rather
+   than "no text at all".
+   ============================================================ */
 .calc__detail {
   display: block;
   margin-top: var(--us-space-2);
   font-size: var(--us-text-xs);
   font-weight: var(--us-weight-normal);
-  color: rgb(var(--us-sand-rgb) / 0.72);
+  color: var(--us-text-tertiary);
+}
+
+/* THE GROUND IS .calc__out, AND IT HAS THREE STATES, NOT TWO. Only
+   `ok` is charcoal; `idle` is warm paper and `error` is a pale ochre
+   wash, and both of those are light. Two wrong guesses got here — first
+   `.band-dark`, which matched nothing because the dark surface is the
+   box and not the band, then `:not([data-state='idle'])`, which was
+   right about idle and forgot error entirely and left the SRA's
+   "Not ready" reason at 1.02:1. That sentence says WHY an assessment
+   cannot be accepted.
+
+   Naming the one dark state rather than excluding the light ones is
+   what stops the third guess: a state added later gets the
+   readable-on-paper default, so the worst case is dark text on a dark
+   box rather than nothing at all. Measured after each attempt rather
+   than reasoned about. */
+.calc__out[data-state='ok'] .calc__detail {
+  color: rgb(var(--us-sand-rgb) / 0.78);
 }
 
 .calc__out[data-state='ok'] .tag--provisional { background: var(--us-sand); }
@@ -3228,7 +3499,17 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    reading presented as a quotation is the quiet kind of wrong this
    product is built against. Small, inline, and it does not compete with
    the figure it qualifies. */
-.calc__caveat { display: block; font-size: var(--us-text-xs); color: var(--us-text-tertiary); margin-top: 2px; }
+/* THE CAVEAT WAS ALL BUT INVISIBLE, at 1.97:1, and it is the honesty
+   text on the risk calculator. --us-text-tertiary is #5c5852, a token
+   for LIGHT grounds, and this element renders on the dark band — a
+   pairing no gate had an opinion about because the brand gate asserts
+   contrast on Warm Sand and on white, and nothing checked the dark
+   surfaces at all. Found by the first axe sweep.
+
+   The sand token at 72% over charcoal is what .calc__detail beside it
+   already uses; matching it fixes the ratio and stops two adjacent
+   pieces of the same caveat being different colours. */
+.calc__caveat { display: block; font-size: var(--us-text-xs); color: rgb(var(--us-sand-rgb) / 0.78); margin-top: 2px; }
 
 .mat-phase__assign { margin-top: var(--us-space-4); font-size: var(--us-text-sm); color: var(--us-text-secondary); max-width: 62ch; }
 
@@ -3323,4 +3604,56 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border-color: var(--us-gold);
   color: var(--us-gold-text);
   background: rgb(var(--us-gold-rgb) / 0.10);
+}
+
+/* ============================================================
+   THE OPERATOR'S OWN WORDS — the tenant configuration form.
+
+   A label beside its input rather than above it, because these are
+   RENAMES: the left column is the fixed thing (the severity code, the
+   post) and the right is what this operator calls it. Stacked, the
+   pairing reads as ten unrelated fields; side by side it reads as a
+   translation table, which is what it is.
+
+   Stacks below 30rem all the same — a two-column form on a handset is
+   two columns of nothing.
+   ============================================================ */
+.cfg-group {
+  border: 0;
+  border-top: 1px solid var(--us-border);
+  margin: var(--us-space-6) 0 0;
+  padding: var(--us-space-4) 0 0;
+}
+
+.cfg-group legend {
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+  padding: 0;
+}
+
+.field--inline {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--us-space-3);
+  margin-top: var(--us-space-3);
+}
+
+/* The fixed side of the pair. Never an input, and it should not look
+   like one — this is the thing being renamed, not a thing to type in. */
+.field--inline > .field-label {
+  margin: 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-tertiary);
+  text-transform: capitalize;
+}
+
+@media (max-width: 30rem) {
+  .field--inline {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--us-space-1);
+  }
 }

@@ -24,6 +24,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import { attachPrintId } from '../../shared/print-id.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
   SEVERITY_SCALE,
@@ -156,6 +157,7 @@ export function render(outlet) {
       <div class="wrap">
         <span class="eyebrow">Toolkit</span>
         <h1>Safety risk assessment</h1>
+      <div class="print-id-slot"></div>
         <p class="lede">
           For a change rather than for the standing register: a new route, a
           new type, a base closing, a roster that moves. The five steps are
@@ -428,6 +430,13 @@ export function render(outlet) {
   });
 
   outlet.querySelector('#sra-print').addEventListener('click', () => window.print());
+
+  /* THE PACK IS ATTRIBUTED, or it carries no header at all. Not awaited:
+     this screen renders instantly and must keep doing so, and an
+     identity block that only matters on paper is not worth a network
+     round trip in front of it. If the name never arrives the slot stays
+     empty, which is the refusal printId() already implements. */
+  void attachPrintId(outlet, 'Safety risk assessment — ICAO Doc 9859, five steps');
 
   repaint();
   void raw;

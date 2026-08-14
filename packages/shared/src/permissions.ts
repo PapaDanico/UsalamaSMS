@@ -46,7 +46,22 @@ export type Permission =
      org.manage: taking a full copy of every safety narrative the
      organisation holds is a different act from administering accounts,
      and the roles that may do it are different ones. */
-  | "org.export";
+  | "org.export"
+  /* THE OPERATOR'S OWN VOCABULARY — what it calls its posts, what its
+     manual calls each point on the risk scales, which strips it flies
+     to. Its own permission for the same reason org.export got one and
+     did not reuse org.manage: the meanings differ. Renaming a severity
+     point changes what every register in the operator reads as, which
+     is a safety-documentation act; it is not tenant administration, and
+     the roles that may do it are not the roles that create accounts.
+
+     WHAT THIS PERMISSION CANNOT DO IS THE POINT. It reaches labels and
+     lists and nothing else — no deadline, no tolerability band, no
+     de-identification rule, no element definition. That boundary is
+     structural rather than granted: there is no representation for
+     those things in the tenant configuration at all. See
+     packages/shared/src/tenant.ts. */
+  | "config.manage";
 
 export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   FRONTLINE: new Set<Permission>([
@@ -71,6 +86,8 @@ export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
     // The post that would be asked for the record in an audit is the
     // post that can take a copy of it.
     "org.export",
+    // And the post that maintains the manual maintains the words in it.
+    "config.manage",
   ]),
   INVESTIGATOR: new Set<Permission>([
     "report.read.org", "report.investigate", "hazard.manage", "risk.assess",
@@ -88,6 +105,7 @@ export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   ACCOUNTABLE_EXECUTIVE: new Set<Permission>([
     "report.read.org", "risk.accept.tolerable", "risk.accept.intolerable",
     "spi.read", "moc.approve", "document.read", "audit.read", "training.read.own",
+    "config.manage",
     /* SIGNING THE POLICY IS THIS ROLE'S ALONE, and it is the only
        permission in this file held by exactly one role. Element 1.1 is
        not "there is a policy" — it is that the person who can move money
