@@ -310,6 +310,11 @@ export const SECTIONS = [
          for it. The footer renders every section, so leaving it here
          too would print it twice in one footer. */
       { href: '/about', label: 'About us' },
+      /* WHAT IT COSTS, in the footer of every screen. A product whose
+         price is only available by asking is a product an operator does
+         not evaluate on a Sunday evening, which is when a safety
+         manager at a six-aircraft charter actually does this. */
+      { href: '/pricing', label: 'What it costs' },
       { href: '/#deadlines', label: 'Regulatory basis' }
     ]
   },

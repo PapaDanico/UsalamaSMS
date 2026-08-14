@@ -173,8 +173,22 @@ function renderForm(outlet) {
         <button type="submit" class="btn btn-primary btn-block">Sign in</button>
         <p class="field-error" id="login-status" role="status" aria-live="polite"></p>
       </form>
+
+      <!-- A LINK, NOT A PANEL. The form began inline here and cost
+           5.6 KB of the ENTRY bundle — charged to every ramp agent
+           filing a report, to carry a form an operator fills in once in
+           its life. Moving it behind a lazy import still left half a
+           kilobyte of slot and loader on the eager screen, so it is a
+           destination instead: one anchor here, everything else in the
+           route's own chunk. It is also the honest shape — signing up
+           is a different job from signing in, and /pricing can link
+           straight to it. -->
+      <p class="hint">
+        <a href="/signup">My operator does not have an account yet</a>
+      </p>
     </section>
   `.toString();
+
 
   const form = outlet.querySelector('#login-form');
   const status = outlet.querySelector('#login-status');

@@ -1405,7 +1405,55 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    The rest is the register and triage chunks, both lazily loaded: a
    reporter at a remote strip opens neither. */
-const BUDGET = { entry: 215 * 1024, js: 481 * 1024, css: 60 * 1024 };
+/* ENTRY 215 -> 217 KB AND TOTAL 481 -> 492, for the two things that
+   turned this from a product that can be demonstrated into one that can
+   be bought.
+
+   THE ENTRY RAISE IS THE ONE TO ARGUE WITH, so here is the whole of it.
+
+   WHAT WAS MISSING. Nineteen screens, fifty-four routes, eleven of
+   Annex 19's twelve elements — and no route that creates an
+   organisation. The only way an operator could come into existence was
+   `npm run seed`, run against the database by somebody holding the
+   credentials. A product that has to be installed by its author for
+   every customer is a consultancy deliverable wearing a product's
+   feature list, and no amount of further engineering was going to
+   change that.
+
+   So: `POST /api/v1/auth/signup`, a /signup screen, and a /pricing
+   screen that renders from one declaration of the price rather than
+   repeating it.
+
+   WHERE THE ENTRY KILOBYTE ACTUALLY WENT, measured rather than assumed.
+   Not the forms — those are in their own chunks. It is the ROUTER
+   TABLE: this is a client-side router and every registered route costs
+   an entry in it plus a dynamic-import stub, about half a kilobyte
+   each. That is the honest price of a screen existing at all, and it is
+   the same price the other nineteen paid.
+
+   TWO ATTEMPTS CAME OFF THE WIRE FIRST, and both were the same mistake
+   this file has recorded twice before:
+
+     · the signup form began INLINE in the account screen, which is
+       eager because signing in is what sends a queued report. Entry
+       went 214.9 -> 220.5 — 5.6 KB charged to every ramp agent at a
+       remote strip, to carry a form an operator fills in once in its
+       life. Moving it behind a lazy import left half a kilobyte of slot
+       and loader still on the eager screen; making it a DESTINATION
+       removed even that, and is the honester shape — signing up is a
+       different job from signing in;
+     · `SignupSchema` went into the shared barrel, which the report form
+       imports for CreateReportSchema, so a zod object describing that
+       same once-in-a-lifetime form rode in the entry chunk. Split into
+       ./signup, imported by the API and by nothing in the browser —
+       exactly what permissions.ts was split out for.
+
+   Without those two, this raise would have been 215 -> 221.
+
+   WHAT THE REPORTER GETS FOR THEIR KILOBYTE: an operator that can sign
+   up on a Sunday evening without calling anybody, which is the only way
+   the product ever reaches the reporter at all. */
+const BUDGET = { entry: 217 * 1024, js: 492 * 1024, css: 60 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

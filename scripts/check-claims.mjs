@@ -906,6 +906,14 @@ assert(
      ============================================================ */
   const NOT_AN_ELEMENT = new Map([
     ["/api/v1/auth/login", "Authentication is how an operator reaches the SMS, not part of it."],
+    [
+      "/api/v1/auth/signup",
+      "Creating the operator account is how an SMS comes to exist for a customer, " +
+        "not one of the twelve things it has to do. /coverage answers what an " +
+        "operator can evidence to an inspector, and 'we have an account' is not on " +
+        "that list — putting it there would be the coverage page overstating in the " +
+        "other direction, by counting a commercial step as a regulatory one.",
+    ],
     ["/api/v1/auth/logout", "As above."],
     ["/api/v1/auth/refresh", "As above."],
     ["/api/v1/auth/me", "As above."],
