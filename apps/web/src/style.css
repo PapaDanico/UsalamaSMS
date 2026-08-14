@@ -3605,3 +3605,55 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   color: var(--us-gold-text);
   background: rgb(var(--us-gold-rgb) / 0.10);
 }
+
+/* ============================================================
+   THE OPERATOR'S OWN WORDS — the tenant configuration form.
+
+   A label beside its input rather than above it, because these are
+   RENAMES: the left column is the fixed thing (the severity code, the
+   post) and the right is what this operator calls it. Stacked, the
+   pairing reads as ten unrelated fields; side by side it reads as a
+   translation table, which is what it is.
+
+   Stacks below 30rem all the same — a two-column form on a handset is
+   two columns of nothing.
+   ============================================================ */
+.cfg-group {
+  border: 0;
+  border-top: 1px solid var(--us-border);
+  margin: var(--us-space-6) 0 0;
+  padding: var(--us-space-4) 0 0;
+}
+
+.cfg-group legend {
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+  padding: 0;
+}
+
+.field--inline {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--us-space-3);
+  margin-top: var(--us-space-3);
+}
+
+/* The fixed side of the pair. Never an input, and it should not look
+   like one — this is the thing being renamed, not a thing to type in. */
+.field--inline > .field-label {
+  margin: 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-tertiary);
+  text-transform: capitalize;
+}
+
+@media (max-width: 30rem) {
+  .field--inline {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--us-space-1);
+  }
+}

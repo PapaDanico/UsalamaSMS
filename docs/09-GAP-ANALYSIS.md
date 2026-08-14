@@ -258,26 +258,49 @@ early. It becomes **BLOCKING** the moment more than a handful of
 operators are wanted, and it is named here so that transition is a
 decision rather than a surprise.
 
-### 4.3 · Per-tenant configuration · MATERIAL
+### 4.3 · Per-tenant configuration — CLOSED, 14 August 2026
 
-`Org` carries a name, a jurisdiction and an AOC number. Every operator
-therefore gets the same aerodromes, the same aircraft types, the same
-post names, the same review intervals.
+An operator now sets what it calls its posts, what its manual calls each
+point on the severity and likelihood scales, which strips and aircraft
+it actually operates, and its own default review cycle. Benchmarking
+confirmed this is table stakes: incumbents let an operator tailor the
+risk matrix and hazard categories without a vendor change order, and an
+effective matrix is organisation-specific by definition.
 
-**The line that matters is not how much to configure — it is what must
-never be configurable.** An operator may reasonably set its own
-aerodromes, aircraft, post titles, matrix labels and review intervals.
-It must **not** be able to configure reporting deadlines, the
-de-identification rule, the audit chain, or what the twelve elements
-mean. Those are law and framework, and a product that lets a tenant
-edit them has sold a compliance tool that cannot be relied on for
-compliance.
+**The question that mattered was not how much to configure. It was what
+must never be configurable**, and it is answered structurally.
 
-That line should be enforced structurally — configurable things in the
-tenant record, fixed things in the shared modules — and not left to
-whoever builds the settings screen.
+A label map is **keyed by the framework's own keys, and unknown keys are
+dropped**. That single decision makes the scales relabellable and not
+redefinable: an operator can call `A_CATASTROPHIC` whatever its manual
+calls it, and cannot add a sixth severity, reorder the five, or change
+what A × 5 scores. There is no representation in the configuration for
+anything else.
 
----
+The shape that would have been easy and wrong is storing the scale
+itself as rows. A tenant with four severities makes `tolerability()`
+index past the end of the matrix, and "what band is this" becomes a
+question about whose database is being read. The arithmetic is this
+product's central claim and it only holds if it is the same arithmetic
+everywhere.
+
+**Three gates hold the line rather than stating it.** No tenant field
+may be *named* after a reporting deadline, a tolerability band,
+de-identification, the audit chain or an element definition — checked
+over the interface and the Prisma model, because the line is crossed by
+a settings screen growing one more harmless field, not by anybody
+deciding to cross it. `risk.ts` may not read the configuration at all.
+And the allowed label keys must stay derived from the scales rather than
+retyped, since a second key list goes stale the day a scale changes.
+
+All three mutation-checked: a `morDeadlineHours` column, an import of
+the tenant type into `risk.ts`, and a normaliser that trusts submitted
+keys instead of the framework's.
+
+The operator's own lists are **added to the shipped ones, never
+replacing them** — an operator who adds one strip must not lose every
+other aerodrome from a reporter's dropdown, and the first symptom of
+that would be somebody unable to say where an occurrence happened.
 
 ## 5. Product and platform
 
@@ -390,11 +413,9 @@ Ordered by leverage, not by size.
 2. **A person registers the sender ID.** Unblocks alerting, which
    closes four computed-but-undelivered warnings, moves element 4.1
    toward BUILT, and fills the one row every incumbent has.
-3. **Per-tenant configuration, with the line enforced structurally.**
-   Preference in the tenant record; law in the shared modules.
-4. **Delete synchronisation**, before a second device per operator is
+3. **Delete synchronisation**, before a second device per operator is
    realistic.
-5. **A second jurisdiction**, when somebody can read the instrument.
+4. **A second jurisdiction**, when somebody can read the instrument.
 
 Items 1 and 2 are not engineering and are the two that unblock the
 most. That is the finding this analysis exists to surface: **the

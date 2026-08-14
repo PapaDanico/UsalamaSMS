@@ -135,7 +135,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
         org, users, reports, hazards, riskAssessments, policies, accountabilities,
         appointments, exercises, documents, findings, training, communications, auditLog,
         spis, spiPeriods, voluntaryScheme, changes, contacts, actions, transitions,
-        policyReads, documentReads,
+        policyReads, documentReads, config,
       ] = await Promise.all([
         prisma.org.findUnique({
           where: { id: req.auth!.org },
@@ -183,6 +183,12 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
         prisma.reportTransition.findMany({ where, orderBy: [{ at: "asc" }] }),
         prisma.policyAcknowledgement.findMany({ where, orderBy: [{ acknowledgedAt: "asc" }] }),
         prisma.documentAcknowledgement.findMany({ where, orderBy: [{ acknowledgedAt: "asc" }] }),
+        /* The operator's own vocabulary. A register exported without it
+           reads in the shipped words rather than the words the operator
+           actually uses, which is the copy an auditor would be handed
+           and would not recognise. `findMany` rather than `findUnique`
+           so the payload shape does not change with its presence. */
+        prisma.orgConfig.findMany({ where }),
       ]);
 
       /* Computed at the moment of export and shipped alongside the
@@ -280,6 +286,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
           transitions,
           policyReads,
           documentReads,
+          config,
           auditLog: chainEntries,
         });
     },

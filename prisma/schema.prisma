@@ -139,6 +139,7 @@ model Org {
   documentReads    DocumentAcknowledgement[]
   reportMoves      ReportTransition[]
   actions          CorrectiveAction[]
+  config           OrgConfig?
 }
 
 model User {
@@ -1158,4 +1159,54 @@ model SafetyCommunication {
   report      SafetyReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
 
   @@index([orgId, publishedOn])
+}
+
+/// What THIS operator calls things, and nothing else.
+///
+/// EVERY COLUMN HERE IS A PREFERENCE. The line between preference and
+/// law is argued in packages/shared/src/tenant.ts and enforced by a
+/// claims gate over this model's field names — because the way that
+/// line gets crossed is not somebody deciding to cross it, it is a
+/// settings screen growing one more field that seemed harmless.
+///
+/// NOTHING IN THIS MODEL IS A DEADLINE, A TOLERABILITY BAND, AN ELEMENT
+/// DEFINITION OR A DE-IDENTIFICATION RULE. Those come from the
+/// instrument, from Doc 9859, from Annex 19 and from L.N. 32's Third
+/// Schedule respectively, and an operator that could edit them would
+/// have bought a compliance tool that cannot be relied on for
+/// compliance.
+///
+/// THE LABEL MAPS ARE KEYED BY THE FRAMEWORK'S OWN KEYS and unknown
+/// keys are dropped on the way in. That is what makes the scales
+/// RELABELLABLE and not REDEFINABLE: an operator can call
+/// A_CATASTROPHIC whatever its manual calls it, and cannot add a sixth
+/// severity, reorder the five, or change what A x 5 scores. Storing the
+/// scale itself as rows would have been the easy shape and the wrong
+/// one — a tenant with four severities makes tolerability() index past
+/// the end, and "what band is this" becomes a question about whose
+/// database you are reading.
+model OrgConfig {
+  id    String @id @default(uuid())
+  orgId String @unique
+
+  // Renames only. Keys are Severity / Likelihood / post codes.
+  severityLabels   Json?
+  likelihoodLabels Json?
+  postTitles       Json?
+
+  // The operator's own estate, ADDED to what the product ships rather
+  // than replacing it — an operator who adds one strip must not lose
+  // every other aerodrome from a reporter's dropdown.
+  aerodromes    String[]
+  aircraftTypes String[]
+
+  // The operator's own default review cycle, in days.
+  reviewDefaultDays Int?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
 }

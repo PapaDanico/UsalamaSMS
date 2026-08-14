@@ -626,7 +626,13 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   {
     id: "1.2",
     state: "BUILT",
-    serverRoutes: ["/api/v1/sms/accountabilities"],
+    /* The configuration route sits here because an operator's own POST
+       TITLES are this element's vocabulary — an accountability matrix
+       that names posts the operator does not use is a matrix nobody
+       reads as theirs. It also carries the words on the risk scales,
+       which serve 2.2; declared once, on the element whose evidence it
+       most directly is. */
+    serverRoutes: ["/api/v1/sms/accountabilities", "/api/v1/config"],
     has:
       "An accountability matrix the operator authors — each post, what it answers for, " +
       "and the Annex 19 element it discharges — held by the organisation and readable " +

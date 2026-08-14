@@ -1251,6 +1251,115 @@ assert(
   );
 }
 
+/* ---------------- A TENANT CANNOT CONFIGURE THE LAW ----------------
+   An operator may set what it calls its posts, what its manual calls
+   each point on the risk scales, which strips it flies to and how long
+   its own review cycle is. It may NOT set the reporting deadlines, the
+   tolerability bands, the de-identification rule, the audit chain or
+   what the twelve Annex 19 elements mean. A product that lets a tenant
+   edit those has sold a compliance tool that cannot be relied on for
+   compliance.
+
+   THE LINE IS NOT CROSSED BY DECISION. Nobody sits down and adds a
+   configurable MOR deadline. It is crossed by a settings screen growing
+   one more field that seemed harmless — an "escalation hours", a "band
+   override for our operation", a "custom element wording" — each
+   individually arguable and collectively the end of the claim.
+
+   So the gate reads the field names. The tenant configuration, in the
+   shared module and in the Prisma model behind it, must contain no
+   field whose name belongs to the other side of the line. Names rather
+   than behaviour, deliberately: behaviour is what a reviewer checks and
+   a name is what a gate can, and the failure mode being guarded is
+   somebody adding a field in a hurry rather than somebody rewriting
+   tolerability().
+
+   AND THE ARITHMETIC MUST NOT READ THE CONFIGURATION AT ALL. risk.ts
+   computes the band on every read and is what makes two operators'
+   registers comparable to a regulator holding both. A tenant-aware
+   tolerability() would make "what band is this" a question about whose
+   database is being read.
+   --------------------------------------------------------------- */
+{
+  const tenantSrc = read('packages/shared/src/tenant.ts');
+  const schema = read('prisma/schema.prisma');
+  const riskSrc = read('packages/shared/src/risk.ts');
+
+  /* Words that name the other side of the line. Matched against FIELD
+     NAMES only — the prose in this module argues about deadlines and
+     bands constantly, and a gate that read the comments would fail on
+     the file explaining why it must not. */
+  const FORBIDDEN = [
+    'deadline', 'hours', 'tolerab', 'band', 'threshold', 'deident',
+    'anonym', 'chain', 'element', 'severityScale', 'likelihoodScale',
+    'matrix', 'jurisdiction', 'instrument',
+  ];
+
+  const iface = /export interface TenantConfig \{([\s\S]*?)\n\}/.exec(tenantSrc)?.[1] ?? '';
+  assert(
+    'the TenantConfig interface was located',
+    iface.length > 0,
+    'no `export interface TenantConfig` in tenant.ts — this gate has lost its subject (rule 11)'
+  );
+  /* Comments stripped before the names are read, for the reason the
+     print-attribution gate learned: a check satisfiable — or failable —
+     by prose about the thing is not checking the thing. */
+  const ifaceFields = [
+    ...iface.replace(/\/\*[\s\S]*?\*\//g, ' ').matchAll(/^\s*readonly (\w+)\??:/gm),
+  ].map((m) => m[1]);
+  assert(
+    'TenantConfig declares fields to check',
+    ifaceFields.length > 0,
+    'no readonly fields found on TenantConfig — the field detection is wrong, not the type'
+  );
+
+  const model = /model OrgConfig \{([\s\S]*?)\n\}/.exec(schema)?.[1] ?? '';
+  assert(
+    'the OrgConfig model was located',
+    model.length > 0,
+    'no `model OrgConfig` in prisma/schema.prisma — this gate has lost its subject (rule 11)'
+  );
+  const modelFields = [
+    ...model.replace(/^\s*\/\/.*$/gm, ' ').replace(/^\s*\/\/\/.*$/gm, ' ')
+      .matchAll(/^\s{2}(\w+)\s+\S/gm),
+  ].map((m) => m[1]);
+
+  const crossings = [...ifaceFields, ...modelFields].filter((f) =>
+    FORBIDDEN.some((w) => f.toLowerCase().includes(w.toLowerCase()))
+  );
+  assert(
+    'NO TENANT-CONFIGURABLE FIELD NAMES SOMETHING THAT IS NOT THE TENANT\'S TO DECIDE',
+    crossings.length === 0,
+    `${[...new Set(crossings)].join(', ')} — a tenant configuration field named after a ` +
+      'reporting deadline, a tolerability band, de-identification, the audit chain or an ' +
+      'element definition. Those come from the instrument, from Doc 9859, from L.N. 32 ' +
+      'and from Annex 19; an operator that can edit them has bought a compliance tool ' +
+      'that cannot be relied on for compliance'
+  );
+
+  /* The arithmetic stays tenant-blind. */
+  assert(
+    'THE RISK ARITHMETIC DOES NOT READ THE TENANT CONFIGURATION',
+    !/\btenant\b|TenantConfig|normaliseConfig|orgConfig/i.test(riskSrc),
+    'risk.ts reaches for the tenant configuration. The 5x5 and its bands are Doc 9859\'s, ' +
+      'computed on every read — a tenant-aware tolerability() makes "what band is this" a ' +
+      'question about whose database is being read, and two operators\' registers stop ' +
+      'being comparable to a regulator holding both'
+  );
+
+  /* And the labels can only ever be a RENAME: the maps are keyed by the
+     framework's own key sets, derived from the scales rather than
+     retyped, so there is no representation for a sixth severity. */
+  assert(
+    'the label maps are keyed by the framework\'s own keys, derived not retyped',
+    /SEVERITY_KEYS[\s\S]{0,120}SEVERITY_SCALE\.map/.test(tenantSrc) &&
+      /LIKELIHOOD_KEYS[\s\S]{0,120}LIKELIHOOD_SCALE\.map/.test(tenantSrc),
+    'the allowed label keys are no longer derived from the scales. A second hand-written ' +
+      'list of severity keys is a second list, and it goes stale the day a scale changes — ' +
+      'at which point a tenant can name a point the matrix does not have'
+  );
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);
