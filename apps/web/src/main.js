@@ -8,7 +8,8 @@
                    numbers rest on
      /report       the report form — the screen the product lives or
                    dies by, and the manifest's start_url
-     /triage       what is on this device and what has not been sent
+     /triage       the operator's queue, and what has not left this device
+     /picture      the aggregate position: reporting, register, indicators
      /account      sign in, so the queue can send
 
    and, lazily, the reference: /methodology (which replaced the route
@@ -294,7 +295,7 @@ router
   .register(
     '/triage',
     (el) => lazy(el, () => import('./tools/triage/index.js').then((m) => (o) => void m.render(o))),
-    { title: 'Reports on this device' }
+    { title: 'The reporting queue' }
   )
   // NOT a guard in front of the report form, deliberately. Filing must
   // never require a password — see the header of tools/login. This route
@@ -309,6 +310,14 @@ router
      Each carries its own failure message rather than a shared one,
      because "this screen could not be loaded" on a privacy notice and
      on the methodology are different problems for the reader. */
+  /* LAZY, and it must be. The risk picture reads every table the
+     product has and a reporter at a strip never opens it — it is the
+     screen a safety manager shows to somebody else. */
+  .register(
+    '/picture',
+    (el) => lazy(el, () => import('./tools/picture/index.js').then((m) => (o) => void m.render(o))),
+    { title: 'The risk picture' }
+  )
   .register(
     '/methodology',
     (el) => lazy(el, () => import('./tools/methodology/index.js').then((m) => (o) => m.render(o))),

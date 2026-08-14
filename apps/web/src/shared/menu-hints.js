@@ -63,7 +63,9 @@ export const MENU_HINTS = {
   '/account': 'Sign in so queued reports can reach the safety office',
 
   '/report': 'Three fields, thirty seconds, and it works with no signal',
-  '/triage': 'Everything filed on this handset, sent or not',
+  '/triage': "Everything the operator has filed, and what has not left this handset",
+
+  '/picture': 'Where the operator stands: reporting, register, indicators, in one page',
 
   '/toolkits/sra': "Doc 9859's five steps, from the hazard to a decision somebody signs",
   '/toolkits/register':

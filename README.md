@@ -115,11 +115,11 @@ npm run check          # prisma generate, typecheck, brand, claims, css, glyphs,
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:claims   # 68 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
-npm test               # 348 unit tests
+npm test               # 369 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
-npm run test:integration   # 170 checks against a real Postgres
+npm run test:integration   # 181 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
@@ -127,7 +127,7 @@ npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 64 checks, including filing a report with the network cut and
+— 65 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 

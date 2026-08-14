@@ -791,17 +791,23 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        gap in the element. */
     state: "BUILT",
 
-    serverRoutes: ["/api/v1/spi"],
+    serverRoutes: ["/api/v1/spi", "/api/v1/picture"],
     has:
       "Safety performance indicators with targets, and alert levels computed from " +
       "the operator's own baseline at one, two and three standard deviations, with " +
-      "the three crossing criteria evaluated per period.",
+      "the three crossing criteria evaluated per period. And an aggregate risk picture " +
+      "over all of it \u2014 reports filed, time from report to closure, the open queue, " +
+      "the register by band, indicators over an alert level, and which risks are owned " +
+      "below the authority their band requires \u2014 computed on every read, never stored.",
     missing:
       "Indicators fed from the reporting queue rather than typed in \u2014 the counts " +
       "are the operator's own, entered by hand, so an indicator can disagree with the " +
       "reports behind it until somebody reconciles them. Not part of this element's " +
-      "evidence, and real work all the same.",
-    href: "/toolkits/spi",
+      "evidence, and real work all the same. And the picture reports a report COUNT " +
+      "rather than Doc 9859's rate per 1,000 hours, because this product does not hold " +
+      "your flying hours; it says so on the page rather than dividing by days and " +
+      "calling the result a rate.",
+    href: "/picture",
   },
   {
     /* PARTIAL, not BUILT, and the distinction is the same one the

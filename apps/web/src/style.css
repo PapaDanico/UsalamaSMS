@@ -1356,6 +1356,153 @@ html { scroll-padding-top: var(--us-chrome); }
   color: var(--us-state-error);
 }
 
+/* =====================================================================
+   THE RISK PICTURE.
+
+   The only screen in this product an operator shows to somebody else.
+   Everything else is worked on; this is presented — so it is quieter
+   than the working screens rather than louder. A dashboard that reaches
+   for colour on every panel is one where nothing stands out, which is
+   the opposite of what a picture is for.
+
+   ONE ACCENT, IN ONE PLACE: the attention panel. Everything below it is
+   type, rule and space.
+   ===================================================================== */
+.picture-grid {
+  display: grid;
+  /* auto-fit rather than a fixed count: three figures on a desktop, one
+     per row at 390px, and no breakpoint to keep in step with the number
+     of figures. */
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--us-space-4);
+  margin: var(--us-space-4) 0;
+}
+
+.picture-figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-1);
+  padding: var(--us-space-4);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius);
+}
+
+.picture-figure__value {
+  font-family: var(--us-font-display);
+  font-size: 2.4rem;
+  font-weight: 600;
+  line-height: 1.1;
+  /* Digits in a row of figures must line up as the numbers change. */
+  font-variant-numeric: tabular-nums;
+}
+
+.picture-figure__label {
+  font-weight: 700;
+  font-size: var(--us-text-sm);
+}
+
+.picture-figure__note {
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+}
+
+.picture-note {
+  margin: var(--us-space-3) 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+  max-width: 62ch;
+}
+
+.picture-list {
+  margin: var(--us-space-3) 0;
+  padding-left: var(--us-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-3);
+  max-width: 68ch;
+}
+
+/* THE ONE PLACE THE ACCENT IS SPENT. It is a rule and a tint, not a
+   fill: the panel holds sentences, and body text on a saturated ground
+   is harder to read exactly when somebody is reading carefully. */
+.picture-attention {
+  margin: var(--us-space-5) 0;
+  padding: var(--us-space-4) var(--us-space-5);
+  border-left: 4px solid var(--us-teal);
+  background: var(--us-surface-2);
+  border-radius: 0 var(--us-radius) var(--us-radius) 0;
+}
+
+.picture-attention h2 {
+  margin-top: 0;
+  font-size: var(--us-text-lg);
+}
+
+.picture-bars {
+  list-style: none;
+  margin: var(--us-space-3) 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-2);
+  max-width: 40rem;
+}
+
+/* Label, track, number — in that order and on one line. The number is
+   LAST and always present: the bar makes the shape scannable, the
+   figure is the actual answer, and a bar without one cannot be read
+   aloud or quoted in a submission. */
+.picture-bar {
+  display: grid;
+  grid-template-columns: minmax(7rem, 12rem) 1fr auto;
+  align-items: center;
+  gap: var(--us-space-3);
+  font-size: var(--us-text-sm);
+}
+
+/* Wrapped rather than truncated. "Under investigation" clipped to
+   "Under investiga…" on a page somebody is reading out is worse than a
+   row that is two lines tall. */
+.picture-bar__label {
+  overflow-wrap: break-word;
+}
+
+.picture-bar__track {
+  display: block;
+  height: 0.6rem;
+  background: var(--us-surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.picture-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--us-teal);
+  border-radius: 999px;
+}
+
+.picture-bar__value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.5ch;
+  text-align: right;
+}
+
+@media (max-width: 30rem) {
+  /* At 390px a three-column grid gives the track about four
+     characters' width, which is a smear rather than a bar. Stacked, the
+     label and the number sit together and the track spans the card. */
+  .picture-bar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .picture-bar__track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
 .notice {
   padding: var(--us-space-4);
   border-radius: var(--us-radius-md);

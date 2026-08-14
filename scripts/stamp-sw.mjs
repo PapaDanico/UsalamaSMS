@@ -879,7 +879,53 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    The rule is unchanged: entry beginning to track total is the moment
    to take something out rather than buy more. */
-const BUDGET = { entry: 214 * 1024, js: 426 * 1024, css: 54 * 1024 };
+/* TOTAL 426 -> 436 KB and CSS 54 -> 56 KB, for the risk picture.
+   ENTRY MOVED, 213.5 -> 213.7, FOR THE FIRST TIME IN SEVEN RAISES —
+   and that is the part of this receipt worth reading.
+
+   MEASURED, as the last one was:
+
+     picture chunk        0 ->  8,384   a new lazily-loaded route
+     entry          218,600 -> 218,801  +201 bytes
+     css             53.6KB ->  55.4KB  +1.8 KB
+
+   WHAT THE 201 BYTES ACTUALLY ARE. Checked in the built entry chunk
+   rather than assumed: the string "The risk picture" twice — once as
+   the sitemap label the header and footer render from, once as the
+   route title. Neither picture.ts nor the screen is in entry; grepped
+   for, and absent. So the entry cost of a new destination is its NAME,
+   which is the floor and cannot be optimised away short of not having
+   the destination.
+
+   WHAT IT BUYS. The MAA aggregates what its reporting system brings in
+   into a risk picture and uses that to decide where to look next; RA
+   1210 requires risk decisions to be "recorded and communicated across
+   all relevant stakeholders", and a decision communicated one row at a
+   time has not been communicated. It is also the largest single gap
+   against SMS Pro, Q-Pulse, Centrik and iQSMS, all four of which lead
+   with a dashboard.
+
+   And it carries the one thing none of those four has: which risks are
+   owned BELOW the authority their band requires. Every incumbent shows
+   a register by band. None asks whether the name in the owner box is
+   senior enough to carry the row, because Doc 9859 does not ask it.
+
+   THE STOPPING CONDITION IS NOW IN SIGHT, and this is the receipt that
+   has to say so plainly rather than the one after it. Entry is 213.7 of
+   214: THREE HUNDRED BYTES. Six receipts have said "entry has not
+   moved" and used that to justify the raise; this one cannot, and the
+   rule those receipts wrote was that entry beginning to track total is
+   the moment to take something out rather than buy more.
+
+   So the next destination does not get added on these terms. Either
+   something comes out of entry first — the sitemap's labels are the
+   obvious candidate, since they are strings rendered into a menu that
+   is already lazily hinted — or the entry budget gets argued up on its
+   own merits, in its own receipt, with the reporter at the strip named
+   in the argument. Not folded into a raise for something else.
+
+   A dependency, a polyfill or a component library still buys nothing. */
+const BUDGET = { entry: 214 * 1024, js: 436 * 1024, css: 56 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
