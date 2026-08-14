@@ -392,11 +392,29 @@ assert(
   `README says ${brandStated}, the gate reports ${brandActual}`
 );
 
-/* Test count, from the test files themselves — DISCOVERED, not listed.
-   A hardcoded file list is a guard that stops covering the moment
-   someone adds a suite, and it would have missed tests/deident-corpus
-   entirely. `it.each` blocks are counted by their case arrays so the
-   number matches what vitest reports. */
+/* Test count, ASKED OF THE RUNNER rather than parsed out of the files.
+
+   THIS GATE AGREED WITH THE README AND BOTH WERE WRONG BY SIX. It used
+   to read the sources: count `it(` lines, then find each `it.each(NAME)`
+   and count the entries of the named array by looking for lines that
+   start with `{`, `"` or `'`. That is a re-implementation of vitest's
+   collection, and a re-implementation drifts — an entry wrapped
+   differently, an array whose closing bracket does not sit on its own
+   line, a `describe.each`, and the count is quietly short. It read 431
+   while the suite ran 437, and nothing could notice, because the number
+   the gate compared the README against was produced by the same broken
+   parser. A check whose two sides come from one flawed source cannot
+   fail; that is the failure mode this repository treats as worse than
+   having no check.
+
+   `vitest list` collects the suite exactly as a run would and prints one
+   line per case. It is the runner's own answer to the question the
+   README is making a claim about, which is the same discipline the
+   brand gate uses: execute it, read the number it reports about itself,
+   never count the thing yourself.
+
+   The file discovery stays as an assertion in its own right — it is
+   what makes "no tests at all" fail loudly instead of passing as zero. */
 const testFiles = readdirSync(resolve(ROOT, 'tests')).filter((f) => f.endsWith('.test.ts'));
 assert(
   'test files were discovered',
@@ -404,26 +422,21 @@ assert(
   'no *.test.ts found under tests/ — this gate asserts a count over them'
 );
 
-const testCount = testFiles
-  .map((f) => {
-    const src = read(`tests/${f}`);
-    // Plain `it(` / `it.only(` cases.
-    let n = (src.match(/^\s*it(?:\.only)?\(/gm) ?? []).length;
-    // `it.each(ARRAY)` expands to one case per element. Count the entries
-    // of the named array rather than guessing.
-    for (const m of src.matchAll(/it\.each\((?:\.\.\.)?([A-Z_][A-Z0-9_]*)\)/g)) {
-      const arr = new RegExp(`const ${m[1]}[^=]*=\\s*\\[([\\s\\S]*?)\\n\\];`).exec(src);
-      if (arr) n += (arr[1].match(/^\s*[{"']/gm) ?? []).length;
-    }
-    return n;
-  })
-  .reduce((a, b) => a + b, 0);
+const listed = spawnSync('npx', ['vitest', 'list'], { encoding: 'utf8', cwd: ROOT });
+const testCount = (listed.stdout ?? '')
+  .split('\n')
+  .filter((l) => /^tests\/.+ > /.test(l)).length;
+assert(
+  'the runner collected the suite and reported its cases',
+  testCount > 0,
+  '`vitest list` produced no cases — this gate cannot count what it cannot collect (rule 11)'
+);
 
 const testsStated = statedCount(/(\d+) unit tests/, 'test count');
 assert(
-  'README test count matches the test files',
+  'README test count matches what the runner collects',
   testsStated === testCount,
-  `README says ${testsStated}, the files define ${testCount}`
+  `README says ${testsStated}, the runner collects ${testCount}`
 );
 
 /* Smoke checks, counted from the suite rather than trusted. */
