@@ -25,6 +25,10 @@ import { html, raw } from '../../shared/html.js';
 import { isSignedIn, authFetch } from '../../shared/session.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
+  requiredHolder,
+  meetsRequirement
+} from '../../../../../packages/shared/src/holder.ts';
+import {
   tolerability,
   riskScore,
   SEVERITY_SCALE,
@@ -51,6 +55,15 @@ const options = (scale) => scale.map((p) => ({ value: p.key, label: `${p.code} �
 const toOptions = (list) => list.map((o) => ({ value: o.code, label: o.label }));
 
 const OTHER = '__other__';
+
+/* The register stores the owner's LABEL, because that is what a printed
+   register has to read as. RA 1210's escalation needs the post CODE, so
+   the label is mapped back here rather than storing both — two fields
+   holding one fact is how they come to disagree. A label that is not a
+   known post (the free-text escape) maps to nothing, and
+   meetsRequirement() reports that as unknown rather than as too
+   junior. */
+const POST_BY_LABEL = new Map(SAFETY_ROLES.map((r) => [r.label, r.code]));
 
 /* A date computed from an interval, which is what the dropdown means.
    Local calendar parts, not toISOString: a review date is a day in the
@@ -145,6 +158,34 @@ function Row(entry) {
 
     ${entry.controls
       ? html`<p class="cov__missing"><strong>Controls:</strong> ${entry.controls}</p>`
+      : ''}
+
+    ${shown
+      ? html`<p class="reg-entry__escalation">
+          ${(() => {
+            /* RA 1210's escalation, stated where the owner is read.
+               Doc 9859 says what a risk IS and almost nothing about who
+               may carry it, and in a small operator that silence
+               resolves the wrong way: whoever assessed the hazard puts
+               their own name in the box, and the amber risk ends up
+               owned by the person least able to spend money on it.
+
+               STATED, NOT ENFORCED. The owner field has a free-text
+               escape because a small operator's real titles are not
+               this product's enum — "the Director" may genuinely be the
+               accountable executive — so an unrecognised post is
+               reported as unknown and the reader decides. Refusing
+               would make the product argue with an operator about its
+               own org chart. */
+            const need = requiredHolder(shown.t);
+            const verdict = meetsRequirement(shown.t, POST_BY_LABEL.get(entry.owner));
+            if (verdict === 'meets') return '';
+            return verdict === 'below'
+              ? html`<strong>Owned below the level this band asks for.</strong>
+                  ${need.because}`
+              : html`<span>${need.because}</span>`;
+          })()}
+        </p>`
       : ''}
 
     <p class="reg-entry__meta">

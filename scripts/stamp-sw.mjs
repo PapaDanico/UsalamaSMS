@@ -792,7 +792,46 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    The stopping rule itself is unchanged and this still satisfies it: a
    screen earns a raise. A dependency, a polyfill or a component library
    still buys nothing. */
-const BUDGET = { entry: 214 * 1024, js: 420 * 1024, css: 54 * 1024 };
+/* TOTAL 420 -> 422 KB, for the Duty Holder escalation. ENTRY UNMOVED
+   at 213.5 KB.
+
+   THE SIXTH RAISE, AND THE LAST RECEIPT SAID IT HAD TO BE ARGUED FOR
+   RATHER THAN ASSUMED. So, the argument.
+
+   WHAT IT BUYS. Doc 9859 tells an operator what a risk IS and is close
+   to silent on who may carry it. The UK Military Aviation Authority's
+   RA 1210 is not silent: high and medium risks are managed by the
+   Operating Duty Holder, low risks by the Delivery Duty Holder, and the
+   ownership and referral protocol is written into the safety management
+   system rather than left to custom.
+
+   In a three-aircraft operator that silence resolves the wrong way by
+   default. Whoever assessed the hazard writes their own name in the
+   owner box, an amber risk ends up owned by the person least able to
+   spend money on it, and the register reads as managed while nothing
+   about it is. An ALARP judgement is a judgement about cost against
+   safety; leaving it with a post that cannot authorise the spending is
+   asking somebody to certify that further reduction is not reasonably
+   practicable when they could not have tried.
+
+   WHY IT IS WORTH A KILOBYTE WHEN THE LAST FIVE RAISES WERE ALSO WORTH
+   IT. Because this one is not a screen or a table — it is a rule the
+   incumbents do not apply to this segment, taken from a regulator that
+   does, and it costs 0.9 KB on a lazily-loaded toolkit. If a raise has
+   to be argued rather than assumed, "borrowed from a live regulatory
+   article, mutation-checked, and invisible to the reporter at a strip"
+   is the argument.
+
+   THE STOPPING CONDITION IS STILL NOT MET, and it is worth restating
+   precisely because six raises invites the assumption that it is:
+   ENTRY has not moved. It is 213.5 KB, where it was five raises ago. A
+   reporter downloads what they downloaded this morning; every kilobyte
+   since has landed on screens only a safety manager opens.
+
+   The rule remains: entry beginning to track total is the moment to
+   take something out rather than buy more. A dependency, a polyfill or
+   a component library still buys nothing. */
+const BUDGET = { entry: 214 * 1024, js: 422 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
