@@ -136,6 +136,7 @@ model Org {
   communications   SafetyCommunication[]
   changes          ChangeAssessment[]
   documentReads    DocumentAcknowledgement[]
+  reportMoves      ReportTransition[]
 }
 
 model User {
@@ -166,6 +167,7 @@ model User {
   communications    SafetyCommunication[]     @relation("communicator")
   changesApproved   ChangeAssessment[]        @relation("changeApprover")
   documentReads     DocumentAcknowledgement[]
+  reportMoves       ReportTransition[]
 
   @@index([orgId, role])
 }
@@ -244,10 +246,11 @@ model SafetyReport {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  org      Org                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  reporter User?                 @relation(fields: [reporterId], references: [id], onDelete: SetNull)
-  feedback SafetyCommunication[]
-  hazards  Hazard[]
+  org         Org                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  reporter    User?                 @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  feedback    SafetyCommunication[]
+  hazards     Hazard[]
+  transitions ReportTransition[]
 
   // DELIBERATELY NOT A COLUMN: regulatorDeadline.
   //
@@ -264,6 +267,60 @@ model SafetyReport {
   @@index([orgId, type, occurredAt])
   // The aggregation this taxonomy exists to make possible.
   @@index([orgId, location, phase])
+}
+
+/// What happened to a report, one row per move.
+///
+/// THE GAP THIS CLOSES. ReportState has five values and four of them
+/// were unreachable: nothing wrote the column. Every report ever filed
+/// was SUBMITTED, permanently — a queue that only grows, which element
+/// 2.1's own evidence line ("a report rate that is trending") cannot be
+/// satisfied by.
+///
+/// THE HISTORY IS THE RECORD, not a closedAt column. A column answers
+/// "when"; an inspector asks by whom, from what, and what was done. It
+/// also makes time-to-closure derivable rather than stored — and
+/// derivable from the FIRST closure specifically, which a column
+/// overwritten on reopening could not answer at all.
+///
+/// SafetyReport.state IS STILL STORED, and that is not a charter rule 6
+/// violation: the state is not derived from anything, it IS the fact,
+/// and the triage queue's @@index([orgId, state, createdAt]) is what
+/// keeps that screen from re-deriving five states per row on every
+/// render. The route writes both inside one transaction and
+/// tests/integration assert they agree.
+///
+/// userId IS RESTRICT, like AuditLog and for the same reason: who moved
+/// a report is part of the record, and an offboarded person having
+/// triaged it remains true.
+///
+/// ROW SECURITY ON, NO POLICY, NOT FORCED.
+model ReportTransition {
+  id       String @id @default(uuid())
+  orgId    String
+  reportId String
+
+  fromState ReportState
+  toState   ReportState
+
+  /// Required by the state machine for a closure or a reopening, and
+  /// optional otherwise — see disposition.ts. Nullable here rather than
+  /// defaulted to "", because "no note was required" and "a note was
+  /// required and somebody typed nothing" are different facts and the
+  /// second one must not be reachable.
+  note String? @db.Text
+
+  byUserId String
+  at       DateTime @default(now())
+
+  org    Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  report SafetyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  by     User         @relation(fields: [byUserId], references: [id], onDelete: Restrict)
+
+  /// The order the history is read in, and the index the closure
+  /// indicator aggregates over.
+  @@index([orgId, reportId, at])
+  @@index([orgId, toState, at])
 }
 
 model Hazard {

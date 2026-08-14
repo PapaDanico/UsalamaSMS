@@ -77,13 +77,26 @@ is the REST API base, not a connection string, so both `core.ts` and
 the function check the scheme rather than trusting the name. See
 [`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md), which also carries the
 one-time Prisma baseline the hosted schema needs. The triage queue reads
-this device rather than the organisation, and there is no investigation
-or CAPA workflow. `/toolkits/spi` computes indicators and alert levels
-is not yet fed from the reporting queue, so the measurement exists and
-the monitoring that acts on it does not. The series itself is now held
-for the operator rather than on one device, which is what regulation
-9(5) of L.N. 32/2026 asks for. See
-`docs/02-STRATEGY.md`.
+this device rather than the organisation.
+
+**A report can now be dispositioned**, which it could not before: the
+five `ReportState` values had been in the schema since the first
+migration with four of them unreachable, because no route wrote the
+column. Every report ever filed was `SUBMITTED`, permanently. It is now
+triaged, investigated, closed with a statement of what was done, or
+reopened with a reason — each move recorded against the person who made
+it, at the authority the permission matrix already granted. Time from
+report to closure is computed from that history, and from the **first**
+closure, so reopening a report does not make an operator's own numbers
+look worse. What is still absent is the CAPA loop proper: an action
+tracked as its own object with an owner and a due date, rather than as
+a note on the closure.
+
+`/toolkits/spi` computes indicators and alert levels but is not yet fed
+from the reporting queue, so the measurement exists and the monitoring
+that acts on it does not. The series itself is now held for the
+operator rather than on one device, which is what regulation 9(5) of
+L.N. 32/2026 asks for. See `docs/02-STRATEGY.md`.
 
 ```bash
 npm install
@@ -91,11 +104,11 @@ npm run check          # prisma generate, typecheck, brand, claims, css, glyphs,
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:claims   # 68 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
-npm test               # 331 unit tests
+npm test               # 348 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
-npm run test:integration   # 156 checks against a real Postgres
+npm run test:integration   # 167 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify

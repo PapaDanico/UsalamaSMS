@@ -703,18 +703,27 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        asks the opposite question — whether the API registers anything
        no element admits to. See check-claims.mjs. */
     state: "BUILT",
-    serverRoutes: ["/api/v1/sync/batch", "/api/v1/sms/voluntary"],
+    serverRoutes: [
+      "/api/v1/sync/batch",
+      "/api/v1/sms/voluntary",
+      "/api/v1/reports/:id/disposition",
+    ],
     has:
       "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +
-      "hash-chained record, with the regulatory window computed per jurisdiction. And " +
-      "the operator's own answers to the six things regulation 13(3) of L.N. 32/2026 " +
-      "requires a voluntary reporting system to define, held for the organisation with " +
-      "the unanswered ones named rather than scored.",
+      "hash-chained record, with the regulatory window computed per jurisdiction. The " +
+      "operator's own answers to the six things regulation 13(3) of L.N. 32/2026 requires " +
+      "a voluntary reporting system to define, with the unanswered ones named rather than " +
+      "scored. And a disposition: every report is triaged, investigated, closed with a " +
+      "statement of what was done, or reopened with a reason — each move recorded against " +
+      "the person who made it, so time from report to closure is computed from the record " +
+      "rather than typed.",
     missing:
       "Proactive and predictive identification — surveys, flight data, and the analysis " +
-      "Doc 10159 asks for. And a disposition: a report arrives, and nothing in the " +
-      "product moves it to triaged, investigated or closed, so the queue records what " +
-      "was filed rather than what was done about it.",
+      "Doc 10159 asks for. Disposition is a connected act: a report can be FILED from a " +
+      "strip with no signal, but not triaged or closed from one. And the disposition is " +
+      "reachable through the API before it is reachable on the triage screen — the record " +
+      "is there and the buttons are not, which is stated here rather than left to be " +
+      "discovered.",
     href: "/report",
   },
   {
