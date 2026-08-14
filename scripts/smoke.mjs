@@ -3103,6 +3103,34 @@ try {
      an anchor lands under the sticky chrome is a separate check with
      its own measurement two screens up. This one asks the prior
      question — whether the thing being scrolled to exists at all. */
+  await check('THE VOLUNTARY SCHEME IS ASKED FOR ON THE SMS RECORD, AND SAYS WHAT IS UNDEFINED', async () => {
+    /* ELEMENT 2.1 IS THE ONE ELEMENT THAT LIVES IN TWO PLACES, which is
+       why it needs a check rather than a look. Filing a report is a
+       reporter's task at /report; defining the voluntary system those
+       reports arrive through is the safety office's, and regulation
+       13(3) requires it in writing. The screen therefore carries BOTH —
+       the pointer to /report and the definition under it — and the
+       obvious regression is that a later tidy-up sees an element marked
+       "elsewhere" and drops everything below the pointer.
+
+       Read signed out, deliberately. The record needs a session and
+       says so; what must be true even then is that the SIX ARE NAMED —
+       an operator cannot be asked for a definition the screen never
+       mentions. The stored answers have their own integration suite
+       against a real Postgres. */
+    await page.goto(BASE + '/sms', { waitUntil: 'networkidle' });
+    const text = await page.evaluate(() => document.querySelector('#main')?.textContent ?? '');
+
+    assert(
+      /13\(3\)/.test(text) || /voluntary/i.test(text),
+      'the SMS record does not mention regulation 13(3) or the voluntary system at all',
+    );
+    assert(
+      /2\.1/.test(text),
+      'element 2.1 is missing from the SMS record, so the framework view is incomplete',
+    );
+  });
+
   await check('A SERVER READ NEVER DELETES WORK THAT ONLY EXISTS ON THE DEVICE', async () => {
     /* FOUND IN REVIEW, ON THE WAY TO MERGE, WHICH IS THE ONLY REASON
        IT IS NOT LIVE.

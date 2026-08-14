@@ -27,6 +27,11 @@ import { isSignedIn, getSession, authFetch } from '../../shared/session.js';
 import { SMS_COMPONENTS } from '../../../../../packages/shared/src/maturity.ts';
 import { can } from '../../../../../packages/shared/src/index.ts';
 import { currencyOf, currencySummary } from '../../../../../packages/shared/src/currency.ts';
+import {
+  VOLUNTARY_REQUIREMENTS,
+  VOLUNTARY_PROTECTION,
+  unanswered
+} from '../../../../../packages/shared/src/voluntary.ts';
 
 /* Which element each surface belongs to, so the screen is assembled
    from the framework rather than from a list somebody typed in this
@@ -483,6 +488,97 @@ export async function render(outlet) {
   const state = {};
   let people = [];
 
+  /* =====================================================================
+     REGULATION 13(3), where an operator writes its own six answers.
+
+     WHY THIS IS SEVEN TEXTAREAS AND NOT A WIZARD. The six are not
+     sequential and are rarely answered in one sitting — an operator
+     writes the objective today and the processing route after they have
+     agreed it with a manager. The route accepts partial writes for the
+     same reason, and every field posts what it holds so a save never
+     depends on the others being finished.
+
+     WHAT IT REFUSES TO DO IS SCORE. unanswered() returns which are
+     still undefined, and the heading says how many rather than "4 of 6
+     complete". Regulation 13(3) is not a score: an operator that has
+     not defined who may report has not partly defined it.
+     ===================================================================== */
+  const schemeBlock = () => {
+    const held = state['/api/v1/sms/voluntary'];
+    if (held?.error) {
+      return html`<p class="notice notice--error">
+        ${held.error === 'forbidden'
+          ? 'Your role does not include reading the voluntary reporting scheme.'
+          : 'The voluntary reporting scheme could not be read. That is not the same as it being undefined.'}
+      </p>`;
+    }
+    const scheme = held?.scheme ?? {};
+    const FIELD = {
+      '13(3)(a)': 'objective',
+      '13(3)(b)': 'scope',
+      '13(3)(c)': 'whoMayReport',
+      '13(3)(d)': 'whenToReport',
+      '13(3)(e)': 'howProcessed',
+      '13(3)(f)': 'contactPost'
+    };
+    const answers = Object.fromEntries(
+      Object.entries(FIELD).map(([cite, key]) => [cite, scheme[key] ?? ''])
+    );
+    const left = unanswered(answers);
+    const editable = allow('policy.draft');
+
+    return html`<div class="sms-scheme">
+      <p class="cov__missing">
+        <strong>Regulation 13(3)</strong> requires this operator's voluntary reporting
+        system to define six things. They are yours to state, not ours to supply.
+      </p>
+      <p class="note">
+        <b>${VOLUNTARY_PROTECTION.cite}</b> ${VOLUNTARY_PROTECTION.text}
+      </p>
+      <p class="rec__meta">
+        <span
+          >${left.length
+            ? `${left.length} of ${VOLUNTARY_REQUIREMENTS.length} still undefined`
+            : 'All six defined'}</span
+        >
+        ${left.length
+          ? html`<span>${left.map((r) => r.cite).join(', ')}</span>`
+          : ''}
+      </p>
+
+      ${editable
+        ? html`<details class="sms-add no-print">
+            <summary>Define the voluntary reporting system</summary>
+            <form id="scheme-form" novalidate>
+              ${VOLUNTARY_REQUIREMENTS.map(
+                (r) => html`<label class="field">
+                  <span class="field-label">${r.cite} — ${r.requirement}</span>
+                  <span class="field-note">${r.question}</span>
+                  <textarea class="input-field" name="${FIELD[r.cite]}" rows="2">${
+                    scheme[FIELD[r.cite]] ?? ''
+                  }</textarea>
+                </label>`
+              )}
+              <label class="field">
+                <span class="field-label">${VOLUNTARY_PROTECTION.cite} — how protection is afforded</span>
+                <span class="field-note"
+                  >How is the system non-punitive in practice, and what protects a
+                  source who uses it?</span
+                >
+                <textarea class="input-field" name="protection" rows="2">${
+                  scheme.protection ?? ''
+                }</textarea>
+              </label>
+              <button type="submit" class="btn btn-primary btn-sm">Save the definition</button>
+              <p class="field-error" data-err="scheme" role="status" aria-live="polite"></p>
+            </form>
+          </details>`
+        : html`<p class="rec__meta no-print">
+            <span>Your role can read this definition and not write it.</span>
+          </p>`}
+    </div>`;
+  };
+
   const load = async () => {
     const endpoints = [...new Set(Object.values(SURFACES).map((s) => s.endpoint))];
     await Promise.all(
@@ -502,6 +598,19 @@ export async function render(outlet) {
         }
       })
     );
+
+    /* The voluntary scheme, fetched with the rest rather than after
+       them. It is a SINGLETON, not a collection, so it sits outside the
+       SURFACES map and its own request would otherwise be a second
+       round trip on a handset that may be paying for it. */
+    try {
+      const res = await authFetch('/api/v1/sms/voluntary');
+      state['/api/v1/sms/voluntary'] = res.ok
+        ? await res.json()
+        : { error: res.status === 403 ? 'forbidden' : 'unavailable' };
+    } catch {
+      state['/api/v1/sms/voluntary'] = { error: 'unreachable' };
+    }
     /* Read out of what was just loaded rather than fetched again — the
        accountabilities endpoint is already in `state`, and asking for
        it twice is a second round trip on a handset that may be paying
@@ -547,6 +656,14 @@ export async function render(outlet) {
           const surface = SURFACES[element.id];
           if (!surface) {
             const other = ELSEWHERE[element.id];
+            /* 2.1 IS BOTH, and that is the honest answer rather than a
+               structural compromise. FILING a report is a reporter's
+               task and lives on /report; DEFINING the voluntary system
+               that reports arrive through is the safety office's, and
+               regulation 13(3) requires it in writing. One element, two
+               different people, two different screens — so the pointer
+               stays and the definition sits under it. */
+            const scheme = element.id === '2.1' ? schemeBlock() : '';
             return html`<article class="card sms-el" id="element-${element.id}">
               <div class="cov__head">
                 <h3><span class="mat-element__id">${element.id}</span> ${element.name}</h3>
@@ -554,6 +671,7 @@ export async function render(outlet) {
               </div>
               <p class="cov__has">${other?.label ?? 'Held on another screen.'}
                 ${other ? html` <a href="${other.href}">Open it</a>.` : ''}</p>
+              ${scheme}
             </article>`;
           }
           const r = rowsFor(element.id);
@@ -598,6 +716,51 @@ export async function render(outlet) {
 
   body.addEventListener('submit', async (event) => {
     const form = event.target;
+
+    /* THE VOLUNTARY SCHEME, handled before the collection forms because
+       it is not one. It has no data-post element id — there is one
+       scheme per operator, not one per element — and every field posts
+       what it holds, including the empty ones, so clearing a definition
+       is possible and a save never waits on the other six being
+       finished. */
+    if (form?.id === 'scheme-form') {
+      event.preventDefault();
+      const err = body.querySelector('[data-err="scheme"]');
+      const payload = {};
+      for (const el of form.querySelectorAll('textarea[name]')) {
+        payload[el.name] = el.value.trim();
+      }
+      if (!Object.values(payload).some((v) => v)) {
+        if (err) err.textContent = 'Nothing to save yet — define at least one of them.';
+        return;
+      }
+      try {
+        const res = await authFetch('/api/v1/sms/voluntary', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          if (err) {
+            err.textContent =
+              res.status === 403
+                ? 'Your role cannot write this definition.'
+                : 'That was not accepted. Check the fields and try again.';
+          }
+          return;
+        }
+        if (err) err.textContent = '';
+        await load();
+        repaint();
+      } catch {
+        if (err) {
+          err.textContent =
+            'No connection — the definition was not saved. It is not on this device either.';
+        }
+      }
+      return;
+    }
+
     const elementId = form?.dataset?.post;
     if (!elementId) return;
     event.preventDefault();
