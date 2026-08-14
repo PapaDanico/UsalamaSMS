@@ -56,6 +56,8 @@ import {
   CICTT_CAVEAT
 } from '../../../../../packages/shared/src/cictt.ts';
 import { syncBadge, StatusBadge } from '../../components/Status.js';
+import { HandoffButton, wireHandoff } from '../../components/Handoff.js';
+import { deadlinesHandoff } from '../../../../../packages/shared/src/handoff.ts';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
   REPORT_TYPES, SYNC_STATES, AERODROMES, FLIGHT_PHASES,
@@ -243,6 +245,48 @@ export async function render(outlet) {
           </p>`
         : ''}
 
+      <!-- THE CLOCK, HANDED TO A CHANNEL THIS PRODUCT DOES NOT OWN.
+
+           A reporting deadline is computed on this screen and reaches
+           nobody who has not opened it. The real answer is SMS and it is
+           blocked on credentials; this is the part that needs none — the
+           product writes the sentence and the safety manager sends it
+           from whatever they already have open, which here is WhatsApp.
+
+           IT IS NOT ALERTING AND MUST NOT READ AS IT. The copy says
+           "send" rather than "notify", because somebody who believes
+           they are being alerted stops looking at the screen — and this
+           only ever reaches a person who is already on it.
+
+           COUNTS ONLY. The message carries how many and how soon. Never
+           a title, never a name: a WhatsApp message is forwarded,
+           backed up and read by people no permission matrix has heard
+           of, and the title of a fatigue report is the sentence that
+           identifies its author at a six-aircraft operator. The
+           composer has no parameter that could carry one. -->
+      ${(() => {
+        const clocked = rows.filter((r) => r.deadline?.status);
+        const overdue = clocked.filter((r) => r.deadline.status === 'OVERDUE').length;
+        const soon = clocked.filter(
+          (r) => r.deadline.status === 'DUE_SOON' || r.deadline.status === 'WITHOUT_DELAY'
+        ).length;
+        if (!overdue && !soon) return '';
+        return html`<div class="notice notice--handoff" data-state="${overdue ? 'overdue' : 'soon'}">
+          <p>
+            ${overdue
+              ? html`<strong>${overdue} past the reporting deadline</strong>${soon
+                  ? html`, ${soon} approaching`
+                  : ''}.`
+              : html`<strong>${soon} approaching the reporting deadline</strong>.`}
+          </p>
+          ${HandoffButton(
+            deadlinesHandoff({ count: soon + overdue, overdue }),
+            'Send this to somebody'
+          )}
+          <p class="handoff__said"></p>
+        </div>`;
+      })()}
+
       <!-- COLLAPSED BY DEFAULT. Three stacked dropdowns are a full
            handset screen, and they were pushing every report below the
            fold — on the one screen whose job is to show reports. The
@@ -337,6 +381,8 @@ const bound = new WeakSet();
 function bindOnce(outlet) {
   if (bound.has(outlet)) return;
   bound.add(outlet);
+
+  wireHandoff(outlet);
 
   outlet.addEventListener('change', (event) => {
     const name = event.target?.name;

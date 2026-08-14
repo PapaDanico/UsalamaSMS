@@ -122,6 +122,36 @@ credential stays live.
 before a rotation still mints access tokens after it, so a rotation
 that leaves one alive has ended nothing.
 
+## Regulatory research: WebSearch, not WebFetch
+
+**Use `WebSearch`. `WebFetch` cannot reach the sources this product is
+built from.** Every primary regulatory host tried from this environment
+returns 403 at the egress proxy — not a 404, not a redirect, a denial
+before the request leaves. Confirmed against:
+
+`icao.int` · `faa.gov` · `easa.europa.eu` · `casa.gov.au` ·
+`intlaviationstandards.org` · `ntsb.gov` · `enac.gov.it` ·
+`cast-safety.org` · `ncaa.gov.ng` · `redifly.com` · `mycs.swiss` ·
+`aerosupport360.com`
+
+— and against **`usalamasms.com` itself**, so a deploy cannot be
+confirmed by fetching the live site either; read the Netlify deploy
+state instead.
+
+That is an organisation egress policy, not a broken tool and not a
+transient failure. **Do not retry it and do not route around it** —
+no alternate mirror, no text-extraction proxy, no `curl` through a
+third party. Report the blocked host and move on.
+
+`WebSearch` works and returns enough of these documents to quote and
+cite. What it returns is a search index's rendering of a source, not
+the source, which matters for exactly one thing in this repository:
+`CICTT_VERIFIED_AGAINST_PRIMARY` in `packages/shared/src/cictt.ts` is
+`false` for this reason, and it stays false until somebody reads the
+primary instrument. A second jurisdiction is blocked on the same
+sentence — a deadline table nobody has read the instrument for is the
+one kind of wrong this product cannot ship.
+
 ## Secrets
 
 No secret appears in this repository, ever. `.env.example` carries
