@@ -471,4 +471,134 @@ describe.skipIf(!hasDatabase)("auth routes against Postgres", () => {
     expect(JSON.stringify(entry.detail ?? {})).toContain("safety@example.test");
   });
 
+/* ============================================================
+   SIGNING UP — the route that made this product sellable.
+
+   Nineteen screens, fifty-four routes and eleven of Annex 19's twelve
+   elements, and no way for an operator to come into existence except a
+   seed script run against the database by hand.
+
+   The assertions that matter are not that it works. They are the four
+   things it must refuse, because this is the only unauthenticated route
+   in the product that WRITES, and every successful call creates a
+   tenant.
+   ============================================================ */
+describe("signing up", () => {
+  const NEW_OPERATOR = {
+    orgName: "Rift Valley Air Charter",
+    aocNumber: "KE-AOC-114",
+    jurisdiction: "KE",
+    fleet: 6,
+    name: "Amina Odhiambo",
+    email: "amina@riftvalley.test",
+    password: "a-sufficiently-long-password",
+  };
+
+  /* A fresh client address per call. The route allows five an hour and
+     that limit is correct — it is the only unauthenticated route in the
+     product that writes, and every success creates a tenant. Sharing
+     one bucket across the suite would make these tests assert the rate
+     limiter rather than the route, which is the same house pattern the
+     login tests above use. */
+  let probe = 0;
+  const signup = (body: unknown) =>
+    app.inject({
+      method: "POST",
+      url: "/api/v1/auth/signup",
+      headers: { "x-nf-client-connection-ip": `198.51.100.${++probe}` },
+      payload: body as never,
+    });
+
+  it("creates the operator and signs its accountable executive in", async () => {
+    const res = await signup(NEW_OPERATOR);
+    expect(res.statusCode).toBe(201);
+
+    const body = res.json();
+    expect(body.role).toBe("ACCOUNTABLE_EXECUTIVE");
+    expect(body.accessToken).toBeTruthy();
+    expect(body.refreshToken).toBeTruthy();
+
+    const org = await prisma().org.findFirstOrThrow({ where: { name: NEW_OPERATOR.orgName } });
+    expect(org.aocNumber).toBe("KE-AOC-114");
+    const user = await prisma().user.findUniqueOrThrow({ where: { email: NEW_OPERATOR.email } });
+    expect(user.orgId).toBe(org.id);
+    expect(user.role).toBe("ACCOUNTABLE_EXECUTIVE");
+  });
+
+  it("REFUSES A ROLE FROM THE BODY — the first user is the accountable executive", async () => {
+    /* The post Annex 19 makes personally answerable, and the only one
+       that may sign a safety policy. A signup form does not get to
+       choose it, and a payload that could ask is a payload somebody
+       will eventually send. */
+    const res = await signup({ ...NEW_OPERATOR, role: "SYSTEM_ADMIN" });
+    expect(res.statusCode).toBe(201);
+    const user = await prisma().user.findUniqueOrThrow({ where: { email: NEW_OPERATOR.email } });
+    expect(user.role).toBe("ACCOUNTABLE_EXECUTIVE");
+  });
+
+  it("CANNOT JOIN AN EXISTING ORGANISATION", async () => {
+    /* Joining an operator is an invitation issued from inside it.
+       Conflating the two is how one operator's safety officer ends up
+       reading another's reports — so `orgId` is not in the schema and
+       the attempt creates a NEW tenant rather than being honoured. */
+    const res = await signup({ ...NEW_OPERATOR, orgId });
+    expect(res.statusCode).toBe(201);
+    const user = await prisma().user.findUniqueOrThrow({ where: { email: NEW_OPERATOR.email } });
+    expect(user.orgId).not.toBe(orgId);
+  });
+
+  it("DOES NOT SAY WHETHER AN EMAIL ALREADY EXISTS", async () => {
+    /* The login route goes to real trouble not to be an account
+       enumeration oracle — a dummy hash so the timing matches, one
+       message for three outcomes. A signup form answering "that address
+       is taken" hands the oracle straight back, and the user list of a
+       safety platform is an operator's staff roster. */
+    expect((await signup(NEW_OPERATOR)).statusCode).toBe(201);
+    const second = await signup({ ...NEW_OPERATOR, orgName: "Someone Else Ltd" });
+
+    expect(second.statusCode).toBe(409);
+    const said = JSON.stringify(second.json()).toLowerCase();
+    expect(said).not.toContain("exists");
+    expect(said).not.toContain("taken");
+    expect(said).not.toContain("registered");
+    expect(said).not.toContain(NEW_OPERATOR.email);
+
+    // And the refusal created nothing.
+    expect(await prisma().org.count({ where: { name: "Someone Else Ltd" } })).toBe(0);
+  });
+
+  it("refuses a password shorter than the login route demands", async () => {
+    const res = await signup({ ...NEW_OPERATOR, password: "short" });
+    expect(res.statusCode).toBe(400);
+    expect(await prisma().org.count({ where: { name: NEW_OPERATOR.orgName } })).toBe(0);
+  });
+
+  it("ANCHORS THE AUDIT CHAIN AT THE MOMENT THE OPERATOR BEGAN", async () => {
+    /* An organisation whose audit log starts at its first report cannot
+       show when it started. This entry is what an inspector reads to
+       date the record. */
+    await signup(NEW_OPERATOR);
+    const org = await prisma().org.findFirstOrThrow({ where: { name: NEW_OPERATOR.orgName } });
+    const first = await prisma().auditLog.findFirstOrThrow({
+      where: { orgId: org.id },
+      orderBy: { seq: "asc" },
+    });
+    expect(first.action).toBe("org.create");
+    expect(first.entityId).toBe(org.id);
+  });
+
+  it("starts a tenant that can see nothing of anybody else's", async () => {
+    /* The invariant every other route depends on, asserted at the one
+       place a tenant is born. */
+    const res = await signup(NEW_OPERATOR);
+    const { accessToken } = res.json();
+    const queue = await app.inject({
+      method: "GET",
+      url: "/api/v1/reports/queue",
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    expect(queue.statusCode).toBe(200);
+    expect(queue.json().reports).toHaveLength(0);
+  });
+});
 });

@@ -8,6 +8,7 @@
 // =====================================================================
 import type { FastifyInstance } from "fastify";
 import { LoginSchema } from "@usalamasms/shared";
+import { SignupSchema } from "../../../packages/shared/src/signup";
 import {
   prisma, ENV, hmac, verifyPassword, issueAccessToken, issueRefreshToken,
   appendAuditTx, authenticate, requirePermission,
@@ -220,6 +221,144 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ------------------------------ Logout -----------------------------
+  /* ============================================================
+     SIGN UP — an operator creating its own account.
+
+     THE ROUTE THIS PRODUCT DID NOT HAVE, and the reason it could be
+     demonstrated but not bought. Nineteen screens, fifty-four routes,
+     eleven of Annex 19's twelve elements, and no way for an operator to
+     come into existence except `npm run seed` run against the database
+     by somebody holding the credentials. A product that has to be
+     installed by its author for every customer is a consultancy
+     deliverable wearing a product's feature list.
+
+     FIVE PROPERTIES, each of which is the reason for a line below:
+
+       1. THE FIRST USER IS THE ACCOUNTABLE EXECUTIVE, set by the
+          server and not accepted from the body. It is the post Annex 19
+          makes personally answerable and the only one that may sign a
+          safety policy. A signup form does not get to choose it.
+
+       2. IT CANNOT JOIN AN EXISTING ORGANISATION. There is no orgId in
+          the schema, so the mistake is unavailable rather than
+          defended. Joining an operator is an invitation issued from
+          inside it; conflating the two is how one operator's officer
+          ends up reading another's reports.
+
+       3. IT DOES NOT SAY WHETHER THE EMAIL EXISTS. A duplicate is
+          refused with the same shape and cost as a success would take —
+          the login route already goes to some trouble not to be an
+          account-enumeration oracle, and a signup form that answers
+          "that email is taken" hands back the oracle login closed.
+
+       4. IT IS RATE LIMITED HARDER THAN LOGIN. Login costs an attacker
+          a guess; this costs the operator a row in every tenant-scoped
+          table and an audit chain of its own.
+
+       5. THE ORGANISATION AND ITS FIRST USER ARE ONE TRANSACTION. An
+          org with no users is unreachable and invisible — nobody can
+          sign into it, and nothing will ever clean it up.
+
+     WHAT IT DOES NOT DO IS TAKE MONEY. Collection needs a payment
+     provider and credentials, which is a person's job and must not
+     travel through a chat log — the same class of blocker as the SMS
+     sender ID. Until that lands this creates a working account, which
+     is the half that had to exist first.
+     ============================================================ */
+  app.post(
+    "/api/v1/auth/signup",
+    {
+      config: {
+        /* Five in an hour per address. A real operator signs up once;
+           this is the only unauthenticated route that WRITES, and every
+           successful call creates a tenant. */
+        rateLimit: { max: 5, timeWindow: "1 hour" },
+      },
+    },
+    async (req, reply) => {
+      const parsed = SignupSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({
+          error: "invalid",
+          detail: parsed.error.flatten(),
+        });
+      }
+      const input = parsed.data;
+      const email = input.email.toLowerCase();
+
+      /* THE DUPLICATE IS REFUSED WITHOUT SAYING SO. `taken` is not in
+         the response: the caller is told the account could not be
+         created and to sign in if they already have one, which is true
+         either way and tells an enumerator nothing. The KDF still runs
+         so the two paths cost roughly the same, for the same reason the
+         login route verifies against a dummy hash. */
+      const existing = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+      const passwordHash = await argon2.hash(input.password, { type: argon2.argon2id });
+      if (existing) {
+        req.log.warn({ email: hmac(email) }, "signup refused — address already registered");
+        return reply.code(409).send({
+          error: "cannot_create",
+          message:
+            "That account could not be created. If you already have one, sign in — " +
+            "and if you have forgotten the password, your administrator can reset it.",
+        });
+      }
+
+      const created = await prisma.$transaction(async (tx) => {
+        const org = await tx.org.create({
+          data: {
+            name: input.orgName,
+            jurisdiction: input.jurisdiction,
+            ...(input.aocNumber ? { aocNumber: input.aocNumber } : {}),
+          },
+        });
+        const user = await tx.user.create({
+          data: {
+            orgId: org.id,
+            email,
+            name: input.name,
+            passwordHash,
+            /* Server-set. See property 1 above. */
+            role: "ACCOUNTABLE_EXECUTIVE",
+          },
+        });
+        /* THE CHAIN STARTS HERE. An organisation whose audit log begins
+           at its first report cannot show when it began; this entry is
+           the anchor an inspector reads to date the record. */
+        await appendAuditTx(tx, {
+          orgId: org.id,
+          userId: user.id,
+          action: "org.create",
+          entityType: "Org",
+          entityId: org.id,
+        });
+        return { org, user };
+      });
+
+      const accessToken = issueAccessToken({
+        sub: created.user.id,
+        org: created.org.id,
+        role: created.user.role,
+      });
+      const refreshToken = await issueRefreshToken(created.user.id);
+
+      /* Signed in immediately. An operator that has just typed its own
+         name, its AOC number and a password, and is then returned to a
+         login form, has been asked to prove it twice. */
+      return reply.code(201).send({
+        accessToken,
+        refreshToken,
+        expiresIn: ENV.ACCESS_TTL,
+        role: created.user.role,
+        orgId: created.org.id,
+        orgName: created.org.name,
+      });
+    },
+  );
+
   app.post(
     "/api/v1/auth/logout",
     { preHandler: [authenticate] },

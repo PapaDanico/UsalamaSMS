@@ -399,6 +399,16 @@ router
     { title: 'Questions, answered straight' }
   )
   .register(
+    '/signup',
+    (el) => lazy(el, () => import('./tools/login/signup-panel.js').then((m) => m.render)),
+    { title: 'Create an operator' }
+  )
+  .register(
+    '/pricing',
+    (el) => lazy(el, () => import('./tools/pricing/index.js').then((m) => m.render)),
+    { title: 'What it costs' }
+  )
+  .register(
     '/privacy',
     (el) =>
       lazy(el, () =>

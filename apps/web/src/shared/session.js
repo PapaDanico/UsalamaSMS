@@ -82,6 +82,21 @@ function store({ accessToken: access, refreshToken, role, orgId }) {
   }
 }
 
+/**
+ * Adopt a session issued by something other than signIn().
+ *
+ * Exactly one caller: signup, which returns the same token payload the
+ * login route does because an operator that has just typed its own
+ * name, its AOC number and a password should not then be shown a login
+ * form. Exported rather than duplicated so there is ONE place that
+ * knows what a session is — two writers of `usalamasms.session` is how
+ * one of them forgets the refresh token and produces an account that
+ * appears signed in until the first access token expires.
+ */
+export function adoptSession(body) {
+  store(body ?? {});
+}
+
 export function clearSession() {
   /* The cached organisation name, held for the printed record and
      loaded lazily by print-id.js — which is NOT in the entry chunk.

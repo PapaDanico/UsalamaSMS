@@ -170,6 +170,14 @@ export const LoginSchema = z.object({
   mfaCode: z.string().length(6).optional(),
 });
 
+/* `SignupSchema` LIVES IN ./signup, not here, and the reason is the
+   one permissions.ts records: this barrel is imported by the report
+   form for CreateReportSchema, so anything exported from it rides in
+   the ENTRY chunk a ramp agent downloads before they can file. A zod
+   object describing a form an operator fills in ONCE IN ITS LIFE is the
+   clearest possible example of weight charged to the wrong person — it
+   put entry 0.8 KB over on the build that introduced it. */
+
 // --------------------------- Sync envelope ---------------------------
 export const SyncItemSchema = z.object({
   clientId: z.string().uuid(),

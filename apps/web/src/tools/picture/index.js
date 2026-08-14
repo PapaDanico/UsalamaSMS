@@ -213,8 +213,33 @@ export async function render(outlet) {
   let failure = null;
   try {
     const res = await authFetch('/api/v1/picture?days=90');
-    if (res.ok) data = await res.json();
-    else failure = res.status === 403
+    if (res.ok) {
+      const body = await res.json().catch(() => null);
+      /* A 200 IS NOT A PICTURE, and this screen used to assume it was.
+         Everything below indexes into `window`, `reporting`, `register`
+         and the rest without checking any of them, so a 200 carrying a
+         body this build does not understand threw on `win.days` and
+         rendered NOTHING AT ALL — a white page where the honest "could
+         not be reached" panel was already written and waiting.
+
+         Not hypothetical, and not only a stubbed-API artefact: it is
+         what an older client meets after the route changes shape, what
+         a captive-portal or proxy returns when it answers 200 with its
+         own page, and what a partial deploy serves. The failure this
+         screen was built to avoid is showing something stale; a blank
+         screen is the same fault wearing nothing at all.
+
+         Found by driving the built app against an API that answered
+         `{}`. The smoke suite's "no uncaught page errors" check never
+         saw it because smoke stubs a well-formed body — the shape it
+         asserts is the shape it supplies. */
+      data = body && body.window && body.reporting && body.register ? body : null;
+      if (!data) {
+        failure =
+          'The safety office answered, but not with a picture this version of the app ' +
+          'can read. That usually means the app needs updating.';
+      }
+    } else failure = res.status === 403
       ? 'Your role does not include reading the organisation’s reports, so this picture cannot be drawn for you.'
       : 'The safety office could not be reached.';
   } catch {
