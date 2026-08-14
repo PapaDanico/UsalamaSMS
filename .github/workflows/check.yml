@@ -137,7 +137,46 @@ jobs:
           fi
           cp /tmp/server.bak apps/api/src/server.ts
 
+      # The prose gate exists because the pricing page was broken THREE
+      # times by a backtick inside an HTML comment — the construct ends
+      # the tagged template literal, so the markup after it parses as
+      # JavaScript and the page fails at runtime with a message about an
+      # undefined identifier rather than about the comment.
+      #
+      # These two write a probe file rather than mutating a real one, and
+      # that is deliberate: the whole point of the gate is that it holds
+      # over EVERY screen, so tying its proof to one file's current text
+      # would make the proof go stale the moment that file is cleaned —
+      # which is exactly what this change did to the file that motivated
+      # it.
+      - name: A backtick inside an HTML comment must be rejected
+        run: |
+          printf 'const x = html`<!-- see `.foo` for this -->`;\n' > apps/web/src/prose-probe.js
+          if node scripts/check-prose.mjs > /dev/null 2>&1; then
+            echo "::error::The prose gate ACCEPTED a backtick inside an HTML comment. That construct ends the template literal and ships a runtime page error — it has done so three times."
+            rm -f apps/web/src/prose-probe.js
+            exit 1
+          fi
+          rm -f apps/web/src/prose-probe.js
+
+      - name: Prose over the ceiling must be rejected
+        run: |
+          # BIGGER THAN THE CEILING ITSELF, not merely bigger than the
+          # headroom. The first version wrote 3 KB, which only exceeded
+          # 19.5 because the tree already held 19.2 — so the day somebody
+          # cleaned the comments out of a few screens, this step would
+          # have gone quietly green while proving nothing. A probe that
+          # is over the limit on its own fails whatever the base is.
+          { printf 'const x = html`<!--'; for i in $(seq 1 3000); do printf ' padding'; done; printf '\055\055>`;\n'; } > apps/web/src/prose-probe.js
+          if node scripts/check-prose.mjs > /dev/null 2>&1; then
+            echo "::error::The prose gate ACCEPTED 23 KB of new comment inside a template literal. That is string content no minifier removes — weight charged to a reporter on the connection this product exists to respect."
+            rm -f apps/web/src/prose-probe.js
+            exit 1
+          fi
+          rm -f apps/web/src/prose-probe.js
+
       - name: And the restored sources must pass
         run: |
           node scripts/check-brand.mjs
           node scripts/check-claims.mjs
+          node scripts/check-prose.mjs
