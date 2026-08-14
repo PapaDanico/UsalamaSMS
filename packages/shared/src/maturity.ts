@@ -1026,8 +1026,21 @@ export interface RiskEntry {
   /** ISO date. */
   readonly reviewBy: string;
   readonly status: RiskStatus;
-  /** Set only when status is ACCEPTED, and by whom. */
+  /* THE SIGNATURE, and the id the act is performed against.
+
+     `assessmentId` is the server's id for the assessment rather than
+     for the hazard — the acceptance route takes that one, because an
+     acceptance attaches to a position that was assessed on a date, not
+     to the hazard in general. Absent on an entry that exists only on
+     this device, which is what makes it the test for whether a row can
+     be signed at all.
+
+     `acceptedBy` and `acceptedAt` are what the safety office recorded.
+     Never set from this device: a browser can write any name into any
+     field, and a signature that a device can author is not one. */
+  readonly assessmentId?: string;
   readonly acceptedBy?: string;
+  readonly acceptedAt?: string;
   readonly createdAt: string;
 }
 
@@ -1085,7 +1098,23 @@ export function normaliseEntry(raw: unknown): RiskEntry | null {
     owner: str(e.owner),
     reviewBy: str(e.reviewBy),
     status,
+    /* THESE THREE ARE WHY THE ACCEPTANCE CONTROL DID NOT RENDER.
+
+       Every entry passes through here, including the ones read back
+       from the server, and this function builds a NEW object field by
+       field — so a field it does not name is a field the screen never
+       sees, however faithfully the route returned it. The acceptance
+       button is keyed on `assessmentId` and the signature line on
+       `acceptedAt`; both arrived from the API and both were dropped
+       here, so the feature was invisible in the browser while 466 unit
+       tests and 217 integration checks passed.
+
+       Found by driving the built screen. It could not have been found
+       any other way round: the route's tests assert what the route
+       returns, and this function is what happens to it afterwards. */
+    assessmentId: opt(e.assessmentId),
     acceptedBy: opt(e.acceptedBy),
+    acceptedAt: opt(e.acceptedAt),
     createdAt: str(e.createdAt),
   };
 }

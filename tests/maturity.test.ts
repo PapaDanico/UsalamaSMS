@@ -451,6 +451,42 @@ describe('normalising an entry that came back from storage', () => {
     expect(e.residualSeverity).toBeUndefined();
     expect(e.residualLikelihood).toBeUndefined();
   });
+
+  it('KEEPS THE FIELDS AN ACCEPTANCE IS RENDERED FROM', () => {
+    /* THE DEFECT THIS EXISTS FOR, and it was found by driving the built
+       screen rather than by any test.
+
+       This function builds a new object field by field, so a field it
+       does not name is a field the screen never sees — however
+       faithfully the route returned it. `assessmentId` and `acceptedAt`
+       were not named. The acceptance button is keyed on the first and
+       the signature line on the second, so the entire feature was
+       invisible in the browser while its route passed ten integration
+       checks against a real Postgres and the suite passed 466.
+
+       Asserted as "survives the normaliser" rather than as a screen
+       behaviour, because this is where it was lost and this is the one
+       place every entry goes through. */
+    const e = normaliseEntry({
+      id: 'r1',
+      assessmentId: 'a-1',
+      status: 'ACCEPTED',
+      acceptedBy: 'Daniel Mwangi',
+      acceptedAt: '2026-08-14',
+    })!;
+    expect(e.assessmentId).toBe('a-1');
+    expect(e.acceptedBy).toBe('Daniel Mwangi');
+    expect(e.acceptedAt).toBe('2026-08-14');
+  });
+
+  it('leaves a device-only entry with nothing to sign against', () => {
+    // The absence is load-bearing: no assessmentId is how the screen
+    // knows an entry has never reached the safety office, and therefore
+    // that there is nowhere to record a signature anybody could verify.
+    const e = normaliseEntry({ id: 'r1', hazard: 'Typed here, never sent' })!;
+    expect(e.assessmentId).toBeUndefined();
+    expect(e.acceptedAt).toBeUndefined();
+  });
 });
 
 describe('the day a review falls due', () => {

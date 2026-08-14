@@ -78,10 +78,22 @@ function dateInDays(days) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/* ACCEPTED IS NOT ON THIS LIST, and its absence is the change.
+
+   It used to be, beside a dropdown headed "Accepted by" that offered
+   every post in the operator — so accepting a risk was two form fields
+   somebody filled in. Nothing checked whether the person filling them
+   in held the acceptance permission, nothing recorded who actually did
+   it, and nothing consulted the escalation rule this screen has stated
+   beside the owner field since it was written.
+
+   A name typed into a box is not a signature. Acceptance is now its own
+   act, performed by the person doing it, against the row, on the
+   server — which is also the only place a signature can be attributed
+   to somebody an auditor can ask. */
 const STATUSES = [
   ['OPEN', 'Open — assessed, not yet mitigated'],
   ['MITIGATED', 'Mitigated — controls in place'],
-  ['ACCEPTED', 'Accepted — residual risk signed off'],
   ['CLOSED', 'Closed — no longer applicable']
 ];
 
@@ -192,8 +204,38 @@ function Row(entry) {
     <p class="reg-entry__meta">
       <span>${entry.owner || 'No owner'}</span>
       <span>review by ${entry.reviewBy || 'no date'}</span>
-      ${entry.acceptedBy ? html`<span>accepted by ${entry.acceptedBy}</span>` : ''}
       <button type="button" class="btn btn-ghost btn-sm" data-remove="${entry.id}">Remove</button>
+    </p>
+
+    <!-- THE SIGNATURE, and what stands in for it when there cannot be
+         one. Three states:
+
+           already accepted — who signed and when, which is the line an
+             auditor reads and the reason it is attributed to a person
+             rather than to a post somebody typed;
+           signable — a button, because the person pressing it is the
+             person signing. The server decides whether they may: the
+             band, the permission and RA 1210's escalation are all
+             checked there, and its refusal is shown as written;
+           device-only — said plainly. An acceptance recorded in one
+             browser is a claim nobody can verify, and this product does
+             not offer a control that produces one. -->
+    <p class="reg-entry__meta">
+      ${entry.acceptedAt
+        ? html`<span class="verified"
+            >Accepted${entry.acceptedBy ? html` by ${entry.acceptedBy}` : ''} on
+            ${entry.acceptedAt}</span
+          >`
+        : entry.assessmentId
+          ? html`<button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              data-accept="${entry.assessmentId}"
+            >Accept this risk</button>`
+          : html`<span class="reg-entry__nores"
+              >On this device only — acceptance is signed at the safety office.</span
+            >`}
+      <span class="reg-entry__flag reg-said" role="status" aria-live="polite"></span>
     </p>
   </article>`;
 }
@@ -215,6 +257,13 @@ export function render(outlet) {
      sentence. Naming the number is the difference between a register
      with partial distribution and a register that claims full. */
   let deviceOnly = [];
+
+  /* Assigned at the bottom of this function, once the elements it
+     repaints exist. Declared here so the acceptance handler can close
+     over it — a signature is one of the two things on this screen that
+     changes a row the server owns, and re-reading is how the screen
+     learns what was recorded rather than inventing it locally. */
+  let readFromServer = async () => {};
 
   outlet.innerHTML = html`
     <section class="band-dark">
@@ -320,19 +369,6 @@ export function render(outlet) {
             value: 'OPEN',
             placeholder: 'Choose a status',
             options: STATUSES.map(([value, label]) => ({ value, label }))
-          })}
-
-          ${Select({
-            name: 'acceptedBy',
-            label: 'Accepted by',
-            placeholder: 'Not accepted yet',
-            options: toOptions(SAFETY_ROLES),
-            otherValue: OTHER,
-            otherLabel: 'Another post…',
-            otherPlaceholder: 'The post that accepted it',
-            hint:
-              "Only for an accepted residual risk, and only a post that can accept " +
-              "it on the operator's behalf."
           })}
 
           <button type="submit" class="btn btn-primary btn-block">Add to register</button>
@@ -468,7 +504,6 @@ export function render(outlet) {
         owner,
         reviewBy,
         status: f.status.value,
-        acceptedBy: label('acceptedBy') || undefined,
         createdAt: new Date().toISOString()
       },
       ...entries
@@ -550,7 +585,81 @@ export function render(outlet) {
     }
   });
 
-  list.addEventListener('click', (event) => {
+  /* ==========================================================
+     SIGNING FOR A RISK.
+
+     Everything that decides whether this is allowed lives on the
+     server: the permission, the band, and RA 1210's escalation. This
+     handler sends the act and shows the answer — it does not
+     pre-judge, and deliberately so. A screen that hides the button
+     from somebody it believes cannot sign teaches them nothing when
+     it is wrong; a refusal that names the post that must sign tells
+     them who to go to.
+
+     THE ALARP STATEMENT IS ASKED FOR HERE, not after a 400. The
+     server refuses an amber acceptance without one and that refusal
+     is the control; asking first is the difference between a form
+     that helps and one that scolds. Both still run.
+     ========================================================== */
+  list.addEventListener('click', async (event) => {
+    const accept = event.target.closest?.('[data-accept]');
+    if (accept) {
+      const row = accept.closest('.reg-entry');
+      const said = row?.querySelector('.reg-said');
+      const entry = entries.find((e) => e.assessmentId === accept.dataset.accept);
+      const shown =
+        band(entry?.residualSeverity, entry?.residualLikelihood) ??
+        band(entry?.severity, entry?.likelihood);
+
+      let alarpJustification;
+      if (shown?.t === 'TOLERABLE') {
+        alarpJustification = window.prompt(
+          'Accepting a tolerable risk\n\nA tolerable risk is only tolerable once it ' +
+            'has been driven as low as reasonably practicable. Say what was done, and ' +
+            'why going further is not reasonably practicable. This statement is the ' +
+            'acceptance and it is recorded against your name.'
+        );
+        if (alarpJustification === null) return;
+        if (!alarpJustification.trim()) {
+          if (said) said.textContent = 'An acceptance with no ALARP statement is not one.';
+          return;
+        }
+      }
+
+      const label = accept.textContent;
+      accept.disabled = true;
+      accept.textContent = 'Signing…';
+      try {
+        const res = await authFetch(`/api/v1/register/${accept.dataset.accept}/accept`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(alarpJustification ? { alarpJustification } : {})
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          /* The server's own sentence. It names the band, or the post
+             that has to sign instead, or says the risk is not ownable
+             at all — every one of which is more use than "forbidden". */
+          if (said) {
+            said.textContent =
+              body.message ?? 'The safety office could not be reached. Nothing was signed.';
+          }
+          return;
+        }
+        await readFromServer();
+      } catch {
+        if (said) {
+          said.textContent =
+            'No connection. Nothing was signed — an acceptance has to reach the safety ' +
+            'office to be one.';
+        }
+      } finally {
+        accept.disabled = false;
+        accept.textContent = label;
+      }
+      return;
+    }
+
     const button = event.target.closest?.('[data-remove]');
     const id = button?.dataset.remove;
     if (!id) return;
@@ -645,21 +754,29 @@ export function render(outlet) {
      back is visible and can be removed again; a hazard silently
      deleted is not noticed at all, and this register exists to be the
      thing that was not forgotten. */
-  if (isSignedIn()) {
-    authFetch('/api/v1/register')
-      .then(async (res) => {
-        if (!res.ok) return;
-        const body = await res.json();
-        const held = (body.entries ?? []).map(normaliseEntry).filter(Boolean);
-        const known = new Set(held.map((e) => e.id));
-        deviceOnly = entries.filter((e) => !known.has(e.id));
-        source = 'server';
-        entries = [...held, ...deviceOnly];
-        save(entries);
-        repaint();
-      })
-      .catch(() => {});
-  }
+  /* Named rather than inline, because the acceptance handler needs to
+     run it again: a signature changes a row the server owns, and
+     re-reading is how this screen learns who it recorded and when
+     without guessing on the client. */
+  readFromServer = async () => {
+    if (!isSignedIn()) return;
+    try {
+      const res = await authFetch('/api/v1/register');
+      if (!res.ok) return;
+      const body = await res.json();
+      const held = (body.entries ?? []).map(normaliseEntry).filter(Boolean);
+      const known = new Set(held.map((e) => e.id));
+      deviceOnly = entries.filter((e) => !known.has(e.id));
+      source = 'server';
+      entries = [...held, ...deviceOnly];
+      save(entries);
+      repaint();
+    } catch {
+      /* Offline. The device copy is still on screen and still correct
+         about everything except what somebody else has done. */
+    }
+  };
+  void readFromServer();
 
   void raw;
 }

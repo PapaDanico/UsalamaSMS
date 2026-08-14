@@ -40,6 +40,15 @@ const HOOKS = new Map([
       'listener per outlet can find every share button, present and future.',
   ],
   [
+    'reg-said',
+    'The slot the acceptance handler writes the server\'s refusal into. ' +
+      'It is visually a .reg-entry__flag — the ochre sentence the register ' +
+      'already uses for "intolerable and not accepted" — and styling it again ' +
+      'here would be a second opinion about what a warning on this card looks ' +
+      'like. It exists because a row can carry TWO of those sentences at once, ' +
+      'and querySelector(".reg-entry__flag") would find the wrong one.',
+  ],
+  [
     'print-id-slot',
     'A JS insertion point, not a visual. The four screens that render ' +
       'synchronously put an empty div here and attachPrintId() fills it once ' +

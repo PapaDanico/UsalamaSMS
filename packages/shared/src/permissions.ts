@@ -26,7 +26,24 @@ import type { Role } from "./index";
 export type Permission =
   | "report.create" | "report.read.own" | "report.read.org" | "report.triage"
   | "report.investigate" | "report.close" | "report.deidentify.review"
-  | "hazard.manage" | "risk.assess" | "risk.accept.tolerable" | "risk.accept.intolerable"
+  /* THERE IS NO `risk.accept.intolerable`, AND THERE WAS.
+
+     It sat in this union and in the accountable executive's set from the
+     first draft, and no route ever read it — because there is no act to
+     read it for. Doc 9859's red band is not "acceptable with a
+     sufficiently senior signature"; it is not acceptable at any level
+     of benefit. Both places a risk can now be signed for — the register
+     and the change route — refuse INTOLERABLE to everybody, including
+     the accountable executive, and say that the controls have to change
+     rather than the signature.
+
+     A permission for an act the product refuses is a claim the matrix
+     cannot honour. Worse, it is the flattering kind: an operator
+     reading the matrix would conclude their accountable executive can
+     sign off a red risk, which is the belief this band exists to
+     prevent. Deleted rather than left unused, and a test asserts that
+     every permission still here is reachable from a route. */
+  | "hazard.manage" | "risk.assess" | "risk.accept.tolerable"
   | "spi.configure" | "spi.read" | "moc.create" | "moc.approve"
   | "document.read" | "document.manage" | "training.read.own" | "training.manage"
   | "org.manage" | "user.manage" | "audit.read" | "regulator.oversight"
@@ -103,7 +120,11 @@ export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
     "sms.audit.verify",
   ]),
   ACCOUNTABLE_EXECUTIVE: new Set<Permission>([
-    "report.read.org", "risk.accept.tolerable", "risk.accept.intolerable",
+    /* `risk.accept.tolerable` and NOT an intolerable counterpart — see
+       the note in the union above. The amber band is this post's to
+       carry precisely because accepting it is a judgement about cost
+       against safety; the red band is nobody's, at any level. */
+    "report.read.org", "risk.accept.tolerable",
     "spi.read", "moc.approve", "document.read", "audit.read", "training.read.own",
     "config.manage",
     /* SIGNING THE POLICY IS THIS ROLE'S ALONE, and it is the only
