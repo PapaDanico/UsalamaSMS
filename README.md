@@ -141,8 +141,9 @@ which are a person's job and not a coding task. See
 
 ```bash
 npm install
-npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
+npm run check          # prisma generate, typecheck, brand, assets, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
+npm run check:assets   # every file served from public/ is declared, with a ceiling
 npm run check:claims   # 96 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm test               # 468 unit tests
