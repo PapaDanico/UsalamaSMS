@@ -680,26 +680,50 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
     state: "PARTIAL",
     serverRoutes: ["/api/v1/sms/documents"],
     has:
-      "Document control: reference, version, who approved it and when, and the date the " +
-      "next review falls due.",
+      "A controlled document register — reference, revision, approver, review date \u2014 " +
+      "with a supersession that retires the previous revision, and a record of who has " +
+      "read the revision NOW IN FORCE. Reading one revision does not mark anybody as " +
+      "having read the next.",
     missing:
-      "The documents. The product controls the register of them, does not store their " +
-      "content, and does not distribute them or record who has read each one.",
+      "The documents themselves. The product controls the register and the distribution " +
+      "record; it does not store the content, so the manual still lives wherever the " +
+      "operator keeps it and this points at which revision that should be.",
     href: "/sms",
   },
   {
     id: "2.1",
+    /* THE SECOND HALF OF THIS ENTRY WAS STALE BY ONE COMMIT, in the
+       same direction and on the same surface as the 2.2 defect. It read
+       "the answers are the operator's own to write down elsewhere until
+       this holds them" AFTER /api/v1/sms/voluntary shipped and held
+       them. The route gate below could not see it: that gate asks
+       whether an element names a route while claiming device-only
+       storage, and this entry named no route for the capability at all.
+       Silence is the cheaper way to understate, so the gate now also
+       asks the opposite question — whether the API registers anything
+       no element admits to. See check-claims.mjs. */
     state: "BUILT",
-    serverRoutes: ["/api/v1/sync/batch"],
+    serverRoutes: [
+      "/api/v1/sync/batch",
+      "/api/v1/sms/voluntary",
+      "/api/v1/reports/:id/disposition",
+    ],
     has:
       "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +
-      "hash-chained record, with the regulatory window computed per jurisdiction.",
+      "hash-chained record, with the regulatory window computed per jurisdiction. The " +
+      "operator's own answers to the six things regulation 13(3) of L.N. 32/2026 requires " +
+      "a voluntary reporting system to define, with the unanswered ones named rather than " +
+      "scored. And a disposition: every report is triaged, investigated, closed with a " +
+      "statement of what was done, or reopened with a reason — each move recorded against " +
+      "the person who made it, so time from report to closure is computed from the record " +
+      "rather than typed.",
     missing:
       "Proactive and predictive identification — surveys, flight data, and the analysis " +
-      "Doc 10159 asks for. And somewhere to record the six things regulation 13(3) of " +
-      "L.N. 32/2026 requires a voluntary reporting system to define: /methodology now " +
-      "quotes all six with their sub-paragraphs, and the answers are the operator's own " +
-      "to write down elsewhere until this holds them.",
+      "Doc 10159 asks for. Disposition is a connected act: a report can be FILED from a " +
+      "strip with no signal, but not triaged or closed from one. And the disposition is " +
+      "reachable through the API before it is reachable on the triage screen — the record " +
+      "is there and the buttons are not, which is stated here rather than left to be " +
+      "discovered.",
     href: "/report",
   },
   {
@@ -749,18 +773,35 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        crossed" — has nowhere to live. An operator can watch an
        indicator; the organisation cannot yet be shown to have. */
     id: "3.1",
-    state: "PARTIAL",
+    /* MOVED TO BUILT, against the element's OWN evidence definition
+       rather than against a feeling that it looks finished. 3.1 asks
+       for "indicators with a defined trigger, and a record of what
+       happened the last time one was crossed". The trigger has been
+       here since alertLevels() landed; the record arrived with
+       /api/v1/spi/:id/periods/:periodId/action, attached to the period
+       rather than to a level so that charter rule 6 still holds — the
+       level is derived on every read and never stored.
+
+       WHAT IS DELIBERATELY NOT TREATED AS BLOCKING. "Indicators fed
+       from the reporting queue rather than typed in" was named in the
+       old missing text and is genuinely absent, but it is not in this
+       element's evidence definition and never was. Holding an element
+       PARTIAL against a requirement the framework does not make is the
+       mirror of overclaiming, and it is what had 2.2 understating the
+       product for half a day. It stays named below as work, not as a
+       gap in the element. */
+    state: "BUILT",
+
     serverRoutes: ["/api/v1/spi"],
     has:
       "Safety performance indicators with targets, and alert levels computed from " +
       "the operator's own baseline at one, two and three standard deviations, with " +
       "the three crossing criteria evaluated per period.",
     missing:
-      "Indicators fed from the reporting queue rather than typed in, and a record of " +
-      "the action taken the last time a level was crossed. The series itself is now " +
-      "held for the operator rather than on one device \u2014 regulation 9(5) of " +
-      "L.N. 32/2026 requires indicators and targets acceptable to the Authority, and " +
-      "a figure in a handset is not.",
+      "Indicators fed from the reporting queue rather than typed in \u2014 the counts " +
+      "are the operator's own, entered by hand, so an indicator can disagree with the " +
+      "reports behind it until somebody reconciles them. Not part of this element's " +
+      "evidence, and real work all the same.",
     href: "/toolkits/spi",
   },
   {
@@ -777,14 +818,29 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        being held by the organisation. An operator can produce the
        document; it cannot yet run the process around it. */
     id: "3.2",
-    state: "PARTIAL",
+    /* MOVED TO BUILT against the element's own evidence: "a change
+       assessment for the most recent significant change, DATED BEFORE
+       IT HAPPENED". The assessment is now held by the organisation
+       rather than one browser, and the route REFUSES one dated after
+       its own change took effect — accepting that would let the product
+       manufacture the evidence this element exists to test for.
+
+       Approval is a separate act from assessment, separately
+       permissioned, and refused outright while the residual position
+       is intolerable. The review after the change is recorded, which
+       is the half operators most often skip and the reason 3.2 is not
+       discharged by assessing. */
+    state: "BUILT",
+    serverRoutes: ["/api/v1/changes"],
     has:
-      "A safety risk assessment for a change, in ICAO Doc 9859's five steps, with " +
-      "acceptance refused while any risk remains intolerable after controls.",
+      "A change assessment the organisation holds — trigger, description, the Doc 9859 " +
+      "position before and after controls, an approval by a different post from the one " +
+      "that wrote it, and the review after the change. Refused if dated after the change " +
+      "took effect, and refused approval while the residual risk is intolerable.",
     missing:
-      "The process around the document: which changes require one, approval routing, " +
-      "review after the change, and an assessment the organisation holds rather than " +
-      "one browser.",
+      "Which changes require one. The product assesses the change an operator brings " +
+      "it; it does not know an operator's own threshold for significance, and a tool " +
+      "that guessed would either flood the register or miss the change that mattered.",
     href: "/toolkits/sra",
   },
   {

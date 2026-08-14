@@ -746,7 +746,92 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    The stopping rule holds: a legal requirement stated faithfully earns
    a raise. A dependency, a polyfill or a component library still buys
    nothing. */
-const BUDGET = { entry: 214 * 1024, js: 416 * 1024, css: 54 * 1024 };
+/* TOTAL 416 -> 420 KB, for the screen an operator defines its voluntary
+   system on. ENTRY effectively unmoved at 213.5 KB.
+
+   WHAT IT BOUGHT. The last change quoted regulation 13(3) on
+   /methodology and gave the answers a table; there was still nowhere to
+   type them. Element 2.1 now carries both halves — the pointer to
+   /report, where a REPORTER files, and the definition beneath it, which
+   is the safety office's to write. Seven textareas rather than a
+   wizard, because the six are not sequential and are rarely answered in
+   one sitting, and unanswered() names which remain rather than scoring
+   them.
+
+   AND THIS IS THE FIFTH RAISE IN A DAY. 408 -> 409 -> 410 -> 412 -> 416
+   -> 420. Every one has a receipt above it, every one is defensible
+   alone, and that is exactly the shape of drift: no single step is the
+   wrong call and the sum is 12 KB.
+
+   ENTRY MOVED 82 BYTES, AND THE FIRST EXPLANATION WRITTEN HERE WAS
+   WRONG. It said voluntary.ts had been hoisted into the entry chunk
+   because two lazily-loaded screens now import it. Measuring the built
+   output says otherwise: the module is in voluntary-*.js, a shared
+   chunk of its own at 1,946 bytes, and NONE of the regulation prose
+   appears in the entry chunk at all. The split did exactly what it
+   should.
+
+   What actually grew is the CHUNK REGISTRY — the entry carries a map of
+   every lazy chunk it can load, and there is now one more. That is the
+   price of the split working, not evidence of weight leaking inward,
+   and it argues AGAINST splitting further rather than for consolidating
+   what is already shared.
+
+   The correction matters more than the 82 bytes. A receipt that
+   misdiagnoses a number sends the next person hunting a saving that is
+   not there — here, rewriting two renderers to share one, when the DATA
+   they render is already shared and the duplication was never the cost.
+   Measure the built chunks before believing any story about them,
+   including this one.
+
+   THE RULE STILL STANDS, unchanged: entry beginning to genuinely track
+   total is the moment to take something out instead of buying more.
+   This was not that. Five raises in a day still is a pattern worth
+   naming, and the next one should be argued for rather than assumed.
+
+   The stopping rule itself is unchanged and this still satisfies it: a
+   screen earns a raise. A dependency, a polyfill or a component library
+   still buys nothing. */
+/* TOTAL 420 -> 422 KB, for the Duty Holder escalation. ENTRY UNMOVED
+   at 213.5 KB.
+
+   THE SIXTH RAISE, AND THE LAST RECEIPT SAID IT HAD TO BE ARGUED FOR
+   RATHER THAN ASSUMED. So, the argument.
+
+   WHAT IT BUYS. Doc 9859 tells an operator what a risk IS and is close
+   to silent on who may carry it. The UK Military Aviation Authority's
+   RA 1210 is not silent: high and medium risks are managed by the
+   Operating Duty Holder, low risks by the Delivery Duty Holder, and the
+   ownership and referral protocol is written into the safety management
+   system rather than left to custom.
+
+   In a three-aircraft operator that silence resolves the wrong way by
+   default. Whoever assessed the hazard writes their own name in the
+   owner box, an amber risk ends up owned by the person least able to
+   spend money on it, and the register reads as managed while nothing
+   about it is. An ALARP judgement is a judgement about cost against
+   safety; leaving it with a post that cannot authorise the spending is
+   asking somebody to certify that further reduction is not reasonably
+   practicable when they could not have tried.
+
+   WHY IT IS WORTH A KILOBYTE WHEN THE LAST FIVE RAISES WERE ALSO WORTH
+   IT. Because this one is not a screen or a table — it is a rule the
+   incumbents do not apply to this segment, taken from a regulator that
+   does, and it costs 0.9 KB on a lazily-loaded toolkit. If a raise has
+   to be argued rather than assumed, "borrowed from a live regulatory
+   article, mutation-checked, and invisible to the reporter at a strip"
+   is the argument.
+
+   THE STOPPING CONDITION IS STILL NOT MET, and it is worth restating
+   precisely because six raises invites the assumption that it is:
+   ENTRY has not moved. It is 213.5 KB, where it was five raises ago. A
+   reporter downloads what they downloaded this morning; every kilobyte
+   since has landed on screens only a safety manager opens.
+
+   The rule remains: entry beginning to track total is the moment to
+   take something out rather than buy more. A dependency, a polyfill or
+   a component library still buys nothing. */
+const BUDGET = { entry: 214 * 1024, js: 422 * 1024, css: 54 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

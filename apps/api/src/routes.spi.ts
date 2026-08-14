@@ -53,6 +53,15 @@ const IndicatorSchema = z.object({
   owner: z.string().trim().max(160).default(""),
 });
 
+/* The response, and when it was taken. actionOn is optional and
+   separate from the row's createdAt: recording last quarter's response
+   this morning is the ordinary case, and conflating the two would date
+   every response to the day of data entry. */
+const ActionSchema = z.object({
+  actionTaken: z.string().trim().min(1).max(4000),
+  actionOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
 const PeriodSchema = z.object({
   label: z.string().trim().min(1).max(40),
   /* Events are a count and exposure is a measure, so they are typed
@@ -83,7 +92,14 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
         periods: {
           orderBy: [{ createdAt: "asc" }],
           take: LIST_LIMIT,
-          select: { id: true, label: true, events: true, exposure: true },
+          select: {
+            id: true, label: true, events: true, exposure: true,
+            /* Element 3.1's evidence: "a record of what happened the
+               last time one was crossed". Returned with the series so
+               the screen can show the response beside the period that
+               prompted it, rather than in a list somewhere else. */
+            actionTaken: true, actionOn: true,
+          },
         },
       },
     });
@@ -129,6 +145,78 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return reply.code(201).send({ indicator: { ...created, periods: [] } });
+  });
+
+  /* =====================================================================
+     WHAT WAS DONE ABOUT IT — element 3.1's own evidence definition.
+
+     The element asks for "indicators with a defined trigger, and a
+     record of what happened the last time one was crossed". The trigger
+     has been there since alertLevels() landed. This is the second half,
+     and without it the element is a chart.
+
+     RECORDED AGAINST THE PERIOD, NOT AGAINST AN ALERT LEVEL. The level
+     is derived on every read and deliberately never stored — charter
+     rule 6 — so attaching the response to it would mean either storing
+     a level that can go stale or orphaning the note the moment a later
+     period moved the baseline underneath it. The period is the fact;
+     the level is an opinion about the series the period sits in.
+
+     NOT REQUIRED, AND NOT ENFORCED WHEN A LEVEL IS CROSSED. A product
+     that refuses to accept the numbers until somebody has written the
+     response is a product whose numbers are kept in a spreadsheet
+     instead. The screen asks; the API accepts either way.
+     ===================================================================== */
+  app.post("/api/v1/spi/:id/periods/:periodId/action", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "spi.configure")) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+    const { id, periodId } = req.params as { id: string; periodId: string };
+    const parsed = ActionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid", detail: parsed.error.flatten() });
+    }
+
+    /* Scoped through the indicator AND by orgId, so a period id from
+       another operator answers not-found rather than forbidden — a
+       refusal confirms the row exists. Same reasoning as the period
+       append above. */
+    const period = await prisma.spiPeriod.findFirst({
+      where: { ...tenantWhere(req), id: periodId, spiId: id },
+      select: { id: true },
+    });
+    if (!period) return reply.code(404).send({ error: "not_found" });
+
+    const saved = await prisma.$transaction(async (tx) => {
+      const row = await tx.spiPeriod.update({
+        where: { id: period.id },
+        data: {
+          actionTaken: parsed.data.actionTaken,
+          ...(parsed.data.actionOn
+            ? { actionOn: new Date(`${parsed.data.actionOn}T00:00:00.000Z`) }
+            : {}),
+        },
+      });
+      await appendAuditTx(tx, {
+        orgId: req.auth!.org,
+        userId: req.auth!.sub,
+        action: "spi.period.action",
+        entityType: "SpiPeriod",
+        entityId: row.id,
+      });
+      return row;
+    });
+
+    return reply.send({
+      period: {
+        id: saved.id,
+        label: saved.label,
+        events: saved.events,
+        exposure: saved.exposure,
+        actionTaken: saved.actionTaken,
+        actionOn: saved.actionOn ? saved.actionOn.toISOString().slice(0, 10) : null,
+      },
+    });
   });
 
   app.post("/api/v1/spi/:id/periods", limited, async (req, reply) => {

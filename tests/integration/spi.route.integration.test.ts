@@ -231,6 +231,91 @@ describe.skipIf(!hasDatabase)("safety performance indicators, through the real r
     expect(actions).toContain("spi.period.append");
   });
 
+  it("RECORDS WHAT WAS DONE ABOUT A PERIOD — element 3.1's own evidence", async () => {
+    /* The element asks for "indicators with a defined trigger, and a
+       record of what happened the last time one was crossed". The
+       trigger has been here since alertLevels() landed; without this
+       half the element is a chart. */
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const id = (await post("/api/v1/spi", manager, INDICATOR)).json().indicator.id;
+    const created = await post(`/api/v1/spi/${id}/periods`, manager, {
+      label: "2026-Q1", events: 9, exposure: 1200,
+    });
+    const periodId = created.json().period.id;
+
+    const res = await post(`/api/v1/spi/${id}/periods/${periodId}/action`, manager, {
+      actionTaken: "Approach briefing revised; go-around policy restated at the crew meeting.",
+      actionOn: "2026-04-14",
+    });
+    expect(res.statusCode).toBe(200);
+
+    const [indicator] = (await get("/api/v1/spi", manager)).json().indicators;
+    expect(indicator.periods[0].actionTaken).toContain("go-around policy");
+    expect(indicator.periods[0].actionOn).toBeTruthy();
+  });
+
+  it("STILL RETURNS NO ALERT LEVEL, even beside a recorded response", async () => {
+    /* The response is attached to the PERIOD, not to a level. If
+       recording what was done had quietly introduced a stored level,
+       this is where it would show — and a stored level is the defect
+       the whole module was built to avoid. */
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const id = (await post("/api/v1/spi", manager, INDICATOR)).json().indicator.id;
+    const p = await post(`/api/v1/spi/${id}/periods`, manager, {
+      label: "2026-Q1", events: 9, exposure: 1200,
+    });
+    const written = await post(
+      `/api/v1/spi/${id}/periods/${p.json().period.id}/action`,
+      manager,
+      { actionTaken: "Reviewed." },
+    );
+
+    /* BOTH RESPONSES, and the second one is why this check was rewritten.
+       It read only the list, so a mutation that returned a stored level
+       from the ACTION route itself passed — the new endpoint's own body
+       was never looked at. A rule about what the API may not say has to
+       be asserted against every place the API speaks. */
+    const listed = (await get("/api/v1/spi", manager)).payload;
+    expect(listed).not.toMatch(/alertLevel/i);
+    expect(listed).not.toMatch(/"alert"/i);
+    expect(written.payload).not.toMatch(/alertLevel/i);
+    expect(written.payload).not.toMatch(/"alert"/i);
+  });
+
+  it("ANOTHER OPERATOR CANNOT WRITE A RESPONSE ONTO THIS ONE'S PERIOD", async () => {
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const stranger = tokenFor(otherManagerId, otherOrgId, "SAFETY_MANAGER");
+    const id = (await post("/api/v1/spi", manager, INDICATOR)).json().indicator.id;
+    const p = await post(`/api/v1/spi/${id}/periods`, manager, {
+      label: "2026-Q1", events: 4, exposure: 1200,
+    });
+    const periodId = p.json().period.id;
+
+    const intrusion = await post(
+      `/api/v1/spi/${id}/periods/${periodId}/action`,
+      stranger,
+      { actionTaken: "Nothing, it is fine." },
+    );
+    expect(intrusion.statusCode).toBe(404);
+
+    const [mine] = (await get("/api/v1/spi", manager)).json().indicators;
+    expect(mine.periods[0].actionTaken).toBeNull();
+  });
+
+  it("refuses an empty response rather than recording that nothing was written", async () => {
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const id = (await post("/api/v1/spi", manager, INDICATOR)).json().indicator.id;
+    const p = await post(`/api/v1/spi/${id}/periods`, manager, {
+      label: "2026-Q1", events: 4, exposure: 1200,
+    });
+    const res = await post(
+      `/api/v1/spi/${id}/periods/${p.json().period.id}/action`,
+      manager,
+      { actionTaken: "   " },
+    );
+    expect(res.statusCode).toBe(400);
+  });
+
   it("requires a token at all", async () => {
     expect((await app.inject({ method: "GET", url: "/api/v1/spi" })).statusCode).toBe(401);
   });

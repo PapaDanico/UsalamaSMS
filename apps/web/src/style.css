@@ -2831,6 +2831,30 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* Adding to the record is a disclosure, not a form sitting open under
    every element. Eight open forms on one screen is a page of inputs
    with the record buried under them. */
+/* The voluntary scheme sits INSIDE the 2.1 card, under the pointer to
+   /report. Separated by a rule rather than by spacing alone: it is a
+   different kind of thing from the sentence above it — that says where
+   filing happens, this is a definition the operator writes — and two
+   blocks of prose in one card with only a gap between them read as one
+   paragraph that changed subject. */
+/* The escalation note sits between the controls and the owner line,
+   which is where a reader is already asking who carries this. Quiet by
+   default — it only renders when the answer is not already right — so
+   a register whose ownership is correct shows nothing at all. */
+.reg-entry__escalation {
+  margin: var(--us-space-2) 0 0;
+  font-size: var(--us-text-2xs);
+  line-height: 1.55;
+  color: var(--us-text-tertiary);
+}
+.reg-entry__escalation strong { color: var(--us-charcoal); }
+
+.sms-scheme {
+  margin-top: var(--us-space-4);
+  padding-top: var(--us-space-4);
+  border-top: 1px solid var(--us-border);
+}
+
 .sms-add { margin-top: var(--us-space-3); }
 .sms-add > summary {
   cursor: pointer;

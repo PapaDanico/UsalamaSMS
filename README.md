@@ -49,18 +49,19 @@ them — alongside a glossary, tutorials, FAQ, about, privacy and terms.
 
 **`/coverage` is the one to read before adopting anything.** It states,
 element by element against Annex 19's twelve, what is built here and
-what is only partial — and the figure it reports, **9.5 of 12**, is
+what is only partial — and the figure it reports, **10.5 of 12**, is
 computed from the same declaration the table renders rather than typed
-beside it. Seven elements are built and five are partial; a partial
+beside it. Nine elements are built and three are partial; a partial
 element counts a half, which is where the figure comes from.
 
 That figure moved from 2.5 when `/sms` gave eight elements a
-server-held record, and again when the register joined the indicators
-on the server. The five that stay partial say plainly what they still
-lack: the emergency plan itself, the documents behind the document
-register, expiry alerting on training, a record of what was done the
-last time an indicator crossed its alert level, and — for the change
-assessment alone now — anywhere to do it at all. An operator adopting
+server-held record, again when the register joined the indicators on
+the server, and again when an indicator gained the record of what was
+done the last time one crossed, and again when the change assessment
+moved off the handset. The three that stay partial say plainly what
+they still lack: the emergency plan itself, the documents behind the
+document register, and a warning that reaches somebody who does not
+open the training screen. An operator adopting
 this as its sole SMS would still have gaps to answer for, and
 `/coverage` names every one of them.
 
@@ -76,25 +77,38 @@ is the REST API base, not a connection string, so both `core.ts` and
 the function check the scheme rather than trusting the name. See
 [`docs/06-DEPLOYMENT.md`](docs/06-DEPLOYMENT.md), which also carries the
 one-time Prisma baseline the hosted schema needs. The triage queue reads
-this device rather than the organisation, and there is no investigation
-or CAPA workflow. `/toolkits/spi` computes indicators and alert levels
-is not yet fed from the reporting queue, so the measurement exists and
-the monitoring that acts on it does not. The series itself is now held
-for the operator rather than on one device, which is what regulation
-9(5) of L.N. 32/2026 asks for. See
-`docs/02-STRATEGY.md`.
+this device rather than the organisation.
+
+**A report can now be dispositioned**, which it could not before: the
+five `ReportState` values had been in the schema since the first
+migration with four of them unreachable, because no route wrote the
+column. Every report ever filed was `SUBMITTED`, permanently. It is now
+triaged, investigated, closed with a statement of what was done, or
+reopened with a reason — each move recorded against the person who made
+it, at the authority the permission matrix already granted. Time from
+report to closure is computed from that history, and from the **first**
+closure, so reopening a report does not make an operator's own numbers
+look worse. What is still absent is the CAPA loop proper: an action
+tracked as its own object with an owner and a due date, rather than as
+a note on the closure.
+
+`/toolkits/spi` computes indicators and alert levels but is not yet fed
+from the reporting queue, so the measurement exists and the monitoring
+that acts on it does not. The series itself is now held for the
+operator rather than on one device, which is what regulation 9(5) of
+L.N. 32/2026 asks for. See `docs/02-STRATEGY.md`.
 
 ```bash
 npm install
 npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 66 assertions that the registries match the docs
+npm run check:claims   # 68 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
-npm test               # 323 unit tests
+npm test               # 348 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
-npm run test:integration   # 131 checks against a real Postgres
+npm run test:integration   # 167 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
@@ -102,7 +116,7 @@ npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 62 checks, including filing a report with the network cut and
+— 63 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 

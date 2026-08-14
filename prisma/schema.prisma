@@ -134,6 +134,9 @@ model Org {
   findings         AuditFinding[]
   training         TrainingRecord[]
   communications   SafetyCommunication[]
+  changes          ChangeAssessment[]
+  documentReads    DocumentAcknowledgement[]
+  reportMoves      ReportTransition[]
 }
 
 model User {
@@ -155,13 +158,16 @@ model User {
 
   // Named relations, because a user can appear against one table in
   // more than one role and Prisma cannot guess which is which.
-  policiesSigned    SafetyPolicy[]          @relation("policySignatory")
+  policiesSigned    SafetyPolicy[]            @relation("policySignatory")
   policyReads       PolicyAcknowledgement[]
-  appointments      Appointment[]           @relation("appointee")
-  documentsApproved ControlledDocument[]    @relation("documentApprover")
-  findingsVerified  AuditFinding[]          @relation("findingVerifier")
-  training          TrainingRecord[]        @relation("trainee")
-  communications    SafetyCommunication[]   @relation("communicator")
+  appointments      Appointment[]             @relation("appointee")
+  documentsApproved ControlledDocument[]      @relation("documentApprover")
+  findingsVerified  AuditFinding[]            @relation("findingVerifier")
+  training          TrainingRecord[]          @relation("trainee")
+  communications    SafetyCommunication[]     @relation("communicator")
+  changesApproved   ChangeAssessment[]        @relation("changeApprover")
+  documentReads     DocumentAcknowledgement[]
+  reportMoves       ReportTransition[]
 
   @@index([orgId, role])
 }
@@ -240,10 +246,11 @@ model SafetyReport {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  org      Org                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  reporter User?                 @relation(fields: [reporterId], references: [id], onDelete: SetNull)
-  feedback SafetyCommunication[]
-  hazards  Hazard[]
+  org         Org                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  reporter    User?                 @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  feedback    SafetyCommunication[]
+  hazards     Hazard[]
+  transitions ReportTransition[]
 
   // DELIBERATELY NOT A COLUMN: regulatorDeadline.
   //
@@ -260,6 +267,60 @@ model SafetyReport {
   @@index([orgId, type, occurredAt])
   // The aggregation this taxonomy exists to make possible.
   @@index([orgId, location, phase])
+}
+
+/// What happened to a report, one row per move.
+///
+/// THE GAP THIS CLOSES. ReportState has five values and four of them
+/// were unreachable: nothing wrote the column. Every report ever filed
+/// was SUBMITTED, permanently — a queue that only grows, which element
+/// 2.1's own evidence line ("a report rate that is trending") cannot be
+/// satisfied by.
+///
+/// THE HISTORY IS THE RECORD, not a closedAt column. A column answers
+/// "when"; an inspector asks by whom, from what, and what was done. It
+/// also makes time-to-closure derivable rather than stored — and
+/// derivable from the FIRST closure specifically, which a column
+/// overwritten on reopening could not answer at all.
+///
+/// SafetyReport.state IS STILL STORED, and that is not a charter rule 6
+/// violation: the state is not derived from anything, it IS the fact,
+/// and the triage queue's @@index([orgId, state, createdAt]) is what
+/// keeps that screen from re-deriving five states per row on every
+/// render. The route writes both inside one transaction and
+/// tests/integration assert they agree.
+///
+/// userId IS RESTRICT, like AuditLog and for the same reason: who moved
+/// a report is part of the record, and an offboarded person having
+/// triaged it remains true.
+///
+/// ROW SECURITY ON, NO POLICY, NOT FORCED.
+model ReportTransition {
+  id       String @id @default(uuid())
+  orgId    String
+  reportId String
+
+  fromState ReportState
+  toState   ReportState
+
+  /// Required by the state machine for a closure or a reopening, and
+  /// optional otherwise — see disposition.ts. Nullable here rather than
+  /// defaulted to "", because "no note was required" and "a note was
+  /// required and somebody typed nothing" are different facts and the
+  /// second one must not be reachable.
+  note String? @db.Text
+
+  byUserId String
+  at       DateTime @default(now())
+
+  org    Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  report SafetyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  by     User         @relation(fields: [byUserId], references: [id], onDelete: Restrict)
+
+  /// The order the history is read in, and the index the closure
+  /// indicator aggregates over.
+  @@index([orgId, reportId, at])
+  @@index([orgId, toState, at])
 }
 
 model Hazard {
@@ -400,17 +461,33 @@ model Spi {
 }
 
 model SpiPeriod {
-  id        String   @id @default(uuid())
+  id          String    @id @default(uuid())
   // Denormalised onto the period as well as the indicator, because
   // every query in this API is scoped by orgId first and a join is not
   // a tenancy boundary.
-  orgId     String
-  spiId     String
+  orgId       String
+  spiId       String
   // "2026-Q1", "March" — whatever the operator's cadence is called.
-  label     String
-  events    Int
-  exposure  Float
-  createdAt DateTime @default(now())
+  label       String
+  events      Int
+  exposure    Float
+  /// Element 3.1's own evidence definition asks for "a record of what
+  /// happened the last time one was crossed". This is that record,
+  /// attached to the PERIOD rather than to an alert level — the level
+  /// is derived by alertLevels() on every read and is deliberately not
+  /// stored, so hanging the action off it would either require storing
+  /// it or leave the note orphaned the moment the series moved.
+  ///
+  /// Nullable, and not required when a level is crossed. A product that
+  /// refuses to record the numbers until somebody has written the
+  /// response gets the numbers entered somewhere else.
+  actionTaken String?   @db.Text
+  /// When the action was taken. Separate from createdAt, which is when
+  /// the row was typed: an operator recording last quarter's response
+  /// this morning is the ordinary case, and conflating the two would
+  /// date every response to the day of data entry.
+  actionOn    DateTime?
+  createdAt   DateTime  @default(now())
 
   spi Spi @relation(fields: [spiId], references: [id], onDelete: Cascade)
 
@@ -590,6 +667,87 @@ model VoluntaryScheme {
   @@index([orgId])
 }
 
+enum ChangeTrigger {
+  FLEET
+  ROUTE_OR_NETWORK
+  ORGANISATION
+  KEY_PERSONNEL
+  EQUIPMENT_OR_SYSTEM
+  PROCEDURE
+  OTHER
+}
+
+enum ChangeStatus {
+  DRAFT
+  ASSESSED
+  APPROVED
+  IN_EFFECT
+  REVIEWED
+}
+
+/// Element 3.2 — the management of change, held by the organisation.
+///
+/// The element's evidence definition is unusually precise: "a change
+/// assessment for the most recent significant change, DATED BEFORE IT
+/// HAPPENED". An assessment written after the fleet arrived is a
+/// justification, and the difference between the two is the whole
+/// element. Both dates are therefore stored and neither is derived —
+/// `assessedOn` is when the thinking was done, `effectiveFrom` is when
+/// the change takes effect, and their ORDER is what an inspector reads.
+///
+/// THE RISK POSITION IS STORED, for the same reason RiskAssessment's
+/// is: an assessment is a decision taken on a date under the matrix as
+/// it stood, and recomputing it if the scale is ever revised would
+/// rewrite a decision somebody approved. Computed on write from the
+/// same risk.ts the register and /methodology use.
+///
+/// APPROVAL IS A SEPARATE ACT from assessment, and separately
+/// permissioned — moc.create writes it, moc.approve signs it. A change
+/// its own author can approve is not routed.
+model ChangeAssessment {
+  id            String        @id @default(uuid())
+  orgId         String
+  title         String
+  description   String        @db.Text
+  trigger       ChangeTrigger
+  /// When the thinking was done.
+  assessedOn    DateTime
+  /// When the change takes, or took, effect. Nullable while a change is
+  /// still being planned — a date nobody has set is not the same as a
+  /// change that happened today.
+  effectiveFrom DateTime?
+
+  severity     Severity
+  likelihood   Likelihood
+  score        Int
+  tolerability Tolerability
+  controls     String?      @db.Text
+
+  residualSeverity     Severity?
+  residualLikelihood   Likelihood?
+  residualScore        Int?
+  residualTolerability Tolerability?
+
+  approvedById String?
+  approvedAt   DateTime?
+
+  /// The half operators most often skip: whether the change did what it
+  /// was expected to. Element 3.2 is not discharged by assessing.
+  reviewDueOn DateTime?
+  reviewedOn  DateTime?
+  reviewNotes String?   @db.Text
+
+  status    ChangeStatus @default(DRAFT)
+  updatedAt DateTime     @updatedAt
+  createdAt DateTime     @default(now())
+
+  org        Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  approvedBy User? @relation("changeApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+
+  @@index([orgId, status])
+  @@index([orgId, effectiveFrom])
+}
+
 model SafetyPolicy {
   id            String    @id @default(uuid())
   orgId         String
@@ -698,11 +856,46 @@ model ControlledDocument {
   supersededOn DateTime?
   createdAt    DateTime  @default(now())
 
-  org        Org   @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  approvedBy User? @relation("documentApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  org        Org                       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  approvedBy User?                     @relation("documentApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  reads      DocumentAcknowledgement[]
 
   @@unique([orgId, reference, version])
   @@index([orgId, reviewBy])
+}
+
+/// Element 1.5 — who has read which REVISION of a controlled document.
+///
+/// THE UNIQUE CONSTRAINT IS ON THE DOCUMENT ROW, AND THAT IS THE WHOLE
+/// POINT. ControlledDocument is unique on (orgId, reference, version),
+/// so every revision is its own row — which means an acknowledgement
+/// keyed on documentId is keyed on a REVISION. Reading revision 3 does
+/// not mark you as having read revision 4.
+///
+/// That is not a detail. It is what document control means and what
+/// distinguishes a register of documents from a distribution record: an
+/// operator that revises its SMS manual needs to know who has read the
+/// version now in force, not who once read something with the same
+/// title. A per-document key would report full coverage the moment a
+/// revision shipped, which is the reassuring answer and the wrong one.
+///
+/// Mirrors PolicyAcknowledgement deliberately, down to the cascade
+/// choices: the acknowledgement dies with its document and NEVER with
+/// its user, because who read a revision is part of the record and an
+/// offboarded person having read it remains true.
+model DocumentAcknowledgement {
+  id             String   @id @default(uuid())
+  orgId          String
+  documentId     String
+  userId         String
+  acknowledgedAt DateTime @default(now())
+
+  org      Org                @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  document ControlledDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([documentId, userId])
+  @@index([orgId, acknowledgedAt])
 }
 
 /// Element 3.3 — continuous improvement. An internal SMS audit finding,
