@@ -30,7 +30,7 @@ now verified rather than asserted:
   asserts the batch leaves the browser carrying a bearer token, and that
   a queued report with no session **says so** instead.
 
-Nineteen routes ship. The operational four are the report form, the
+Twenty routes ship. The operational four are the report form, the
 triage queue, an account screen that signs in — and deliberately
 does **not** gate the form, because filing must never require a
 password — and `/sms`, which holds the organisation's own record
@@ -102,21 +102,48 @@ reopened with a reason — each move recorded against the person who made
 it, at the authority the permission matrix already granted. Time from
 report to closure is computed from that history, and from the **first**
 closure, so reopening a report does not make an operator's own numbers
-look worse. What is still absent is the CAPA loop proper: an action
-tracked as its own object with an owner and a due date, rather than as
-a note on the closure.
+look worse.
 
-`/toolkits/spi` computes indicators and alert levels but is not yet fed
-from the reporting queue, so the measurement exists and the monitoring
-that acts on it does not. The series itself is now held for the
-operator rather than on one device, which is what regulation 9(5) of
-L.N. 32/2026 asks for. See `docs/02-STRATEGY.md`.
+**And the CAPA loop is reachable.** An action is raised from the report
+that prompted it, carries its own owner and due date, and is completed
+and then verified **by somebody other than whoever did the work**. It
+shipped one release earlier as an API with no interface at all — four
+verbs, two coverage entries claiming it, and no screen that could
+create a row, so the risk picture's three action figures read zero
+permanently. A claims assertion now fails the build when the API
+accepts a write no screen can send, and it was mutation-checked by
+restoring that defect exactly as it shipped.
+
+**Element 3.2 was the same fault, larger.** The management of change
+was marked BUILT, `/api/v1/changes` was named in its coverage entry,
+and `/sms` pointed an operator at `/toolkits/sra` — the safety risk
+assessment, a different instrument answering a different question. A
+change assessment could not be recorded, approved or reviewed from
+anywhere in the product. It is now an element surface on `/sms` like
+the other nine.
+
+`/toolkits/spi` computes indicators and alert levels, and will now
+count the reports that arrived in a period and put the figure beside
+the field — it does **not** fill it in, because an indicator counts a
+particular thing and a quarter's report count is not that thing unless
+the operator says so. The series is held for the operator rather than
+on one device, which is what regulation 9(5) of L.N. 32/2026 asks for.
+
+**What is still absent is delivery.** Nothing in this product tells
+anybody anything: no alert when an indicator crosses, when training
+lapses, when an emergency contact goes stale or when an action falls
+overdue. Every incumbent has that and it is the largest functional gap
+here. It is unblocked but not started — the channel is decided (SMS,
+because it is the only one that reaches somebody without a smartphone)
+and what it needs next is a sender-ID registration and API credentials,
+which are a person's job and not a coding task. See
+`docs/02-STRATEGY.md`.
 
 ```bash
 npm install
 npm run check          # prisma generate, typecheck, brand, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
-npm run check:claims   # 71 assertions that the registries match the docs
+npm run check:claims   # 73 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm test               # 411 unit tests
 npm run typecheck      # tsc --noEmit, strict

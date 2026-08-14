@@ -1488,6 +1488,59 @@ html { scroll-padding-top: var(--us-chrome); }
   color: var(--us-text-secondary);
 }
 
+/* The corrective actions, worked from the assurance screen.
+
+   A LIST OF THINGS TO DO, not a table. Each one is a sentence somebody
+   wrote, a person who owns it and a date — and the sentence is the part
+   that matters, so it leads and the rest sits under it in a metadata
+   row. A table would put the sentence in a column and truncate it. */
+.picture-actions {
+  list-style: none;
+  padding-left: 0;
+  max-width: 68ch;
+}
+
+.picture-action {
+  padding: var(--us-space-4);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius);
+}
+
+/* OVERDUE IS THE ONLY ONE MARKED, and by a rule rather than a fill:
+   everything else on this list is somebody's ordinary work, and a list
+   where four states each have a colour is a list with no signal in it.
+   Colour is never the only channel — the badge says the word. */
+.picture-action[data-status='OVERDUE'] {
+  border-left: 3px solid var(--us-state-error);
+}
+
+.picture-action__what {
+  margin: 0 0 var(--us-space-2);
+  font-weight: 600;
+}
+
+.picture-action__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-2) var(--us-space-3);
+  margin: 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+}
+
+.picture-action__note {
+  margin: var(--us-space-2) 0 0;
+  font-size: var(--us-text-sm);
+}
+
+.picture-action__do {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+  margin: var(--us-space-3) 0 0;
+}
+
 .picture-note {
   margin: var(--us-space-3) 0;
   font-size: var(--us-text-sm);

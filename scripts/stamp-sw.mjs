@@ -1103,7 +1103,50 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    A reporter filing offline never sees it and does pay for it. That is
    the honest shape of the trade, and it is worth making once. */
-const BUDGET = { entry: 214 * 1024, js: 446 * 1024, css: 57 * 1024 };
+/* TOTAL 446 -> 456 KB, for two capabilities that had no interface at
+   all. ENTRY UNMOVED at 213.8 for the fourth raise running.
+
+   THIS IS NOT A FEATURE RAISE. It is the cost of making two things
+   REACHABLE that the coverage page already claimed were built:
+
+     · /api/v1/actions shipped with create, complete, verify and cancel,
+       fully tested, named in element 2.2 and 3.3 — and no screen posted
+       to any of them. The risk picture rendered "Outstanding / Overdue
+       / Awaiting verification" over a table nothing could put a row in,
+       so all three read zero permanently.
+     · /api/v1/changes was worse. Element 3.2 was marked BUILT, the
+       route was named in its coverage entry, and /sms pointed an
+       operator at /toolkits/sra — the safety risk assessment, which is
+       a different instrument answering a different question. A change
+       assessment could not be recorded, approved or reviewed from
+       anywhere in the product.
+
+     sms chunk      25,680 -> 30,023  +4,343   element 3.2 as a surface
+     picture chunk  10,237 -> 13,838  +3,601   the actions list and its work
+     triage chunk                     + ~900   raise an action from a report
+     entry         218,801 -> 218,801  UNMOVED
+     css             57.0K -> 56.9K    within budget
+
+   Both were found by a new claims assertion rather than by looking:
+   NO WRITE ROUTE EXISTS THAT NO SCREEN CAN REACH. Ten kilobytes to
+   stop the coverage page describing a product an operator cannot
+   operate is not weight, it is the difference between a claim and a
+   capability.
+
+   AND THE FIRST VERSION OF THAT GATE COULD NOT FAIL. It matched the
+   path prefix, and the risk picture READS /api/v1/actions with a GET,
+   so every write route sharing the prefix looked reachable — including
+   the four that were the reason for the check. Mutation-checking it by
+   renaming one call site left it green. The second version required
+   the method and the path to sit near each other and failed on
+   fourteen correct routes, because the SMS screen posts through a
+   descriptor and the path lives in a map far from the verb. The
+   version that shipped asserts the narrow thing that actually
+   happened twice — a route the browser has never heard of — and says
+   in its own comment what it does not catch.
+
+   ENTRY IS 213.8 OF 214 AND HAS NOT MOVED IN FOUR RAISES. */
+const BUDGET = { entry: 214 * 1024, js: 456 * 1024, css: 57 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

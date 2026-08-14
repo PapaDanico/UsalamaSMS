@@ -95,6 +95,13 @@ const SURFACES = {
       permission: 'erp.manage'
     }
   },
+  '3.2': {
+    key: 'changes',
+    endpoint: '/api/v1/changes',
+    collection: 'changes',
+    action: 'Assess a change',
+    permission: 'moc.create'
+  },
   '1.5': {
     key: 'documents',
     endpoint: '/api/v1/sms/documents',
@@ -133,8 +140,16 @@ const SURFACES = {
 const ELSEWHERE = {
   '2.1': { href: '/report', label: 'Reporting is the report form and the queue' },
   '2.2': { href: '/toolkits/register', label: 'The risk register' },
-  '3.1': { href: '/toolkits/spi', label: 'Safety performance indicators' },
-  '3.2': { href: '/toolkits/sra', label: 'The safety risk assessment' }
+  '3.1': { href: '/toolkits/spi', label: 'Safety performance indicators' }
+  /* 3.2 IS NOT HERE ANY MORE, AND POINTING IT AT /toolkits/sra WAS
+     WRONG rather than merely thin. The SRA is Doc 9859's five-step
+     risk assessment; element 3.2 is the MANAGEMENT OF CHANGE — a
+     different record, answering a different question, with its own
+     table and its own route since the change assessment shipped. An
+     operator following that pointer arrived at the wrong instrument
+     and found no way to record a change at all.
+
+     It is a SURFACE now, below, like the other eight. */
 };
 
 const fmtDate = (v) => {
@@ -155,6 +170,30 @@ const fmtDate = (v) => {
    the same badge as "out of date": one needs somebody to establish the
    contact exists at all, the other needs a call. Colour is never the
    only channel — the label says it. */
+/* A change's own vocabulary. DRAFT and ASSESSED are not the same word
+   an operator would use, and IN_EFFECT with no review afterwards is the
+   state element 3.2's loose end lives in — so it reads as a caution
+   rather than as done. */
+const CHANGE_LABEL = {
+  DRAFT: 'draft',
+  ASSESSED: 'assessed, not approved',
+  APPROVED: 'approved',
+  IN_EFFECT: 'in effect',
+  REVIEWED: 'reviewed after the change'
+};
+const CHANGE_BADGE = {
+  DRAFT: 'NEUTRAL',
+  ASSESSED: 'CAUTION',
+  APPROVED: 'SAFE',
+  IN_EFFECT: 'CAUTION',
+  REVIEWED: 'SAFE'
+};
+const BAND_WORD = {
+  INTOLERABLE: 'intolerable',
+  TOLERABLE: 'tolerable',
+  ACCEPTABLE: 'acceptable'
+};
+
 const FRESH_LABEL = {
   CURRENT: 'confirmed',
   DUE_SOON: 'confirm soon',
@@ -204,6 +243,45 @@ const RENDER = {
           <span>${a.user?.name ?? 'Unnamed'}</span>
           <span>since ${fmtDate(a.appointedOn)}</span>
           <span>${a.letterRef ? `letter ${a.letterRef}` : 'no letter reference'}</span>
+        </p>
+      </article>`
+    ),
+
+  changes: (rows) =>
+    rows.map(
+      (c) => html`<article class="rec" data-state="${c.reviewedOn ? 'ok' : 'open'}">
+        <div class="rec__head">
+          <h4>${c.title}</h4>
+          <span class="badge" data-status="${CHANGE_BADGE[c.status] ?? 'NEUTRAL'}">
+            <span class="badge__label">${CHANGE_LABEL[c.status] ?? c.status}</span>
+          </span>
+        </div>
+        <p class="rec__body">${c.description}</p>
+        <!-- THE TWO DATES TOGETHER, because their ORDER is the element.
+             "A change assessment dated before it happened" is what 3.2's
+             evidence asks for, and an auditor reads these two fields
+             against each other. -->
+        <p class="rec__meta">
+          <span>assessed ${fmtDate(c.assessedOn)}</span>
+          <span>${c.effectiveFrom ? `in effect from ${fmtDate(c.effectiveFrom)}` : 'not yet in effect'}</span>
+          <span>${BAND_WORD[c.residualTolerability ?? c.tolerability] ?? ''}</span>
+        </p>
+        ${c.controls ? html`<p class="rec__body"><strong>Controls:</strong> ${c.controls}</p>` : ''}
+        ${c.approvedBy
+          ? html`<p class="rec__meta"><span>approved by ${c.approvedBy.name}</span></p>`
+          : ''}
+        ${c.reviewNotes
+          ? html`<p class="rec__body"><strong>Reviewed ${fmtDate(c.reviewedOn)}:</strong> ${c.reviewNotes}</p>`
+          : ''}
+        <p class="rec__meta no-print">
+          ${!c.approvedAt && allow('moc.approve')
+            ? html`<button type="button" class="btn btn-secondary btn-sm"
+                data-approve-change="${c.id}">Approve it</button>`
+            : ''}
+          ${c.approvedAt && !c.reviewedOn && allow('moc.create')
+            ? html`<button type="button" class="btn btn-secondary btn-sm"
+                data-review-change="${c.id}">Record the review after it</button>`
+            : ''}
         </p>
       </article>`
     ),
@@ -405,6 +483,35 @@ const FORMS = {
     { name: 'userId', label: 'Person', type: 'people', required: true },
     { name: 'appointedOn', label: 'Appointed on', type: 'date', required: true },
     { name: 'letterRef', label: 'Appointment letter reference' }
+  ],
+  changes: [
+    { name: 'title', label: 'The change', required: true,
+      placeholder: 'Second aircraft on the Lodwar route' },
+    { name: 'description', label: 'What is changing, and why', type: 'textarea', rows: 3, required: true },
+    { name: 'trigger', label: 'What kind of change', type: 'select', options: [
+      ['FLEET', 'Fleet'], ['ROUTE_OR_NETWORK', 'Route or network'],
+      ['ORGANISATION', 'Organisation'], ['KEY_PERSONNEL', 'Key personnel'],
+      ['EQUIPMENT_OR_SYSTEM', 'Equipment or system'], ['PROCEDURE', 'Procedure'],
+      ['OTHER', 'Other']
+    ] },
+    /* ASSESSED ON comes before EFFECTIVE FROM in the form because it
+       comes before it in life, and the route refuses the pair the other
+       way round — element 3.2's evidence is an assessment "dated before
+       it happened", and one dated after is a justification. Ordering
+       the fields the way the rule reads makes the refusal make sense
+       when it arrives. */
+    { name: 'assessedOn', label: 'Assessed on', type: 'date', required: true },
+    { name: 'effectiveFrom', label: 'Takes effect from (blank while it is still planned)', type: 'date' },
+    { name: 'severity', label: 'Severity', type: 'select', options: [
+      ['A_CATASTROPHIC', 'A — Catastrophic'], ['B_HAZARDOUS', 'B — Hazardous'],
+      ['C_MAJOR', 'C — Major'], ['D_MINOR', 'D — Minor'], ['E_NEGLIGIBLE', 'E — Negligible']
+    ] },
+    { name: 'likelihood', label: 'Likelihood', type: 'select', options: [
+      ['FREQUENT', 'Frequent'], ['OCCASIONAL', 'Occasional'], ['REMOTE', 'Remote'],
+      ['IMPROBABLE', 'Improbable'], ['EXTREMELY_IMPROBABLE', 'Extremely improbable']
+    ] },
+    { name: 'controls', label: 'What will control it', type: 'textarea', rows: 2 },
+    { name: 'reviewDueOn', label: 'Review it by', type: 'date' }
   ],
   contacts: [
     { name: 'name', label: 'Name', required: true },
@@ -1013,7 +1120,71 @@ export async function render(outlet) {
   /* CONFIRMING A NUMBER. One delegated listener, because the directory
      re-renders on every save and per-row listeners would be re-attached
      each time — the P-01 shape the triage queue was fixed for. */
+  /* APPROVING AND REVIEWING A CHANGE.
+
+     Two different acts by two different posts, and the buttons appear
+     only for the one this caller holds — moc.approve to approve,
+     moc.create to record the review afterwards. The server refuses the
+     other regardless; showing a button that always fails teaches
+     somebody to ignore the refusal.
+
+     APPROVAL SENDS NOTHING. The approver is the caller and the moment
+     is now — letting either be supplied would allow an approval
+     attributed to somebody who did not give it, or dated to suit. */
   body.addEventListener('click', async (event) => {
+    const change = event.target.closest?.('[data-approve-change], [data-review-change]');
+    if (change) {
+      const approving = Boolean(change.dataset.approveChange);
+      const id = change.dataset.approveChange ?? change.dataset.reviewChange;
+      let payload = {};
+
+      if (approving) {
+        if (!window.confirm(
+          'Approve this change assessment? It is recorded against your name and the current time, and it cannot be attributed to anybody else afterwards.'
+        )) return;
+      } else {
+        const notes = window.prompt(
+          'What did the review after the change find? Element 3.2 does not end when the change lands.'
+        );
+        if (notes === null) return;
+        if (!notes.trim()) {
+          window.alert('A review with no findings recorded is a review nobody can read.');
+          return;
+        }
+        payload = { reviewedOn: new Date().toISOString().slice(0, 10), reviewNotes: notes };
+      }
+
+      const label = change.textContent;
+      change.disabled = true;
+      change.textContent = 'Saving…';
+      try {
+        const res = await authFetch(
+          `/api/v1/changes/${id}/${approving ? 'approve' : 'review'}`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload)
+          }
+        );
+        if (!res.ok) {
+          /* The server's own sentence. On an approval it explains that
+             a change carrying an intolerable position cannot be
+             approved while it stands, which is the rule and is worth
+             reading in full. */
+          const answer = await res.json().catch(() => ({}));
+          window.alert(answer.message ?? 'That was not accepted. Nothing was changed.');
+        }
+      } catch {
+        window.alert('The safety office could not be reached. Nothing was changed.');
+      } finally {
+        change.disabled = false;
+        change.textContent = label;
+        await load();
+        repaint();
+      }
+      return;
+    }
+
     const btn = event.target.closest?.('[data-verify-contact]');
     if (!btn) return;
     const label = btn.textContent;

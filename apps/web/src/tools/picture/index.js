@@ -62,6 +62,125 @@ const TREND_TEXT = {
   TOO_SHORT: 'Too few months to say which way this is going'
 };
 
+/* BOUND ONCE PER OUTLET, for the reason the triage queue has a long
+   comment about: the router clears the outlet's CHILDREN between routes
+   but never replaces the outlet, so a listener attached on every render
+   is a listener added on every render — and each handler re-renders.
+   A WeakSet keyed on the node remembers and holds nothing alive. */
+const bound = new WeakSet();
+
+function bindActions(outlet) {
+  if (bound.has(outlet)) return;
+  bound.add(outlet);
+
+  outlet.addEventListener('click', async (event) => {
+    const el = event.target.closest?.(
+      '[data-complete-action], [data-verify-action], [data-cancel-action]'
+    );
+    if (!el) return;
+
+    const id =
+      el.dataset.completeAction ?? el.dataset.verifyAction ?? el.dataset.cancelAction;
+    const what = el.dataset.completeAction
+      ? 'complete'
+      : el.dataset.verifyAction
+        ? 'verify'
+        : 'cancel';
+
+    /* THE NOTE IS ASKED FOR BEFORE THE REQUEST on the two moves that
+       need one. The server refuses without it and that refusal is the
+       control; asking here as well is the difference between a form
+       that helps and one that scolds. Both still run. */
+    const body = {};
+    if (what === 'cancel') {
+      const reason = window.prompt(
+        'Why is this action not being done? A cancellation is a safety decision, and the reason is the part an auditor asks for.'
+      );
+      if (reason === null) return;
+      if (!reason.trim()) {
+        window.alert('A reason is needed. Without one this is indistinguishable from deleting the action.');
+        return;
+      }
+      body.cancelledReason = reason;
+    } else {
+      const note = window.prompt(
+        what === 'complete'
+          ? 'What was done? This is recorded against your name.'
+          : 'What did you check? Optional, and it is what the next reader sees.'
+      );
+      if (note === null) return;
+      if (note.trim()) {
+        body[what === 'complete' ? 'completionNote' : 'verificationNote'] = note;
+      }
+    }
+
+    const label = el.textContent;
+    el.disabled = true;
+    el.textContent = 'Saving…';
+    try {
+      const res = await authFetch(`/api/v1/actions/${id}/${what}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        /* The server's own sentence. On a verify it explains that the
+           person who completed an action cannot also verify it, which
+           is the rule the whole loop rests on and is worth reading in
+           full rather than as "forbidden". */
+        const answer = await res.json().catch(() => ({}));
+        window.alert(answer.message ?? 'That was not accepted. Nothing was changed.');
+      }
+    } catch {
+      window.alert('The safety office could not be reached. Nothing was changed.');
+    } finally {
+      el.disabled = false;
+      el.textContent = label;
+      await render(outlet);
+    }
+  });
+}
+
+async function fetchActions() {
+  try {
+    const res = await authFetch('/api/v1/actions');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+const ACTION_STATUS = {
+  OPEN: 'open',
+  DUE_SOON: 'due soon',
+  OVERDUE: 'overdue',
+  DONE: 'done, awaiting verification',
+  VERIFIED: 'verified',
+  CANCELLED: 'cancelled'
+};
+
+const ACTION_BADGE = {
+  OPEN: 'SAFE',
+  DUE_SOON: 'CAUTION',
+  OVERDUE: 'ALERT',
+  DONE: 'CAUTION',
+  VERIFIED: 'SAFE',
+  CANCELLED: 'NEUTRAL'
+};
+
+/* Where it came from, in words. An action is always raised FROM
+   something — that is the CHECK constraint in the migration — and the
+   list has to say which, or two identical-looking actions against
+   different reports read as a duplicate. */
+function sourceOf(a) {
+  if (a.reportId) return 'from a report';
+  if (a.findingId) return 'from an audit finding';
+  if (a.riskId) return 'from a register entry';
+  if (a.changeId) return 'from a change assessment';
+  return '';
+}
+
 export async function render(outlet) {
   if (!isSignedIn()) {
     outlet.innerHTML = html`
@@ -124,7 +243,16 @@ export async function render(outlet) {
   }
 
   const { reporting, register, indicators, changes, actions, window: win } = data;
-  const org = await loadOrg();
+  /* THE LIST, not only the counts.
+  
+     The counts shipped one release before this and read zero forever,
+     because nothing in the product could create an action — the API
+     had create, complete, verify and cancel, and no screen posted to
+     any of them. A panel of figures over a capability nobody can reach
+     is the same defect as a coverage entry that overstates, one layer
+     further in. */
+  const [org, list] = await Promise.all([loadOrg(), fetchActions()]);
+  bindActions(outlet);
 
   outlet.innerHTML = html`
     <section class="panel">
@@ -168,9 +296,11 @@ export async function render(outlet) {
       <h2 id="actions">Corrective actions</h2>
       ${actions.total === 0
         ? html`<p class="lede">
-            Nothing recorded. An action raised against a report, a finding, a
-            register entry or a change is tracked here to closure and to
-            verification — which is what "mitigations tracked to closure" means
+            Nothing recorded. An action is raised from the thing that
+            prompted it — open a report in
+            <a href="/triage">the reporting queue</a> and record what will be
+            done about it. It is then tracked here to closure and to
+            verification, which is what "mitigations tracked to closure" means
             in element 2.2's evidence.
           </p>`
         : html`
@@ -184,6 +314,7 @@ export async function render(outlet) {
                   Showing the first actions only. These counts are a floor.
                 </p>`
               : ''}
+            ${actionList(list)}
           `}
 
       <h2>The register</h2>
@@ -367,6 +498,64 @@ function holderPanel(gaps) {
           </ul>
         `
       : ''}
+  `;
+}
+
+/* ------------------------------------------------------------------
+   THE ACTIONS THEMSELVES, and the two buttons that move them.
+
+   COMPLETE AND VERIFY ARE SEPARATE BUTTONS ON SEPARATE ROWS OF THE
+   PERMISSION MATRIX, and the screen shows only what this caller may
+   press. The server refuses the rest and says why; showing a button
+   that always fails would teach somebody to ignore the refusal.
+
+   VERIFY IS ABSENT ON AN ACTION THIS PERSON COMPLETED. The server
+   refuses it — an action verified by the person who did it has not been
+   verified — and the sentence it returns explains that. Hiding the
+   button as well means the common case never produces the refusal at
+   all, and the refusal stays for the case the screen cannot see:
+   somebody else's browser, an API client, a stale page.
+   ------------------------------------------------------------------ */
+function actionList(list) {
+  if (!list?.actions?.length) {
+    return html`<p class="notice">
+      The actions could not be read, so only the counts above are shown.
+      That is not the same as there being none.
+    </p>`;
+  }
+  return html`
+    <ul class="picture-list picture-actions">
+      ${list.actions.map(
+        (a) => html`<li class="picture-action" data-status="${a.status}">
+          <p class="picture-action__what">${a.action}</p>
+          <p class="picture-action__meta">
+            <span class="badge" data-status="${ACTION_BADGE[a.status]}">
+              <span class="badge__label">${ACTION_STATUS[a.status] ?? a.status}</span>
+            </span>
+            <span>${a.ownerPost}</span>
+            <span>${a.dueOn ? `due ${a.dueOn}` : 'no due date'}</span>
+            <span>${sourceOf(a)}</span>
+          </p>
+          ${a.completionNote
+            ? html`<p class="picture-action__note"><strong>Done:</strong> ${a.completionNote}</p>`
+            : ''}
+          ${a.cancelledReason
+            ? html`<p class="picture-action__note"><strong>Cancelled:</strong> ${a.cancelledReason}</p>`
+            : ''}
+          ${a.status === 'VERIFIED' || a.status === 'CANCELLED'
+            ? ''
+            : html`<p class="picture-action__do no-print">
+                ${a.completedOn
+                  ? html`<button type="button" class="btn btn-secondary btn-sm"
+                      data-verify-action="${a.id}">Verify this</button>`
+                  : html`<button type="button" class="btn btn-secondary btn-sm"
+                      data-complete-action="${a.id}">Mark it done</button>`}
+                <button type="button" class="btn btn-ghost btn-sm"
+                  data-cancel-action="${a.id}">Cancel it</button>
+              </p>`}
+        </li>`
+      )}
+    </ul>
   `;
 }
 

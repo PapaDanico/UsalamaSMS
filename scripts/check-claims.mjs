@@ -905,6 +905,97 @@ assert(
     `${NOT_AN_ELEMENT.size} of ${registered.size} routes are exempt — at that ratio ` +
       "this check passes by exempting whatever it would otherwise fail on",
   );
+  /* ============================================================
+     AND THE THIRD QUESTION: can a PERSON reach it?
+
+     THE DEFECT THIS EXISTS FOR. /api/v1/actions shipped with create,
+     complete, verify and cancel, fully tested, named in two coverage
+     entries — and no screen in the product posted to any of them. The
+     risk picture rendered "Outstanding / Overdue / Awaiting
+     verification" over a table nothing could put a row in, so all three
+     figures read zero permanently.
+
+     BOTH ASSERTIONS ABOVE PASSED ON IT. The first asks whether every
+     route an element names is registered: it was. The second asks
+     whether the API holds anything no element admits to: 2.2 and 3.3
+     both admitted to it. Neither has an opinion about the browser, and
+     an operator cannot use an endpoint.
+
+     This is the disposition defect one release later and one layer out.
+     That one was disclosed on /coverage while the buttons were missing;
+     this one was not, because nobody noticed the buttons were missing.
+
+     WRITE ROUTES ONLY. A GET can legitimately exist for an export, a
+     health probe or another service. A POST, PATCH or DELETE that no
+     screen calls is a capability an operator was told they have and
+     cannot use.
+     ============================================================ */
+  const web = readdirSync(resolve(ROOT, "apps/web/src"), { recursive: true })
+    .filter((f) => typeof f === "string" && /\.(js|ts)$/.test(f))
+    .map((f) => read(`apps/web/src/${f}`))
+    .join("\n");
+
+  assert(
+    "the web source was read at all",
+    web.length > 20000,
+    `read ${web.length} characters of apps/web/src — this check would pass by finding nothing`,
+  );
+
+  const writeRoutes = new Set();
+  for (const f of readdirSync(resolve(ROOT, "apps/api/src"))) {
+    if (!f.startsWith("routes.") || !f.endsWith(".ts")) continue;
+    const src = read(`apps/api/src/${f}`);
+    for (const m of src.matchAll(/app\.(?:post|put|patch|delete)\(\s*"([^"]+)"/g)) {
+      writeRoutes.add(m[1]);
+    }
+  }
+
+  /* Reached means the path appears in the web source at all.
+  
+     WHAT THIS CATCHES, AND IT IS THE DEFECT THAT ACTUALLY HAPPENED
+     TWICE: a route the browser has never heard of. /api/v1/actions
+     shipped with four verbs, two coverage entries and no caller; and
+     /api/v1/changes shipped with element 3.2 marked BUILT while the
+     SMS screen pointed an operator at /toolkits/sra, a different
+     instrument. In both cases the string appeared NOWHERE under
+     apps/web, which is what this asserts.
+     
+     WHAT IT DOES NOT CATCH, stated rather than left to be discovered:
+     a screen that only READS a collection makes the write routes on
+     that prefix look reached. A stricter version was written and
+     removed — it required the method and the path to sit near each
+     other, and it failed on fourteen correct routes, because the SMS
+     screen posts through a descriptor (`authFetch(surface.endpoint,
+     { method: 'POST' })`) and the path literal lives in a map far from
+     the verb. A gate that cries wolf on correct code is a gate
+     somebody turns off, and there is already a comment in this file
+     saying so about a different check.
+     
+     The narrow version is the one worth having. check-wiring.mjs
+     covers the method question properly for the descriptor-driven
+     screen, which is where that question is answerable.
+     
+     MUTATION-CHECK THIS BY REMOVING A PATH ENTIRELY, not by renaming
+     one call site — the second leaves the string present and the gate
+     correctly stays green. */
+  const reachable = (route) => web.includes(route.split("/:")[0]);
+
+  const NOT_FROM_A_SCREEN = new Map([
+    ["/api/v1/auth/logout", "Called by the session module, which is not a screen."],
+    ["/api/v1/sync/batch", "Called by the outbox, which is not a screen."],
+  ]);
+
+  const unreachable = [...writeRoutes]
+    .filter((r) => !reachable(r) && !NOT_FROM_A_SCREEN.has(r))
+    .sort();
+
+  assert(
+    "NO WRITE ROUTE EXISTS THAT NO SCREEN CAN REACH",
+    unreachable.length === 0,
+    `${unreachable.join(", ")} — the API accepts this and nothing in the product sends ` +
+      "it. An operator reads /coverage, is told the capability exists, and cannot use it",
+  );
+
   assert(
     "NO CAPABILITY IS REGISTERED BY THE API THAT NO ELEMENT ADMITS TO HOLDING",
     unclaimed.length === 0,

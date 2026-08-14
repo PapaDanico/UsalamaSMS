@@ -400,6 +400,71 @@ function bindOnce(outlet) {
       return;
     }
 
+    /* ------------------------------------------------------------
+       Record a corrective action against this report.
+
+       THREE PROMPTS RATHER THAN A FORM, deliberately and for now. The
+       queue is worked on a handset, the three fields are short, and a
+       hand-built inline form on a card that re-renders after every
+       save is more ways to lose what somebody typed than it is worth.
+       The server validates all three regardless.
+       ------------------------------------------------------------ */
+    const raise = event.target.closest?.('[data-raise-action]');
+    if (raise) {
+      const what = window.prompt(
+        'What will be done about this report? One sentence — it becomes the action somebody is accountable for.'
+      );
+      if (what === null) return;
+      if (!what.trim()) {
+        window.alert('An action needs to say what will be done.');
+        return;
+      }
+      const owner = window.prompt(
+        'Which post owns it? SAFETY_MANAGER, SAFETY_OFFICER, ACCOUNTABLE_EXECUTIVE — or your own title.'
+      );
+      if (owner === null) return;
+      if (!owner.trim()) {
+        window.alert('An action with no owner is an action nobody does.');
+        return;
+      }
+      const due = window.prompt(
+        'By when? YYYY-MM-DD. Leave blank if there is genuinely no date — it is recorded as undated rather than guessed at.'
+      );
+      if (due === null) return;
+
+      raise.disabled = true;
+      const label = raise.textContent;
+      raise.textContent = 'Saving…';
+      try {
+        const res = await authFetch('/api/v1/actions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: what,
+            ownerPost: owner,
+            reportId: raise.dataset.raiseAction,
+            ...(due.trim() ? { dueOn: due.trim() } : {})
+          })
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          window.alert(
+            body.detail?.fieldErrors?.dueOn
+              ? 'That date was not understood. Use YYYY-MM-DD, or leave it blank.'
+              : (body.message ?? 'That was not accepted. Nothing was recorded.')
+          );
+        } else {
+          window.alert('Recorded. It is now on the risk picture until it is done and verified.');
+        }
+      } catch {
+        window.alert('The safety office could not be reached. Nothing was recorded.');
+      } finally {
+        raise.disabled = false;
+        raise.textContent = label;
+      }
+      return;
+    }
+
     const copy = event.target.closest?.('[data-copy]');
     if (copy) {
       const report = await db.reports.where('clientId').equals(copy.dataset.copy).first();
@@ -528,6 +593,30 @@ function row(r) {
         ? html`<p class="queue__state" data-state="${r.state}">
             <span class="queue__state-label">${DISPOSITION_LABEL[r.state] ?? r.state}</span>
           </p>`
+        : ''}
+
+      <!-- RAISE AN ACTION FROM THE THING THAT PROMPTED IT.
+
+           An action always has a source — that is a CHECK constraint in
+           the migration, not a convention — and the natural place to
+           raise one is the report it came out of. Raising it from a
+           list of actions would ask somebody to pick a source from a
+           dropdown of every report the operator has, which is how the
+           wrong report gets attached.
+
+           Only on rows the server knows about, like the disposition:
+           an action against a report still in the outbox has nothing
+           to hang off. -->
+      ${r.serverId
+        ? html`<div class="queue__actions">
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              data-raise-action="${r.serverId}"
+            >
+              Record an action
+            </button>
+          </div>`
         : ''}
 
       ${r.available?.length
