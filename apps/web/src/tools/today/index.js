@@ -88,9 +88,16 @@ const KIND = {
    screen that can end an AOC, and softening it here would undo the
    grading digest.ts is careful about. */
 const VERDICT = {
-  NOW: { line: 'Something needs you today', badge: 'ALERT' },
-  TODAY: { line: 'Something needs you today', badge: 'CAUTION' },
-  SOON: { line: 'Nothing urgent, some things are coming', badge: 'SAFE' }
+  /* NOW AND TODAY MUST NOT READ THE SAME, and the first version of this
+     gave them one sentence — which threw away the distinction digest.ts
+     is most careful about. NOW is an obligation owed to an authority
+     whose clock has already run out; TODAY is a currency lapsed or an
+     action past due. Both are late. Only one of them can end an AOC,
+     and a screen that grades them identically has undone the grading it
+     is rendering. */
+  NOW: { line: 'Something is past a regulatory deadline', badge: 'ALERT', word: 'act now' },
+  TODAY: { line: 'Something needs you today', badge: 'CAUTION', word: 'today' },
+  SOON: { line: 'Nothing urgent, some things are coming', badge: 'SAFE', word: 'soon' }
 };
 
 /* Days rendered as something read without arithmetic. Shared shape with
@@ -111,8 +118,8 @@ function item(i) {
   return html`<article class="card">
     <div class="cov__head">
       <h3>${i.count} ${i.count === 1 ? words.one : words.many}</h3>
-      <span class="badge" data-status="${i.urgency === 'NOW' ? 'ALERT' : i.urgency === 'TODAY' ? 'CAUTION' : 'SAFE'}">
-        <span class="badge__label">${i.urgency.toLowerCase()}</span>
+      <span class="badge" data-status="${VERDICT[i.urgency]?.badge ?? 'OFFLINE'}">
+        <span class="badge__label">${VERDICT[i.urgency]?.word ?? i.urgency}</span>
       </span>
     </div>
     ${clock ? html`<p class="hint">${clock}.</p>` : ''}
@@ -183,7 +190,7 @@ export async function render(outlet) {
       <section class="panel wrap">
         <p class="notice notice--error">
           ${failed === 'forbidden'
-            ? 'Your role does not include reading the operator&rsquo;s record. This is not the same as there being nothing to report.'
+            ? 'Your role does not include reading the operator’s record. This is not the same as there being nothing to report.'
             : 'The safety office could not be reached, so this screen does not know what needs you. That is NOT the same as nothing needing you — do not read it as such.'}
         </p>
         <p class="mat-actions no-print">
