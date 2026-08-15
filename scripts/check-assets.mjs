@@ -49,15 +49,29 @@ const DECLARED = new Map([
   ['fonts/cormorant-garamond-latin-ext.woff2', [35, 'Display face, Latin Extended.']],
   ['fonts/jetbrains-mono-identifiers.woff2', [7, 'IDENTIFIERS ONLY, and the subset is the whole argument. --us-font-mono was a system stack — ui-monospace, SFMono-Regular, Menlo, Consolas — so an audit-chain hash rendered in a different face on a manager’s Mac and a ramp agent’s Android, which is exactly the data where character shape carries the meaning. A full Latin cut of this face is ~55 KB; subset to digits, A–Z, a–z and the punctuation an identifier uses, it is 6 KB, and it still disambiguates 0/O and 1/l/I, which is the only reason it is here. NOT FOR NUMBERS: figures already align through font-variant-numeric on the body face at zero bytes, and mono digits are wider and lighter than DM Sans’s, so setting a risk matrix in them would read as weaker rather than more precise.']],
 
-  ['icons/mark.svg', [3, 'The shield mark, generated from Logo.js by build-icons.mjs. Never hand-edited.']],
-  ['icons/favicon-32.png', [2, 'Browser tab. THE ONLY tab icon — there was a favicon.svg beside it, drawn from Logo.js, whose geometry has no contrail arc, so a browser preferring the vector showed a different logo from the one a browser preferring the raster showed. This is cropped from docs/brand/lockup-wide.jpg by build-icons.mjs and is the actual mark; tests/favicon.test.ts holds it to that.']],
-  ['icons/icon-192.svg', [3, 'PWA icon, vector.']],
-  ['icons/icon-512.svg', [3, 'PWA icon, vector.']],
-  ['icons/maskable-512.svg', [3, 'PWA maskable icon, vector — the safe-zone variant Android crops.']],
-  ['icons/icon-192.png', [14, 'PWA icon raster, for installers that refuse SVG.']],
+  /* EVERY ICON IS A CROP OF docs/brand/lockup-wide.jpg, and there is
+     deliberately NO SVG among them. There used to be four, drawn from
+     Logo.js — a hand-built approximation with straight crossing lines
+     where the artwork has contrail arcs and an arrowhead where it has
+     an airliner. Two of them were declared nowhere a user could reach
+     and one sat in the manifest beside its own PNG, so which logo
+     somebody saw depended on what their browser preferred. There is no
+     vector source for this mark; the supplied artwork is all raster, so
+     an SVG here could only be a redrawing. tests/favicon.test.ts fails
+     if one reappears. */
+  ['icons/favicon-32.png', [2, 'Browser tab. Nearly full bleed (pad 1.10) because a favicon is 16 device pixels in a row of twenty.']],
+  ['icons/icon-192.png', [14, 'PWA icon raster. Mark at 80% of the tile.']],
   ['icons/icon-512.png', [40, 'PWA icon raster.']],
-  ['icons/maskable-512.png', [26, 'PWA maskable raster.']],
+  ['icons/maskable-512.png', [40, 'PWA maskable raster. Inset to pad 1.60, which is the smallest value putting the mark’s DIAGONAL inside the 409.6px safe circle — the mask crops the outer 20% and it is the diagonal that has to fit, not either edge.']],
   ['icons/apple-touch-icon.png', [14, 'iOS home screen. iOS does not accept an SVG icon — see docs/05-SWITCHES.md.']],
+  /* THE TWO IN-APP MARKS, which replaced about 2 KB of hand-built path
+     data in the ENTRY chunk — so this is weight moved off the critical
+     path rather than added to it. Both are precached, and the header
+     renders one of them on every screen. Sized to where they are drawn:
+     the lockup is 34px so 128 covers a 3.7x display, the home hero is
+     116px so 256 covers 2.2x. */
+  ['icons/mark-light-128.png', [8, 'The mark on LIGHT grounds — charcoal on transparent, the monochrome variant the guidelines list for a light ground. Header and footer lockup.']],
+  ['icons/mark-dark-256.png', [17, 'The mark on DARK grounds — gold on transparent. The home hero band. Gold on Warm Sand would be two light values against each other, which is why the light one is a separate file rather than the same one.']],
 
   ['manifest.json', [2, 'The PWA manifest. Installability is the offline promise.']],
   ['offline.html', [39, 'The page served when there is no network. Self-contained by necessity — it cannot reference a stylesheet, a font or an image that might not be cached — so its own weight is its whole cost. WENT 6 -> 37 KB WHEN THE CRANE WAS INLINED: 22 KB of that is a WebP of docs/brand/crane.png, resampled by scripts/derive-brand.mjs and never redrawn, with its ground flood-filled transparent from the edges so the patterned sand this page paints shows through, rather than a second and slightly different sand sitting on top of it — which is what the first attempt shipped, and what only a screenshot could catch. It is DECORATION, it is precached, and every user pays for it once on install — so if this budget ever needs room, this is the first thing to cut and the ceiling is set to make that visible rather than comfortable. What buys it: this is the page a ramp agent sees at the moment they most need to trust the product, and it is the only identity surface reachable while the shared stylesheet sits at 59.9 of 60 KB.']],

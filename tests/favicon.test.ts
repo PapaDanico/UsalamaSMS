@@ -159,6 +159,25 @@ const { w, h, px } = decodePng(readFileSync(FAVICON));
  * terracotta pattern behind the mark in the source JPEG is the specific
  * thing this catches.
  */
+
+/**
+ * HOW FAR OFF THE LINE IS STILL LEGITIMATE, derived rather than picked.
+ *
+ * build-icons.mjs quantises each channel to 16 levels to make the icons
+ * compress — the cropped set came in 38 KB heavier than the flat SVGs
+ * it replaced, which is weight a reporter pays on install. Quantising
+ * the three channels INDEPENDENTLY nudges a pixel off the exact line:
+ * the step is 255/15 = 17, so each channel can move up to half a step,
+ * and the worst case is sqrt(3 x 8.5^2) = 14.7.
+ *
+ * So the tolerance is 16 rather than the 12 it started at, and that is
+ * a real loosening — recorded here, and re-mutation-checked against an
+ * unkeyed crop afterwards rather than assumed still to bite. The
+ * terracotta ground sits ~40 off this line, so 16 still catches it with
+ * room; if the quantiser ever goes below 16 levels this number has to
+ * be re-derived, and the observed worst case today is 12.4.
+ */
+const OFF_LINE = 16;
 function place(r: number, g: number, b: number): { t: number; dev: number } {
   const d = [GOLD[0] - INK[0], GOLD[1] - INK[1], GOLD[2] - INK[2]];
   const len2 = d[0]! ** 2 + d[1]! ** 2 + d[2]! ** 2;
@@ -210,7 +229,7 @@ describe("the browser tab icon", () => {
      with the only thing worth seeing — and it would show up here as
      pixels a long way off the two-token line. */
   it("carries only the two brand colours and blends of them", () => {
-    const stray = pixels.filter((p) => p.dev > 12);
+    const stray = pixels.filter((p) => p.dev > OFF_LINE);
     expect(
       stray.length,
       `${stray.length} pixels are off the charcoal-to-gold line, the worst by ` +
@@ -293,6 +312,28 @@ describe("only one tab icon exists", () => {
       `${rivals.join(", ")} sits beside favicon-32.png. A browser picks whichever ` +
         `format it prefers, so two favicons is two logos and nobody controls which one ` +
         `a given person sees.`,
+    ).toEqual([]);
+  });
+
+  /* AND NO DRAWN ICON ANYWHERE IN THE SUITE.
+
+     The favicon pair was the visible half of a larger problem. Four SVG
+     icons were generated from Logo.js — an approximation with straight
+     crossing lines where the artwork has contrail arcs and an arrowhead
+     where it has an airliner — and one of them, icon-512.svg, sat in
+     the manifest beside its own PNG.
+
+     There is no vector source for this mark. Everything the designer
+     supplied is raster, so an SVG in this directory can only be a
+     redrawing of it, which is the thing that was wrong. Any icon that
+     needs a vector needs a vector master first. */
+  it("ships no vector icon, because there is no vector master to make one from", () => {
+    const drawn = readdirSync(ICONS).filter((f) => /\.svgz?$/i.test(f));
+    expect(
+      drawn,
+      `${drawn.join(", ")} is a vector icon. Every icon in this suite is cropped from ` +
+        `docs/brand/lockup-wide.jpg; a vector one cannot be, so it is a redrawing of ` +
+        `the mark rather than the mark.`,
     ).toEqual([]);
   });
 });
