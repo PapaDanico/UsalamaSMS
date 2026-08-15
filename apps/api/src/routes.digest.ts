@@ -39,6 +39,12 @@ import { mailConfigFromEnv } from "./mail";
    decision, including a closure. */
 const UNTRIAGED_STATE = "SUBMITTED";
 
+/* How far back the deadline section looks. A quarter, which is the
+   cadence an SMS review runs on and comfortably longer than any
+   reporting window in the registry. See the query for why a bound is
+   needed at all. */
+const DEADLINE_LOOKBACK_DAYS = 90;
+
 export async function digestRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/v1/digest", {
     preHandler: [authenticate],
@@ -72,9 +78,31 @@ export async function digestRoutes(app: FastifyInstance): Promise<void> {
          exist when this route was first written and is the whole reason
          the deadline section was empty. Indexed with orgId. */
       prisma.safetyReport.findMany({
-        where: { orgId: auth.org, type: "MOR", reportedToAuthorityAt: null },
+        where: {
+          orgId: auth.org,
+          type: "MOR",
+          reportedToAuthorityAt: null,
+          /* CLOSED IS OUT. A report the safety office has finished with
+             is not today's action, and leaving it in means an operator
+             that closed an occurrence without recording the call gets
+             told about it every morning for ever. That is the always-on
+             signal this module exists to avoid — and the finding it
+             deserves is a data-quality one on the record, not a daily
+             email. */
+          state: { not: "CLOSED" },
+          /* AND BOUNDED IN TIME. Nothing was backfilled by the migration
+             that added reportedToAuthorityAt, so EVERY occurrence filed
+             before it has a null column and would otherwise be reported
+             overdue for the rest of the product's life. A digest is a
+             list of things to do today; an occurrence from two years ago
+             is a record to correct, not a task. */
+          createdAt: { gte: new Date(now.getTime() - DEADLINE_LOOKBACK_DAYS * 86_400_000) },
+        },
         select: { occurredAt: true, awareAt: true, createdAt: true },
-        orderBy: { createdAt: "desc" },
+        /* OLDEST FIRST. The cap keeps whatever it reads, so taking the
+           NEWEST would drop precisely the overdue ones this section is
+           for. */
+        orderBy: { createdAt: "asc" },
         take: 500,
       }),
       /* Bounded: a digest that has to read ten thousand rows to say
@@ -89,8 +117,14 @@ export async function digestRoutes(app: FastifyInstance): Promise<void> {
          is verification rather than completion — capa.ts is emphatic
          that "new signage installed" is not a closed action. An action
          completed but unverified is still owed. */
-      prisma.correctiveAction.count({
+      /* THE DATES, NOT A COUNT. Padding a count with a placeholder
+         daysLeft made a 195-day-old action read as "overdue by 1 days",
+         which is a number the reader acts on and this route invented. */
+      prisma.correctiveAction.findMany({
         where: { orgId: auth.org, verifiedOn: null, cancelledOn: null, dueOn: { lt: now } },
+        select: { dueOn: true },
+        orderBy: { dueOn: "asc" },
+        take: 500,
       }),
     ]);
 
@@ -114,22 +148,38 @@ export async function digestRoutes(app: FastifyInstance): Promise<void> {
        parameter means "the duty was discharged", and every row reaching
        this line is one where it demonstrably was not. */
     const obligation = MOR_OBLIGATIONS[org.jurisdiction];
-    const deadlines = open.map((r) => {
-      const { due } = reportingDeadline(org.jurisdiction, {
-        occurredAt: r.occurredAt ?? r.createdAt,
-        awareAt: r.awareAt ?? r.createdAt,
-      });
-      return {
+    const deadlines = open.flatMap((r) => {
+      /* reportingDeadline REFUSES an awareAt that precedes occurredAt,
+         and a row can hold that pair — the report schema rejects it on
+         the way in, but a sync from an older client or a hand-corrected
+         date can leave one behind. One malformed row must not 500 the
+         whole digest and take the other three sections with it. */
+      let due: Date | null;
+      try {
+        ({ due } = reportingDeadline(org.jurisdiction, {
+          occurredAt: r.occurredAt ?? r.createdAt,
+          awareAt: r.awareAt ?? r.createdAt,
+        }));
+      } catch {
+        return [];
+      }
+      return [{
         status: deadlineStatus(due, now, { obligation }),
-        daysLeft: due === null ? 0 : Math.ceil((due.getTime() - now.getTime()) / 86_400_000),
-      };
+        /* NULL, NOT ZERO, where the instrument sets no window. An
+           obligation worded "without delay" has nothing to count down;
+           zero rendered as "soonest is today", which is a deadline this
+           route invented for an obligation deliberately left open. */
+        daysLeft: due === null ? null : Math.ceil((due.getTime() - now.getTime()) / 86_400_000),
+      }];
     });
 
     const digest = digestFor({
       deadlines,
       currencies,
       untriaged,
-      overdueActions: Array.from({ length: overdue }, () => ({ daysLeft: -1 })),
+      overdueActions: overdue.map((a) => ({
+        daysLeft: Math.ceil((a.dueOn!.getTime() - now.getTime()) / 86_400_000),
+      })),
     });
 
     /* THE DELIVERY STATE IS REPORTED, NOT INFERRED FROM SILENCE. A

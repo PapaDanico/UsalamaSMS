@@ -111,13 +111,29 @@ export interface Digest {
 
 /** What the caller has already computed, per kind. */
 export interface DigestInput {
-  /** Deadline statuses of outstanding obligations, with days remaining. */
-  readonly deadlines: readonly { status: DeadlineStatus; daysLeft: number }[];
+  /**
+   * Deadline statuses of outstanding obligations.
+   *
+   * `daysLeft` IS NULLABLE, and that is not tidiness. An obligation
+   * worded "without delay" has no computed window — `reportingDeadline`
+   * returns a null `due` for exactly that reason — so there is no number
+   * of days to report. The first version coerced it to 0, which the
+   * renderer turned into "soonest is today": a deadline invented by the
+   * caller for an obligation the instrument deliberately left open.
+   */
+  readonly deadlines: readonly { status: DeadlineStatus; daysLeft: number | null }[];
   /** Currency verdicts across the training matrix. */
   readonly currencies: readonly { state: CurrencyState; daysLeft: number | null }[];
   /** How many reports have arrived and not been triaged. */
   readonly untriaged: number;
-  /** Corrective actions past due, with days overdue as a negative. */
+  /**
+   * Corrective actions past due, with days overdue as a negative.
+   *
+   * REAL DATES, not a count padded with a placeholder. The first
+   * version fetched `count()` and synthesised `{ daysLeft: -1 }` per
+   * row, so an action 195 days late was reported as "overdue by 1
+   * days" — a number the reader would act on, invented here.
+   */
   readonly overdueActions: readonly { daysLeft: number }[];
 }
 

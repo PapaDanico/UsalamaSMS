@@ -44,7 +44,7 @@ import {
   type ReportState,
 } from "../../../packages/shared/src/disposition";
 import { unrecognised } from "../../../packages/shared/src/cictt";
-import { prisma, authenticate, appendAudit, appendAuditTx, tenantWhere } from "./core";
+import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
 
 const HISTORY_LIMIT = 200;
 const QUEUE_LIMIT = 500;
@@ -409,28 +409,59 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const saved = await prisma.safetyReport.update({
-      where: { id: report.id },
-      data: {
-        reportedToAuthorityAt: at,
-        reportedToAuthorityById: auth.sub,
-        authorityReference: parsed.data.reference ?? null,
-      },
-      select: { id: true, reportedToAuthorityAt: true, authorityReference: true },
+    /* ONE TRANSACTION, AND THE WRITE IS ITSELF CONDITIONAL.
+       
+       The `already_recorded` check above is a READ, and a read followed
+       by an unconditional update is a race: two notifications submitted
+       together both pass the check and the second overwrites the first,
+       which is precisely the re-dating this route refuses. So the
+       update carries `reportedToAuthorityAt: null` in its own WHERE and
+       reports how many rows it actually touched — zero means somebody
+       else got there first, and the 409 is returned from the losing
+       side rather than from a stale read.
+       
+       BOTH WRITES OR NEITHER, for the reason the /codes route beside
+       this one gives: a regulatory discharge committed without its
+       hash-chain entry is a record an inspector cannot date. */
+    const saved = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.safetyReport.updateMany({
+        where: { id: report.id, orgId: auth.org, reportedToAuthorityAt: null },
+        data: {
+          reportedToAuthorityAt: at,
+          reportedToAuthorityById: auth.sub,
+          authorityReference: parsed.data.reference ?? null,
+        },
+      });
+      if (claimed.count === 0) return null;
+
+      /* THE REFERENCE IS NOT IN THE AUDIT DETAIL. The chain is
+         exportable and the detail travels with it; the authority's
+         acknowledgement is the operator's record to hand over
+         deliberately, not something duplicated into every export. */
+      await appendAuditTx(tx, {
+        orgId: auth.org,
+        userId: auth.sub,
+        action: "report.notified_authority",
+        entityType: "SafetyReport",
+        entityId: report.id,
+        detail: { at: at.toISOString(), hasReference: Boolean(parsed.data.reference) },
+      });
+
+      return tx.safetyReport.findUniqueOrThrow({
+        where: { id: report.id },
+        select: { id: true, reportedToAuthorityAt: true, authorityReference: true },
+      });
     });
 
-    /* THE REFERENCE IS NOT IN THE AUDIT DETAIL. The chain is exportable
-       and the detail travels with it; the authority's acknowledgement
-       is the operator's record to hand over deliberately, not something
-       to duplicate into every export by default. */
-    await appendAudit({
-      orgId: auth.org,
-      userId: auth.sub,
-      action: "report.notified_authority",
-      entityType: "SafetyReport",
-      entityId: report.id,
-      detail: { at: at.toISOString(), hasReference: Boolean(parsed.data.reference) },
-    });
+    if (saved === null) {
+      return reply.code(409).send({
+        error: "already_recorded",
+        message:
+          "This occurrence was recorded as notified while this request was in flight. " +
+          "Correcting that date is a change to a regulatory record and is not done by " +
+          "filing it again.",
+      });
+    }
 
     return reply.send(saved);
   });

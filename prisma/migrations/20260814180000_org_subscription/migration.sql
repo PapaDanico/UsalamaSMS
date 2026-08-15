@@ -9,10 +9,11 @@
 -- have invented a billable fact about every existing customer.
 --
 -- `trialEndsOn` and `paidThrough` are likewise null: an Org created
--- before subscriptions existed has neither, and stateOn() reads a null
--- trial as an expired one. That is the correct reading — these orgs
--- predate the commercial model and their state is a decision for
--- whoever sets their terms, not for a DEFAULT clause.
+-- before subscriptions existed has neither. stateOn() takes a
+-- SubscriptionDates whose trialEndsOn is a Date, so a caller reading
+-- one of these rows has to decide what a missing trial means before it
+-- can ask — which is the right place for that decision. It is not
+-- something a DEFAULT clause should answer on an operator's behalf.
 --
 -- Nothing reads these columns yet. This migration exists because the
 -- generated Prisma client SELECTs every scalar field on the model, so

@@ -351,6 +351,11 @@ model SafetyReport {
   // awareAt. If you are about to add this column, read that module first.
 
   @@unique([orgId, clientId])
+  /// Declared here as well as in the migration. Without it the next
+  /// `prisma migrate dev` sees an index the schema does not describe
+  /// and generates a DROP — the digest's deadline query loses its index
+  /// silently, and nothing fails until the table is large.
+  @@index([orgId, reportedToAuthorityAt])
   @@index([orgId, state, createdAt])
   @@index([orgId, type, occurredAt])
   // The aggregation this taxonomy exists to make possible.

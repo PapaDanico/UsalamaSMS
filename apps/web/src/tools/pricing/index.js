@@ -122,6 +122,7 @@ export function render(outlet) {
         failure the element exists to prevent.
       </p>
 
+      <h2 class="section-title">What each band costs</h2>
       <div class="picture-grid">
         ${BANDS.map(
           (b) => html`<article class="card">

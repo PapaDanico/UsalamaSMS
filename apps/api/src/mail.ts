@@ -168,8 +168,21 @@ export async function sendDigest(
       return { status: "FAILED", reason: `provider responded ${response.status}` };
     }
 
-    const payload = (await response.json()) as { id?: string };
-    return { status: "SENT", id: payload.id ?? "" };
+    /* PARSED AFTER THE OK, AND FAILURE TO PARSE IS NOT FAILURE TO SEND.
+       The provider has accepted the message by this point. Letting a
+       non-JSON 2xx body fall into the catch below would report FAILED
+       for a mail that went out, and the obvious reaction to FAILED is
+       to try again — so a parser quirk becomes two copies of a safety
+       warning in somebody's inbox. The id is for logging; not having it
+       is not worth resending over. */
+    let id = "";
+    try {
+      const payload = (await response.json()) as { id?: string };
+      id = payload.id ?? "";
+    } catch {
+      /* Accepted, unparseable. Still sent. */
+    }
+    return { status: "SENT", id };
   } catch (error) {
     return {
       status: "FAILED",
