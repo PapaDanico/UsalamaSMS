@@ -202,56 +202,95 @@ changes; no call site names a family directly. Recorded in
 
 ## The mark
 
-`SHIELD_PATH` and the element paths in `apps/web/src/components/Logo.js`
-are the single source of the geometry. The in-app mark and every
-generated icon read from them, so they cannot disagree. Never hand-edit
-a generated icon — change the path and regenerate.
+**The mark is cropped from `docs/brand/lockup-wide.jpg`. Nothing draws
+it.** `scripts/build-icons.mjs` is the only thing that touches it, and
+`apps/web/src/components/Logo.js` renders what that produces. Never
+hand-edit an icon — change the crop and regenerate.
 
-**Redrawn from the identity guidelines, not approximated from them.**
-The first version was a shield, three blobs for a bird, and a gold
-triangle. Rasterised to 512px for the app icon it read as a duck under an
-arrowhead — which is what a mark drawn from a description rather than
-from the artwork looks like at size.
+### Why it is a crop and not a drawing
 
-- **A QUARTERED shield, which is what makes it a coat of arms** rather
-  than a picture in a frame. Two flight arcs cross low and behind the
-  bird and divide the field into three: Deep Terracotta above, Aviation
-  Teal left, Savannah Gold right. One arc climbs and carries the
-  aircraft; the other descends. A departure and an arrival over the same
-  ground.
-- **A grey crowned crane, drawn as that bird.** The crest is a fan of
-  eleven rays from the back of the skull, and it is the single feature
-  that makes this a crowned crane rather than any bird — so it is drawn
-  as a fan and not as five stray ticks. Body, wing, S-curved neck, head
-  with the beak into the direction of flight, legs with toes.
-- **A runway threshold in perspective**, narrowest at the top because
-  that is the end receding away. Bar widths are bounded by the shield
-  outline at each height: the point of a heater shield narrows fast, and
-  a bar wider than its own field is a bar sticking out of the crest.
-- **Detail threshold at 40px.** The crest, the runway, the legs, the
-  wing, the eye and both arcs are drawn only above it. Below that they
-  collapse into a smudge. Same threshold the benchmark applies to its
-  topographic texture, for the same reason — and it is now applied to
-  the GENERATED ICONS too, which previously drew the reduced set at
-  every size including 512.
-- **Below the threshold, the mark is cropped rather than drawn.** This
-  geometry is an approximation of the identity, and above 40px it is a
-  good one. At tab size it is not — the crane collapses and the contrail
-  arc, the most recognisable thing in the mark, reads as a stray tick.
-  So `favicon-32.png` is cropped from `docs/brand/lockup-wide.jpg` by
-  `scripts/build-icons.mjs` and keyed to two brand colours; everything
-  from 180px up is drawn from the paths here. There is deliberately no
-  `favicon.svg` beside it: two formats declared for one tab is two
-  logos, and the browser picks. `tests/favicon.test.ts` holds both ends.
-- **The coloured version is the primary logo.** It is what the installed
-  app icon and the in-app lockup use. The monochrome variants are not a
-  fallback — the guidelines list them as approved — but a 32px tab icon
-  has no room for three fills and a crest.
-- **Two-tone selection, not invention.** On the monochrome variants:
-  Savannah Gold on a dark ground, Dusty Charcoal on a light one, with the
-  aircraft always keeping the gold accent. Neither branch introduces a
-  colour, and on the coloured shield the bird and runway go charcoal
-  regardless of tone, because gold on gold is the quarter disappearing.
+It used to be a drawing. `Logo.js` carried the geometry — a shield, a
+crane in five pieces, two arcs, three runway bars and an aircraft on a
+120×140 grid — and `build-icons.mjs` read those same constants, so the
+favicon could not disagree with the header.
+
+That worked, and it solved the wrong problem. One source kept the
+favicon and the header agreeing **with each other**; it could not make
+either agree with the identity, and neither did. Side by side with the
+artwork the drawing has straight crossing lines where the mark has
+sweeping contrail arcs, an arrowhead where it has an airliner, and a
+spiked crest where it has a rounded one. A competent redrawing, and
+visibly not the mark.
+
+### The supplied artwork disagrees with itself
+
+This has to be known before "match the brand assets" means anything.
+`docs/brand/` holds four renderings and no two match:
+
+| File | The mark it shows |
+|---|---|
+| `guidelines-spread.jpg` | Quartered colour shield, straight crossing lines, crane, aircraft — captioned PRIMARY LOGO |
+| `lockup-wide.jpg` | Gold line art, curved contrail arcs, an airliner, crane on a runway |
+| `splash-portrait.jpg` | Gold line art, crane at the **top**, **two** aircraft, runway in perspective |
+| `slide-template.png` | Gold line art on cream, different again |
+
+So the rule is **pick one and use only it**, and the pick is
+`lockup-wide.jpg` on three grounds rather than preference:
+
+- it carries the mark at the largest clean size of the four — 330×425
+  against `slide-template`'s 240×275;
+- it is a flat render, not a photograph of a printed page, so there is
+  no perspective, paper grain or page curl to key through;
+- its ground is a flat-ish pattern rather than a gradient, and a
+  gradient cannot be keyed away without keying away the mark.
+
+**If a replacement master ever arrives, this is the decision to revisit
+first** — preferably as a vector, which would remove the whole crop
+pipeline.
+
+### How the crop is made
+
+Every pixel is snapped to one of two brand tokens — gold where the mark
+is, ground where it is not — which is what removes the terracotta
+pattern behind it. The key runs at **4×** and the result is downscaled:
+keying at the target size would snap away the antialiasing too and leave
+hard stair-steps. Separate where there are pixels to spare, smooth
+afterwards.
+
+The ramp is then quantised to 16 levels. That is a weight decision, not
+a visual one: a tile that is two colours to look at is thousands to
+encode, and the cropped set first came in 38 KB heavier than the flat
+SVGs it replaced — enough to put `public/` over budget on a product
+whose promise is a ramp agent at a remote strip.
+
+### The variants
+
+| File | Treatment | Where |
+|---|---|---|
+| `favicon-32.png` | Gold on charcoal, near full bleed | Browser tab |
+| `icon-192/512.png`, `apple-touch-icon.png` | Gold on charcoal, mark at 80% | Installed app |
+| `maskable-512.png` | Gold on charcoal, inset to clear the mask | Android |
+| `mark-light-128.png` | Charcoal on transparent | Header and footer lockup |
+| `mark-dark-256.png` | Gold on transparent | The dark hero band |
+
+**Two in-app files because there are two grounds**, and both are the
+monochrome variants the guidelines list. Gold on Warm Sand is two light
+values against each other; charcoal on the charcoal footer is a mark you
+cannot see — which is what shipped into a build once, so a smoke check
+now screenshots each rendered mark and measures the contrast inside it.
+
+- **No SVG anywhere in the icon suite.** There is no vector master, so
+  an SVG could only be a redrawing. There were four; one sat in the
+  manifest beside its own PNG, and a browser preferring the vector saw a
+  different logo from one preferring the raster. `tests/favicon.test.ts`
+  fails if one reappears.
+- **No detail threshold any more.** The drawing dropped the crest, the
+  runway and the arcs below 40px because sub-pixel strokes smear. A
+  raster does not need to — the 4× key and downscale hand small sizes an
+  antialiased result. Where a size genuinely cannot carry the detail,
+  the answer is a tighter crop, not less drawing.
+- **The mark is never rendered in risk-scale colours.** A logo that
+  turns red is a logo that looks like an alert.
 - **The mark is never rendered in risk-scale colours.** A logo that turns
   red is a logo that looks like an alert.
 - **The wordmark is live text**, not traced letterforms: crisp at any
@@ -329,9 +368,14 @@ tokens exist and are named for the job.
 
 1. **The licensed geometric sans** (woff2 subsets). DM Sans — the JK &
    Associates platform face — is the documented stand-in.
-2. **The master logo vector**, if the production artwork differs from the
-   code-drawn paths. Replace the constants; everything downstream
-   follows.
+2. **The master logo vector.** Not "if the artwork differs" — it does,
+   and there is no vector at all, which is why every icon is a keyed
+   crop of a 330×425 region of a JPEG. That is sufficient today because
+   no icon draws the mark larger than 410px, and it is a ceiling: a
+   1024px tile, a print asset or a cleanly recoloured variant all need a
+   master. It would also settle which of the four supplied renderings is
+   canonical, which is currently decided by `MARK_BOX` in
+   `scripts/build-icons.mjs` rather than by anybody.
 3. **A decision on the status-badge sheet.** The artwork's six badges
    (SAFE / CAUTION / ALERT / OFFLINE / SYNCING / PROTECTED) mix two
    different scales — operational sync state and safety state — in one
