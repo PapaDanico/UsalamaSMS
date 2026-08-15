@@ -47,12 +47,45 @@
    ============================================================ */
 import type { Config } from "@netlify/functions";
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { computeDigest } from "../../apps/api/src/digest.compute.js";
 import { sendDigest, mailConfigFromEnv } from "../../apps/api/src/mail.js";
 import { isWorthSending } from "../../packages/shared/src/digest.js";
 import { can } from "../../packages/shared/src/index.js";
 
-const prisma = new PrismaClient();
+/* ============================================================
+   A BARE `new PrismaClient()` THROWS, AND THIS FILE HAD ONE.
+
+   Prisma 7 removed the `datasources` option: a direct connection goes
+   through a driver adapter. `new PrismaClient()` is TYPE-VALID and
+   fails at construction, so it typechecked, linted and passed every
+   unit test — and core.ts carries a comment saying precisely that,
+   about precisely this mistake, made once before in this repository.
+   It was reproduced here anyway, and only running the function found
+   it.
+
+   ON A SCHEDULE THAT MATTERS MORE THAN ANYWHERE. Every other caller of
+   Prisma is behind a request: it throws, somebody sees a 500. This one
+   runs at 05:00 with no session, no screen and no reader — the module
+   would have failed at IMPORT, the run would have produced nothing,
+   and the first evidence would have been a safety manager not being
+   told something.
+
+   BUILT LAZILY, and that is the second half of the fix. At module
+   scope a missing DATABASE_URL throws before the handler exists, so
+   there is nothing left to report it. Inside the handler the same
+   absence becomes a response that says which variable is missing —
+   charter rule 8, applied to a job nobody is watching.
+   ============================================================ */
+let client: PrismaClient | null = null;
+
+function connect(): PrismaClient {
+  if (client) return client;
+  const url = process.env["DATABASE_URL"] ?? process.env["SUPABASE_DATABASE_URL"];
+  if (!url) throw new Error("no DATABASE_URL or SUPABASE_DATABASE_URL");
+  client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  return client;
+}
 
 /* A cap, because a scheduled function has a wall-clock limit and a run
    that dies half way through has told an arbitrary half of the
@@ -77,6 +110,19 @@ export default async function handler(): Promise<Response> {
       ran: now.toISOString(),
       status: "NOT_CONFIGURED",
       detail: "No RESEND_API_KEY. Digests were computed for nobody and sent to nobody.",
+    });
+  }
+
+  /* CONNECTED HERE, INSIDE THE HANDLER, so a missing connection string
+     is a reported failure rather than an import that never completes. */
+  let prisma: PrismaClient;
+  try {
+    prisma = connect();
+  } catch (error) {
+    return Response.json({
+      ran: now.toISOString(),
+      status: "FAILED",
+      detail: error instanceof Error ? error.message : "no database connection",
     });
   }
 
