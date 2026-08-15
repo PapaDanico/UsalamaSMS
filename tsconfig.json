@@ -15,5 +15,5 @@
     "types": ["node"],
     "paths": { "@usalamasms/shared": ["./packages/shared/src/index.ts"] }
   },
-  "include": ["packages/**/*.ts", "apps/**/*.ts", "tests/**/*.ts", "*.ts"]
+  "include": ["packages/**/*.ts", "apps/**/*.ts", "tests/**/*.ts", "netlify/**/*.mts", "*.ts"]
 }
