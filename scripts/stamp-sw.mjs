@@ -1487,7 +1487,37 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    two numbers, one for what must arrive before somebody can file and
    one for everything else. Until that exists, raises like this one have
    to be argued in prose instead of being obvious from the figure. */
-const BUDGET = { entry: 217 * 1024, js: 494 * 1024, css: 60 * 1024 };
+/* TOTAL RAISED 494 -> 495 KB. One kilobyte, and the receipt is short
+   because what it bought is unusually easy to state.
+
+   /today is the screen a safety manager opens first, and every
+   judgement it made lived inside a render function that NOTHING
+   EXECUTED. The accessibility sweep and the smoke suite both meet that
+   screen signed out, so the reporter view, the digest view and both
+   failure branches shipped with no test touching them. That is the same
+   shape as the scheduled digest function found broken in production the
+   same morning: code a deploy runs and a suite does not.
+
+   The judgement moved to packages/shared/src/today.ts — the split
+   digest.ts and mail.ts already use, where the module holds what to say
+   and the screen holds how it looks — and eighteen assertions now cover
+   it. Three of those are the ones worth the kilobyte: an unknown is
+   never "clear". A screen whose whole job is to answer "is everything
+   all right" must not say the most reassuring possible thing at the
+   moment it knows least, and before this it could.
+
+   WHERE THE WEIGHT LANDS. today.ts is imported by /today, which is
+   LAZY — a reporter at a remote strip filing a hazard never fetches it.
+   The entry chunk is untouched at 212.3 of 217, which is the number
+   that gates time-to-first-report and the one these receipts have said
+   six times over is the one to protect.
+
+   AND THE SAME LIMIT THE LAST RECEIPT NAMED still applies: `js (total)`
+   sums what a REPORTER pays with what a SAFETY OFFICE pays, so a screen
+   only managers open competes for budget with the offline-filing path.
+   Until that becomes two numbers the way `entry` already is, raises
+   like this one have to be argued rather than read off the figure. */
+const BUDGET = { entry: 217 * 1024, js: 495 * 1024, css: 60 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
