@@ -327,6 +327,20 @@ export const SECTIONS = [
          not evaluate on a Sunday evening, which is when a safety
          manager at a six-aircraft charter actually does this. */
       { href: '/pricing', label: 'What it costs' },
+      /* THE ONE ROUTE THE SITEMAP DID NOT KNOW ABOUT. /signup has been
+         registered since self-service accounts landed and was reachable
+         from exactly two in-page links — the sign-in screen and the
+         pricing page. So a safety manager who arrived on /about, read
+         it, and decided had no path to an account without first finding
+         /pricing; and the footer, which is this product's site index,
+         did not list the page where a customer starts.
+
+         IN THE FOOTER AND NOT THE HEADER, deliberately. The header
+         carries the operator's own sequence — what somebody signed in
+         uses the product to DO — and an account-creation link there is
+         weight in the entry chunk charged to every reporter who already
+         has one. A footer is where a site index belongs. */
+      { href: '/signup', label: 'Create an operator account' },
       { href: '/#deadlines', label: 'Regulatory basis' }
     ]
   },

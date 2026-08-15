@@ -509,6 +509,102 @@ describe("signing up", () => {
       payload: body as never,
     });
 
+  /* THE ASSERTION WHOSE ABSENCE LET THE DEFECT SHIP. `fleet: 6` has
+     been in the fixture above since this suite was written, the panel
+     renders the field, the panel posts it and SignupSchema validates
+     it — and the org.create never wrote it. Every operator that ever
+     signed up typed how many aircraft it flies and left fleetSize null.
+
+     The symptom was SILENCE, which is why nothing caught it:
+     billableBand() returns null for a missing fleet size rather than
+     quietly invoicing the cheapest band, so there was no error and no
+     wrong invoice — just an operator that could not be billed and
+     nothing anywhere saying why. Charter rule 8, a write that does not
+     happen is reported, failing in the one place the report was a 201.
+
+     A test that asserts a 201 asserts the route answered. This asserts
+     it did the thing it answered about. */
+  it("stores the fleet size it was given, which decides the price band", async () => {
+    const res = await signup(NEW_OPERATOR);
+    expect(res.statusCode).toBe(201);
+
+    const org = await prisma().org.findFirst({
+      where: { name: NEW_OPERATOR.orgName },
+      select: { fleetSize: true },
+    });
+    expect(org?.fleetSize).toBe(NEW_OPERATOR.fleet);
+  });
+
+  /* And the other half: an operator that skipped it is visibly
+     un-profiled rather than defaulted to something billable. */
+  it("leaves the fleet size null when it was not given", async () => {
+    const { fleet: _fleet, ...withoutFleet } = NEW_OPERATOR;
+    expect((await signup(withoutFleet)).statusCode).toBe(201);
+
+    const org = await prisma().org.findFirst({
+      where: { name: NEW_OPERATOR.orgName },
+      select: { fleetSize: true },
+    });
+    expect(org?.fleetSize).toBeNull();
+  });
+
+  it("records what the operator flies, from where, and what kind of flying", async () => {
+    const res = await signup({
+      ...NEW_OPERATOR,
+      fleetTypes: ["C208", "DH8D"],
+      bases: ["HKNW", "HKWJ"],
+      operationTypes: ["CAT_NON_SCHEDULED", "AERIAL_WORK"],
+    });
+    expect(res.statusCode).toBe(201);
+
+    const org = await prisma().org.findFirst({
+      where: { name: NEW_OPERATOR.orgName },
+      select: { fleetTypes: true, bases: true, operationTypes: true },
+    });
+    expect(org?.fleetTypes).toEqual(["C208", "DH8D"]);
+    expect(org?.bases).toEqual(["HKNW", "HKWJ"]);
+    expect(org?.operationTypes).toEqual(["CAT_NON_SCHEDULED", "AERIAL_WORK"]);
+  });
+
+  /* NO ESCAPE HATCH ON A DENOMINATOR. The report form lets somebody
+     type an aerodrome the list has not got, because a report is about
+     one event and free text beats a wrong code. A profile is what every
+     rate divides BY, and a denominator nothing can group is not a
+     denominator — so an unknown code is dropped here.
+
+     DROPPED RATHER THAN REFUSED, and that is the deliberate half. A
+     signup that 400s because one unrecognised type arrived is a
+     customer lost over a field that was optional to begin with. */
+  it("drops a code the vocabulary does not carry, and keeps the ones it does", async () => {
+    const res = await signup({
+      ...NEW_OPERATOR,
+      fleetTypes: ["C208", "NOT-A-TYPE"],
+      bases: ["HKJK", "Nairobi"],
+    });
+    expect(res.statusCode).toBe(201);
+
+    const org = await prisma().org.findFirst({
+      where: { name: NEW_OPERATOR.orgName },
+      select: { fleetTypes: true, bases: true },
+    });
+    expect(org?.fleetTypes).toEqual(["C208"]);
+    /* "Nairobi" is the exact string the taxonomy module names as the
+       failure it exists to prevent — HKJK, JKIA and Nairobi being three
+       aerodromes to a GROUP BY. */
+    expect(org?.bases).toEqual(["HKJK"]);
+  });
+
+  it("de-duplicates rather than storing one type twice", async () => {
+    expect(
+      (await signup({ ...NEW_OPERATOR, fleetTypes: ["C208", "C208", "DH8D"] })).statusCode,
+    ).toBe(201);
+    const org = await prisma().org.findFirst({
+      where: { name: NEW_OPERATOR.orgName },
+      select: { fleetTypes: true },
+    });
+    expect(org?.fleetTypes).toEqual(["C208", "DH8D"]);
+  });
+
   it("creates the operator and signs its accountable executive in", async () => {
     const res = await signup(NEW_OPERATOR);
     expect(res.statusCode).toBe(201);

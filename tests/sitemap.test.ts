@@ -105,6 +105,54 @@ describe('the information architecture', () => {
     }
   });
 
+  /* THE INVERSE OF THE TEST ABOVE, AND THE ONE THAT WAS MISSING.
+   *
+   * That test asks whether every menu item leads somewhere. This asks
+   * whether everywhere can be reached from the menu — and until it was
+   * written the answer was no. /signup had been registered since
+   * self-service accounts landed and appeared in NO section, so it was
+   * reachable from exactly two in-page links. A safety manager who
+   * arrived on /about and decided had no path to an account without
+   * first finding /pricing, and the footer — which is this product's
+   * site index — did not list the page where a customer starts.
+   *
+   * That is the same defect shape as the safety risk assessment
+   * shipping invisible to anyone navigating, and as the CAPA loop
+   * having no UI while /coverage claimed it. A capability with no
+   * reachable surface is a capability nobody uses, and this repository
+   * has now met it three times. The rule it keeps writing down is that
+   * a claim is kept by a mechanism rather than by remembering, so this
+   * is the mechanism for the navigation half of it.
+   *
+   * THE FOOTER COUNTS AS REACHABLE. An entry does not have to be in the
+   * header — /signup is deliberately not, because the header carries
+   * what somebody signed in uses the product to DO, and an
+   * account-creation link there is entry-chunk weight charged to every
+   * reporter who already has one. A footer is where a site index
+   * belongs, and the footer renders every section. */
+  it('advertises every route it registers, so nothing ships unreachable', () => {
+    const advertised = new Set(hrefs().map((h) => h.split('#')[0]!));
+
+    /* Read from main.js's register() calls rather than from a list
+       typed here — a list typed here is a list that stops matching the
+       router the first time somebody adds a screen, which is precisely
+       the failure this test exists to catch one level down. */
+    const registered = [...main.matchAll(/\.register\(\s*'(\/[^']*)'/g)].map((m) => m[1]!);
+    expect(registered.length, 'no routes were read out of main.js').toBeGreaterThan(10);
+
+    for (const path of registered) {
+      /* The landing page is the lockup in every header rather than a
+         menu item, and listing it would print "Home" in a site index
+         that is already reached by the mark. */
+      if (path === '/') continue;
+      expect(
+        advertised.has(path),
+        `${path} is a registered route that no section of the sitemap advertises — ` +
+          'it ships reachable only by whatever happens to link to it',
+      ).toBe(true);
+    }
+  });
+
   it('gives every item in a header section a hint, because the menu shows them', () => {
     /* An item with no hint renders an empty line under its label in the
        menu — the defect the hints were introduced to fix, back. Only

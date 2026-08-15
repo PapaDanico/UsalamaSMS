@@ -1517,7 +1517,129 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    only managers open competes for budget with the offline-filing path.
    Until that becomes two numbers the way `entry` already is, raises
    like this one have to be argued rather than read off the figure. */
-const BUDGET = { entry: 217 * 1024, js: 495 * 1024, css: 60 * 1024 };
+/* TOTAL 495 -> 500 KB, for the five attributes a State files beside the
+   occurrence category. ENTRY UNMOVED at 212.3 for the third raise
+   running, and CSS UNMOVED TOO, which is the part of this receipt worth
+   reading.
+
+     triage chunk   22,696 -> 28,013   +5,317 bytes
+     total js      505,997 -> 511,314  +5,317 bytes
+     entry         217,441 -> 217,441  UNMOVED
+     css            61,438 ->  61,438  UNMOVED
+
+   THE TOTAL GREW BY EXACTLY WHAT THE TRIAGE CHUNK GREW BY, to the byte.
+   Nothing else moved, which is the shape a correctly-split change makes
+   — and the last receipt records how a plausible set of zeroes turned
+   out to be `git stash` leaving untracked files in place, so both sides
+   here were built with `git stash -u` and differenced.
+
+   CSS DID NOT MOVE BECAUSE NOTHING WAS ADDED TO IT. The css budget was
+   at 60.0 of 60 KB before this change — no headroom at all — so the
+   panel reuses `.queue__cat`, `.queue__cat-opt` and `.queue__codes`
+   rather than declaring a parallel set of `.queue__attr` rules that
+   would have looked identical and cost a kilobyte. Five radio groups
+   are the same widget as twenty checkboxes with a different input type,
+   and the stylesheet already knew how to lay that out.
+
+   WHAT IT BUYS. cicttCodes says WHAT HAPPENED. These five say how badly
+   it hurt somebody, what it did to the aircraft, whether it was dark,
+   whether the crew could see, and what kind of flight it was — the
+   denominators without which "eleven runway excursions" is a number
+   nobody can act on and with which it becomes "nine of them at night,
+   seven on non-scheduled sectors, two with substantial damage".
+
+   The weight is the HINTS, and they are the reason this is 5 KB rather
+   than 1. A radio labelled "Substantial" with nothing beside it gets
+   picked by feel; one that says the definition turns on structural
+   strength, performance or flight characteristics and that an exclusion
+   list decides most cases sends a borderline case to Annex 13. The
+   vocabulary is cheap and the judgement is what costs — which is the
+   same trade `CICTT_CAVEAT` already pays for on the same screen.
+
+   IT COSTS THE REPORTER NOTHING, and that is why the entry figure did
+   not move. adrep.ts is imported by the triage screen alone, by path,
+   for the same reason cictt.ts is: coding to ADREP is a trained
+   judgement made after reading a narrative, so a reporter at a remote
+   strip downloads none of it.
+
+   THE ENTRY RULE STILL STANDS. Entry beginning to track total is the
+   moment to take something out instead of buying more, and it has now
+   held flat across three consecutive raises. */
+/* CSS 60 -> 61 KB, for the identifier face, and it is FOUR
+   DECLARATIONS. The stylesheet had two bytes of headroom — 61,438 of
+   61,440 — which is why this raise exists at all rather than being
+   absorbed the way a normal rule would be.
+
+     css        61,438 -> 61,747  +309 bytes
+     entry     217,441 -> 217,441 UNMOVED
+     total js  511,314 -> 511,314 UNMOVED
+
+   WHAT IT BUYS. `--us-font-mono` was declared in the brand file and
+   read by NOTHING — a token naming a system stack that no rule ever
+   applied. Pointing it at a self-hosted face without also using it
+   would have been worse than leaving it alone: the service worker
+   precaches by extension, so the file would have been downloaded by
+   every reporter on install and rendered on no screen.
+
+   So it goes where the confusion is real. A CICTT category and an
+   aircraft type mix letters and digits — LOC-I, SCF-PP, C208, B738,
+   F100, L410 — and a proportional face lets 0 and O, or 1 and l, land
+   on the same shape. The code goes mono; its NAME beside it stays in
+   the body face, because that is prose.
+
+   AND THE HONEST LIMIT, recorded because it is the reason this is 309
+   bytes rather than a typographic pass: the strongest case for a mono
+   face is the audit-chain hash, and NO HASH IS RENDERED ANYWHERE IN
+   THIS PRODUCT YET. When the verification output gets a surface, it
+   reads --us-font-mono and this is already paid for. Until then the
+   claim is the codes, and the receipt says so rather than implying the
+   larger one. */
+/* TOTAL 500 -> 501 KB, for the operator's profile at signup. ENTRY
+   MOVED 140 BYTES and that is the whole exposure a reporter has to it.
+
+     signup chunk   4,440 ->   5,596  +1,156 bytes
+     total js     511,366 -> 512,752  +1,386 bytes
+     entry        217,493 -> 217,633    +140 bytes
+     css           61,747 ->  61,747  UNMOVED
+
+   THE 140 ENTRY BYTES ARE THE SITEMAP ENTRY FROM THE COMMIT BEFORE
+   THIS ONE, not this change — the vocabularies ride in the lazily
+   imported signup panel, which is where that module was split out to
+   in the first place and for exactly this reason.
+
+   WHAT IT BUYS, AND THE FIRST PART IS A BUG RATHER THAN A FEATURE. The
+   signup form has always rendered a fleet-size field, the panel has
+   always posted it, SignupSchema has always validated it — and the
+   org.create never wrote it. Every operator that ever signed up typed
+   how many aircraft it flies and left fleetSize null, which is the one
+   input billableBand() derives pricing from. The symptom was silence:
+   no error, no wrong invoice, an operator that could not be billed and
+   nothing saying why.
+
+   THEN THE DENOMINATORS. What the operator flies, where from, and what
+   kind of flying — coded against AIRCRAFT_TYPES, AERODROMES and the
+   same OPERATION_TYPES the triage panel codes an occurrence's type of
+   operation against, so a declared profile and a coded occurrence group
+   together rather than being two vocabularies for one fact. "Four
+   runway excursions" against two Caravans out of Wilson is a different
+   fact from four across a mixed fleet on the northern network, and
+   nothing in this product could tell them apart.
+
+   ASKED HERE BECAUSE IT IS THE ONE MOMENT SOMEBODY IS ALREADY
+   DESCRIBING THEIR OPERATION. A profile filled in later from a settings
+   screen is a profile that stays empty, and an empty denominator makes
+   every rate on every dashboard a count.
+
+   COLLAPSED, AND ALL THREE OPTIONAL. `details` groups rather than a
+   native multi-select, which on a handset is a scroll region with no
+   visible affordance for choosing more than one. This is the only
+   unauthenticated route that writes and the customer it exists for is
+   evaluating the product on a Sunday evening — a required multi-select
+   between them and a working account loses the customer rather than
+   getting answered.
+
+   THE ENTRY RULE STILL STANDS at 4.5 KB of headroom. */
+const BUDGET = { entry: 217 * 1024, js: 501 * 1024, css: 61 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

@@ -96,16 +96,30 @@ The matrix anticipates: every row is current, lapsing soon or lapsed,
 against a window proportional to its own validity. What it does not do
 is **arrive**.
 
-**DECIDED 14 August 2026: SMS delivery**, not email and not web push.
-It is the only channel that reaches somebody without a smartphone,
-which is the operator this product is for. Africa's Talking over Twilio
-for a Kenyan operator, on cost and on sender-ID turnaround.
+~~**DECIDED 14 August 2026: SMS delivery**, not email and not web push.
+Africa's Talking over Twilio for a Kenyan operator, on cost and on
+sender-ID turnaround. Blocked on a person registering a sender ID.~~
 
-What is still needed is not a coding task and must not be done by an
-agent: a sender ID registration and API credentials. **Credentials do
-not travel through a chat log** — same rule as the database password,
-see §1.1. Until a person does that, 4.1 stays partial and the coverage
-figure caps at 11.5 of 12.
+**SUPERSEDED 15 August 2026. The channel is EMAIL, and it is already
+plugged in.** `apps/api/src/mail.ts` sends through Resend, the
+scheduled function invokes it at 05:00 UTC, and the credential is in
+place. The sender-ID registration this section was blocked on is no
+longer on the path to anything.
+
+The reasoning for SMS was not wrong — it is still the only channel that
+reaches a handset with no data left in the month — and it is recorded
+above rather than deleted, because the argument survives even though
+the decision did not. If a customer turns out to need it, the case is
+already made and only the registration is missing.
+
+**AN AFRICA'S TALKING TRANSPORT WAS WRITTEN AGAINST THE OLD DECISION
+AND DELETED UNBUILT**, on the day this changed. It worked, it was
+tested, and it had no call site — which is capability with no reachable
+surface, the defect this repository has met three times now (the safety
+risk assessment shipping invisible, CAPA having no UI while /coverage
+claimed it, and /signup advertised by no section of the sitemap).
+Committing it would have been a fourth, dressed as foresight. This
+paragraph exists so the next person does not rebuild it.
 
 ---
 
@@ -208,9 +222,11 @@ that block a feature comparison.
   thing unless the operator says so. What remains is not a gap.
 - **Nothing tells anybody a contact has gone stale** unless they open
   /sms. The directory computes it; nobody is notified. Same shape as
-  4.1's training warning, and it closes on the same SMS channel — so
-  these two are one piece of work, not two. **Blocked on a person**:
-  the sender ID and credentials must not travel through a chat log.
+  4.1's training warning, and it closes on the same channel — so these
+  two are one piece of work, not two. **No longer blocked on a person**:
+  as of 15 August 2026 that channel is email through `mail.ts`, which is
+  configured and sending. What remains is a coding task — teaching the
+  digest to carry a stale-contact item — rather than a registration.
 - ~~The operator cannot use its own words.~~ **Closed 14 August 2026.**
   Post titles, risk-scale wording, aerodromes, aircraft and the review
   cycle are the operator's. What must never be configurable is enforced

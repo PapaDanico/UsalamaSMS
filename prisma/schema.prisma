@@ -131,6 +131,31 @@ model Org {
   /// invoicing the cheapest band off an absent fact.
   fleetSize Int?
 
+  /// WHAT THE OPERATOR ACTUALLY FLIES, AND FROM WHERE.
+  ///
+  /// fleetSize is a number and answers what it costs. These answer what
+  /// the safety office is looking at — and they are the denominators
+  /// every rate this product computes has been missing. "Four runway
+  /// excursions" against an operator flying two Caravans out of Wilson
+  /// is a different fact from four against a mixed turboprop fleet
+  /// across the northern network, and until this existed nothing could
+  /// tell the two apart.
+  ///
+  /// CODES FROM THE SHARED VOCABULARIES, not free text: aircraft types
+  /// from AIRCRAFT_TYPES, bases from AERODROMES, operations from
+  /// OPERATION_TYPES in adrep.ts — the same list the triage panel codes
+  /// an occurrence's type of operation against, so an operator's
+  /// declared profile and its coded occurrences group together instead
+  /// of being two vocabularies for one fact.
+  ///
+  /// EMPTY IS NOT UNKNOWN, same as everywhere else in this schema. An
+  /// operator that skipped the question has an empty array and is
+  /// visibly un-profiled; there is no sentinel that would count as an
+  /// answer nobody gave.
+  fleetTypes     String[]
+  bases          String[]
+  operationTypes String[]
+
   /// The two dates a subscription is computed from — see
   /// packages/shared/src/subscription.ts. TRIAL, ACTIVE, GRACE and
   /// LAPSED are derived from these on every read and never written
@@ -296,6 +321,36 @@ model SafetyReport {
   // error in the report. The occurrence is recorded and the gap is
   // reported — see unrecognised() in packages/shared/src/cictt.ts.
   cicttCodes String[]
+
+  // ---- The five things a State files beside the category ----
+  //
+  // The occurrence category says WHAT HAPPENED. These say how badly it
+  // hurt somebody, what it did to the aircraft, whether it was dark,
+  // whether the crew could see, and what kind of flight it was. Without
+  // them "eleven runway excursions" is a number nobody can act on; with
+  // them it is "nine of them at night, seven on non-scheduled sectors,
+  // two with substantial damage", which has a control attached.
+  //
+  // NULLABLE, AND NULL IS NOT "UNKNOWN". Null means nobody has coded it
+  // yet. Every vocabulary carries an explicit UNKNOWN for "somebody
+  // trained read the narrative and could not establish it". Conflating
+  // them reports an un-triaged backlog as a determination.
+  //
+  // ONE VALUE EACH, unlike cicttCodes — an occurrence has one worst
+  // injury and one light condition. See packages/shared/src/adrep.ts,
+  // which also records that none of these vocabularies has been read
+  // against its primary instrument.
+  //
+  // NOT ENUMS, for the reason the CICTT column is not a foreign key: a
+  // vocabulary this product admits is incomplete should not be able to
+  // reject a value at the database layer that the taxonomy accepts. The
+  // route validates against the shared list, so the guarantee holds
+  // where it can be changed without a migration.
+  injuryLevel    String?
+  aircraftDamage String?
+  lightCondition String?
+  metCondition   String?
+  operationType  String?
 
   // ------------------------ Confidentiality ------------------------
   isAnonymous           Boolean   @default(false)

@@ -9,6 +9,26 @@
 import type { FastifyInstance } from "fastify";
 import { LoginSchema } from "@usalamasms/shared";
 import { SignupSchema } from "../../../packages/shared/src/signup";
+/* By path, not through the barrel — routes.reports.ts records why: the
+   report form imports the barrel, so anything it re-exports rides in
+   the entry chunk a ramp agent downloads before filing. */
+import { AIRCRAFT_TYPES, AERODROMES } from "../../../packages/shared/src/taxonomy";
+import { OPERATION_TYPES } from "../../../packages/shared/src/adrep";
+
+/* Codes the vocabulary carries, de-duplicated, in the order sent. The
+   escape hatch that AERODROMES and AIRCRAFT_TYPES offer on the REPORT
+   form is deliberately absent here: a report is about one event and a
+   free-text location is better than a wrong code, but a profile is the
+   denominator every rate divides by, and a denominator nothing can
+   group is not a denominator. */
+function knownOnly(
+  sent: ReadonlyArray<string> | undefined,
+  list: ReadonlyArray<{ code: string }>,
+): string[] {
+  if (!sent?.length) return [];
+  const known = new Set(list.map((row) => row.code));
+  return [...new Set(sent.filter((code) => known.has(code)))];
+}
 import {
   prisma, ENV, hmac, verifyPassword, issueAccessToken, issueRefreshToken,
   appendAuditTx, authenticate, requirePermission,
@@ -313,6 +333,36 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
             name: input.orgName,
             jurisdiction: input.jurisdiction,
             ...(input.aocNumber ? { aocNumber: input.aocNumber } : {}),
+            /* THE FLEET SIZE WAS ASKED FOR AND THROWN AWAY. The signup
+               panel renders a number field, the panel posts it, and
+               SignupSchema has validated it since this route existed —
+               and this create never wrote it. So every operator that
+               ever signed up typed how many aircraft it flies, was told
+               the account was created, and left `fleetSize` null.
+
+               billableBand() returns null for a missing fleet size
+               rather than quietly invoicing the cheapest band, which is
+               the right refusal and meant the symptom was silence: no
+               error, no wrong invoice, just an operator that could not
+               be billed and nothing anywhere saying why.
+
+               That is charter rule 8 — a write that does not happen is
+               reported — failing in the one place where the report was
+               a 201. */
+            ...(input.fleet === undefined ? {} : { fleetSize: input.fleet }),
+            /* And the profile beside it. Filtered to codes the shared
+               vocabularies actually carry rather than stored as sent:
+               this is the only unauthenticated route that writes, and a
+               free-text aerodrome here is the second HKJK the taxonomy
+               exists to prevent. An unrecognised code is DROPPED rather
+               than refused — a signup that 400s because somebody's
+               integration sent one unknown type is a customer lost over
+               a field that was optional anyway. */
+            fleetTypes: knownOnly(input.fleetTypes, AIRCRAFT_TYPES),
+            bases: knownOnly(input.bases, AERODROMES),
+            operationTypes: (input.operationTypes ?? []).filter((c) =>
+              OPERATION_TYPES.some((o) => o.code === c),
+            ),
           },
         });
         const user = await tx.user.create({

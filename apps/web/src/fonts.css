@@ -137,3 +137,60 @@
     U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
     U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
+
+/* ------------------------------------------------------------------
+   JETBRAINS MONO, FOR IDENTIFIERS AND NOTHING ELSE.
+
+   --us-font-mono was a system stack — ui-monospace, SFMono-Regular,
+   Menlo, Consolas — which means it was four different faces. The same
+   audit-chain hash rendered in SF Mono on a safety manager's Mac, in
+   Consolas on the office Windows machine and in whatever Android
+   supplies on a ramp agent's handset, at three different widths. For
+   prose that would be cosmetic. For an identifier somebody reads aloud
+   over a radio or types into a regulator's form, the SHAPE OF THE
+   CHARACTER IS THE MEANING: a hash that reads `1` on one screen and `l`
+   on another is a hash two people cannot agree on.
+
+   SO IT IS SELF-HOSTED, LIKE THE OTHER TWO, and for the reason recorded
+   at the top of this file rather than a preference — `font-src 'self'`
+   in netlify.toml has no CDN exception, so a font from anywhere else
+   fails to load rather than quietly working.
+
+   SUBSET TO 77 GLYPHS, AND THE SUBSET IS THE WHOLE ARGUMENT. Digits,
+   A–Z, a–z and the punctuation an identifier actually uses — hyphen,
+   underscore, colon, slash, dot, hash, parentheses, plus, comma, space.
+   A full Latin cut of this face is ~55 KB; this is 6 KB, which is a
+   tenth of the body face, and it still disambiguates 0/O and 1/l/I,
+   which is the only property that put it here.
+
+   NO LATIN-EXTENDED FILE, and that is not an omission. The other two
+   faces carry one because Kenyan and East African names take
+   diacritics. An identifier does not: a UUID is hex, an AOC number is
+   alphanumeric, a CICTT code is upper-case ASCII. A second file would
+   be weight against a character that cannot appear.
+
+   IT IS NOT FOR NUMBERS, and the proposal that brought it here asked
+   for numbers too. Figures already align — `font-variant-numeric:
+   lining-nums tabular-nums` is set at the root, which costs nothing and
+   was put there to correct Cormorant's old-style figures. Mono digits
+   are wider and lighter than DM Sans's, so setting a risk matrix or a
+   deadline count in them would make the numbers read WEAKER rather than
+   more precise, while adding a font swap to the screen a safety manager
+   opens first. Alignment was already solved; disambiguation was not.
+
+   400 to 700 CONTINUOUS, instanced from the variable file rather than
+   shipped as two statics — the same reasoning as DM Sans above, and the
+   same gate behind it: a single declared weight makes every bold a
+   synthesised one.
+   ------------------------------------------------------------------ */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-identifiers.woff2') format('woff2');
+  /* Declared, so the browser does not fetch 6 KB to render a name. */
+  unicode-range: U+0020, U+0023, U+0028-0029, U+002B-002F, U+0030-003A, U+0041-005A,
+    U+005F, U+0061-007A;
+}
