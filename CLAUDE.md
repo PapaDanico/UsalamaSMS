@@ -6,11 +6,11 @@ wrong. Everything else lives in `docs/` — start with
 
 ---
 
-## RLS is enabled with NO policies, and that is correct
+## RLS carries ONE restrictive deny-all per table, and that is the posture
 
-Every table in `public` has `rowsecurity = true` and **zero policies**.
-That is not an unfinished migration. It is deny-by-default, and it is
-the security posture:
+Every table in `public` has `rowsecurity = true` and exactly one policy:
+`deny_all_not_owner`, **RESTRICTIVE**, `USING (false)`. Nothing is
+granted to anybody. That is the security posture:
 
 - nothing in this product uses `supabase-js`, `createClient()` or
   PostgREST. The Supabase **anon/publishable key is deliberately absent
@@ -18,46 +18,70 @@ the security posture:
 - every read and write goes through the Fastify API in `apps/api`,
   which connects as the database owner and enforces tenancy in SQL
   (`orgId` on every tenant-owned table, indexed first);
-- with no policies and no Data API grants, the `anon` and
-  `authenticated` roles can reach nothing at all.
+- **RLS does not apply to a table's owner**, so the API is unaffected.
+  Everybody else reads nothing.
 
-**The Supabase agent skill in `.agents/skills/supabase` will tell you
-otherwise.** Its Core Principle 5 says *"After enabling RLS, create
-policies that match the actual access model."* That is correct advice
-for an application that talks to PostgREST from a browser. Applied
-here it would **open access that is currently closed**, because the
-access model this product needs from the `anon` role is *none*.
+### It used to be "zero policies", and that is why it changed
 
-So: do not add RLS policies. Do not add `FORCE ROW LEVEL SECURITY`
-either — the API connects as the table owner, and forcing RLS on an
-owner with no policies locks the application out of its own database.
+Zero policies also denies — but only for as long as nobody adds one,
+and the pressure to add one never stops. `mcp__Supabase__get_advisors`
+reports `rls_enabled_no_policy` against every table, and the Supabase
+agent skill in `.agents/skills/supabase` says in its Core Principle 5
+to "create policies that match the actual access model".
 
-**Supabase's own security advisor also says otherwise**, and will keep
-saying it. `mcp__Supabase__get_advisors` reports
-`rls_enabled_no_policy` at level INFO against **every** table, with a
-remediation link to a page about writing policies. Re-checked on 14
-August 2026, after the report transitions, the corrective actions and
-the emergency contact directory landed: **twenty-six** notices, all of
-them that one, and they are the *entire* security finding list — no
-errors and no warnings. Twenty-six INFO notices describing the intended
-state is a clean bill of health for this architecture, not a to-do
-list.
+On 15 August 2026 that pressure produced exactly what it was always
+going to. **Twenty-seven policies had appeared on the production
+database, twelve of them GRANTING** the `authenticated` role every
+operation on rows matching a JWT claim — correct for a browser talking
+to PostgREST, and this product has no such client.
 
-(It read nineteen on 12 August. The number moves every time a table is
-added, which is the point made below: the count is not the check.)
+Twelve `USING (false)` policies sat alongside them and **denied
+nothing**, because they were PERMISSIVE and permissive policies are
+OR'd. No table carried both, so it was latent rather than live; adding
+one org policy to a deny-all table would have opened it silently.
 
-The number is written here as a count and will go stale again. What
-does not go stale is the shape: EVERY table carries this notice and
-NOTHING carries anything else. If a table ever appears without it, RLS
-was not enabled on it — that is the real finding, and it is the one
-`tests/integration/rls.integration.test.ts` asserts over `pg_tables`
-rather than over a list, precisely because the ten-table version of
-that list is how eight tables once arrived outside the posture.
+So the absence became a statement. A RESTRICTIVE policy is AND'd with
+every other policy on the table, so a later `CREATE POLICY ... USING
+(true)` has **no effect** while it exists. The old posture survived
+nobody acting; this one survives somebody acting.
 
-If this ever changes — if something genuinely starts using the Data
-API — that is a deliberate architectural decision, and it needs the
-grants, the policies and a test that a second tenant cannot read the
-first one's reports, in the same change.
+It also answers the advisor honestly rather than by argument — the
+notice said "no policies", and now there is one.
+
+### Do not FORCE row level security
+
+`FORCE ROW LEVEL SECURITY` applies RLS to the owner too, and the API IS
+the owner. Forcing it denies everything to the one role that has to
+read and write. `tests/integration/rls.integration.test.ts` asserts
+that it is off, that every table has the restrictive deny-all, and that
+no PERMISSIVE policy exists anywhere — each mutation-checked.
+
+### If the Data API is ever genuinely adopted
+
+That is a deliberate architectural decision and it needs the grants,
+the policies, the removal of this backstop, and a test that a second
+tenant cannot read the first one's reports — in the same change.
+
+## Migrations do not apply themselves on deploy
+
+`netlify.toml` runs `npm run build`. It does **not** run
+`prisma migrate deploy`, and nothing else does either. A merged,
+green, published deploy can therefore be running against a database
+that is missing the columns its own Prisma client SELECTs.
+
+That is not hypothetical. On 15 August 2026 production was found five
+migrations behind: `Org` was missing `fleetSize`, `SafetyReport` was
+missing `cicttCodes`, the authority-notification and retraction
+columns, and `OrgConfig` did not exist at all. Every read of `Org` or
+`SafetyReport` raised *column does not exist*, on a database holding
+seven real reports — while four separate deploys had been confirmed
+`state: ready` from Netlify and reported as live.
+
+**Confirming a deploy is not confirming the system.** After a merge
+that carries a migration, apply it — `mcp__Supabase__apply_migration`
+with the file's contents, or `prisma migrate deploy` against a direct
+(not pooler) connection — and then verify the columns exist rather
+than assuming.
 
 ## Two different connection strings, for two different jobs
 
