@@ -102,6 +102,59 @@ export const EXPORT_EXCLUSIONS: Readonly<Record<string, string>> = Object.freeze
     "token in one is a session somebody else can resume.",
 });
 
+/* ============================================================
+   HOW MUCH ONE FILE CAN HOLD, AND WHAT HAPPENS AT THE EDGE.
+
+   Every other read in this product is capped and says so: the triage
+   queue at QUEUE_LIMIT with `truncated`, the register at
+   REGISTER_LIMIT with `truncated`, the digest at ROW_LIMIT, the contact
+   directory at LIMIT. This route was the exception — twenty-three
+   collections, none of them bounded, assembled in memory inside a
+   function with a gigabyte and a wall clock.
+
+   On a small operator that is invisible. On a large one it is an
+   out-of-memory or a timeout, and it arrives as a 502 on the single
+   route whose entire purpose is handing a defensible record to a
+   regulator — at the moment somebody is preparing for an audit.
+
+   IT DOES NOT TRUNCATE, AND THAT IS THE WHOLE DESIGN DECISION. Every
+   other capped read in the product can truncate honestly because a
+   queue showing the first five hundred rows is still a queue. An export
+   cannot: this file's own header records that the fourth and realest
+   way an export goes wrong is BY OMISSION rather than by leak — nine
+   tenant-owned collections were once missing from it and nothing
+   noticed. A silently short export is that defect, reproduced
+   deliberately, in a file somebody hands to an authority believing it
+   is complete.
+
+   So the cap is a REFUSAL. Each collection reads one row past the
+   limit; if any comes back long, the whole request answers 413 and
+   names which collections and what the limit is. A refusal sends
+   somebody to ask for help. A short file does not, because it looks
+   exactly like a complete one.
+   ============================================================ */
+/* READ FROM THE ENVIRONMENT, WITH A FLOOR, AND THE REASON IS THE TEST.
+ *
+ * A refusal nothing executes is the defect this repository has spent
+ * its whole history removing — and a 20,000-row refusal cannot be
+ * executed by a suite that would have to write 20,001 rows to reach it.
+ * The choice is a configurable limit or an unproven one, and an
+ * unproven refusal on the route that hands a record to a regulator is
+ * not a choice at all.
+ *
+ * THE FLOOR IS WHAT KEEPS IT FROM BEING A FOOT-GUN. A limit below 1 is
+ * a route that refuses everything, so the value is clamped rather than
+ * trusted; a misconfigured deploy gets the default, not an outage. The
+ * default is what production runs, and no deploy sets the variable. */
+const EXPORT_LIMIT = Math.max(
+  1,
+  Number(process.env["EXPORT_ROW_LIMIT"]) || 20_000,
+);
+/* One past, so a full page is distinguishable from a page that happens
+   to land exactly on the limit — the off-by-one that would otherwise
+   refuse a record of precisely EXPORT_LIMIT rows. */
+const PROBE = EXPORT_LIMIT + 1;
+
 export async function exportRoutes(app: FastifyInstance): Promise<void> {
   /* A tighter window than the SMS routes deliberately. This is the most
      expensive read in the product and the one whose output is worth the
@@ -143,6 +196,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
         }),
         prisma.user.findMany({
           where,
+          take: PROBE,
           orderBy: [{ name: "asc" }],
           // No passwordHash and no mfaSecret. Email stays: an operator
           // that cannot tell which account was whose has a copy of its
@@ -166,46 +220,97 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
            it. The rows carry retractedAt, retractedById and the reason,
            the audit chain carries a report.retracted entry, and the
            reader can see both. */
-        prisma.safetyReport.findMany({ where, orderBy: [{ createdAt: "asc" }] }),
-        prisma.hazard.findMany({ where, orderBy: [{ createdAt: "asc" }] }),
-        prisma.riskAssessment.findMany({ where, orderBy: [{ createdAt: "asc" }] }),
-        prisma.safetyPolicy.findMany({ where, orderBy: [{ version: "asc" }] }),
-        prisma.accountability.findMany({ where, orderBy: [{ post: "asc" }] }),
-        prisma.appointment.findMany({ where, orderBy: [{ appointedOn: "asc" }] }),
-        prisma.emergencyExercise.findMany({ where, orderBy: [{ heldOn: "asc" }] }),
-        prisma.controlledDocument.findMany({ where, orderBy: [{ reference: "asc" }] }),
-        prisma.auditFinding.findMany({ where, orderBy: [{ createdAt: "asc" }] }),
-        prisma.trainingRecord.findMany({ where, orderBy: [{ completedOn: "asc" }] }),
-        prisma.safetyCommunication.findMany({ where, orderBy: [{ publishedOn: "asc" }] }),
-        prisma.auditLog.findMany({ where, orderBy: [{ seq: "asc" }] }),
+        prisma.safetyReport.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
+        prisma.hazard.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
+        prisma.riskAssessment.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
+        prisma.safetyPolicy.findMany({ where, take: PROBE, orderBy: [{ version: "asc" }] }),
+        prisma.accountability.findMany({ where, take: PROBE, orderBy: [{ post: "asc" }] }),
+        prisma.appointment.findMany({ where, take: PROBE, orderBy: [{ appointedOn: "asc" }] }),
+        prisma.emergencyExercise.findMany({ where, take: PROBE, orderBy: [{ heldOn: "asc" }] }),
+        prisma.controlledDocument.findMany({ where, take: PROBE, orderBy: [{ reference: "asc" }] }),
+        prisma.auditFinding.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
+        prisma.trainingRecord.findMany({ where, take: PROBE, orderBy: [{ completedOn: "asc" }] }),
+        prisma.safetyCommunication.findMany({ where, take: PROBE, orderBy: [{ publishedOn: "asc" }] }),
+        prisma.auditLog.findMany({ where, take: PROBE, orderBy: [{ seq: "asc" }] }),
 
         /* THE NINE THAT WERE MISSING. Ordered the way an auditor reads
            them rather than the way they were added, and each ordered
            within itself by the column somebody would sort on. */
-        prisma.spi.findMany({ where, orderBy: [{ name: "asc" }] }),
-        prisma.spiPeriod.findMany({ where, orderBy: [{ spiId: "asc" }, { label: "asc" }] }),
+        prisma.spi.findMany({ where, take: PROBE, orderBy: [{ name: "asc" }] }),
+        prisma.spiPeriod.findMany({ where, take: PROBE, orderBy: [{ spiId: "asc" }, { label: "asc" }] }),
         /* Zero or one per operator — `findMany` rather than `findUnique`
            so the payload shape does not change with its presence, and a
            reader parses one collection rather than a nullable object. */
-        prisma.voluntaryScheme.findMany({ where }),
-        prisma.changeAssessment.findMany({ where, orderBy: [{ assessedOn: "asc" }] }),
-        prisma.emergencyContact.findMany({ where, orderBy: [{ callOrder: "asc" }] }),
-        prisma.correctiveAction.findMany({ where, orderBy: [{ createdAt: "asc" }] }),
+        prisma.voluntaryScheme.findMany({ where, take: PROBE }),
+        prisma.changeAssessment.findMany({ where, take: PROBE, orderBy: [{ assessedOn: "asc" }] }),
+        prisma.emergencyContact.findMany({ where, take: PROBE, orderBy: [{ callOrder: "asc" }] }),
+        prisma.correctiveAction.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
         /* The disposition history. `byUserId` names the SAFETY OFFICER
            who moved the report, never the reporter — a transition is an
            office action, and C-01's concern was the person who filed.
            Without this the export holds outcomes and no evidence of how
            they were reached, which is the half an auditor asks for. */
-        prisma.reportTransition.findMany({ where, orderBy: [{ at: "asc" }] }),
-        prisma.policyAcknowledgement.findMany({ where, orderBy: [{ acknowledgedAt: "asc" }] }),
-        prisma.documentAcknowledgement.findMany({ where, orderBy: [{ acknowledgedAt: "asc" }] }),
+        prisma.reportTransition.findMany({ where, take: PROBE, orderBy: [{ at: "asc" }] }),
+        prisma.policyAcknowledgement.findMany({ where, take: PROBE, orderBy: [{ acknowledgedAt: "asc" }] }),
+        prisma.documentAcknowledgement.findMany({ where, take: PROBE, orderBy: [{ acknowledgedAt: "asc" }] }),
         /* The operator's own vocabulary. A register exported without it
            reads in the shipped words rather than the words the operator
            actually uses, which is the copy an auditor would be handed
            and would not recognise. `findMany` rather than `findUnique`
            so the payload shape does not change with its presence. */
-        prisma.orgConfig.findMany({ where }),
+        prisma.orgConfig.findMany({ where, take: PROBE }),
       ]);
+
+      /* ============================================================
+         THE REFUSAL, BEFORE ANYTHING IS SERIALISED.
+
+         Checked here rather than at each query because the answer is
+         about the WHOLE file: one over-long collection makes the export
+         incomplete, and an incomplete export is the thing this route
+         must never quietly produce. Named so the reply can say which,
+         because "too large" with no subject sends somebody looking
+         through twenty-three collections by hand.
+
+         BEFORE verifyAuditChain, deliberately. That is the most
+         expensive call in the handler, and spending it to build a
+         payload already known to be unusable is work charged to the
+         operator whose record is biggest. */
+      const oversized = ([
+        ["users", users], ["reports", reports], ["hazards", hazards],
+        ["riskAssessments", riskAssessments], ["policies", policies],
+        ["accountabilities", accountabilities], ["appointments", appointments],
+        ["exercises", exercises], ["documents", documents], ["findings", findings],
+        ["training", training], ["communications", communications],
+        ["auditLog", auditLog], ["spis", spis], ["spiPeriods", spiPeriods],
+        ["voluntaryScheme", voluntaryScheme], ["changes", changes],
+        ["contacts", contacts], ["actions", actions], ["transitions", transitions],
+        ["policyReads", policyReads], ["documentReads", documentReads],
+        ["config", config],
+      ] as ReadonlyArray<readonly [string, ReadonlyArray<unknown>]>)
+        .filter(([, rows]) => rows.length > EXPORT_LIMIT)
+        .map(([name]) => name);
+
+      if (oversized.length) {
+        req.log.warn(
+          { org: req.auth!.org, oversized },
+          "export refused — a collection exceeded the single-file limit",
+        );
+        /* 413 rather than 500: this is a property of the request's
+           scope, not a fault, and the difference decides whether the
+           reader retries the same call or asks for a different one. */
+        return reply.code(413).send({
+          error: "too_large",
+          limit: EXPORT_LIMIT,
+          collections: oversized,
+          message:
+            `This operator's record is larger than one export file can carry — ` +
+            `${oversized.join(", ")} ${oversized.length === 1 ? "exceeds" : "exceed"} ` +
+            `${EXPORT_LIMIT.toLocaleString("en")} rows. Nothing was produced, ` +
+            "deliberately: a shortened export looks exactly like a complete one to " +
+            "whoever is handed it, and this file is evidence. Ask for a copy taken " +
+            "in parts.",
+        });
+      }
 
       /* Computed at the moment of export and shipped alongside the
          chain it describes, so the operator can re-derive it. A verdict

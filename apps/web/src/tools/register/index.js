@@ -148,13 +148,40 @@ const BADGE = { OPEN: 'ALERT', MITIGATED: 'CAUTION', ACCEPTED: 'SAFE', CLOSED: '
    the bad row was saved and crashed the page again on every load. A
    register that can be destroyed by one malformed row is not a
    register. See normaliseEntry(). */
+/* AND AN UNREADABLE STORE IS NOT AN EMPTY ONE, which is the half this
+   function did not have.
+ *
+ * The resilience above is right and it was reported wrong. A store that
+ * would not parse — a full quota mid-write, a private window, a
+ * half-synced profile — returned `[]`, and the screen rendered "Nothing
+ * on the register yet. The first entry is usually the hazard behind the
+ * last report somebody filed."
+ *
+ * That is the exact failure /today was fixed for: saying the most
+ * reassuring possible thing at the moment it knows least. A safety
+ * manager whose register cannot be read is told they have not started
+ * one — and the reasonable next action after reading that is to type
+ * the first entry, on top of a store that is already holding entries it
+ * could not show them.
+ *
+ * The irony is twelve lines down: save() carries a comment citing
+ * charter rule 8 — a refused write is reported, never swallowed — and
+ * returns a boolean the caller surfaces. The READ path never got the
+ * same treatment.
+ *
+ * So this returns null for "could not be read", distinct from [] for
+ * "read, and empty". A row that will not normalise is still skipped,
+ * because one malformed entry must not take twelve good ones with it —
+ * that part was always correct. */
 function load() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORE) ?? '[]');
-    if (!Array.isArray(parsed)) return [];
+    const raw = localStorage.getItem(STORE);
+    if (raw === null) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
     return parsed.map(normaliseEntry).filter(Boolean);
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -274,7 +301,13 @@ function Row(entry) {
 }
 
 export function render(outlet) {
-  let entries = load();
+  /* null means the store could not be read — see load(). Held
+     separately so every consumer below still gets an array and nothing
+     has to guard against a null it did not expect, while the screen
+     keeps the one fact that matters: it does not know. */
+  const loaded = load();
+  const unreadable = loaded === null;
+  let entries = loaded ?? [];
 
   /* WHERE THE REGISTER LIVES, and it is shown on screen rather than
      assumed. 'device' until the organisation's register answers: a
@@ -488,16 +521,51 @@ export function render(outlet) {
       </div>
     `.toString();
 
-    list.innerHTML = entries.length
-      ? entries.map(Row).join('')
-      : html`<p class="empty-state">
-          <span>Nothing on the register yet. The first entry is usually the hazard
-          behind the last report somebody filed.</span>
-        </p>`.toString();
+    /* THREE STATES, NOT TWO. "Could not be read" is a different fact
+       from "nothing here yet", and the reasonable next action after
+       reading the second is to start typing — on top of a store that
+       may already hold entries this screen could not show. The wording
+       follows the risk picture's, which had this right first: it is not
+       the same as there being none. */
+    list.innerHTML = unreadable
+      ? html`<p class="notice notice--error">
+          <span>This register could not be read from this device — the stored copy is
+          damaged or unavailable. That is not the same as it being empty. Nothing has
+          been lost by opening this page, and anything already sent to the safety
+          office is unaffected. Do not add an entry here until it reads again, or you
+          will be typing on top of entries you cannot see.</span>
+        </p>`.toString()
+      : entries.length
+        ? entries.map(Row).join('')
+        : html`<p class="empty-state">
+            <span>Nothing on the register yet. The first entry is usually the hazard
+            behind the last report somebody filed.</span>
+          </p>`.toString();
   };
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
+
+    /* THE REFUSAL, BECAUSE THE WARNING ABOVE IS ONLY WORDS.
+     *
+     * When the store could not be read, `entries` is an empty array —
+     * so saving would write this one entry over whatever is actually
+     * in there. The panel already says "do not add an entry until it
+     * reads again", and this repository's own rule is that a claim is
+     * kept by a MECHANISM rather than by asking. Telling somebody not
+     * to do a thing the software will happily let them do is the same
+     * defect as a coverage entry that overstates.
+     *
+     * Refused rather than queued: there is nowhere safe to queue it to.
+     * The one store this screen has is the one that cannot be read. */
+    if (unreadable) {
+      error.textContent =
+        'This register could not be read from this device, so nothing can be added to ' +
+        'it — an entry saved now would be written over entries that are there and ' +
+        'cannot be shown. Nothing you have typed has been lost from this form.';
+      return;
+    }
+
     const f = form.elements;
 
     /* The owner and the acceptor are dropdowns with a free-text escape,
