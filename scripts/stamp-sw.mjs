@@ -1517,7 +1517,55 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    only managers open competes for budget with the offline-filing path.
    Until that becomes two numbers the way `entry` already is, raises
    like this one have to be argued rather than read off the figure. */
-const BUDGET = { entry: 217 * 1024, js: 495 * 1024, css: 60 * 1024 };
+/* TOTAL 495 -> 500 KB, for the five attributes a State files beside the
+   occurrence category. ENTRY UNMOVED at 212.3 for the third raise
+   running, and CSS UNMOVED TOO, which is the part of this receipt worth
+   reading.
+
+     triage chunk   22,696 -> 28,013   +5,317 bytes
+     total js      505,997 -> 511,314  +5,317 bytes
+     entry         217,441 -> 217,441  UNMOVED
+     css            61,438 ->  61,438  UNMOVED
+
+   THE TOTAL GREW BY EXACTLY WHAT THE TRIAGE CHUNK GREW BY, to the byte.
+   Nothing else moved, which is the shape a correctly-split change makes
+   — and the last receipt records how a plausible set of zeroes turned
+   out to be `git stash` leaving untracked files in place, so both sides
+   here were built with `git stash -u` and differenced.
+
+   CSS DID NOT MOVE BECAUSE NOTHING WAS ADDED TO IT. The css budget was
+   at 60.0 of 60 KB before this change — no headroom at all — so the
+   panel reuses `.queue__cat`, `.queue__cat-opt` and `.queue__codes`
+   rather than declaring a parallel set of `.queue__attr` rules that
+   would have looked identical and cost a kilobyte. Five radio groups
+   are the same widget as twenty checkboxes with a different input type,
+   and the stylesheet already knew how to lay that out.
+
+   WHAT IT BUYS. cicttCodes says WHAT HAPPENED. These five say how badly
+   it hurt somebody, what it did to the aircraft, whether it was dark,
+   whether the crew could see, and what kind of flight it was — the
+   denominators without which "eleven runway excursions" is a number
+   nobody can act on and with which it becomes "nine of them at night,
+   seven on non-scheduled sectors, two with substantial damage".
+
+   The weight is the HINTS, and they are the reason this is 5 KB rather
+   than 1. A radio labelled "Substantial" with nothing beside it gets
+   picked by feel; one that says the definition turns on structural
+   strength, performance or flight characteristics and that an exclusion
+   list decides most cases sends a borderline case to Annex 13. The
+   vocabulary is cheap and the judgement is what costs — which is the
+   same trade `CICTT_CAVEAT` already pays for on the same screen.
+
+   IT COSTS THE REPORTER NOTHING, and that is why the entry figure did
+   not move. adrep.ts is imported by the triage screen alone, by path,
+   for the same reason cictt.ts is: coding to ADREP is a trained
+   judgement made after reading a narrative, so a reporter at a remote
+   strip downloads none of it.
+
+   THE ENTRY RULE STILL STANDS. Entry beginning to track total is the
+   moment to take something out instead of buying more, and it has now
+   held flat across three consecutive raises. */
+const BUDGET = { entry: 217 * 1024, js: 500 * 1024, css: 60 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

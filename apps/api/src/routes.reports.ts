@@ -44,6 +44,7 @@ import {
   type ReportState,
 } from "../../../packages/shared/src/disposition";
 import { unrecognised } from "../../../packages/shared/src/cictt";
+import { ADREP_FIELDS, isValidAdrepValue } from "../../../packages/shared/src/adrep";
 import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
 
 const HISTORY_LIMIT = 200;
@@ -88,11 +89,48 @@ const TransitionSchema = z.object({
   cicttCodes: CicttCodes.optional(),
 });
 
-/* The same field, REQUIRED, for the route that does nothing else.
-   Both routes read one declaration: two copies of the bound and the
+/* THE FIVE ADREP ATTRIBUTES, BUILT FROM THE SHARED DECLARATION rather
+   than retyped here. A sixth field is one entry in ADREP_FIELDS; a
+   hand-written zod enum per field is five places to forget it, and the
+   one that gets forgotten is whichever the next person does not grep
+   for.
+
+   VALIDATED STRICTLY, WHICH IS THE OPPOSITE OF WHAT cicttCodes DOES
+   ABOVE, and the difference is the shape of the vocabulary rather than
+   an inconsistency. The CICTT list is open and admitted to be
+   incomplete, so an unknown code is a gap in this product and gets
+   recorded. These five are closed: Annex 13 defines four injury states
+   and there is no fifth, and a flight is in VMC or in IMC. An
+   unrecognised value there is a client bug or a mis-mapped integration,
+   and storing it would put a value in a column that groups with nothing.
+
+   NULL CLEARS, undefined leaves alone. A safety officer who coded
+   SERIOUS from a first account and learns the injury was minor needs a
+   way back to "not yet coded" that is not "pick something". */
+const AdrepPatch = z.object(
+  Object.fromEntries(
+    ADREP_FIELDS.map((f) => [
+      f.key,
+      z
+        .string()
+        .trim()
+        .toUpperCase()
+        .max(32)
+        .nullable()
+        .refine((v) => v === null || isValidAdrepValue(f.key, v), {
+          message: `Not a value ${f.key} accepts.`,
+        })
+        .optional(),
+    ]),
+  ) as Record<string, z.ZodTypeAny>,
+);
+
+/* The occurrence categories REQUIRED, for the route that does nothing
+   else, with the five attributes optional beside them. Both routes read
+   one CicttCodes declaration: two copies of the bound and the
    upper-casing are two copies that come to disagree, and the one that
    drifts is whichever is edited second. */
-const CodesSchema = z.object({ cicttCodes: CicttCodes });
+const CodesSchema = z.object({ cicttCodes: CicttCodes }).merge(AdrepPatch);
 
 /* RECORDING THAT THE AUTHORITY WAS NOTIFIED.
  *
@@ -158,6 +196,12 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
         id: true, clientId: true, state: true, type: true, title: true,
         createdAt: true, isAnonymous: true, jurisdiction: true, awareAt: true,
         occurredAt: true, location: true, phase: true, cicttCodes: true,
+        /* The five ADREP attributes travel with the row for the same
+           reason cicttCodes does: the triage panel renders what is
+           STORED, and a panel that opens blank invites somebody to
+           re-code what was already determined. */
+        injuryLevel: true, aircraftDamage: true,
+        lightCondition: true, metCondition: true, operationType: true,
         /* WHETHER THE DUTY WAS DISCHARGED. The queue computes a
            reporting deadline per row and, until this column travelled
            with the row, had no way to know the call had been made — so
@@ -188,6 +232,11 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
         location: r.location,
         phase: r.phase,
         cicttCodes: r.cicttCodes,
+        injuryLevel: r.injuryLevel,
+        aircraftDamage: r.aircraftDamage,
+        lightCondition: r.lightCondition,
+        metCondition: r.metCondition,
+        operationType: r.operationType,
         reportedToAuthorityAt: r.reportedToAuthorityAt?.toISOString() ?? null,
         available: transitionsFrom(r.state as ReportState)
           .filter((t) => can(auth.role as never, t.needs))
@@ -216,7 +265,11 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
        row exists. */
     const report = await prisma.safetyReport.findFirst({
       where: { ...tenantWhere(req), id },
-      select: { id: true, state: true, createdAt: true, cicttCodes: true },
+      select: {
+        id: true, state: true, createdAt: true, cicttCodes: true,
+        injuryLevel: true, aircraftDamage: true,
+        lightCondition: true, metCondition: true, operationType: true,
+      },
     });
     if (!report) return reply.code(404).send({ error: "not_found" });
 
@@ -233,6 +286,11 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
       /* Read back so the screen renders the coding that EXISTS rather
          than the coding somebody last submitted from this browser. */
       cicttCodes: report.cicttCodes,
+      injuryLevel: report.injuryLevel,
+      aircraftDamage: report.aircraftDamage,
+      lightCondition: report.lightCondition,
+      metCondition: report.metCondition,
+      operationType: report.operationType,
       available: transitionsFrom(report.state as ReportState)
         .filter((t) => can(auth.role as never, t.needs))
         .map((t) => ({
@@ -295,15 +353,34 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
 
     const report = await prisma.safetyReport.findFirst({
       where: { ...tenantWhere(req), id },
-      select: { id: true, cicttCodes: true },
+      select: {
+        id: true, cicttCodes: true,
+        injuryLevel: true, aircraftDamage: true,
+        lightCondition: true, metCondition: true, operationType: true,
+      },
     });
     if (!report) return reply.code(404).send({ error: "not_found" });
 
     const before = report.cicttCodes;
+    /* ONLY THE KEYS THAT WERE SENT. An absent key must leave the column
+       alone rather than null it, or a screen that submits the category
+       form without the attribute panel open would silently erase five
+       determinations somebody made yesterday. `null` sent explicitly
+       still clears — that is the difference between omission and a
+       decision to un-code. */
+    const adrepPatch: Record<string, string | null> = {};
+    const adrepBefore: Record<string, string | null> = {};
+    for (const field of ADREP_FIELDS) {
+      const sent = (parsed.data as Record<string, unknown>)[field.key];
+      if (sent === undefined) continue;
+      adrepPatch[field.key] = sent as string | null;
+      adrepBefore[field.key] = (report as Record<string, unknown>)[field.key] as string | null;
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.safetyReport.update({
         where: { id: report.id },
-        data: { cicttCodes: { set: parsed.data.cicttCodes } },
+        data: { cicttCodes: { set: parsed.data.cicttCodes }, ...adrepPatch },
       });
       await appendAuditTx(tx, {
         orgId: auth.org,
@@ -315,13 +392,37 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
            what the State is told about it, so "was RE, is now RE and
            LOC-I" is the auditable fact — a record of the new value
            alone cannot answer whether a category was removed. */
-        detail: { from: before, to: parsed.data.cicttCodes },
+        detail: {
+          from: before,
+          to: parsed.data.cicttCodes,
+          /* THE ATTRIBUTES GO IN THE SAME ENTRY, both sides, and only
+             the ones that changed hands. Injury level decides whether
+             an occurrence is an Annex 13 accident, so "was MINOR, is
+             now SERIOUS" is exactly the kind of re-determination an
+             investigator later asks who made and when. Omitted entirely
+             when the submission touched none of them, so the audit
+             record does not grow a field that says nothing. */
+          ...(Object.keys(adrepPatch).length
+            ? { adrep: { from: adrepBefore, to: adrepPatch } }
+            : {}),
+        },
       });
     });
 
     const unknown = unrecognised(parsed.data.cicttCodes);
     return reply.send({
       cicttCodes: parsed.data.cicttCodes,
+      /* READ BACK WHAT THE ROW NOW HOLDS, not what was sent — a partial
+         submission leaves the untouched columns at their stored values
+         and the screen has to render those, not blanks. */
+      ...Object.fromEntries(
+        ADREP_FIELDS.map((f) => [
+          f.key,
+          f.key in adrepPatch
+            ? adrepPatch[f.key]
+            : ((report as Record<string, unknown>)[f.key] as string | null),
+        ]),
+      ),
       ...(unknown.length ? { unrecognisedCodes: unknown } : {}),
     });
   });

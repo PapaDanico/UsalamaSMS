@@ -181,6 +181,11 @@ import {
   categoryFor,
   CICTT_CAVEAT
 } from '../../../../../packages/shared/src/cictt.ts';
+/* The five attributes a State files beside the category, imported here
+   for the same reason the categories are: a reporter who never opens
+   this screen should not download the vocabulary for a judgement only
+   the safety office makes. */
+import { ADREP_FIELDS, adrepLabel, ADREP_CAVEAT } from '../../../../../packages/shared/src/adrep.ts';
 import { syncBadge, StatusBadge } from '../../components/Status.js';
 import { HandoffButton, wireHandoff } from '../../components/Handoff.js';
 import { deadlinesHandoff } from '../../../../../packages/shared/src/handoff.ts';
@@ -268,6 +273,16 @@ async function fetchOrgQueue() {
    person may make. A server row with no local counterpart is appended,
    because a report filed on somebody else's handset is still this
    operator's report and the old screen simply could not see it. */
+/* The five, lifted off a server row into one object so the row shape
+   does not sprout five siblings that have to be threaded individually
+   through merge, render and submit. Reads from ADREP_FIELDS so a sixth
+   attribute is one entry there rather than an edit here. */
+function adrepOf(server) {
+  const out = {};
+  for (const f of ADREP_FIELDS) out[f.key] = server?.[f.key] ?? null;
+  return out;
+}
+
 function merge(local, remote) {
   if (!remote) return local.map((r) => ({ ...r, origin: 'device' }));
   const byClientId = new Map(remote.reports.map((r) => [r.clientId, r]));
@@ -281,13 +296,18 @@ function merge(local, remote) {
           serverId: server.id,
           state: server.state,
           available: server.available,
-          cicttCodes: server.cicttCodes
+          cicttCodes: server.cicttCodes,
+          /* The server's stored coding, not this browser's last
+             submission — see the panel below, which renders what EXISTS
+             so nobody re-determines what somebody already determined. */
+          adrep: adrepOf(server)
         }
       : { ...r, origin: 'device' };
   });
   for (const server of byClientId.values()) {
     merged.push({
       ...server,
+      adrep: adrepOf(server),
       // Reports that arrived from elsewhere are, by definition, sent.
       syncState: 'synced',
       createdAtLocal: server.createdAt,
@@ -501,6 +521,20 @@ function bindOnce(outlet) {
      transitions in the history describing an investigation that never
      happened. That is why there is a PUT for this and not a flag on the
      disposition. */
+  /* WHAT THE PANEL SAYS, INCLUDING THE ABSENCES.
+     Every field is sent on every submission — the empty option maps to
+     null, which the route treats as a deliberate un-coding. Sending
+     only the checked ones would make "clear this back to not-coded"
+     unreachable from a form where the clear IS a checked radio. */
+  function adrepFrom(form) {
+    const out = {};
+    for (const f of ADREP_FIELDS) {
+      const chosen = form.querySelector(`input[name="${f.key}"]:checked`);
+      out[f.key] = chosen && chosen.value ? chosen.value : null;
+    }
+    return out;
+  }
+
   outlet.addEventListener('submit', async (event) => {
     const form = event.target?.closest?.('form[data-classify]');
     if (!form) return;
@@ -515,7 +549,7 @@ function bindOnce(outlet) {
       const res = await authFetch(`/api/v1/reports/${form.dataset.classify}/codes`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ cicttCodes: codes })
+        body: JSON.stringify({ cicttCodes: codes, ...adrepFrom(form) })
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -941,6 +975,15 @@ function row(r) {
                   )}
                 </ul>`
               : html`<p class="queue__uncoded">Not yet classified to ICAO's categories.</p>`}
+            ${ADREP_FIELDS.some((f) => r.adrep?.[f.key])
+              ? html`<ul class="queue__codes">
+                  ${ADREP_FIELDS.filter((f) => r.adrep?.[f.key]).map(
+                    (f) => html`<li class="queue__code">
+                      <b>${f.question}</b> ${adrepLabel(f.key, r.adrep[f.key])}
+                    </li>`
+                  )}
+                </ul>`
+              : ''}
             <details class="queue__classify">
               <summary>
                 ${r.cicttCodes?.length ? 'Change the classification' : 'Classify the occurrence'}
@@ -967,6 +1010,34 @@ function row(r) {
                   loss of control is both, and recording one loses the other.
                 </p>
                 <p class="queue__cat-caveat">${CICTT_CAVEAT}</p>
+
+                ${ADREP_FIELDS.map(
+                  (f) => html`<fieldset class="queue__cat">
+                    <legend>${f.question} — ${f.source}</legend>
+                    ${f.options.map(
+                      (o) => html`<label class="queue__cat-opt">
+                        <input
+                          type="radio"
+                          name="${f.key}"
+                          value="${o.code}"
+                          ${r.adrep?.[f.key] === o.code ? raw('checked') : ''}
+                        />
+                        <span><b>${o.label}</b> ${o.hint}</span>
+                      </label>`
+                    )}
+                    <label class="queue__cat-opt">
+                      <input
+                        type="radio"
+                        name="${f.key}"
+                        value=""
+                        ${r.adrep?.[f.key] ? '' : raw('checked')}
+                      />
+                      <span><b>Not yet coded</b> Nobody has made this determination.</span>
+                    </label>
+                  </fieldset>`
+                )}
+                <p class="queue__cat-caveat">${ADREP_CAVEAT}</p>
+
                 <button type="submit" class="btn btn-secondary btn-sm">
                   Save the classification
                 </button>
