@@ -329,7 +329,7 @@ that would be somebody unable to say where an occurrence happened.
 
 ### 6.1 · Accessibility — SWEPT AND CLEAN, 14 August 2026
 
-`npm run check:a11y` runs axe over every rendered screen at WCAG 2.1 AA,
+`npm run check:a11y` runs axe over every rendered screen at WCAG 2.2 AA,
 in `verify`, against the built bundle. **20 screens, zero violations.**
 
 The first run found **65**, and what it found is the argument for the

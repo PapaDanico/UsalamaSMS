@@ -216,7 +216,7 @@ that block a feature comparison.
   report form, because coding to ADREP is the safety office's trained
   judgement and not a reporter's.
 - ~~No accessibility sweep has ever been run.~~ **Closed 14 August
-  2026.** `check:a11y` runs axe over every rendered screen at WCAG 2.1
+  2026.** `check:a11y` runs axe over every rendered screen at WCAG 2.2
   AA in `verify`. The first run found sixty-five violations; all were
   fixed, none excused.
 - **The ERP document itself is not held**, and §2 explains why that is

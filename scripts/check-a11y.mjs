@@ -33,7 +33,7 @@
    chunking are part of what ships and a check against source is a
    check against something nobody loads.
 
-   WCAG 2.1 AA is the standard asserted. Not "best effort": a failing
+   WCAG 2.2 AA is the standard asserted. Not "best effort": a failing
    rule fails the build, and a rule that has to be lived with is
    declared in ACCEPTED below with its reason, the same way the export
    declares what deliberately does not travel.
@@ -130,7 +130,7 @@ try {
     process.exit(1);
   }
 
-  console.log(`check:a11y — WCAG 2.1 AA over ${routes.length} rendered screens\n`);
+  console.log(`check:a11y — WCAG 2.2 AA over ${routes.length} rendered screens\n`);
 
   for (const route of routes) {
     /* A fresh context per route, with service workers blocked. The
@@ -152,7 +152,38 @@ try {
 
       const result = await page.evaluate(async () =>
         window.axe.run(document, {
-          runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'],
+          runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa'],
+          /* TARGET-SIZE IS OFF BY DEFAULT IN AXE, AND ADDING THE TAG
+             WITHOUT THIS WAS A CHECK THAT COULD NOT FAIL.
+
+             `wcag22aa` carries exactly one axe rule — 2.5.8 Target Size
+             (Minimum), the 24px floor — and axe ships it disabled. So
+             the tags alone bought a NEW CLAIM AND NO NEW MECHANISM: the
+             run reported "no WCAG 2.2 AA violations" while checking
+             nothing 2.2 added.
+
+             MUTATION-CHECKED, AND THE OBVIOUS MUTATION MISLEADS.
+             Shrinking every `.btn-sm` on the site to 8px leaves this
+             suite GREEN even with the rule enabled, which reads exactly
+             like a dead check. It is not: 2.5.8 carries a SPACING
+             exemption — an undersized target passes if it is far enough
+             from its neighbours — and the controls on these screens are
+             widely spaced, so a lone 8px button genuinely does not
+             violate the criterion. Two ADJACENT 10px buttons do, and
+             axe reports `target-size` against them. The rule fires; the
+             site passes on the merits.
+
+             That is recorded because the next person to test this gate
+             will reach for the same mutation and get the same
+             misleading green.
+
+             Enabled explicitly, and 2.5.8 is worth having on this
+             product specifically. --us-tap is 48px because this is a
+             form filled in with gloves on, one-handed, sometimes on a
+             moving airstair; a rule that fails at 24 is a floor well
+             below the target, and anything that trips it has drifted
+             badly. */
+          rules: { 'target-size': { enabled: true } },
           resultTypes: ['violations'],
         })
       );
@@ -199,7 +230,7 @@ if (checked === 0) {
 
 if (failed > 0) {
   console.error(
-    `\ncheck:a11y FAILED — ${failed} of ${checked} screens carry a WCAG 2.1 AA violation.\n` +
+    `\ncheck:a11y FAILED — ${failed} of ${checked} screens carry a WCAG 2.2 AA violation.\n` +
       'Fix the violation. Adding it to ACCEPTED needs a reason that survives being read ' +
       'by somebody who cannot see it.'
   );
@@ -207,6 +238,6 @@ if (failed > 0) {
 }
 
 console.log(
-  `\ncheck:a11y passed — ${checked} screens, no WCAG 2.1 AA violations` +
+  `\ncheck:a11y passed — ${checked} screens, no WCAG 2.2 AA violations` +
     `${ACCEPTED.size ? `, ${ACCEPTED.size} rule(s) accepted with a reason` : ''}.`
 );
