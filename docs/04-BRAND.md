@@ -230,14 +230,22 @@ from the artwork looks like at size.
   a bar wider than its own field is a bar sticking out of the crest.
 - **Detail threshold at 40px.** The crest, the runway, the legs, the
   wing, the eye and both arcs are drawn only above it. Below that they
-  collapse into a smudge; the 32px favicon relies on the shield
-  silhouette and the crane's body. Same threshold the benchmark applies to its
+  collapse into a smudge. Same threshold the benchmark applies to its
   topographic texture, for the same reason — and it is now applied to
   the GENERATED ICONS too, which previously drew the reduced set at
   every size including 512.
+- **Below the threshold, the mark is cropped rather than drawn.** This
+  geometry is an approximation of the identity, and above 40px it is a
+  good one. At tab size it is not — the crane collapses and the contrail
+  arc, the most recognisable thing in the mark, reads as a stray tick.
+  So `favicon-32.png` is cropped from `docs/brand/lockup-wide.jpg` by
+  `scripts/build-icons.mjs` and keyed to two brand colours; everything
+  from 180px up is drawn from the paths here. There is deliberately no
+  `favicon.svg` beside it: two formats declared for one tab is two
+  logos, and the browser picks. `tests/favicon.test.ts` holds both ends.
 - **The coloured version is the primary logo.** It is what the installed
   app icon and the in-app lockup use. The monochrome variants are not a
-  fallback — the guidelines list them as approved — but a 32px favicon
+  fallback — the guidelines list them as approved — but a 32px tab icon
   has no room for three fills and a crest.
 - **Two-tone selection, not invention.** On the monochrome variants:
   Savannah Gold on a dark ground, Dusty Charcoal on a light one, with the

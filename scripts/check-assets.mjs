@@ -50,8 +50,7 @@ const DECLARED = new Map([
   ['fonts/jetbrains-mono-identifiers.woff2', [7, 'IDENTIFIERS ONLY, and the subset is the whole argument. --us-font-mono was a system stack — ui-monospace, SFMono-Regular, Menlo, Consolas — so an audit-chain hash rendered in a different face on a manager’s Mac and a ramp agent’s Android, which is exactly the data where character shape carries the meaning. A full Latin cut of this face is ~55 KB; subset to digits, A–Z, a–z and the punctuation an identifier uses, it is 6 KB, and it still disambiguates 0/O and 1/l/I, which is the only reason it is here. NOT FOR NUMBERS: figures already align through font-variant-numeric on the body face at zero bytes, and mono digits are wider and lighter than DM Sans’s, so setting a risk matrix in them would read as weaker rather than more precise.']],
 
   ['icons/mark.svg', [3, 'The shield mark, generated from Logo.js by build-icons.mjs. Never hand-edited.']],
-  ['icons/favicon.svg', [2, 'Browser tab, vector.']],
-  ['icons/favicon-32.png', [2, 'Browser tab, for the browsers that still want a raster.']],
+  ['icons/favicon-32.png', [2, 'Browser tab. THE ONLY tab icon — there was a favicon.svg beside it, drawn from Logo.js, whose geometry has no contrail arc, so a browser preferring the vector showed a different logo from the one a browser preferring the raster showed. This is cropped from docs/brand/lockup-wide.jpg by build-icons.mjs and is the actual mark; tests/favicon.test.ts holds it to that.']],
   ['icons/icon-192.svg', [3, 'PWA icon, vector.']],
   ['icons/icon-512.svg', [3, 'PWA icon, vector.']],
   ['icons/maskable-512.svg', [3, 'PWA maskable icon, vector — the safe-zone variant Android crops.']],
@@ -65,9 +64,10 @@ const DECLARED = new Map([
   ['sw.js', [12, 'The service worker, stamped by stamp-sw.mjs on every build.']],
 ]);
 
-/* Everything in public/, together. Currently 268 KB, of which 162 KB is
-   the four font subsets. A raise needs a receipt here, the same as the
-   JavaScript budget. */
+/* Everything in public/, together. Currently 305.7 KB, of which 167.8 KB
+   is the five font subsets. A raise needs a receipt here, the same as
+   the JavaScript budget — and there is 0.3 KB of headroom, so the next
+   thing added to this directory has to displace something. */
 const TOTAL_BUDGET_KB = 306;
 /* 300 -> 306 for the mono identifier subset. 6.3 KB, and it is the
    cheapest font in this directory by a factor of five — the full Latin
