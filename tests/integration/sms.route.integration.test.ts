@@ -236,6 +236,71 @@ describe.skipIf(!hasDatabase)("the rest of Annex 19, through the real routes", (
     expect(matrix.json().training).toHaveLength(2);
   });
 
+  /* ------------------------------------------------------------------
+     THE QUESTION THE RECORDS CANNOT ANSWER.
+
+     currency.ts reports whose certificate has RUN OUT — a person who
+     was trained, visible as a dated row. A GAP is a person who was
+     never trained in something their role requires, and it has no row
+     to be visible in: a matrix built only from records shows a clean
+     sheet for somebody who has had no training at all.
+
+     The curriculum module has held Doc 9859's six initial topics,
+     unit-tested, since it was written, and was imported by nothing but
+     its own test. These assert it reaches an operator.
+     ------------------------------------------------------------------ */
+  it("4.1 — reports training a role requires and no record covers", async () => {
+    const matrix = await call("GET", "/api/v1/sms/training", manager());
+    expect(matrix.statusCode).toBe(200);
+
+    const reporter = matrix
+      .json()
+      .curriculum.find((p: { userId: string }) => p.userId === frontlineId);
+    expect(reporter).toBeTruthy();
+    /* Nothing has been filed for this person, so every topic their role
+       requires is a gap — the clean sheet the records alone would show. */
+    expect(reporter.gaps.length).toBe(reporter.required.length);
+    expect(reporter.gaps.length).toBeGreaterThan(0);
+  });
+
+  /* A record filed under a name the curriculum does not know must NOT
+     silently satisfy a requirement, and must NOT be silently dropped
+     either — every record predating the curriculum carries free text,
+     and swallowing them tells an operator their certificates do not
+     exist. */
+  it("4.1 — an unrecognised course name is reported, not counted and not discarded", async () => {
+    await call("POST", "/api/v1/sms/training", manager(), {
+      userId: frontlineId, course: "SMS refresher", completedOn: "2026-02-01T00:00:00.000Z",
+    });
+
+    const matrix = await call("GET", "/api/v1/sms/training", manager());
+    const reporter = matrix
+      .json()
+      .curriculum.find((p: { userId: string }) => p.userId === frontlineId);
+
+    expect(reporter.unrecognised).toContain("SMS refresher");
+    /* It satisfied nothing: the gap count is unchanged by a name the
+       build cannot map. */
+    expect(reporter.gaps.length).toBe(reporter.required.length);
+  });
+
+  /* A list of who has not been trained is a personnel matter, and the
+     scope this route already draws is the right boundary for it. */
+  it("4.1 — a frontline reporter's own view carries their gaps and nobody else's", async () => {
+    const own = await call("GET", "/api/v1/sms/training", frontline());
+    expect(own.json().scope).toBe("own");
+    expect(own.json().curriculum).toHaveLength(1);
+    expect(own.json().curriculum[0].userId).toBe(frontlineId);
+  });
+
+  /* Charter rule 7, in the payload. The six topics came from a search
+     index's rendering of Doc 9859, not from the instrument, and a
+     consumer is entitled to know which it is holding. */
+  it("4.1 — states that the curriculum is not verified against the primary source", async () => {
+    const matrix = await call("GET", "/api/v1/sms/training", manager());
+    expect(matrix.json().curriculumVerifiedAgainstPrimary).toBe(false);
+  });
+
   it("4.1 — a frontline reporter cannot write a training record", async () => {
     const res = await call("POST", "/api/v1/sms/training", frontline(), {
       userId: frontlineId, course: "Self-awarded", completedOn: "2026-02-01T00:00:00.000Z",

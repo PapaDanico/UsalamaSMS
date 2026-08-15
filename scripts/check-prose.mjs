@@ -65,15 +65,21 @@ const SRC = resolve(ROOT, 'apps/web/src');
 
 /* MEASURED, NOT CHOSEN, and it ratchets.
 
-   19.5 when this gate landed, against 19.2 KB actually shipped after the
-   pricing page was cleared. 13.0 now, against 12.7: hoisting twelve
-   notes out of the triage template recovered 6.5 KB, and a ceiling left
-   at the old number would have let that space refill silently with the
-   same mistake it was just cleaned of.
+   19.5 when this gate landed, against 19.2 KB actually shipped after
+   the pricing page was cleared. 13.0 after twelve notes came out of the
+   triage template. 5.0 now, against 4.7: the report form, the maturity
+   assessment, the register and the sign-in screen followed, and between
+   them they paid for a whole new screen — the dashboard went in and the
+   TOTAL bundle came DOWN, while the entry chunk gained five kilobytes
+   of headroom it has not had in months.
+
+   That is the argument for the ratchet in one line. Each raise would
+   have been defensible on its own; the cumulative 15 KB was not, and
+   nobody would have found it without a number that only moves one way.
 
    It sits a little above what the tree ships, so a genuine one-line
    marker does not fail a build and a paragraph does. */
-const CEILING_KB = 13.0;
+const CEILING_KB = 5.0;
 
 const files = [];
 (function walk(dir) {

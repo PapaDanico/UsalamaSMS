@@ -29,6 +29,12 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { can, type Permission } from "@usalamasms/shared";
+import {
+  requiredFor,
+  gapsFor,
+  unrecognisedIn,
+  CURRICULUM_VERIFIED_AGAINST_PRIMARY,
+} from "../../../packages/shared/src/curriculum";
 import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
 
 const LIST_LIMIT = 200;
@@ -694,7 +700,83 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
       take: LIST_LIMIT,
       include: { user: { select: { name: true, role: true } } },
     });
-    return reply.send({ training: rows, scope: wide ? "org" : "own" });
+
+    /* ------------------------------------------------------------------
+       WHO IS MISSING TRAINING THEIR ROLE REQUIRES.
+
+       A GAP IS NOT AN EXPIRY, and until now this route could only
+       report the second. currency.ts answers "whose certificate has run
+       out" — a person who was trained, visible as a dated row going
+       amber. A GAP is a person who was never trained in something their
+       role requires, and it is invisible by construction: there is no
+       row to be amber, so a matrix built only from records shows a
+       clean sheet for somebody who has had no training at all.
+
+       Doc 9859's six initial topics are what makes the question
+       answerable. The curriculum module has held them, unit-tested,
+       since it was written, and 4.1's coverage entry has said in its
+       own words that it was "wired to no route, so today the matrix
+       still answers only what has expired". This is that route.
+
+       COMPUTED, NEVER STORED. Charter rule 6. A gap is a function of a
+       person's role and the records they hold, both of which change; a
+       stored gap is a gap that disagrees with the record the first time
+       somebody is promoted or files a certificate.
+
+       ONLY FOR THE MATRIX. A frontline reporter reading their own
+       records gets their own requirement and their own gaps and nobody
+       else's — the same boundary the scope already draws, because a
+       list of who has not been trained is a personnel matter.
+
+       UNRECOGNISED KEYS TRAVEL WITH IT, and that is not tidiness.
+       Every TrainingRecord predating this module carries free text in
+       `course`, so on the day it ships an operator's whole matrix is
+       unrecognised keys. Reporting gaps without ALSO reporting those
+       would tell an operator that every person has six gaps while their
+       certificates sit in the record unread. The product does not guess
+       a mapping — a fuzzy match from "SMS refresher" to a curriculum
+       key is the invented compliance this module exists to remove.
+       ------------------------------------------------------------------ */
+    const people = wide
+      ? await prisma.user.findMany({
+          where: { ...tenantWhere(req), active: true },
+          select: { id: true, name: true, role: true },
+          take: LIST_LIMIT,
+        })
+      : [{ id: req.auth!.sub, name: null, role: req.auth!.role }];
+
+    const heldBy = new Map<string, string[]>();
+    for (const r of rows) {
+      const held = heldBy.get(r.userId) ?? [];
+      held.push(r.course);
+      heldBy.set(r.userId, held);
+    }
+
+    const curriculum = people.map((p) => {
+      const held = heldBy.get(p.id) ?? [];
+      return {
+        userId: p.id,
+        name: p.name,
+        role: p.role,
+        required: requiredFor(p.role as never),
+        gaps: gapsFor(p.role as never, held),
+        unrecognised: unrecognisedIn(held),
+      };
+    });
+
+    return reply.send({
+      training: rows,
+      scope: wide ? "org" : "own",
+      curriculum,
+      /* STATED IN THE PAYLOAD, not only in a doc nobody fetches. The
+         six topics come from a search index's rendering of Doc 9859,
+         not from the instrument — the same reason cictt.ts carries its
+         own flag. A deadline table nobody has read the instrument for
+         is the one kind of wrong this product cannot ship, and a
+         consumer of this route is entitled to know which it is
+         holding. */
+      curriculumVerifiedAgainstPrimary: CURRICULUM_VERIFIED_AGAINST_PRIMARY,
+    });
   });
 
   app.post("/api/v1/sms/training", limited, async (req, reply) => {

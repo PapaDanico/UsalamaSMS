@@ -63,6 +63,7 @@ export const MENU_HINTS = {
   '/account': 'Sign in so queued reports can reach the safety office',
 
   '/report': 'Three fields, thirty seconds, and it works with no signal',
+  '/today': 'The reporting deadlines, lapsing training and untriaged reports asking for you now',
   '/triage': "Everything the operator has filed, and what has not left this handset",
 
   '/picture': 'Where the operator stands: reporting, register, indicators, in one page',

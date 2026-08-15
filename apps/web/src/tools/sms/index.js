@@ -28,6 +28,7 @@ import { printId, loadOrg } from '../../shared/print-id.js';
 import { SMS_COMPONENTS } from '../../../../../packages/shared/src/maturity.ts';
 import { can } from '../../../../../packages/shared/src/index.ts';
 import { currencyOf, currencySummary } from '../../../../../packages/shared/src/currency.ts';
+import { courseFor } from '../../../../../packages/shared/src/curriculum.ts';
 import {
   VOLUNTARY_REQUIREMENTS,
   VOLUNTARY_PROTECTION,
@@ -333,17 +334,42 @@ const RENDER = {
     ),
 
   documents: (rows) =>
-    rows.map(
-      (d) => html`<article class="rec">
+    rows.map((d) => {
+      /* THE DISTRIBUTION RECORD, WHICH THE SERVER HAS ALWAYS RETURNED
+         AND THIS SCREEN HAS NEVER SHOWN.
+
+         Element 1.5's coverage entry claims "a record of who has read
+         the revision NOW IN FORCE", and the register carried the count
+         and the caller's own acknowledgement in every response — while
+         the only route that could CREATE one had no caller anywhere in
+         the product. So the claim was kept by a route nobody could
+         reach, which is a claim kept by nothing.
+
+         THE COUNT IS OF THIS REVISION, not of the document. A
+         supersession retires the previous revision and its reads with
+         it; somebody who read v3 has not read v4, and a register that
+         carried the old number forward would report a manual as
+         distributed on the strength of a version nobody is working to. */
+      const readOn = d.reads?.[0]?.acknowledgedAt;
+      const count = d._count?.reads ?? 0;
+      return html`<article class="rec">
         <div class="rec__head"><h4>${d.reference} · ${d.title}</h4>
           <span class="tag">v${d.version}</span></div>
         <p class="rec__meta">
           <span>${d.approvedBy?.name ? `Approved by ${d.approvedBy.name}` : 'Not approved'}</span>
           <span>${fmtDate(d.approvedOn)}</span>
           <span>${d.reviewBy ? `review by ${fmtDate(d.reviewBy)}` : 'no review date'}</span>
+          <span>${count === 1 ? '1 person has read this revision' : `${count} people have read this revision`}</span>
         </p>
-      </article>`
-    ),
+        ${readOn
+          ? html`<p class="rec__meta"><span>You read this revision on ${fmtDate(readOn)}</span></p>`
+          : html`<p class="rec__meta">
+              <button type="button" class="btn btn-ghost btn-sm" data-read="${d.id}">
+                I have read this revision
+              </button>
+            </p>`}
+      </article>`;
+    }),
 
   findings: (rows) =>
     rows.map((f) => {
@@ -387,7 +413,7 @@ const RENDER = {
 
      The badge still carries a WORD as well as a colour. Amber alone is
      a state a colour-blind reader does not have. */
-  training: (rows) => {
+  training: (rows, payload) => {
     const today = new Date();
     const records = rows.map((t) => ({
       row: t,
@@ -430,8 +456,72 @@ const RENDER = {
         </p>`
       : '';
 
+    /* WHO IS MISSING TRAINING THEIR ROLE REQUIRES — the question the
+       records below cannot answer.
+
+       A LAPSED RECORD IS VISIBLE AND A GAP IS NOT. Everything under
+       this block is a certificate somebody holds, dated, going amber
+       when it runs out. A gap is a person who was never trained in
+       something their role requires, and there is no row for it to be
+       amber: a matrix built only from records shows a clean sheet for
+       somebody who has had no training at all. That is why the two are
+       computed by different modules and never summed into one number.
+
+       UNRECOGNISED KEYS ARE SHOWN BESIDE THE GAPS, not swallowed.
+       Every record filed before the curriculum existed carries free
+       text in `course`, so without this an operator sees "six gaps"
+       against a person whose certificates are sitting in the record
+       unread. The product does not guess a mapping — a fuzzy match
+       from "SMS refresher" to a curriculum key is invented compliance.
+
+       AND THE SOURCE IS STATED. Doc 9859's six initial topics were
+       read through a search index, not the instrument; the payload
+       carries that flag and this says so where somebody is acting on
+       the number. */
+    const people = (payload?.curriculum ?? []).filter(
+      (p) => p.gaps?.length || p.unrecognised?.length
+    );
+    const gapBlock = people.length
+      ? html`<div class="sms-scheme">
+          <h4>Training a role requires and no record covers</h4>
+          ${people.map(
+            (p) => html`<article class="rec" data-state="open">
+              <div class="rec__head">
+                <h4>${p.name ?? 'Unnamed'}</h4>
+                <span class="badge" data-status="${p.gaps.length ? 'ALERT' : 'OFFLINE'}">
+                  <span class="badge__label"
+                    >${p.gaps.length
+                      ? `${p.gaps.length} not covered`
+                      : 'names not recognised'}</span
+                  >
+                </span>
+              </div>
+              ${p.gaps.length
+                ? html`<p class="rec__meta">
+                    ${p.gaps.map((k) => html`<span>${courseFor(k)?.label ?? k}</span>`)}
+                  </p>`
+                : ''}
+              ${p.unrecognised.length
+                ? html`<p class="rec__body">
+                    Held under names this build does not recognise, and left alone rather
+                    than guessed at: ${p.unrecognised.join(', ')}.
+                  </p>`
+                : ''}
+            </article>`
+          )}
+          ${payload?.curriculumVerifiedAgainstPrimary === false
+            ? html`<p class="hint">
+                The six initial topics are Doc 9859's, read through a search index rather
+                than the instrument itself. Check them against your own copy before acting
+                on a gap.
+              </p>`
+            : ''}
+        </div>`
+      : '';
+
     return [
       head,
+      gapBlock,
       ...records.map(({ row: t, verdict }) => {
         const state = verdict.state;
         return html`<article
@@ -981,7 +1071,7 @@ export async function render(outlet) {
     if (!surface) return null;
     const payload = state[surface.endpoint];
     if (!payload || payload.error) return { error: payload?.error ?? 'unreachable' };
-    return { rows: payload[surface.collection] ?? [] };
+    return { rows: payload[surface.collection] ?? [], payload };
   };
 
   /* ------------------------------------------------------------------
@@ -1020,7 +1110,7 @@ export async function render(outlet) {
                 ? html`<p class="notice">${verdict.concern}</p>`
                 : ''}
               ${rows.length
-                ? html`<div class="rec-list">${RENDER[sec.key](rows)}</div>`
+                ? html`<div class="rec-list">${RENDER[sec.key](rows, payload)}</div>`
                 : ''}
             `}
 
@@ -1100,7 +1190,7 @@ export async function render(outlet) {
                     : 'This part of the record could not be read. That is not the same as it being empty — do not treat it as such.'}
                 </p>`
               : count
-                ? html`<div class="rec-list">${RENDER[surface.key](r.rows)}</div>`
+                ? html`<div class="rec-list">${RENDER[surface.key](r.rows, r.payload)}</div>`
                 : html`<p class="empty-state"><span>Nothing recorded against this element yet.</span></p>`}
 
             ${surface.secondary ? secondaryBlock(surface.secondary) : ''}
@@ -1334,6 +1424,45 @@ export async function render(outlet) {
      is now — letting either be supplied would allow an approval
      attributed to somebody who did not give it, or dated to suit. */
   body.addEventListener('click', async (event) => {
+    /* ACKNOWLEDGING A CONTROLLED DOCUMENT.
+
+       IT IS THE READER'S OWN ACT, and the permission says so:
+       document.read, not document.manage. Requiring a manager's
+       permission would mean the safety office recording "everybody has
+       read the manual" on everybody's behalf, which is a record of
+       what the safety office believes rather than of what happened —
+       and an auditor asking who has read revision 4 is asking the
+       second question.
+
+       NO CONFIRM. The other acts on this screen are attributions that
+       cannot be undone by their nature — an approval, a review. This
+       one is idempotent by unique constraint: reading twice is not two
+       readings, and a second acknowledgement returns the FIRST
+       timestamp rather than moving it. Guarding an idempotent, honest
+       statement behind a dialog teaches people to dismiss dialogs. */
+    const reader = event.target.closest?.('[data-read]');
+    if (reader) {
+      const label = reader.textContent;
+      reader.disabled = true;
+      reader.textContent = 'Saving…';
+      try {
+        const res = await authFetch(`/api/v1/sms/documents/${reader.dataset.read}/read`, {
+          method: 'POST'
+        });
+        if (!res.ok) {
+          const answer = await res.json().catch(() => ({}));
+          window.alert(answer.message ?? 'That was not accepted. Nothing was recorded.');
+        }
+      } catch {
+        window.alert('The safety office could not be reached. Nothing was recorded.');
+      } finally {
+        reader.disabled = false;
+        reader.textContent = label;
+        await render(outlet);
+      }
+      return;
+    }
+
     const change = event.target.closest?.('[data-approve-change], [data-review-change]');
     if (change) {
       const approving = Boolean(change.dataset.approveChange);

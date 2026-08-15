@@ -1,4 +1,48 @@
 /* ============================================================
+   NOTES ABOUT THE MARKUP, COLLECTED OUT OF THE TEMPLATE.
+
+   An `<!-- -->` inside a tagged template literal is string content:
+   no minifier removes it and every reporter downloads it. These read
+   better collected, cost nothing here, and can hold a backtick safely.
+   In the order the markup reaches them:
+
+   1. WHERE IS IT WRITTEN DOWN? CASA's gap analysis carries this
+      column against every indicator, and it is the question that
+      turns a radio button into a finding: an assessor's next words
+      after "is it present?" are "show me". Asked of every element,
+      including the ones at the top of the scale, because those are
+      making the strongest documentation claim on the page and are
+      the ones nobody thinks to check.
+
+   2. A SECOND, DIFFERENT QUESTION. The scale above asks how far
+      this element has been taken; this asks whether that is the
+      right amount for THIS operator. SM ICG grades suitability
+      against size, nature, complexity and inherent risk, so the
+      two genuinely come apart — and an element taken a long way
+      and still wrong is the finding a ladder cannot produce.
+      Neither option is preselected: it is a question most
+      operators have never been asked.
+
+   3. Rendered whether or not there is a plan. An operator at the top
+      of the scale on every element has no steps and the strongest
+      documentation claim on the page.
+
+   4. WHO, AND BY WHEN. The two questions a regulator
+      asks of a submitted implementation plan, and the
+      two this tool used to leave the operator to
+      answer somewhere else. Typed here, printed with
+      the plan.
+
+   5. ASKED FIRST, because the suitability question below cannot
+      be answered without it. SM ICG grades suitability against
+      "the size, nature, and complexity of the organisation and
+      the inherent risk in its activity" — so a tool that asks
+      whether an SMS is suitable and never asks whose it is has
+      asked half a question. Bands rather than a headcount box:
+      the judgement is qualitative, and eleven staff is not
+      categorically different from nine.
+   ============================================================ */
+/* ============================================================
    The SMS maturity assessment.
 
    The benchmark's Health Scorecard, applied to this product's domain:
@@ -155,13 +199,6 @@ function Element(element, answers, suitability, references) {
         <strong>Evidence for the top of the scale:</strong> ${element.evidence}
       </p>
 
-      <!-- WHERE IS IT WRITTEN DOWN? CASA's gap analysis carries this
-           column against every indicator, and it is the question that
-           turns a radio button into a finding: an assessor's next words
-           after "is it present?" are "show me". Asked of every element,
-           including the ones at the top of the scale, because those are
-           making the strongest documentation claim on the page and are
-           the ones nobody thinks to check. -->
       <p class="mat-ref">
         <label>
           <span class="mat-ref__q">Where is this written down?</span>
@@ -176,14 +213,6 @@ function Element(element, answers, suitability, references) {
         </label>
       </p>
 
-      <!-- A SECOND, DIFFERENT QUESTION. The scale above asks how far
-           this element has been taken; this asks whether that is the
-           right amount for THIS operator. SM ICG grades suitability
-           against size, nature, complexity and inherent risk, so the
-           two genuinely come apart — and an element taken a long way
-           and still wrong is the finding a ladder cannot produce.
-           Neither option is preselected: it is a question most
-           operators have never been asked. -->
       <div class="mat-suit">
         <span class="mat-suit__q">Is what you have suitable for an operation your size?</span>
         ${[['SUITABLE', 'Suitable'], ['NOT_SUITABLE', 'Not suitable']].map(
@@ -356,9 +385,6 @@ function Result(result, scale, plan) {
           question is which component the evidence is thinnest in.
         </p>`}
 
-    <!-- Rendered whether or not there is a plan. An operator at the top
-         of the scale on every element has no steps and the strongest
-         documentation claim on the page. -->
     <p class="mat-phase__assign" id="mat-undocumented">${undocumentedLine(plan)}</p>
 
     ${plan.phases.length
@@ -389,11 +415,6 @@ function Result(result, scale, plan) {
                     ${step.from.label.toLowerCase()} to ${step.to.label.toLowerCase()}.
                     <span class="mat-gaps__evidence">${step.action}</span>
                     <span class="mat-phase__done"><strong>Done when:</strong> ${step.evidence}</span>
-                    <!-- WHO, AND BY WHEN. The two questions a regulator
-                         asks of a submitted implementation plan, and the
-                         two this tool used to leave the operator to
-                         answer somewhere else. Typed here, printed with
-                         the plan. -->
                     <span class="mat-assign">
                       <label>
                         <span class="mat-assign__label">Owner</span>
@@ -506,14 +527,6 @@ export function render(outlet) {
       </aside>
 
       <form class="doc__body" id="mat-form">
-        <!-- ASKED FIRST, because the suitability question below cannot
-             be answered without it. SM ICG grades suitability against
-             "the size, nature, and complexity of the organisation and
-             the inherent risk in its activity" — so a tool that asks
-             whether an SMS is suitable and never asks whose it is has
-             asked half a question. Bands rather than a headcount box:
-             the judgement is qualitative, and eleven staff is not
-             categorically different from nine. -->
         <section class="doc-section" id="operator-scale">
           <h2>First, who is this for?</h2>
           <p>

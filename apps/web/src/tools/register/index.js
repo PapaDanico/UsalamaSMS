@@ -1,4 +1,47 @@
 /* ============================================================
+   NOTES ABOUT THE MARKUP, COLLECTED OUT OF THE TEMPLATE.
+
+   An `<!-- -->` inside a tagged template literal is string content:
+   no minifier removes it and every reporter downloads it. These read
+   better collected, cost nothing here, and can hold a backtick safely.
+   In the order the markup reaches them:
+
+   1. WHERE IT CAME FROM. The question an auditor asks about a
+      register is not only what is in it — it is how much of it the
+      operator's own people found. A register of hazards somebody
+      sat down and imagined is a different artefact from one fed by
+      reporting, and only one of them is element 2.1 working.
+
+   2. THE SIGNATURE, and what stands in for it when there cannot be
+      one. Three states:
+      already accepted — who signed and when, which is the line an
+      auditor reads and the reason it is attributed to a person
+      rather than to a post somebody typed;
+      signable — a button, because the person pressing it is the
+      person signing. The server decides whether they may: the
+      band, the permission and RA 1210's escalation are all
+      checked there, and its refusal is shown as written;
+      device-only — said plainly. An acceptance recorded in one
+      browser is a claim nobody can verify, and this product does
+      not offer a control that produces one.
+
+   3. no-print: a register taken to a safety meeting is the
+      entries, the title and the health figures. A blank input
+      form printed above them is a page of nothing that makes the
+      reader turn over to find the register.
+
+   4. ARRIVED FROM THE QUEUE, and said so before anything is
+      typed. Without this the link is invisible until after the
+      entry is filed, and somebody who opened the register from
+      the menu in another tab would have no way to tell the two
+      situations apart.
+      IT NAMES NO REPORT. Not the title, not the reporter, not
+      the date — a hazard is being written here for a register
+      that gets printed, and the report it came from is protected
+      and may be anonymous. The person raising it has just read
+      the report in the queue; they do not need it repeated.
+   ============================================================ */
+/* ============================================================
    The risk register — element 2.2.
 
    WHAT AN AUDIT ASKED FOR. "Hazard to consequence to control to
@@ -204,30 +247,12 @@ function Row(entry) {
     <p class="reg-entry__meta">
       <span>${entry.owner || 'No owner'}</span>
       <span>review by ${entry.reviewBy || 'no date'}</span>
-      <!-- WHERE IT CAME FROM. The question an auditor asks about a
-           register is not only what is in it — it is how much of it the
-           operator's own people found. A register of hazards somebody
-           sat down and imagined is a different artefact from one fed by
-           reporting, and only one of them is element 2.1 working. -->
       <span class="reg-entry__nores"
         >${entry.source === 'REPORT' ? 'raised from a report' : 'entered directly'}</span
       >
       <button type="button" class="btn btn-ghost btn-sm" data-remove="${entry.id}">Remove</button>
     </p>
 
-    <!-- THE SIGNATURE, and what stands in for it when there cannot be
-         one. Three states:
-
-           already accepted — who signed and when, which is the line an
-             auditor reads and the reason it is attributed to a person
-             rather than to a post somebody typed;
-           signable — a button, because the person pressing it is the
-             person signing. The server decides whether they may: the
-             band, the permission and RA 1210's escalation are all
-             checked there, and its refusal is shown as written;
-           device-only — said plainly. An acceptance recorded in one
-             browser is a claim nobody can verify, and this product does
-             not offer a control that produces one. -->
     <p class="reg-entry__meta">
       ${entry.acceptedAt
         ? html`<span class="verified"
@@ -306,23 +331,8 @@ export function render(outlet) {
     </section>
 
     <div class="panel wrap doc">
-      <!-- no-print: a register taken to a safety meeting is the
-           entries, the title and the health figures. A blank input
-           form printed above them is a page of nothing that makes the
-           reader turn over to find the register. -->
       <aside class="toc mat-result no-print">
         <h2 class="section-title">Add an entry</h2>
-        <!-- ARRIVED FROM THE QUEUE, and said so before anything is
-             typed. Without this the link is invisible until after the
-             entry is filed, and somebody who opened the register from
-             the menu in another tab would have no way to tell the two
-             situations apart.
-
-             IT NAMES NO REPORT. Not the title, not the reporter, not
-             the date — a hazard is being written here for a register
-             that gets printed, and the report it came from is protected
-             and may be anonymous. The person raising it has just read
-             the report in the queue; they do not need it repeated. -->
         ${fromReportId
           ? html`<p class="notice">
               Raising this from a report in the queue. Write the hazard as the
