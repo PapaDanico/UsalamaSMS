@@ -59,6 +59,12 @@ import { syncStatus } from '../../shared/offline.ts';
 import { can } from '../../../../../packages/shared/src/index.ts';
 import { currencyOf } from '../../../../../packages/shared/src/currency.ts';
 import { courseFor } from '../../../../../packages/shared/src/curriculum.ts';
+import {
+  VERDICT,
+  whenText,
+  viewFor,
+  reporterIsClear
+} from '../../../../../packages/shared/src/today.ts';
 
 /* The digest's four kinds in an operator's words, and the screen each
    one is answered on. Wording lives here rather than in digest.ts for
@@ -87,38 +93,18 @@ const KIND = {
   }
 };
 
-/* The verdict, in the words somebody would use. NOW is deliberately
-   blunt: an overdue regulatory obligation is the one thing on this
-   screen that can end an AOC, and softening it here would undo the
-   grading digest.ts is careful about. */
-const VERDICT = {
-  /* NOW AND TODAY MUST NOT READ THE SAME, and the first version of this
-     gave them one sentence — which threw away the distinction digest.ts
-     is most careful about. NOW is an obligation owed to an authority
-     whose clock has already run out; TODAY is a currency lapsed or an
-     action past due. Both are late. Only one of them can end an AOC,
-     and a screen that grades them identically has undone the grading it
-     is rendering. */
-  NOW: { line: 'Something is past a regulatory deadline', badge: 'ALERT', word: 'act now' },
-  TODAY: { line: 'Something needs you today', badge: 'CAUTION', word: 'today' },
-  SOON: { line: 'Nothing urgent, some things are coming', badge: 'SAFE', word: 'soon' }
-};
-
-/* Days rendered as something read without arithmetic. Shared shape with
-   mail.ts's `when` deliberately — the same fact should not read
-   differently depending on whether it arrived by email or on a screen. */
-function when(days) {
-  if (days === null || days === undefined) return '';
-  if (days < 0) return `soonest overdue by ${Math.abs(days)} days`;
-  if (days === 0) return 'soonest is today';
-  if (days === 1) return 'soonest is tomorrow';
-  return `soonest in ${days} days`;
-}
+/* The judgement on this screen lives in packages/shared/src/today.ts,
+   which is the split digest.ts and mail.ts already use: the module holds
+   what to say, this holds how it looks. It is there rather than here
+   because nothing executes this file — the accessibility sweep and the
+   smoke suite both meet this screen SIGNED OUT, so every branch below
+   ships untested and the decisions had to move somewhere a test can
+   reach without a browser. */
 
 function item(i) {
   const words = KIND[i.kind];
   if (!words) return '';
-  const clock = when(i.soonestDays);
+  const clock = whenText(i.soonestDays);
   return html`<article class="card">
     <div class="cov__head">
       <h3>${i.count} ${i.count === 1 ? words.one : words.many}</h3>
@@ -206,13 +192,16 @@ async function renderReporter(outlet) {
     .filter((r) => r.verdict.state === 'LAPSED' || r.verdict.state === 'DUE_SOON');
 
   const unsent = sync ? sync.pending + sync.errored : 0;
-  /* "NOTHING NEEDS YOU TODAY" REQUIRES HAVING LOOKED. Both sources must
-     have answered before this screen is allowed to reassure anybody —
-     a headline that says all-clear on the strength of a failed fetch is
-     the most confident thing the product could say at the moment it
-     knows least. */
-  const clear =
-    sync && !trainingFailed && unsent === 0 && lapsing.length === 0 && !(own?.gaps?.length);
+  /* "NOTHING NEEDS YOU TODAY" REQUIRES HAVING LOOKED, and the rule lives
+     in today.ts where a test can reach it. A null is UNKNOWN rather than
+     zero: a screen whose job is to answer "is everything all right"
+     saying the most reassuring thing at the moment it knows least is the
+     failure this product exists to refuse. */
+  const clear = reporterIsClear({
+    unsent: sync ? unsent : null,
+    lapsing: trainingFailed ? null : lapsing.length,
+    gaps: trainingFailed ? null : (own?.gaps?.length ?? 0)
+  });
 
   outlet.innerHTML = html`
     <section class="band-dark">
@@ -333,7 +322,7 @@ export async function render(outlet) {
      only decides which question is worth asking, so a reporter never
      meets a refusal on a screen titled what needs YOU today. */
   const role = getSession()?.role;
-  if (!role || !can(role, 'report.read.org')) {
+  if (viewFor(Boolean(role) && can(role, 'report.read.org')) === 'REPORTER') {
     await renderReporter(outlet);
     return;
   }
