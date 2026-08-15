@@ -175,12 +175,21 @@ async function renderReporter(outlet) {
     sync = null;
   }
 
+  /* THE SAME REFUSAL THE OUTBOX GETS, and the first version of this did
+     not give it. An unreadable outbox reported itself; an unreachable
+     training route fell through to `null` and rendered as no lapsing
+     certificates and no gaps — which reads as "your training is fine"
+     to somebody whose training this screen could not see. That is the
+     charter rule 8 failure the card below was written to avoid, made
+     twice in one function because the second path was quieter. */
   let mine = null;
+  let trainingFailed = null;
   try {
     const res = await authFetch('/api/v1/sms/training');
     if (res.ok) mine = await res.json();
+    else trainingFailed = res.status === 403 ? 'forbidden' : 'unreachable';
   } catch {
-    mine = null;
+    trainingFailed = 'unreachable';
   }
 
   const own = mine?.curriculum?.[0] ?? null;
@@ -197,7 +206,13 @@ async function renderReporter(outlet) {
     .filter((r) => r.verdict.state === 'LAPSED' || r.verdict.state === 'DUE_SOON');
 
   const unsent = sync ? sync.pending + sync.errored : 0;
-  const clear = sync && unsent === 0 && lapsing.length === 0 && !(own?.gaps?.length);
+  /* "NOTHING NEEDS YOU TODAY" REQUIRES HAVING LOOKED. Both sources must
+     have answered before this screen is allowed to reassure anybody —
+     a headline that says all-clear on the strength of a failed fetch is
+     the most confident thing the product could say at the moment it
+     knows least. */
+  const clear =
+    sync && !trainingFailed && unsent === 0 && lapsing.length === 0 && !(own?.gaps?.length);
 
   outlet.innerHTML = html`
     <section class="band-dark">
@@ -237,6 +252,17 @@ async function renderReporter(outlet) {
                 </p>
               </article>`
             : ''}
+
+        ${trainingFailed
+          ? html`<article class="card">
+              <div class="cov__head"><h3>Your training record could not be read</h3></div>
+              <p class="hint">
+                ${trainingFailed === 'forbidden'
+                  ? 'Your role does not include reading training records, so this screen cannot tell you whether yours are current.'
+                  : 'The safety office could not be reached, so this screen does not know whether your certificates are current. That is not the same as them being current.'}
+              </p>
+            </article>`
+          : ''}
 
         ${lapsing.length
           ? html`<article class="card">
