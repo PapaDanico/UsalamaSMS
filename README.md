@@ -150,7 +150,7 @@ npm test               # 600 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
-npm run test:integration   # 281 checks against a real Postgres
+npm run test:integration   # 286 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify

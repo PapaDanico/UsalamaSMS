@@ -1594,7 +1594,52 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    reads --us-font-mono and this is already paid for. Until then the
    claim is the codes, and the receipt says so rather than implying the
    larger one. */
-const BUDGET = { entry: 217 * 1024, js: 500 * 1024, css: 61 * 1024 };
+/* TOTAL 500 -> 501 KB, for the operator's profile at signup. ENTRY
+   MOVED 140 BYTES and that is the whole exposure a reporter has to it.
+
+     signup chunk   4,440 ->   5,596  +1,156 bytes
+     total js     511,366 -> 512,752  +1,386 bytes
+     entry        217,493 -> 217,633    +140 bytes
+     css           61,747 ->  61,747  UNMOVED
+
+   THE 140 ENTRY BYTES ARE THE SITEMAP ENTRY FROM THE COMMIT BEFORE
+   THIS ONE, not this change — the vocabularies ride in the lazily
+   imported signup panel, which is where that module was split out to
+   in the first place and for exactly this reason.
+
+   WHAT IT BUYS, AND THE FIRST PART IS A BUG RATHER THAN A FEATURE. The
+   signup form has always rendered a fleet-size field, the panel has
+   always posted it, SignupSchema has always validated it — and the
+   org.create never wrote it. Every operator that ever signed up typed
+   how many aircraft it flies and left fleetSize null, which is the one
+   input billableBand() derives pricing from. The symptom was silence:
+   no error, no wrong invoice, an operator that could not be billed and
+   nothing saying why.
+
+   THEN THE DENOMINATORS. What the operator flies, where from, and what
+   kind of flying — coded against AIRCRAFT_TYPES, AERODROMES and the
+   same OPERATION_TYPES the triage panel codes an occurrence's type of
+   operation against, so a declared profile and a coded occurrence group
+   together rather than being two vocabularies for one fact. "Four
+   runway excursions" against two Caravans out of Wilson is a different
+   fact from four across a mixed fleet on the northern network, and
+   nothing in this product could tell them apart.
+
+   ASKED HERE BECAUSE IT IS THE ONE MOMENT SOMEBODY IS ALREADY
+   DESCRIBING THEIR OPERATION. A profile filled in later from a settings
+   screen is a profile that stays empty, and an empty denominator makes
+   every rate on every dashboard a count.
+
+   COLLAPSED, AND ALL THREE OPTIONAL. `details` groups rather than a
+   native multi-select, which on a handset is a scroll region with no
+   visible affordance for choosing more than one. This is the only
+   unauthenticated route that writes and the customer it exists for is
+   evaluating the product on a Sunday evening — a required multi-select
+   between them and a working account loses the customer rather than
+   getting answered.
+
+   THE ENTRY RULE STILL STANDS at 4.5 KB of headroom. */
+const BUDGET = { entry: 217 * 1024, js: 501 * 1024, css: 61 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

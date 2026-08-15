@@ -53,6 +53,35 @@ export const SignupSchema = z.object({
   jurisdiction: z.enum(JURISDICTIONS).default("KE"),
   /** How many aircraft, which decides the pricing band and nothing else. */
   fleet: z.number().int().min(1).max(2000).optional(),
+
+  /* ---- THE OPERATOR'S PROFILE, AND WHY IT IS ASKED HERE ----
+   *
+   * `fleet` is a number and answers what it costs. These three answer
+   * what the safety office is looking at, and they are the
+   * DENOMINATORS every rate this product computes has been missing.
+   * "Four runway excursions" against two Caravans out of Wilson is a
+   * different fact from four across a mixed turboprop fleet on the
+   * northern network, and nothing could tell those apart.
+   *
+   * ASKED ONCE, AT THE ONE MOMENT SOMEBODY IS ALREADY DESCRIBING THEIR
+   * OPERATION. A profile that has to be filled in later from a settings
+   * screen is a profile that stays empty, and an empty denominator
+   * makes every rate on every dashboard a count.
+   *
+   * ALL THREE OPTIONAL, AND THE ACCOUNT IS CREATED WITHOUT THEM. This
+   * is the only unauthenticated route that writes, and the customer it
+   * exists for is a safety manager evaluating the product on a Sunday
+   * evening. A required multi-select between them and a working account
+   * is a required field that loses the customer, not one that gets
+   * answered — and the profile is worth more filled in honestly later
+   * than guessed at now.
+   *
+   * VALIDATED AGAINST THE SHARED LISTS, so the columns group. Bounded
+   * and de-duplicated because an unbounded array on an unauthenticated
+   * route is an unbounded write. */
+  fleetTypes: z.array(z.string().trim().max(16)).max(40).optional(),
+  bases: z.array(z.string().trim().toUpperCase().max(8)).max(40).optional(),
+  operationTypes: z.array(z.string().trim().toUpperCase().max(32)).max(10).optional(),
   name: z.string().trim().min(2).max(120),
   email: z.string().email(),
   password: z.string().min(12),

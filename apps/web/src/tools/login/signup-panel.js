@@ -22,8 +22,42 @@
    it.
    ============================================================ */
 
-import { html } from '../../shared/html.js';
+import { html, raw } from '../../shared/html.js';
 import { adoptSession } from '../../shared/session.js';
+/* THE VOCABULARIES, IN THIS CHUNK AND NOT THE ENTRY ONE. Twenty-six
+   aircraft types, eighteen aerodromes and seven operation types is
+   about a kilobyte, and this module is already lazily imported for
+   exactly that reason — a ramp agent filing a report never loads it.
+   Imported by path rather than through the barrel, same as everywhere
+   else that touches these lists. */
+import { AIRCRAFT_TYPES, AERODROMES } from '../../../../../packages/shared/src/taxonomy.ts';
+import { OPERATION_TYPES } from '../../../../../packages/shared/src/adrep.ts';
+
+/* A collapsed group of checkboxes. `details` rather than a multi-select
+   because a native `select multiple` on a handset is a scroll region
+   with no visible affordance for choosing more than one — the control
+   people get wrong most reliably — and because collapsed keeps a form
+   somebody fills in once from opening at four screens long. */
+const CheckGroup = (name, legend, hint, options) => html`
+  <details class="filters-shell">
+    <summary><span>${legend}</span></summary>
+    <p class="field-hint">${hint}</p>
+    <fieldset class="queue__cat">
+      <legend>${legend}</legend>
+      ${options.map(
+        (o) => html`<label class="queue__cat-opt">
+          <input type="checkbox" name="${name}" value="${o.code}" />
+          <span><b>${o.code}</b> ${o.label}</span>
+        </label>`
+      )}
+    </fieldset>
+  </details>`;
+
+/* The ticked boxes for one group, or nothing at all. */
+function picked(form, name) {
+  const values = [...form.querySelectorAll(`input[name="${name}"]:checked`)].map((i) => i.value);
+  return values.length ? { [name]: values } : {};
+}
 
 const SHELL = html`<section class="band-dark"><div class="wrap"><span class="eyebrow">Account</span><h1>Create an operator</h1><p class="lede">This is how an operator comes to exist in the product. It takes a minute, and nobody has to call you.</p></div></section><section class="panel wrap">      <details class="filters-shell" id="signup-shell">
         <summary><span>My operator does not have an account yet</span></summary>
@@ -60,6 +94,27 @@ const SHELL = html`<section class="band-dark"><div class="wrap"><span class="eye
             />
             <span class="field-hint">Decides the price band and nothing else.</span>
           </label>
+
+          ${CheckGroup(
+            'fleetTypes',
+            'What you fly',
+            'Optional, and it is the denominator. A count of occurrences means nothing without knowing what was flying — pick every type on the certificate.',
+            AIRCRAFT_TYPES
+          )}
+
+          ${CheckGroup(
+            'bases',
+            'Where you fly from',
+            'Optional. Which aerodrome accumulates precursors is the question this makes answerable.',
+            AERODROMES
+          )}
+
+          ${CheckGroup(
+            'operationTypes',
+            'What kind of flying',
+            'Optional. The same list an occurrence is coded against at triage, so your profile and your reports group together.',
+            OPERATION_TYPES
+          )}
 
           <label class="field">
             <span class="field-label">Your name *</span>
@@ -127,7 +182,14 @@ export function render(slot) {
       email: f.email.value.trim(),
       password: f.password.value,
       ...(f.aocNumber.value.trim() ? { aocNumber: f.aocNumber.value.trim() } : {}),
-      ...(f.fleet.value ? { fleet: Number(f.fleet.value) } : {})
+      ...(f.fleet.value ? { fleet: Number(f.fleet.value) } : {}),
+      /* Only sent when something was ticked. An empty array and an
+         absent key mean the same thing to the route, and sending three
+         empty arrays on every signup is three keys of noise in the one
+         request this product cannot afford to have rejected. */
+      ...picked(form, 'fleetTypes'),
+      ...picked(form, 'bases'),
+      ...picked(form, 'operationTypes')
     };
 
     if (!body.orgName || !body.name || !body.email || !body.password) {

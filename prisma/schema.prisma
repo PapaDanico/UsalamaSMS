@@ -131,6 +131,31 @@ model Org {
   /// invoicing the cheapest band off an absent fact.
   fleetSize Int?
 
+  /// WHAT THE OPERATOR ACTUALLY FLIES, AND FROM WHERE.
+  ///
+  /// fleetSize is a number and answers what it costs. These answer what
+  /// the safety office is looking at — and they are the denominators
+  /// every rate this product computes has been missing. "Four runway
+  /// excursions" against an operator flying two Caravans out of Wilson
+  /// is a different fact from four against a mixed turboprop fleet
+  /// across the northern network, and until this existed nothing could
+  /// tell the two apart.
+  ///
+  /// CODES FROM THE SHARED VOCABULARIES, not free text: aircraft types
+  /// from AIRCRAFT_TYPES, bases from AERODROMES, operations from
+  /// OPERATION_TYPES in adrep.ts — the same list the triage panel codes
+  /// an occurrence's type of operation against, so an operator's
+  /// declared profile and its coded occurrences group together instead
+  /// of being two vocabularies for one fact.
+  ///
+  /// EMPTY IS NOT UNKNOWN, same as everywhere else in this schema. An
+  /// operator that skipped the question has an empty array and is
+  /// visibly un-profiled; there is no sentinel that would count as an
+  /// answer nobody gave.
+  fleetTypes     String[]
+  bases          String[]
+  operationTypes String[]
+
   /// The two dates a subscription is computed from — see
   /// packages/shared/src/subscription.ts. TRIAL, ACTIVE, GRACE and
   /// LAPSED are derived from these on every read and never written
