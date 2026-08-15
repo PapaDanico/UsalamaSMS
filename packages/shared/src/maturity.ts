@@ -932,18 +932,19 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
     serverRoutes: ["/api/v1/sms/training", "/api/v1/digest"],
     has:
       "A training matrix: person, course, completion and expiry, with each person's own " +
-      "record visible to them and the whole matrix to those who manage it \u2014 and a " +
+      "record visible to them and the whole matrix to those who manage it \u2014 answering " +
+      "not only what has EXPIRED but who is missing training their role requires, which a " +
+      "record cannot show because a gap has no row to be amber \u2014 and a " +
       "daily digest computed and readable at /api/v1/digest \u2014 counts only, never what " +
       "a report says, because an inbox sits outside every access control this product " +
       "has.",
     missing:
-      "Delivery, and the curriculum behind the matrix. The digest can be looked at and " +
-      "cannot ARRIVE \u2014 no schedule, no address, no key \u2014 so a currency still " +
-      "lapses quietly for an operator who does not look; the provider adapter reports " +
-      "NOT_CONFIGURED rather than appearing to work. And the role-keyed course list that " +
-      "would let the matrix answer WHO IS MISSING TRAINING THEIR ROLE REQUIRES is written " +
-      "and unit-tested but wired to no route, so today the matrix still answers only what " +
-      "has expired.",
+      "Delivery. The digest can be looked at and cannot ARRIVE \u2014 no schedule, no " +
+      "address, no key \u2014 so a gap and a lapsing currency both still wait for somebody " +
+      "to open the screen; the provider adapter reports NOT_CONFIGURED rather than " +
+      "appearing to work. And the six initial topics are Doc 9859's read through a search " +
+      "index rather than the instrument, which the route states in its own payload and " +
+      "the matrix repeats where somebody is acting on a gap.",
     href: "/sms",
   },
   {

@@ -28,6 +28,7 @@ import { printId, loadOrg } from '../../shared/print-id.js';
 import { SMS_COMPONENTS } from '../../../../../packages/shared/src/maturity.ts';
 import { can } from '../../../../../packages/shared/src/index.ts';
 import { currencyOf, currencySummary } from '../../../../../packages/shared/src/currency.ts';
+import { courseFor } from '../../../../../packages/shared/src/curriculum.ts';
 import {
   VOLUNTARY_REQUIREMENTS,
   VOLUNTARY_PROTECTION,
@@ -412,7 +413,7 @@ const RENDER = {
 
      The badge still carries a WORD as well as a colour. Amber alone is
      a state a colour-blind reader does not have. */
-  training: (rows) => {
+  training: (rows, payload) => {
     const today = new Date();
     const records = rows.map((t) => ({
       row: t,
@@ -455,8 +456,72 @@ const RENDER = {
         </p>`
       : '';
 
+    /* WHO IS MISSING TRAINING THEIR ROLE REQUIRES — the question the
+       records below cannot answer.
+
+       A LAPSED RECORD IS VISIBLE AND A GAP IS NOT. Everything under
+       this block is a certificate somebody holds, dated, going amber
+       when it runs out. A gap is a person who was never trained in
+       something their role requires, and there is no row for it to be
+       amber: a matrix built only from records shows a clean sheet for
+       somebody who has had no training at all. That is why the two are
+       computed by different modules and never summed into one number.
+
+       UNRECOGNISED KEYS ARE SHOWN BESIDE THE GAPS, not swallowed.
+       Every record filed before the curriculum existed carries free
+       text in `course`, so without this an operator sees "six gaps"
+       against a person whose certificates are sitting in the record
+       unread. The product does not guess a mapping — a fuzzy match
+       from "SMS refresher" to a curriculum key is invented compliance.
+
+       AND THE SOURCE IS STATED. Doc 9859's six initial topics were
+       read through a search index, not the instrument; the payload
+       carries that flag and this says so where somebody is acting on
+       the number. */
+    const people = (payload?.curriculum ?? []).filter(
+      (p) => p.gaps?.length || p.unrecognised?.length
+    );
+    const gapBlock = people.length
+      ? html`<div class="sms-scheme">
+          <h4>Training a role requires and no record covers</h4>
+          ${people.map(
+            (p) => html`<article class="rec" data-state="open">
+              <div class="rec__head">
+                <h4>${p.name ?? 'Unnamed'}</h4>
+                <span class="badge" data-status="${p.gaps.length ? 'ALERT' : 'OFFLINE'}">
+                  <span class="badge__label"
+                    >${p.gaps.length
+                      ? `${p.gaps.length} not covered`
+                      : 'names not recognised'}</span
+                  >
+                </span>
+              </div>
+              ${p.gaps.length
+                ? html`<p class="rec__meta">
+                    ${p.gaps.map((k) => html`<span>${courseFor(k)?.label ?? k}</span>`)}
+                  </p>`
+                : ''}
+              ${p.unrecognised.length
+                ? html`<p class="rec__body">
+                    Held under names this build does not recognise, and left alone rather
+                    than guessed at: ${p.unrecognised.join(', ')}.
+                  </p>`
+                : ''}
+            </article>`
+          )}
+          ${payload?.curriculumVerifiedAgainstPrimary === false
+            ? html`<p class="hint">
+                The six initial topics are Doc 9859's, read through a search index rather
+                than the instrument itself. Check them against your own copy before acting
+                on a gap.
+              </p>`
+            : ''}
+        </div>`
+      : '';
+
     return [
       head,
+      gapBlock,
       ...records.map(({ row: t, verdict }) => {
         const state = verdict.state;
         return html`<article
@@ -1006,7 +1071,7 @@ export async function render(outlet) {
     if (!surface) return null;
     const payload = state[surface.endpoint];
     if (!payload || payload.error) return { error: payload?.error ?? 'unreachable' };
-    return { rows: payload[surface.collection] ?? [] };
+    return { rows: payload[surface.collection] ?? [], payload };
   };
 
   /* ------------------------------------------------------------------
@@ -1045,7 +1110,7 @@ export async function render(outlet) {
                 ? html`<p class="notice">${verdict.concern}</p>`
                 : ''}
               ${rows.length
-                ? html`<div class="rec-list">${RENDER[sec.key](rows)}</div>`
+                ? html`<div class="rec-list">${RENDER[sec.key](rows, payload)}</div>`
                 : ''}
             `}
 
@@ -1125,7 +1190,7 @@ export async function render(outlet) {
                     : 'This part of the record could not be read. That is not the same as it being empty — do not treat it as such.'}
                 </p>`
               : count
-                ? html`<div class="rec-list">${RENDER[surface.key](r.rows)}</div>`
+                ? html`<div class="rec-list">${RENDER[surface.key](r.rows, r.payload)}</div>`
                 : html`<p class="empty-state"><span>Nothing recorded against this element yet.</span></p>`}
 
             ${surface.secondary ? secondaryBlock(surface.secondary) : ''}
