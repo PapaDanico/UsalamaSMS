@@ -162,20 +162,15 @@ export const ABOUT = {
   ]
 };
 
-export const TUTORIALS = {
-  eyebrow: 'Tutorials',
-  title: 'From a first report to a record an auditor can read',
-  lede: `Two acts. The first gets a report filed and arriving; the second turns
-         what arrives into a risk somebody has signed for. Each step names what
-         you need in front of you, what it produces, and the mistake most
-         operators make at it.`,
-  stats: [
-    { value: '~90 min', label: 'End to end' },
-    { value: '10', label: 'Steps, in two acts' },
-    { value: '0', label: 'Signups to read this' },
-    { value: '1', label: 'Auditable record out' }
-  ],
-  sections: [
+/* THE STEPS, DECLARED BEFORE THE PAGE THAT COUNTS THEM.
+
+   The stat used to read a typed '10'. Charter rule 10 says counts are
+   computed and never typed, and this one was neither computed nor
+   gated — so adding the eleventh step would have left the page
+   promising ten, with nothing to notice. Splitting the sections out
+   lets the figure be derived from the thing it describes, which is the
+   only version that cannot drift. */
+const TUTORIAL_SECTIONS = [
     {
       id: 'before',
       title: 'Before you start',
@@ -240,6 +235,29 @@ export const TUTORIALS = {
           pitfall: `Signing in on a shared crew-room handset and leaving it.
                     Signing out clears the session and the cached reads;
                     it does not delete anything already filed.`
+        },
+        {
+          title: 'Telephone the authority, then record that you did',
+          body: `<p>This is the step the countdown at step two exists for, and
+                 the one an operator is most likely to do and never write
+                 down. Notifying is a telephone call — Kenya's urgent classes
+                 are expected by telephone, not by a form — so the product
+                 cannot make it for you. What it does is stop the clock once
+                 you say the call was made, against your name and at the time
+                 it actually happened rather than when you sat down to log
+                 it.</p>
+
+                 <p>Open the occurrence in the queue and use
+                 <em>Record that the authority was told</em>. Give the
+                 reference if they issued one on the call; leave it empty if
+                 they did not, because the notification is recorded either
+                 way.</p>`,
+          pitfall: `Recording it later at the time you are recording it. The
+                    gap between the call and the paperwork is often hours, and
+                    a deadline turns on which of the two you entered — so the
+                    field takes the moment of the CALL, and the product
+                    refuses a date before the occurrence or in the future
+                    rather than trusting either.`
         },
         {
           title: 'Establish who reviews, and how often',
@@ -341,7 +359,28 @@ export const TUTORIALS = {
         beyond the safety office, and the de-identification pass is available
         before anything circulates.</p>`
     }
-  ]
+];
+
+/** Every step in every act — the figure the page quotes about itself. */
+const TUTORIAL_STEPS = TUTORIAL_SECTIONS.filter((s) => s.kind === 'steps').reduce(
+  (n, s) => n + s.items.length,
+  0
+);
+
+export const TUTORIALS = {
+  eyebrow: 'Tutorials',
+  title: 'From a first report to a record an auditor can read',
+  lede: `Two acts. The first gets a report filed and arriving; the second turns
+         what arrives into a risk somebody has signed for. Each step names what
+         you need in front of you, what it produces, and the mistake most
+         operators make at it.`,
+  stats: [
+    { value: '~90 min', label: 'End to end' },
+    { value: String(TUTORIAL_STEPS), label: 'Steps, in two acts' },
+    { value: '0', label: 'Signups to read this' },
+    { value: '1', label: 'Auditable record out' }
+  ],
+  sections: TUTORIAL_SECTIONS
 };
 
 export const FAQ = {
