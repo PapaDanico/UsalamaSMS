@@ -146,7 +146,12 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const rows = await prisma.safetyReport.findMany({
-      where: tenantWhere(req),
+      /* A RETRACTED REPORT LEAVES THE QUEUE. It is a correction to the
+         record — a duplicate, or one filed against the wrong aircraft —
+         and leaving it here would make the safety office triage work
+         the reporter has already withdrawn. The row and its audit entry
+         remain; only the queue stops showing it. */
+      where: { ...tenantWhere(req), retractedAt: null },
       orderBy: { createdAt: "desc" },
       take: QUEUE_LIMIT,
       select: {

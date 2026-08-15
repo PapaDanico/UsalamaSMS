@@ -1,4 +1,23 @@
 /* ============================================================
+   NOTES ABOUT THE MARKUP, COLLECTED OUT OF THE TEMPLATE.
+
+   An `<!-- -->` inside a tagged template literal is string content:
+   no minifier removes it and every reporter downloads it.
+
+   1. THE TWO DATES TOGETHER, because their ORDER is the element.
+      "A change assessment dated before it happened" is what 3.2's
+      evidence asks for, and an auditor reads these two fields
+      against each other.
+
+   2. A TELEPHONE LINK, because this list is read on a handset by
+      somebody who needs to dial it, not copy it out.
+
+   3. ADDED TO THE SHIPPED LIST, NEVER REPLACING IT, and the hint
+      says so. An operator who adds one strip and loses every
+      other aerodrome from a reporter's dropdown finds out when
+      somebody cannot say where an occurrence happened.
+   ============================================================ */
+/* ============================================================
    THE SMS RECORD — the eight Annex 19 elements the organisation holds.
 
    WHY ONE SCREEN AND NOT EIGHT. Every other surface in this product is
@@ -264,10 +283,6 @@ const RENDER = {
           </span>
         </div>
         <p class="rec__body">${c.description}</p>
-        <!-- THE TWO DATES TOGETHER, because their ORDER is the element.
-             "A change assessment dated before it happened" is what 3.2's
-             evidence asks for, and an auditor reads these two fields
-             against each other. -->
         <p class="rec__meta">
           <span>assessed ${fmtDate(c.assessedOn)}</span>
           <span>${c.effectiveFrom ? `in effect from ${fmtDate(c.effectiveFrom)}` : 'not yet in effect'}</span>
@@ -303,8 +318,6 @@ const RENDER = {
           </span>
         </div>
         <p class="rec__body"><strong>${c.role}</strong>${c.organisation ? ` · ${c.organisation}` : ''}</p>
-        <!-- A TELEPHONE LINK, because this list is read on a handset by
-             somebody who needs to dial it, not copy it out. -->
         <p class="rec__body"><a href="tel:${c.phone.replace(/[^+0-9]/g, '')}">${c.phone}</a>${c.altPhone ? ` · ${c.altPhone}` : ''}</p>
         ${c.authority ? html`<p class="rec__body"><strong>Can authorise:</strong> ${c.authority}</p>` : ''}
         <p class="rec__meta">
@@ -1026,10 +1039,6 @@ export async function render(outlet) {
           )}
         </fieldset>
 
-        <!-- ADDED TO THE SHIPPED LIST, NEVER REPLACING IT, and the hint
-             says so. An operator who adds one strip and loses every
-             other aerodrome from a reporter's dropdown finds out when
-             somebody cannot say where an occurrence happened. -->
         <label class="field">
           <span class="field-label">Your aerodromes and strips</span>
           <textarea class="input-field" name="aerodromes" rows="3"

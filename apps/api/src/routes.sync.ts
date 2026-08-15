@@ -31,6 +31,14 @@ type ItemResult = {
 const REQUIRED_PERMISSION: Record<string, Permission> = {
   "safetyReport:CREATE": "report.create",
   "safetyReport:UPDATE": "report.triage",
+  /* RETRACTION IS THE REPORTER'S OWN ACT, so it is report.create and not
+     report.triage. The person who filed a hazard twice is the person who
+     needs the first one to stop appearing, and requiring the safety
+     office's permission would mean nobody can correct their own mistake
+     without asking. The handler below narrows it further than the
+     permission does — a reporter may retract what THEY filed, not what
+     the operator filed. */
+  "safetyReport:DELETE": "report.create",
   "hazard:CREATE": "hazard.manage",
   "hazard:UPDATE": "hazard.manage",
   "riskAssessment:CREATE": "risk.assess",
@@ -324,6 +332,126 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
         // exists for this entity, the honest answer is "rejected" — not
         // a silent success that loses the client's edit.
         results.push({ clientId: item.clientId, status: "rejected" });
+        continue;
+      }
+
+      /* ==================================================================
+         RETRACTION — the delete that is not a delete.
+
+         A DEVICE'S DELETE IS A LOCAL RETRACTION AND THE SERVER'S ANSWER
+         IS A STATE. Nothing is removed: a hard delete destroys evidence
+         an auditor is entitled to and breaks the append-only chain that
+         makes the rest of the record worth anything.
+
+         BUILT ON THE UPDATE BRANCH'S MACHINERY, which is the whole
+         reason this was sequenced after it. Tenant-scoped lookup so a
+         cross-org row is never loaded; an anonymity-correct receipt;
+         and idempotent replay, because the ordinary case this outbox
+         exists for is a radio that drops AFTER the server commits.
+
+         WHAT IT DOES NOT DO is let anybody retract anything. The
+         permission says a reporter may file; this says a reporter may
+         retract WHAT THEY FILED. Without that narrowing, report.create
+         — held by every frontline reporter — would be a licence to
+         retract the operator's whole queue.
+         ================================================================== */
+      if (item.entityType === "safetyReport" && item.op === "DELETE") {
+        const current = await prisma.safetyReport.findFirst({
+          where: { clientId: item.clientId, orgId: auth.org },
+        });
+        if (!current) { results.push({ clientId: item.clientId, status: "rejected" }); continue; }
+
+        /* ALREADY RETRACTED IS A SUCCESS, NOT AN ERROR, and this is trap
+           one from the design note. A delete that errors on "already
+           deleted" poisons an outbox on a device nobody can reach: the
+           client sees a failure, retries forever, and every later item
+           behind it waits. The state this write was trying to reach is
+           the state the row is in. */
+        if (current.retractedAt) {
+          results.push({ clientId: item.clientId, status: "duplicate" });
+          continue;
+        }
+
+        /* THE NARROWING. An anonymous report has no reporterId to match,
+           and that is the point of it — so it cannot be retracted
+           through this path at all, by anybody. Letting the device that
+           filed it retract it would mean the server holds something
+           that links a device to an anonymous filing, which is the
+           re-identification the whole design refuses. The reporter can
+           still stop it reaching the server by deleting it while it is
+           in the outbox; once it has arrived, it is anonymous and it
+           stays. */
+        const mine = current.reporterId !== null && current.reporterId === auth.sub;
+        if (!mine) { results.push({ clientId: item.clientId, status: "forbidden" }); continue; }
+
+        const reason =
+          typeof (item.payload as { reason?: unknown } | null)?.reason === "string"
+            ? String((item.payload as { reason: string }).reason).trim().slice(0, 500)
+            : null;
+
+        try {
+          await prisma.$transaction(async (tx) => {
+            /* CONDITIONAL, so two flushes racing each other cannot both
+               write a retraction and both append an audit entry. The
+               same shape the authority-notification route uses. */
+            const claimed = await tx.safetyReport.updateMany({
+              where: { id: current.id, orgId: auth.org, retractedAt: null },
+              data: {
+                retractedAt: new Date(),
+                retractedById: auth.sub,
+                retractedReason: reason,
+              },
+            });
+            if (claimed.count === 0) return;
+
+            await tx.syncReceipt.create({
+              data: {
+                clientId: `${item.clientId}:retracted`,
+                orgId: auth.org,
+                entityType: item.entityType,
+                op: "DELETE",
+                /* THE THIRD PLACE TO GET ANONYMITY WRONG, and the design
+                   note says so in as many words. The conflict receipt
+                   already got it wrong once, under a clientId carrying
+                   the anonymous report's own key as a prefix. The
+                   authority is the STORED row, never anything the client
+                   sent. A retraction of an anonymous report cannot reach
+                   here — the narrowing above refuses it — but the rule
+                   is written rather than assumed, because the reason it
+                   cannot is four lines away and could move. */
+                ...(current.isAnonymous
+                  ? { deviceHash: hmac(deviceId), userId: null, deviceId: null }
+                  : { deviceId, userId: auth.sub, deviceHash: null }),
+              },
+            });
+
+            await appendAuditTx(tx, {
+              orgId: auth.org,
+              userId: auth.sub,
+              action: "report.retracted",
+              entityType: "SafetyReport",
+              entityId: current.id,
+              /* The reason is the reporter's own words about their own
+                 correction, and it travels with the chain. What does NOT
+                 travel is anything from the report itself. */
+              detail: { hasReason: Boolean(reason) },
+            });
+          });
+        } catch (err) {
+          /* The receipt insert can violate @@unique([orgId, clientId])
+             when a lost response is retried — same reasoning as the
+             conflict path. The row is already retracted by then, which
+             is the state this was reaching for. */
+          if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") {
+            throw err;
+          }
+          req.log.info(
+            { clientId: item.clientId },
+            "retraction receipt already recorded — retried batch after a lost response",
+          );
+        }
+
+        results.push({ clientId: item.clientId, status: "applied" });
         continue;
       }
 

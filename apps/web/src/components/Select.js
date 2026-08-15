@@ -1,4 +1,19 @@
 /* ============================================================
+   NOTES ABOUT THE MARKUP, COLLECTED OUT OF THE TEMPLATE.
+
+   An `<!-- -->` inside a tagged template literal is string content:
+   no minifier removes it and every reporter downloads it.
+
+   1. An explicit empty option rather than a pre-selected first
+      entry. A dropdown that opens already showing "Nairobi /
+      Jomo Kenyatta" collects that answer from everyone who did
+      not look, and a confidently wrong aerodrome is worse for
+      aggregation than a blank one.
+
+   2. The chevron is decorative; the native control already
+      announces itself as a combobox.
+   ============================================================ */
+/* ============================================================
    Select — the one dropdown in this product.
 
    STANDARDISATION IS THE POINT, and it works on two levels.
@@ -90,11 +105,6 @@ export function Select({
           ${required ? raw('required') : ''}
           ${hintId ? raw(`aria-describedby="${hintId}"`) : ''}
         >
-          <!-- An explicit empty option rather than a pre-selected first
-               entry. A dropdown that opens already showing "Nairobi /
-               Jomo Kenyatta" collects that answer from everyone who did
-               not look, and a confidently wrong aerodrome is worse for
-               aggregation than a blank one. -->
           <option value="" ${value === '' ? raw('selected') : ''}>${placeholder}</option>
 
           ${grouped
@@ -111,8 +121,6 @@ export function Select({
               </option>`
             : ''}
         </select>
-        <!-- The chevron is decorative; the native control already
-             announces itself as a combobox. -->
         <span class="select__chevron" aria-hidden="true"></span>
       </div>
 

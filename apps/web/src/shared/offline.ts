@@ -344,6 +344,29 @@ async function runFlush(fetcher: typeof fetch): Promise<FlushOutcome> {
         case "applied":
         case "duplicate": // idempotent — server already has it
           await db.outbox.delete(item.localId);
+
+          // ==========================================================
+          // A RETRACTION THAT LANDED TAKES THE LOCAL ROW WITH IT, and
+          // this is the one case where the server wins.
+          //
+          // /triage merges the device store with the org queue keyed on
+          // clientId and deliberately never assigns one over the other,
+          // because assignment destroys unsent work. A retraction is the
+          // exception: the reporter asked for this row to stop existing,
+          // the server has recorded that it did, and leaving the local
+          // copy would show the withdrawn report on the device for ever
+          // while the safety office no longer sees it.
+          //
+          // GETTING THIS BACKWARDS DELETES A REPORT THAT WAS NEVER SENT,
+          // which is why it is keyed on the OUTBOX ITEM'S op rather than
+          // on anything about the row. Only a DELETE this device queued
+          // and the server acknowledged removes anything.
+          // ==========================================================
+          if (item.op === "DELETE") {
+            await db.reports.where("clientId").equals(r.clientId).delete();
+            outcome.sent++;
+            break;
+          }
           // ==========================================================
           // AN ACKNOWLEDGED ANONYMOUS REPORT LEAVES THE DEVICE.
           //
@@ -577,6 +600,63 @@ if (typeof window !== "undefined") {
  * they typed still matters. Server-wins is a rule about which row is
  * authoritative, not permission to discard what somebody wrote.
  */
+/**
+ * RETRACT A REPORT THIS DEVICE FILED.
+ *
+ * A correction to the record, not a way to make an occurrence go away.
+ * The row survives on the server as a tombstone, the audit chain records
+ * who retracted it and when, and the export an inspector reads still
+ * carries it — see scripts/check-retraction.mjs for why that last one is
+ * load-bearing rather than an oversight.
+ *
+ * TWO CASES, AND THE FIRST NEEDS NO SERVER AT ALL.
+ *
+ * A report still in the outbox has not reached anyone. Withdrawing it is
+ * a purely local act: drop the queued item and the row, and nothing was
+ * ever made. Queuing a DELETE for a CREATE the server has never seen
+ * would ask it to retract a report it does not have, which answers
+ * "rejected" and leaves a stuck item on a device nobody can reach.
+ *
+ * A report the server has acknowledged needs the round trip, and until
+ * it lands the local row stays exactly where it is. It is removed when
+ * the server says the retraction was recorded — never before, because a
+ * device that deletes first and asks later has lost the report if the
+ * answer is no.
+ */
+export async function retractReport(clientId: string, reason?: string): Promise<void> {
+  await db.transaction("rw", db.reports, db.outbox, async () => {
+    const report = await db.reports.where("clientId").equals(clientId).first();
+    if (!report) return;
+
+    const queued = await db.outbox.where("clientId").equals(clientId).first();
+
+    /* NEVER SENT. There is nothing to retract anywhere but here. */
+    if (queued?.op === "CREATE" && report.syncState !== "synced") {
+      if (queued.localId) await db.outbox.delete(queued.localId);
+      await db.reports.where("clientId").equals(clientId).delete();
+      return;
+    }
+
+    /* Already queued for retraction — asking twice is not two
+       retractions, and `add` on a unique clientId would throw into a UI
+       handler and look like the button did nothing. */
+    if (queued?.op === "DELETE") return;
+
+    await db.outbox.add({
+      clientId,
+      entityType: "safetyReport",
+      op: "DELETE",
+      /* The reason and nothing else. The server reads no other field of
+         this payload, and a retraction that carried the report back
+         would be sending a narrative to say it should stop existing. */
+      payload: reason?.trim() ? { reason: reason.trim() } : {},
+      clientUpdatedAt: new Date().toISOString(),
+      attempts: 0,
+      nextAttemptAt: Date.now(),
+    });
+  });
+}
+
 export async function retryReport(clientId: string): Promise<void> {
   await db.transaction("rw", db.reports, db.outbox, async () => {
     const report = await db.reports.where("clientId").equals(clientId).first();

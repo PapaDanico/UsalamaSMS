@@ -189,7 +189,7 @@ import {
   REPORT_TYPES, SYNC_STATES, AERODROMES, FLIGHT_PHASES,
   toOptions, labelFor
 } from '../../../../../packages/shared/src/taxonomy.ts';
-import { db, retryReport } from '../../shared/offline.ts';
+import { db, retryReport, retractReport } from '../../shared/offline.ts';
 import { isSignedIn, authFetch } from '../../shared/session.js';
 import {
   reportingDeadline,
@@ -602,6 +602,38 @@ function bindOnce(outlet) {
        second copy of those rules in the browser is the copy that goes
        stale.
        ------------------------------------------------------------ */
+    /* ------------------------------------------------------------
+       WITHDRAWING A REPORT.
+
+       CONFIRMED, unlike the acknowledgement on /sms, and the difference
+       is whether the act is reversible. Recording that a document was
+       read is idempotent and true; withdrawing a report removes it from
+       the safety office's queue, and while the row survives on the
+       server as a tombstone there is no screen that brings it back. An
+       irreversible act gets a dialog.
+
+       THE REASON IS ASKED FOR AND MAY BE REFUSED. "Filed twice" and
+       "wrong aircraft" are the honest answers and both are worth having;
+       a required field would produce "duplicate" typed a hundred times.
+       ------------------------------------------------------------ */
+    const retractor = event.target.closest?.('[data-retract]');
+    if (retractor) {
+      if (!window.confirm(
+        'Withdraw this report?\n\nIt stops appearing in the safety office’s queue and stops counting towards the reporting rate. The record itself is kept — who withdrew it and when are recorded, and an export for an inspector still shows it.'
+      )) return;
+      const reason = window.prompt(
+        'Why is it being withdrawn? Optional — "filed twice" or "wrong aircraft" is enough, and it tells the next reader more than a blank does.'
+      );
+      if (reason === null) return;
+      try {
+        await retractReport(retractor.dataset.retract, reason);
+      } catch {
+        window.alert('That could not be recorded on this device. Nothing was withdrawn.');
+      }
+      await render(outlet);
+      return;
+    }
+
     const teller = event.target.closest?.('[data-notified]');
     if (teller) {
       const reference = window.prompt(
@@ -858,6 +890,35 @@ function row(r) {
               </button>
             </p>`
         : ''}
+
+      ${
+        /* WITHDRAWING A REPORT THIS DEVICE FILED.
+
+           `origin` is the authority for whose report this is: 'device'
+           and 'both' are rows this handset holds because it filed them,
+           'server' is somebody else's. Offering the button on a
+           'server' row would be offering an action the API refuses, and
+           a button that always fails teaches people to ignore refusals
+           — the same argument the change-approval buttons make.
+
+           AN ANONYMOUS REPORT THE SERVER HAS ACKNOWLEDGED CANNOT BE
+           WITHDRAWN, by anybody, and that is the anonymity working
+           rather than a gap. There is no reporterId to match it to, and
+           accepting a retraction from the device that filed it would
+           mean the server held something joining a device to an
+           anonymous filing. Before it syncs it is still local, and
+           withdrawing it is purely local — so the button is offered
+           exactly while that is true. */
+        r.origin !== 'server' &&
+        r.state !== 'CLOSED' &&
+        (!r.isAnonymous || r.syncState !== 'synced')
+          ? html`<p class="queue__actions">
+              <button type="button" class="btn btn-ghost btn-sm" data-retract="${r.clientId}">
+                Withdraw this report
+              </button>
+            </p>`
+          : ''
+      }
 
       ${r.syncState === 'error' && r.lastError
         ? html`<p class="queue__error">${r.lastError}</p>`

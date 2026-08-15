@@ -67,11 +67,14 @@ const SRC = resolve(ROOT, 'apps/web/src');
 
    19.5 when this gate landed, against 19.2 KB actually shipped after
    the pricing page was cleared. 13.0 after twelve notes came out of the
-   triage template. 5.0 now, against 4.7: the report form, the maturity
-   assessment, the register and the sign-in screen followed, and between
-   them they paid for a whole new screen — the dashboard went in and the
-   TOTAL bundle came DOWN, while the entry chunk gained five kilobytes
-   of headroom it has not had in months.
+   triage template. 5.0 after the report form, the maturity assessment,
+   the register and the sign-in screen followed — and between them they
+   paid for a whole new screen, the dashboard going in while the TOTAL
+   bundle came DOWN and the entry chunk gained five kilobytes of
+   headroom. 3.0 now, against 2.4: the indicator screen and the
+   methodology paid for the reporter's half of that dashboard. 1.5
+   now, against 1.1: the SMS record, the risk picture and the select
+   component paid for report retraction.
 
    That is the argument for the ratchet in one line. Each raise would
    have been defensible on its own; the cumulative 15 KB was not, and
@@ -79,7 +82,7 @@ const SRC = resolve(ROOT, 'apps/web/src');
 
    It sits a little above what the tree ships, so a genuine one-line
    marker does not fail a build and a paragraph does. */
-const CEILING_KB = 5.0;
+const CEILING_KB = 1.5;
 
 const files = [];
 (function walk(dir) {

@@ -178,15 +178,20 @@ that block a feature comparison.
 
 ## 5. Product debt
 
-- **No delete synchronisation**, and reading the sync path on 14 August
-  2026 reframed it. This is not a missing DELETE branch in a mature
-  engine: `/api/v1/sync/batch` is **CREATE-only by construction**.
-  `UPDATE` reaches the route, is authorised, detects conflicts and
-  writes a conflict receipt — and then falls through to `rejected` with
-  a comment saying that is the honest answer until a field-level
-  handler exists for the entity. So deletes and updates are one absent
-  capability, not two gaps. **See §9 for the design and the four traps
-  that are in that code already.**
+- ~~**No delete synchronisation.**~~ **Closed 15 August 2026, and §9's
+  sequencing was wrong in an instructive way.** §9 said UPDATE first,
+  then DELETE on the same machinery. Building it showed why the first
+  half could not be done: **nothing in the client sends UPDATE** — both
+  enqueue sites write `CREATE` — and `safetyReport:UPDATE` requires
+  `report.triage`, so the only thing a field handler could apply is the
+  disposition that `routes.reports.ts` refuses to sync in as many words
+  ("offline filing is the promise; offline TRIAGE is not"). An UPDATE
+  handler would have been a branch with no caller contradicting a
+  second recorded decision. §9's real content was "on the same
+  machinery", and that machinery — tenant-scoped lookup, optimistic
+  concurrency, an anonymity-correct receipt, idempotent replay — was
+  already in the UPDATE branch. Retraction reuses it. All four traps
+  are tested; see `tests/integration/retraction.route.integration.test.ts`.
 - **Which changes require an assessment** is not defined. The product
   assesses the change an operator brings it; it does not know that
   operator's threshold for significance, and guessing would either

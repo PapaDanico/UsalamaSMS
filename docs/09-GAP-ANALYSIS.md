@@ -306,7 +306,7 @@ that would be somebody unable to say where an occurrence happened.
 
 | Gap | Grade | Note |
 |---|---|---|
-| No delete synchronisation | **MATERIAL** | An entry deleted on one device returns from the server on another. Deliberate and the safe direction, but it needs a tombstone before more than one device per operator is realistic. |
+| ~~No delete synchronisation~~ | **CLOSED 15 Aug 2026** | A retraction is a tombstone: the row stays and stops counting, and the reporter who filed it is the only person who can withdraw it. An anonymous report cannot be retracted at all — there is no reporterId to match, which is the anonymity working rather than a gap. The export still carries a retracted report, deliberately: hiding one would make this a way to remove an inconvenient occurrence from what a regulator reads. `scripts/check-retraction.mjs` makes every read of the table say which side it is on. |
 | Nothing notifies anybody of anything | **MATERIAL** | Stale contacts, lapsing training, approaching deadlines and overdue actions are all computed and none is delivered. One channel closes all four — §1, 4.1. |
 | Which changes require an assessment is undefined | **BOUNDED** | The product assesses the change an operator brings it. Guessing an operator's significance threshold would either flood the register or miss the change that mattered. |
 | The ERP document itself is not held | **BOUNDED** | A decision, recorded so it is not re-opened as an oversight. |
