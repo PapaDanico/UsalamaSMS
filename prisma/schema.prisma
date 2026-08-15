@@ -400,6 +400,9 @@ model SafetyReport {
   @@index([orgId, type, occurredAt])
   // The aggregation this taxonomy exists to make possible.
   @@index([orgId, location, phase])
+  @@index([reporterId], map: "idx_safetyreport_reporterid")
+  @@index([reportedToAuthorityById], map: "idx_safetyreport_reportedtoauthoritybyid")
+  @@index([retractedById], map: "idx_safetyreport_retractedbyid")
 }
 
 /// What happened to a report, one row per move.
@@ -454,6 +457,9 @@ model ReportTransition {
   /// indicator aggregates over.
   @@index([orgId, reportId, at])
   @@index([orgId, toState, at])
+  @@index([orgId], map: "idx_reporttransition_orgid")
+  @@index([reportId], map: "idx_reporttransition_reportid")
+  @@index([byUserId], map: "idx_reporttransition_byuserid")
 }
 
 /// A corrective or preventive action — the CAPA loop.
@@ -530,6 +536,13 @@ model CorrectiveAction {
   /// what is late.
   @@index([orgId, dueOn, completedOn])
   @@index([orgId, reportId])
+  @@index([orgId], map: "idx_correctiveaction_orgid")
+  @@index([reportId], map: "idx_correctiveaction_reportid")
+  @@index([changeId], map: "idx_correctiveaction_changeid")
+  @@index([completedById], map: "idx_correctiveaction_completedbyid")
+  @@index([findingId], map: "idx_correctiveaction_findingid")
+  @@index([riskId], map: "idx_correctiveaction_riskid")
+  @@index([verifiedById], map: "idx_correctiveaction_verifiedbyid")
 }
 
 model Hazard {
@@ -548,6 +561,7 @@ model Hazard {
   assessments RiskAssessment[]
 
   @@index([orgId, createdAt])
+  @@index([reportId], map: "idx_hazard_reportid")
 }
 
 model RiskAssessment {
@@ -613,6 +627,7 @@ model RiskAssessment {
   // what is open, and what is due.
   @@index([orgId, status])
   @@index([orgId, reviewBy])
+  @@index([hazardId], map: "idx_riskassessment_hazardid")
 }
 
 enum RiskStatus {
@@ -745,6 +760,7 @@ model SyncReceipt {
   // operator's tenancy.
   @@unique([orgId, clientId])
   @@index([orgId, createdAt])
+  @@index([userId], map: "idx_syncreceipt_userid")
 }
 
 model AuditLog {
@@ -795,6 +811,7 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([orgId, seq])
+  @@index([userId], map: "idx_auditlog_userid")
 }
 
 // =====================================================================
@@ -874,7 +891,9 @@ model VoluntaryScheme {
 
   org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
-  @@index([orgId])
+  /// NO `@@index([orgId])`. `orgId` is already @unique here — one config
+  /// per operator — and a unique constraint IS an index. A second one on
+  /// the same column serves no read and costs every write.
 }
 
 enum ChangeTrigger {
@@ -957,6 +976,8 @@ model ChangeAssessment {
 
   @@index([orgId, status])
   @@index([orgId, effectiveFrom])
+  @@index([orgId], map: "idx_changeassessment_orgid")
+  @@index([approvedById], map: "idx_changeassessment_approvedbyid")
 }
 
 model SafetyPolicy {
@@ -978,6 +999,7 @@ model SafetyPolicy {
 
   @@unique([orgId, version])
   @@index([orgId, supersededOn])
+  @@index([signedById], map: "idx_safetypolicy_signedbyid")
 }
 
 /// Who has read the policy. Element 1.1's evidence that it reached
@@ -995,6 +1017,8 @@ model PolicyAcknowledgement {
 
   @@unique([policyId, userId])
   @@index([orgId, acknowledgedAt])
+  @@index([orgId], map: "idx_policyacknowledgement_orgid")
+  @@index([userId], map: "idx_policyacknowledgement_userid")
 }
 
 /// Element 1.2 — safety accountability and responsibilities.
@@ -1034,6 +1058,7 @@ model Appointment {
   user User @relation("appointee", fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([orgId, post, endedOn])
+  @@index([userId], map: "idx_appointment_userid")
 }
 
 /// Element 1.4 — emergency response planning, and the exercises that
@@ -1118,6 +1143,8 @@ model EmergencyContact {
   /// has gone stale.
   @@index([orgId, callOrder])
   @@index([orgId, verifiedOn])
+  @@index([orgId], map: "idx_emergencycontact_orgid")
+  @@index([verifiedById], map: "idx_emergencycontact_verifiedbyid")
 }
 
 /// Element 1.5 — SMS documentation, under control.
@@ -1139,6 +1166,7 @@ model ControlledDocument {
 
   @@unique([orgId, reference, version])
   @@index([orgId, reviewBy])
+  @@index([approvedById], map: "idx_controlleddocument_approvedbyid")
 }
 
 /// Element 1.5 — who has read which REVISION of a controlled document.
@@ -1173,6 +1201,8 @@ model DocumentAcknowledgement {
 
   @@unique([documentId, userId])
   @@index([orgId, acknowledgedAt])
+  @@index([orgId], map: "idx_documentacknowledgement_orgid")
+  @@index([userId], map: "idx_documentacknowledgement_userid")
 }
 
 /// Element 3.3 — continuous improvement. An internal SMS audit finding,
@@ -1204,6 +1234,7 @@ model AuditFinding {
 
   @@index([orgId, closedOn, dueBy])
   @@index([orgId, elementId])
+  @@index([verifiedById], map: "idx_auditfinding_verifiedbyid")
 }
 
 enum FindingSeverity {
@@ -1231,6 +1262,7 @@ model TrainingRecord {
 
   @@index([orgId, expiresOn])
   @@index([orgId, userId])
+  @@index([userId], map: "idx_trainingrecord_userid")
 }
 
 /// Element 4.2 — safety communication, in both directions.
@@ -1256,6 +1288,8 @@ model SafetyCommunication {
   report      SafetyReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
 
   @@index([orgId, publishedOn])
+  @@index([publishedById], map: "idx_safetycommunication_publishedbyid")
+  @@index([reportId], map: "idx_safetycommunication_reportid")
 }
 
 /// What THIS operator calls things, and nothing else.
@@ -1305,5 +1339,7 @@ model OrgConfig {
 
   org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
-  @@index([orgId])
+  /// NO `@@index([orgId])`. `orgId` is already @unique here — one config
+  /// per operator — and a unique constraint IS an index. A second one on
+  /// the same column serves no read and costs every write.
 }
