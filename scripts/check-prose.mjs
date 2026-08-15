@@ -72,7 +72,9 @@ const SRC = resolve(ROOT, 'apps/web/src');
    paid for a whole new screen, the dashboard going in while the TOTAL
    bundle came DOWN and the entry chunk gained five kilobytes of
    headroom. 3.0 now, against 2.4: the indicator screen and the
-   methodology paid for the reporter's half of that dashboard.
+   methodology paid for the reporter's half of that dashboard. 1.5
+   now, against 1.1: the SMS record, the risk picture and the select
+   component paid for report retraction.
 
    That is the argument for the ratchet in one line. Each raise would
    have been defensible on its own; the cumulative 15 KB was not, and
@@ -80,7 +82,7 @@ const SRC = resolve(ROOT, 'apps/web/src');
 
    It sits a little above what the tree ships, so a genuine one-line
    marker does not fail a build and a paragraph does. */
-const CEILING_KB = 3.0;
+const CEILING_KB = 1.5;
 
 const files = [];
 (function walk(dir) {

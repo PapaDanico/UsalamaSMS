@@ -1,4 +1,18 @@
 /* ============================================================
+   NOTES ABOUT THE MARKUP, COLLECTED OUT OF THE TEMPLATE.
+
+   An `<!-- -->` inside a tagged template literal is string content:
+   no minifier removes it and every reporter downloads it.
+
+   1. WHAT NEEDS ATTENTION, FIRST AND ONLY IF THERE IS ANY. An
+      empty attention panel with three reassuring zeroes in it is
+      the thing that makes a dashboard stop being read.
+
+   2. THE COUNT IS NOT A RATE AND THE PAGE SAYS SO ITSELF, rather
+      than leaving a reader to assume Doc 9859's indicator is what
+      they are looking at.
+   ============================================================ */
+/* ============================================================
    The risk picture.
 
    WHAT THIS SCREEN IS FOR. The UK Military Aviation Authority builds an
@@ -292,9 +306,6 @@ export async function render(outlet) {
         </p>
       </header>
 
-      <!-- WHAT NEEDS ATTENTION, FIRST AND ONLY IF THERE IS ANY. An
-           empty attention panel with three reassuring zeroes in it is
-           the thing that makes a dashboard stop being read. -->
       ${attention({ register, indicators, changes, reporting, actions })}
 
       <h2>Reporting</h2>
@@ -310,9 +321,6 @@ export async function render(outlet) {
         ${figure('Awaiting triage', reporting.queue.by.SUBMITTED, 'all time, not the window')}
       </div>
 
-      <!-- THE COUNT IS NOT A RATE AND THE PAGE SAYS SO ITSELF, rather
-           than leaving a reader to assume Doc 9859's indicator is what
-           they are looking at. -->
       <p class="picture-note">${reporting.note}</p>
       <p class="picture-note">${TREND_TEXT[reporting.trend]}.</p>
 

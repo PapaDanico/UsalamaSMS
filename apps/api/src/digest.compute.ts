@@ -65,6 +65,11 @@ export async function computeDigest(
     prisma.safetyReport.findMany({
       where: {
         orgId,
+        /* RETRACTED REPORTS DO NOT OWE A NOTIFICATION. A duplicate
+           filed twice and corrected is not two occurrences, and a
+           digest that counts it is a digest that sends somebody to
+           telephone an authority about a report that was withdrawn. */
+        retractedAt: null,
         type: "MOR",
         /* The column that did not exist when the deadline engine was
            written, and the whole reason the section was empty. */
@@ -87,7 +92,7 @@ export async function computeDigest(
       select: { completedOn: true, expiresOn: true },
       take: TRAINING_LIMIT,
     }),
-    prisma.safetyReport.count({ where: { orgId, state: UNTRIAGED_STATE } }),
+    prisma.safetyReport.count({ where: { orgId, retractedAt: null, state: UNTRIAGED_STATE } }),
     /* THE DATES, NOT A COUNT. Padding a count with a placeholder made a
        195-day-old action read as "overdue by 1 days" — a number the
        reader acts on and the caller invented. */

@@ -263,7 +263,11 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
        response names which one it used. */
     const rows = await prisma.safetyReport.groupBy({
       by: ["type"],
-      where: { ...tenantWhere(req), createdAt: { gte: window.from, lt: window.to } },
+      /* An indicator counts what was REPORTED, and a withdrawn
+         duplicate was not a second report. Counting it inflates the
+         reporting rate this element is measured on — which is the one
+         number an operator is tempted to like the look of. */
+      where: { ...tenantWhere(req), retractedAt: null, createdAt: { gte: window.from, lt: window.to } },
       _count: { _all: true },
     });
 

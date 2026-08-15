@@ -71,6 +71,21 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
     const to = new Date();
     const from = new Date(to.getTime() - days * DAY);
     const where = tenantWhere(req);
+    /* RETRACTED REPORTS ARE OUT OF THE PICTURE — and this is a SECOND
+       clause rather than a narrowing of the one above, which is a
+       correction worth recording.
+
+       The first attempt added `retractedAt: null` to the shared `where`.
+       That clause is spread across SEVEN models on this screen —
+       transitions, hazards, risk assessments, changes, actions — and
+       none of them has the column, so every one of those queries became
+       a Prisma validation error. Six integration tests went red at once,
+       which is the only reason it was caught before review.
+
+       A shared clause is the right shape for TENANCY, because every
+       model has orgId and forgetting it is a breach. It is the wrong
+       shape for a column only one model carries. */
+    const reportWhere = { ...where, retractedAt: null };
 
     const [byState, filed, closures, monthly, register, indicators, changes, actions] =
       await Promise.all([
@@ -79,9 +94,9 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
            still untriaged is exactly the one that must not fall out of
            the count because the window moved past it. */
         prisma.safetyReport.groupBy({
-          by: ["state"], where, _count: { _all: true },
+          by: ["state"], where: reportWhere, _count: { _all: true },
         }),
-        prisma.safetyReport.count({ where: { ...where, createdAt: { gte: from } } }),
+        prisma.safetyReport.count({ where: { ...reportWhere, createdAt: { gte: from } } }),
 
         /* Time to closure, from the transition history rather than from
            a column — and the FIRST closure per report, which is why the

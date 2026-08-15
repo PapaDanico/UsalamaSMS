@@ -150,6 +150,22 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
           // the terms promise it will have.
           select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
         }),
+        /* RETRACTION-INCLUDES-DELIBERATELY: the export is evidence, not a
+           work list.
+ 
+           Every other read path drops retracted reports — the queue,
+           the digest, the risk picture, the indicator counts — because
+           those answer "what needs doing" and a withdrawn duplicate
+           needs nothing. This one answers "what is on the record", and
+           it is handed to an authority.
+ 
+           If an export hid retracted reports, retraction would become a
+           way to remove an inconvenient occurrence from what the
+           regulator sees. That is the single thing this feature must
+           not be, and excluding them here is how it would have become
+           it. The rows carry retractedAt, retractedById and the reason,
+           the audit chain carries a report.retracted entry, and the
+           reader can see both. */
         prisma.safetyReport.findMany({ where, orderBy: [{ createdAt: "asc" }] }),
         prisma.hazard.findMany({ where, orderBy: [{ createdAt: "asc" }] }),
         prisma.riskAssessment.findMany({ where, orderBy: [{ createdAt: "asc" }] }),

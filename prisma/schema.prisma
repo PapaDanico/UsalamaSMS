@@ -195,6 +195,7 @@ model User {
   findingsVerified  AuditFinding[]            @relation("findingVerifier")
   training          TrainingRecord[]          @relation("trainee")
   authorityNotices  SafetyReport[]            @relation("authorityNotifier")
+  reportsRetracted  SafetyReport[]            @relation("reportRetractor")
   communications    SafetyCommunication[]     @relation("communicator")
   changesApproved   ChangeAssessment[]        @relation("changeApprover")
   documentReads     DocumentAcknowledgement[]
@@ -329,12 +330,47 @@ model SafetyReport {
   /// access control.
   authorityReference      String?
 
+  /// ---------------- Retraction — a tombstone, never a delete --------
+  ///
+  /// A DEVICE'S DELETE IS A LOCAL RETRACTION; THE SERVER'S ANSWER IS A
+  /// STATE. A hard delete of a safety report destroys evidence an
+  /// auditor is entitled to and breaks the append-only chain that makes
+  /// the rest of the record worth anything — the same reasoning that
+  /// makes `reporterId` SetNull rather than Cascade when a person is
+  /// offboarded. So the row stays and stops counting.
+  ///
+  /// WHAT THIS IS FOR, and what it is NOT. A reporter who filed the
+  /// same hazard twice, or filed against the wrong aircraft and refiled,
+  /// needs the first one to stop appearing. That is a correction to the
+  /// record. It is NOT a way to make an occurrence go away: the row
+  /// remains, the audit entry remains, who retracted it and when are
+  /// recorded, and THE EXPORT STILL CARRIES IT — deliberately, because
+  /// an export that hid retracted reports would turn this feature into
+  /// a way to remove an inconvenient occurrence from what a regulator
+  /// sees. Every other read path drops them; that one does not, and
+  /// scripts/check-retraction.mjs makes each query say which it is.
+  ///
+  /// NULLABLE FOREVER, and every list query must exclude it. The way
+  /// this goes wrong is one query somebody forgets, which is why
+  /// tests/retraction.test.ts asserts over the read paths rather than
+  /// over a list of them.
+  retractedAt     DateTime?
+  /// Null for an anonymous report, exactly as reporterId is. A
+  /// retraction must not become the identifier the filing refused to
+  /// store — see the receipt in routes.sync.ts.
+  retractedById   String?
+  /// The reporter's own words for why, capped and optional. Not
+  /// required: a required reason on a correction produces "duplicate"
+  /// typed a hundred times, which tells the next reader nothing.
+  retractedReason String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   org         Org                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
   reporter    User?                 @relation(fields: [reporterId], references: [id], onDelete: SetNull)
   reportedBy  User?                 @relation("authorityNotifier", fields: [reportedToAuthorityById], references: [id], onDelete: Restrict)
+  retractedBy User?                 @relation("reportRetractor", fields: [retractedById], references: [id], onDelete: SetNull)
   feedback    SafetyCommunication[]
   hazards     Hazard[]
   transitions ReportTransition[]
@@ -356,6 +392,10 @@ model SafetyReport {
   /// and generates a DROP — the digest's deadline query loses its index
   /// silently, and nothing fails until the table is large.
   @@index([orgId, reportedToAuthorityAt])
+  /// EVERY list query gains `retractedAt: null`, so the index that
+  /// serves the queue has to carry it or the exclusion costs a scan on
+  /// the one screen a safety office keeps open.
+  @@index([orgId, retractedAt])
   @@index([orgId, state, createdAt])
   @@index([orgId, type, occurredAt])
   // The aggregation this taxonomy exists to make possible.
