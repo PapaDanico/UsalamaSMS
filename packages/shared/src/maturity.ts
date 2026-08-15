@@ -939,10 +939,11 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "a report says, because an inbox sits outside every access control this product " +
       "has.",
     missing:
-      "Delivery. The digest can be looked at and cannot ARRIVE \u2014 no schedule, no " +
-      "address, no key \u2014 so a gap and a lapsing currency both still wait for somebody " +
-      "to open the screen; the provider adapter reports NOT_CONFIGURED rather than " +
-      "appearing to work. And the six initial topics are Doc 9859's read through a search " +
+      "The key, and with it delivery. The schedule exists and addresses the roles that " +
+      "may read the operator's reports, but with no RESEND_API_KEY it computes for " +
+      "nobody and says so in its own response rather than appearing to run \u2014 so today a " +
+      "gap and a lapsing currency both still wait for somebody to open the screen. " +
+      "And the six initial topics are Doc 9859's read through a search " +
       "index rather than the instrument, which the route states in its own payload and " +
       "the matrix repeats where somebody is acting on a gap.",
     href: "/sms",
