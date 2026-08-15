@@ -71,10 +71,27 @@
   --us-text-sm: 13.5px;
   --us-text-base: 15px;
   --us-text-md: 17px;
-  --us-text-lg: clamp(20px, 2.2vw, 24px);
-  --us-text-xl: clamp(24px, 3vw, 32px);
-  --us-text-2xl: clamp(30px, 4.2vw, 46px);
-  --us-text-3xl: clamp(38px, 6vw, 68px);
+  /* THE DISPLAY END CAME DOWN, AND THE READING END DID NOT.
+
+     "Reduce the font sizes to reduce the footprint" is two different
+     requests depending on which end of the ladder it lands on. At the
+     reading end it costs legibility for a reporter squinting at a
+     handset on a windy apron, and buys almost nothing: body copy is
+     already a measure, and shrinking 15px to 14px reclaims a few
+     pixels per line while making every line harder. At the DISPLAY end
+     it costs nothing anybody reads and buys whole screenfuls — a 68px
+     hero heading over three lines is 250px of vertical space spent
+     saying what 52px says.
+
+     So the four display rungs came down about 20%, the five reading
+     rungs (2xs through md) are untouched, and the four sanctioned
+     off-ladder sizes below are untouched for the same reason. The
+     accessibility sweep runs over all twenty-one rendered screens and
+     is the check that this stayed legible rather than the claim. */
+  --us-text-lg: clamp(18px, 1.9vw, 21px);
+  --us-text-xl: clamp(21px, 2.5vw, 27px);
+  --us-text-2xl: clamp(26px, 3.4vw, 37px);
+  --us-text-3xl: clamp(32px, 4.8vw, 52px);
 
   --us-weight-normal: 400;
   --us-weight-medium: 500;
@@ -197,6 +214,11 @@
      base size, which is where a line stops being comfortable. */
   --us-container: 46rem;
   --us-container-wide: 68rem;
+  /* The routed screen. Between the two above, and deliberately: wide
+     enough that a five-column table is not scrolling sideways inside a
+     half-empty laptop screen, narrow enough that a screen which IS a
+     form does not look lost in it. See the note on `.page`. */
+  --us-page: 60rem;
 
   /* 48, not 44. The WCAG floor is 44 and this is a form filled in with
      gloves on, in sunlight, one-handed, sometimes on a moving airstair.
@@ -218,9 +240,17 @@
   --us-ring: 0 0 0 3px rgb(var(--us-teal-rgb) / 0.22);
 
   /* Section rhythm. Two values, used everywhere, so vertical spacing is
-     a decision made once rather than per screen. */
-  --us-section: clamp(32px, 5vw, 56px);
-  --us-section-tight: clamp(20px, 3.4vw, 32px);
+     a decision made once rather than per screen.
+
+     TIGHTENED, because the space between sections was doing the same
+     job twice. A section already announces itself with a heading, a
+     rule or a change of ground; 56px of air on top of that is a
+     magazine's separation applied to a working tool, and on a handset
+     it meant a safety manager scrolled past emptiness to reach the
+     next thing to do. 40px still separates. What it stops doing is
+     separating so hard that two related sections read as two pages. */
+  --us-section: clamp(24px, 3.6vw, 40px);
+  --us-section-tight: clamp(16px, 2.6vw, 24px);
 
   /* ============================================================
      RISK — the tolerability scale
@@ -2099,13 +2129,35 @@ html { scroll-padding-top: var(--us-chrome); }
    and the class is the role, and a second outlet (a print view, a
    dialog) should get the layout by naming the role.
    ============================================================ */
+/* THE SCREEN IS WIDER THAN THE SENTENCE, and conflating the two is what
+   wasted the space.
+
+   `.page` was one width — 46rem, the reading measure — for every routed
+   screen. That is right for the report form and wrong for everything
+   the safety office actually sits in front of: the triage queue, the
+   hazard register, the risk picture, the indicator table. Those are
+   grids and lists, and constraining a five-column table to a
+   comfortable line length on a 15-inch laptop leaves forty per cent of
+   the screen empty while the table scrolls sideways inside it.
+
+   So the CONTAINER widens and the MEASURE is imposed where measure
+   actually matters — on flowing text, in characters, which is the unit
+   a line length is properly expressed in. A table gets the width; a
+   paragraph gets 68 characters wherever it sits. Forms are unaffected:
+   `.panel > .card` and `.panel > form.card` already pin themselves to
+   --us-container, and that is now doing visible work rather than
+   restating the parent. */
 .page {
   width: 100%;
-  max-width: var(--us-container);
+  max-width: var(--us-page);
   margin-inline: auto;
   padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-8));
   padding-block: var(--us-section-tight) var(--us-section);
 }
+
+/* Measure, not width. Applies to text wherever it lands — including
+   inside a card that is already narrower, where it simply never binds. */
+.page :is(p, li) { max-width: 68ch; }
 
 /* A screen supplying its own full-bleed band takes the gutter back — a
    band inset by the page padding is a card, not a band. */
