@@ -1,4 +1,30 @@
 /* ============================================================
+   NOTES ABOUT THE MARKUP, COLLECTED OUT OF THE TEMPLATE.
+
+   An `<!-- -->` inside a tagged template literal is string content:
+   no minifier removes it and every reporter downloads it. In the order
+   the markup reaches them:
+
+   1. "verified <date>" ON ITS OWN WAS THE PROBLEM. It is the
+      date somebody last looked, and printed alone it reads
+      as reassurance — while the row can be citing an
+      instrument years past its own review cycle, with a
+      newer one gazetted above it. The reader was being
+      shown our diligence and not the document's age.
+
+   2. ITS OWN CLASS, not tag--provisional. The two say
+      different things: provisional means we have not read
+      the primary instrument, stale means the instrument
+      has outlived its own revision cycle. Reusing the
+      class also broke the smoke check that counts
+      provisional rows — correctly, because on that count a
+      stale row WAS being reported as provisional.
+
+   3. No "for" attribute: the Select component mints its own ids,
+      and an output pointing at an id that does not exist is worse
+      than one pointing at nothing. aria-live carries the update.
+   ============================================================ */
+/* ============================================================
    Methodology.
 
    THIS REPLACES THE ROUTE THAT WAS CALLED "DESIGN SYSTEM". That name
@@ -140,20 +166,7 @@ function Obligations() {
             </td>
             <td class="cite" data-label="Instrument">
               ${o.instrument}
-              <!-- "verified <date>" ON ITS OWN WAS THE PROBLEM. It is the
-                   date somebody last looked, and printed alone it reads
-                   as reassurance — while the row can be citing an
-                   instrument years past its own review cycle, with a
-                   newer one gazetted above it. The reader was being
-                   shown our diligence and not the document's age. -->
               <span class="verified">verified ${o.verifiedOn}</span>
-              <!-- ITS OWN CLASS, not tag--provisional. The two say
-                   different things: provisional means we have not read
-                   the primary instrument, stale means the instrument
-                   has outlived its own revision cycle. Reusing the
-                   class also broke the smoke check that counts
-                   provisional rows — correctly, because on that count a
-                   stale row WAS being reported as provisional. -->
               ${isStale(o, new Date())
                 ? html`<span class="tag tag--stale">past its review cycle</span>`
                 : ''}
@@ -283,9 +296,6 @@ function Calculator() {
         </p>
       </div>
 
-      <!-- No "for" attribute: the Select component mints its own ids,
-           and an output pointing at an id that does not exist is worse
-           than one pointing at nothing. aria-live carries the update. -->
       <output class="calc__out" id="deadline-result" aria-live="polite"
         >Choose an authority and both moments.</output
       >
