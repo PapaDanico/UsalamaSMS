@@ -71,32 +71,59 @@
              risk matrix read one column at a time is not a matrix.
 
      Anything else off the ladder is drift. */
-  --us-text-2xs: 11px;
-  --us-text-xs: 12px;
-  --us-text-sm: 13.5px;
-  --us-text-base: 15px;
-  --us-text-md: 17px;
-  /* THE DISPLAY END CAME DOWN, AND THE READING END DID NOT.
+  /* THE READING END CAME DOWN ON THE THIRD ASK, and the note below this
+     block is what it used to say — that shrinking body copy costs
+     legibility and buys little. That argument was made twice and the
+     answer came back the same three times, so the ladder moved: this is
+     the owner's call on their own product, not a defect being argued
+     out of.
 
-     "Reduce the font sizes to reduce the footprint" is two different
-     requests depending on which end of the ladder it lands on. At the
-     reading end it costs legibility for a reporter squinting at a
-     handset on a windy apron, and buys almost nothing: body copy is
-     already a measure, and shrinking 15px to 14px reclaims a few
-     pixels per line while making every line harder. At the DISPLAY end
-     it costs nothing anybody reads and buys whole screenfuls — a 68px
-     hero heading over three lines is 250px of vertical space spent
-     saying what 52px says.
+     What is NOT reduced, and would not have been whatever was asked:
+     `.input-field` sets `font-size: 1rem`, which reads the ROOT rather
+     than body, so form controls stay at 16px. Below 16px iOS zooms the
+     page when an input takes focus, and a reporter mid-report is thrown
+     out of their place on the form. That is a behaviour, not a taste. */
+  --us-text-2xs: 10px;
+  --us-text-xs: 11px;
+  --us-text-sm: 12.5px;
+  --us-text-base: 14px;
+  --us-text-md: 15.5px;
+  /* THE DISPLAY END CAME DOWN TWICE, AND THE READING END NEITHER TIME.
 
-     So the four display rungs came down about 20%, the five reading
-     rungs (2xs through md) are untouched, and the four sanctioned
-     off-ladder sizes below are untouched for the same reason. The
-     accessibility sweep runs over all twenty-one rendered screens and
-     is the check that this stayed legible rather than the claim. */
-  --us-text-lg: clamp(18px, 1.9vw, 21px);
-  --us-text-xl: clamp(21px, 2.5vw, 27px);
-  --us-text-2xl: clamp(26px, 3.4vw, 37px);
-  --us-text-3xl: clamp(32px, 4.8vw, 52px);
+     "Reduce the font sizes" is two different requests depending on which
+     end of the ladder it lands on. At the reading end it costs
+     legibility for a reporter squinting at a handset on a windy apron,
+     and buys almost nothing: body copy is already a measure, and
+     shrinking 15px to 14px reclaims a few pixels per line while making
+     every line harder. At the DISPLAY end it costs nothing anybody
+     reads and buys whole screenfuls — a 68px hero heading over three
+     lines is 250px of vertical space spent saying what 52px says.
+
+     Three passes, and the ceilings tell the story: 68 -> 52 -> 46 -> 36
+     on the hero rung. First pass took the display end down ~20%, second
+     another ~11%, third — "too too big" — another ~22%.
+
+     THE FLOORS MOVE LESS THAN THE CEILINGS. The floor is what a 360px
+     handset renders, where a heading is already close to the body text
+     and the hierarchy is carried by weight and colour rather than by
+     size; the ceiling is a desktop hero, where the same proportion is
+     three lines of 50px type nobody asked to read. So the range
+     narrows from both ends rather than sliding down.
+
+     ORDERING WAS CHECKED, NOT ASSUMED. Four clamps and five fixed rungs
+     can cross over at a viewport nobody looked at, which would put a
+     section heading below its own body text somewhere between two
+     breakpoints. Evaluated at 320, 375, 800, 1200 and 1440px: md 15.5
+     sits under lg's 16px floor at every one, and each display rung
+     stays above the one below it.
+
+     The four sanctioned off-ladder sizes above are untouched. The
+     accessibility sweep runs over every rendered screen and is the
+     check that this stayed legible rather than the claim. */
+  --us-text-lg: clamp(16px, 1.6vw, 17px);
+  --us-text-xl: clamp(17.5px, 2.0vw, 20.5px);
+  --us-text-2xl: clamp(20px, 2.6vw, 27px);
+  --us-text-3xl: clamp(23.5px, 3.6vw, 36px);
 
   --us-weight-normal: 400;
   --us-weight-medium: 500;
@@ -441,6 +468,17 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   font-family: var(--us-font);
+  /* SET EXPLICITLY, and it did not used to be. Body inherited the root
+     16px, so every element without a size of its own rendered at 16
+     while the ladder's own reading rung said 15 — the ladder described
+     the exceptions rather than the default. Naming it here is what
+     makes --us-text-base actually the body size, and it is why the
+     third reduction reaches the running text at all.
+
+     It does NOT reach form controls: .input-field sets 1rem, which
+     reads the root and stays at 16px so iOS does not zoom the page when
+     an input takes focus. */
+  font-size: var(--us-text-base);
   color: var(--us-charcoal);
   background: var(--us-paper);
   line-height: 1.6;

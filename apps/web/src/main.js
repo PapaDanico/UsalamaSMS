@@ -50,7 +50,13 @@ import { render as renderLogin } from './tools/login/index.js';
 /* ------------------------------ Chrome ------------------------------ */
 
 document.getElementById('logo-slot').innerHTML = Lockup({ height: 34 }).toString();
-document.getElementById('footer-logo-slot').innerHTML = Lockup({ height: 30 }).toString();
+/* GOLD, because the footer is charcoal. The header sits on Warm Sand
+   and takes the ink variant; passing the same one here put a charcoal
+   mark on a charcoal panel and made it disappear. */
+document.getElementById('footer-logo-slot').innerHTML = Lockup({
+  height: 30,
+  tone: 'gold',
+}).toString();
 
 /* ============================================================
    THE NAVIGATION, from one declaration.

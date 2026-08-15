@@ -1,80 +1,81 @@
 #!/usr/bin/env node
-/* ============================================================
-   Icon suite, generated from ONE geometry source.
+/* =====================================================================
+   EVERY ICON IS CROPPED FROM ONE SUPPLIED FILE. Nothing here is drawn.
 
-   docs/04-BRAND.md says "never hand-edit a generated icon — change the
-   path and regenerate", which was a claim about a generator that did
-   not exist. This is it.
+   WHAT THIS REPLACED, and why the replacement is the whole point.
 
-   Everything below reads the path constants out of
-   apps/web/src/components/Logo.js by parsing the module rather than by
-   copying the strings, so the favicon cannot disagree with the header
-   mark. Two sources of a logo's geometry means two logos, eventually.
+   These icons used to be generated from the path constants in
+   apps/web/src/components/Logo.js — a hand-built approximation of the
+   identity. That was defensible while it was the only vector source,
+   and it produced a mark that is RECOGNISABLY NOT THE ONE THE DESIGNER
+   DREW: straight crossing lines where the artwork has sweeping contrail
+   arcs, an arrowhead where the artwork has an airliner, a spiked crest
+   where the artwork has a rounded one.
 
-   SVG ONLY, and that is a documented limitation rather than an
-   oversight. Rasterising to PNG needs a browser or an image library, and
-   this project is not adding a 200-package dependency to produce six
-   files. Chrome and Android
-   accept SVG icons in a manifest. iOS home-screen icons do not, so an
-   iPhone user who installs this gets the default screenshot tile —
-   recorded in docs/05-SWITCHES.md with what to do about it.
-   ============================================================ */
+   THE SUPPLIED ARTWORK DISAGREES WITH ITSELF, which is worth knowing
+   before trusting any one file. docs/brand/ holds four renderings of
+   this mark and no two match:
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+     guidelines-spread.jpg  quartered colour shield, straight crossing
+                            lines, crane, aircraft — captioned PRIMARY
+     lockup-wide.jpg        gold line art, curved contrail arcs, an
+                            airliner, crane on a runway
+     splash-portrait.jpg    gold line art, crane at the TOP, TWO
+                            aircraft, runway in perspective
+     slide-template.png     gold line art on cream, different again
+
+   So "align the icons with the brand assets" cannot mean "match the
+   assets", because they do not match each other. It means PICK ONE AND
+   USE ONLY IT, which is what this does: lockup-wide.jpg, for three
+   reasons and not by preference.
+
+     · It carries the mark at the largest clean size of the four —
+       330x425 against slide-template's 240x275.
+     · It is a flat render rather than a photograph of a printed page,
+       so there is no perspective, paper grain or page curl to key
+       through.
+     · Its ground is a flat-ish pattern rather than a gradient, and a
+       gradient cannot be keyed away without keying away the mark.
+
+   RESOLUTION IS SUFFICIENT AND THAT WAS CHECKED, NOT ASSUMED. 425px of
+   source sounds thin for a 512px icon, but no icon draws the mark at
+   its full canvas: the largest is icon-512 at pad 1.25, which puts the
+   mark at 410px, and the maskable is smaller still. Every output below
+   DOWNSCALES the source. Nothing is upscaled.
+
+   ---------------------------------------------------------------
+   THE KEY, AND WHY IT RUNS AT 4x.
+
+   Every pixel is snapped to one of two brand tokens: gold if it is part
+   of the mark, ground if it is not. That is what removes the terracotta
+   pattern the mark sits on — at icon sizes that pattern is noise
+   competing with the only thing worth seeing.
+
+   Keying at the target size would also snap away the ANTIALIASING and
+   leave hard gold stair-steps. Keying at 4x and letting the downscale
+   average the result gives a clean ground and smooth strokes: separate
+   where there are pixels to spare, smooth afterwards.
+
+   ---------------------------------------------------------------
+   PNG ONLY. There is no vector source for this mark — the supplied
+   files are all raster — so an SVG here could only ever be a redrawing,
+   which is the thing that was wrong. An SVG icon beside a PNG one is
+   also two logos with the browser choosing, which is what the favicon
+   pair did until it was found.
+
+   Rasterising uses Playwright, already a devDependency for the smoke
+   suite, rather than adding an image library.
+   ===================================================================== */
+
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const LOGO = resolve(ROOT, 'apps/web/src/components/Logo.js');
 const OUT = resolve(ROOT, 'apps/web/public/icons');
+const LOCKUP = resolve(ROOT, 'docs/brand/lockup-wide.jpg');
 
-const source = readFileSync(LOGO, 'utf8');
-
-/** Pull a path constant out of the Logo module by name. */
-function constant(name) {
-  // SHIELD_PATH is an array joined with spaces; the element paths are
-  // plain string literals. Both forms are handled, and a name that
-  // matches neither is a hard failure — charter rule 11, since every
-  // icon below asserts this geometry exists.
-  const array = new RegExp(`${name} = \\[([\\s\\S]*?)\\]\\.join\\(' '\\)`).exec(source);
-  if (array) {
-    return [...array[1].matchAll(/'([^']*)'/g)].map((m) => m[1]).join(' ');
-  }
-  const literal = new RegExp(`${name} =\\s*\\n?\\s*'([^']*)'`).exec(source);
-  if (literal) return literal[1];
-
-  /* A bare array of literals — RUNWAY_BARS is three separate paths that
-     must stay separate, because joining them would connect the last
-     point of one bar to the first of the next and draw the runway as a
-     zigzag. Returned as an array; every other form returns a string. */
-  const bare = new RegExp(`${name} = \\[([\\s\\S]*?)\\];`).exec(source);
-  if (bare) return [...bare[1].matchAll(/'([^']*)'/g)].map((m) => m[1]);
-
-  throw new Error(
-    `${name} not found in apps/web/src/components/Logo.js.\n` +
-      `  The icon suite is generated from that module's geometry. If the ` +
-      `constant was renamed, rename it here; do not paste the path.`
-  );
-}
-
-const SHIELD = constant('SHIELD_PATH');
-const CRANE_BODY = constant('CRANE_BODY');
-const CRANE_NECK = constant('CRANE_NECK');
-const CRANE_HEAD = constant('CRANE_HEAD');
-const AIRCRAFT = constant('AIRCRAFT');
-const DETAIL_MIN_HEIGHT = Number(/DETAIL_MIN_HEIGHT = (\d+)/.exec(source)?.[1] ?? 40);
-const ARC_CLIMB = constant('ARC_CLIMB');
-const ARC_DESCEND = constant('ARC_DESCEND');
-const CRANE_WING = constant('CRANE_WING');
-const CRANE_EYE = constant('CRANE_EYE');
-const QUARTER_TOP = constant('QUARTER_TOP');
-const QUARTER_LEFT = constant('QUARTER_LEFT');
-const QUARTER_RIGHT = constant('QUARTER_RIGHT');
-const CRANE_LEGS = constant('CRANE_LEGS');
-const CRANE_CREST = constant('CRANE_CREST');
-const RUNWAY_BARS = constant('RUNWAY_BARS');
-
-/* Brand values, read from the stylesheet rather than typed here — one
+/* Brand values read from the stylesheet rather than typed here — one
    source, and check-brand.mjs already guards them. */
 const css = readFileSync(resolve(ROOT, 'apps/web/src/style.css'), 'utf8');
 const token = (name) => {
@@ -82,222 +83,176 @@ const token = (name) => {
   if (!m) throw new Error(`--${name} not found in style.css`);
   return m[1];
 };
-
 const GOLD = token('us-gold');
-const TERRACOTTA = token('us-terracotta');
-const TEAL = token('us-teal');
 const CHARCOAL = token('us-charcoal');
-const SAND = token('us-sand');
+
+/* BOUNDS READ OFF THE ARTWORK, not guessed: the shield spans x 145..475
+   and y 140..565 of the 1536x864 lockup. Squared about its own centre so
+   the mark is centred rather than cropped to its own aspect. */
+const MARK_BOX = { x: 145, y: 140, w: 330, h: 425 };
+const SUPERSAMPLE = 4;
 
 /**
- * One icon.
+ * One icon, cropped and keyed.
  *
- * `safeZone` shrinks the artwork for maskable icons: every platform mask
- * can crop to the outer 20%, so the artwork sits at 58% of the canvas
- * inside the 80% safe circle. An icon that fills its canvas is an icon
- * with its shoulders cut off on a Pixel.
+ * THE SOURCE WINDOW NEVER MOVES. `pad` insets the mark on the OUTPUT
+ * tile; it does not widen the crop. Those are two different operations
+ * and the first version conflated them, which is a defect you can see:
+ * widening the window to pad 1.60 for the maskable reached past the
+ * mark into the lockup's decorative border, and the key — correctly,
+ * since that border is the same gold — brought a strip of pattern onto
+ * the top of the tile.
+ *
+ * Cropping tight and insetting afterwards cannot do that, because there
+ * is no source outside the mark in the pipeline at all. It also means
+ * every icon keys IDENTICAL pixels and differs only in layout, so a
+ * change in the key cannot affect one tile and not another.
+ *
+ * `ground` of null leaves everything that is not the mark transparent,
+ * for the one output that sits on a surface of its own.
  */
-function icon({ size, background, ink, accent, safeZone = false, colour = false }) {
-  /* 0.65 rather than 0.58 for the maskable, and the number is measured
-     rather than eyeballed. The mask crops to the outer 20%, leaving a
-     safe circle of 0.8 x 512 = 409.6px. The artwork is 112x132 units,
-     so at scale s its DIAGONAL is sqrt((112s)^2 + (132s)^2) = 173s, and
-     that diagonal is what has to fit the circle rather than either
-     edge. At 0.58 the diagonal came to 367px against 409.6 available —
-     a tile with visible slack on every side, which on a launcher reads
-     as a small logo floating in a dark square while the apps beside it
-     fill theirs.
+async function cropMark(page, { size, pad, ink, ground }) {
+  const src = `data:image/jpeg;base64,${readFileSync(LOCKUP).toString('base64')}`;
+  const dataUrl = await page.evaluate(
+    async ({ src, box, size, pad, ss, ink, ground }) => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
 
-     0.63 puts the diagonal at 399px, which fits with 10px to spare.
-     0.65 puts it at 412px, which OVERFLOWS by two and would have the
-     shield's corners shaved off on a circular mask — the exact failure
-     the safe zone exists to prevent, arrived at by rounding up. So the
-     number is 0.63 and it is the largest one that fits. */
-  const scale = (safeZone ? 0.63 : 0.76) * (size / 140);
-  const w = 120 * scale;
-  const h = 140 * scale;
-  const dx = (size - w) / 2;
-  const dy = (size - h) / 2;
+      const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+      const INK = rgb(ink);
+      const GND = ground ? rgb(ground) : [0, 0, 0];
 
-  /* THE DETAIL THRESHOLD, applied here as it is in the in-app mark.
-     Every icon in this suite was drawn at the reduced set — shield,
-     crane body, aircraft — regardless of size, which is right at 32px
-     and wrong at 512. A home-screen icon rendered from the reduced set
-     is a blob under a floating gold triangle.
+      /* Step one: the mark alone, keyed, at 4x the size it will occupy.
+         The window is exactly MARK_BOX squared about its own centre —
+         no pad, so nothing outside the mark is ever sampled. */
+      const drawn = Math.round((size / pad) * ss);
+      const s = Math.max(box.w, box.h);
+      const c = document.createElement('canvas');
+      c.width = c.height = drawn;
+      const g = c.getContext('2d');
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(img, box.x - (s - box.w) / 2, box.y - (s - box.h) / 2, s, s, 0, 0, drawn, drawn);
 
-     40px is Logo.js's own threshold, read from that module rather than
-     repeated, so the icons and the in-app mark cannot disagree about
-     where detail starts. */
-  const detail = size * (safeZone ? 0.58 : 0.76) >= DETAIL_MIN_HEIGHT;
+      const d = g.getImageData(0, 0, drawn, drawn);
+      const px = d.data;
+      for (let i = 0; i < px.length; i += 4) {
+        const r = px[i], gr = px[i + 1], bl = px[i + 2];
+        /* The gold of the mark against everything else in the source.
+           Tuned on the artwork and checked by rendering, not derived:
+           the ground is a dark terracotta whose red channel is high
+           enough that lightness alone does not separate them, so the
+           test is warmth (r - b, g - b) as well as level. */
+        const isMark = r > 140 && gr > 105 && bl < 140 && r - bl > 60 && gr - bl > 25;
+        px[i] = isMark ? INK[0] : GND[0];
+        px[i + 1] = isMark ? INK[1] : GND[1];
+        px[i + 2] = isMark ? INK[2] : GND[2];
+        /* Transparent OUTSIDE the mark when there is no ground — and
+           also where the inset will be, below, which is why the ground
+           is painted rather than left to the keyed rectangle. */
+        px[i + 3] = isMark || ground ? 255 : 0;
+      }
+      g.putImageData(d, 0, 0);
 
-  const bird = colour ? CHARCOAL : ink;
-  const arcs = colour ? SAND : accent;
+      /* Step two: the tile. Ground first so the inset is ground rather
+         than a transparent border, then the mark centred on it. */
+      const o = document.createElement('canvas');
+      o.width = o.height = size;
+      const og = o.getContext('2d');
+      if (ground) {
+        og.fillStyle = ground;
+        og.fillRect(0, 0, size, size);
+      }
+      og.imageSmoothingQuality = 'high';
+      const inset = (size - size / pad) / 2;
+      og.drawImage(c, inset, inset, size / pad, size / pad);
 
-  const runway = RUNWAY_BARS.map(
-    (d) => `<path d="${d}"/>`
-  ).join('\n        ');
+      /* Step three: QUANTISE THE RAMP, and this is a weight decision
+         rather than a visual one.
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <rect width="${size}" height="${size}" fill="${background}"/>
-  <g transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)}) scale(${scale.toFixed(4)})">
-    ${
-      colour
-        ? `<g stroke="none">
-      <path d="${QUARTER_TOP}" fill="${TERRACOTTA}"/>
-      <path d="${QUARTER_LEFT}" fill="${TEAL}"/>
-      <path d="${QUARTER_RIGHT}" fill="${GOLD}"/>
-    </g>`
-        : ''
-    }
-    <path d="${SHIELD}" fill="none" stroke="${ink}" stroke-width="5" stroke-linejoin="round"/>
-    ${
-      detail
-        ? `<g fill="none" stroke="${arcs}" stroke-width="2.6" stroke-linecap="round">
-      <path d="${ARC_CLIMB}"/>
-      <path d="${ARC_DESCEND}"/>
-    </g>`
-        : ''
-    }
-    <g fill="${bird}">
-      <path d="${CRANE_BODY}"/>
-      <path d="${CRANE_NECK}"/>
-      <path d="${CRANE_HEAD}"/>
-    </g>
-    ${
-      detail
-        ? `<path d="${CRANE_WING}" fill="${SAND}" opacity="0.5"/>
-    <path d="${CRANE_EYE}" fill="${SAND}"/>
-    <g fill="none" stroke="${bird}" stroke-width="2.4" stroke-linecap="round">
-      <path d="${CRANE_LEGS}"/>
-    </g>
-    <g fill="none" stroke="${accent}" stroke-width="1.9" stroke-linecap="round">
-      <path d="${CRANE_CREST}"/>
-    </g>
-    <g fill="none" stroke="${bird}" stroke-width="3" stroke-linecap="round">
-        ${runway}
-    </g>`
-        : ''
-    }
-    <path d="${AIRCRAFT}" fill="${accent}"/>
-  </g>
-</svg>
-`;
+         The downscale leaves a continuous gradient between ground and
+         mark along every edge, so a tile that is two colours to look at
+         is thousands of colours to encode. Cropped icons came in 38 KB
+         heavier than the flat-filled SVGs they replaced — enough to put
+         public/ over its budget, on a product whose promise is a ramp
+         agent at a remote strip paying for all of this on install.
+
+         Snapping each channel to 16 levels collapses that ramp to a
+         handful of repeated byte patterns, which is what PNG's filters
+         and zlib are good at. 16 levels of antialiasing on a 32px icon
+         is more than the eye resolves; the saving is most of the 38 KB.
+         Checked by rendering at every size afterwards, not assumed. */
+      const STEPS = 16;
+      const snap = (v) => Math.round((v / 255) * (STEPS - 1)) * (255 / (STEPS - 1));
+      const out = og.getImageData(0, 0, size, size);
+      for (let i = 0; i < out.data.length; i++) out.data[i] = snap(out.data[i]);
+      og.putImageData(out, 0, 0);
+
+      return o.toDataURL('image/png');
+    },
+    { src, box: MARK_BOX, size, pad, ss: SUPERSAMPLE, ink, ground },
+  );
+  return Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
 }
 
 /* =====================================================================
-   THE BROWSER TAB IS NOT A SMALL VERSION OF THE LOGO.
+   THE PADS, DERIVED.
 
-   The favicon was rendered by icon() above, at the reduced detail set —
-   which was the right instinct and the wrong output, because the
-   reduction it applies still draws the shield as an OUTLINE. At 32px
-   that 5-unit stroke scales to 0.87px; at the 16px a browser tab
-   actually renders, it is 0.43px. A sub-pixel stroke does not draw a
-   thin line, it draws a grey smudge — so the shape that carries the
-   whole identity was the first thing to disappear.
+   The mark is drawn at 1/pad of the tile's height, centred, on ground.
+   pad is a LAYOUT number and touches nothing about the crop.
 
-   AND IT WAS INVISIBLE ON HALF THE BROWSERS IN USE. The ground was
-   `none` and the ink was charcoal, so on a dark tab bar the mark was
-   near-black on near-black. The rasteriser records the reasoning: it
-   keeps transparency because "a 32px charcoal mark on an opaque white
-   square is a white square in a dark browser theme". That is true, and
-   transparency solves it by making the mark vanish instead. Both
-   failures have one fix, and it is not transparency: an OPAQUE ground
-   in the brand's own dark, carrying the mark in gold. That reads on a
-   white tab bar and on a black one, because it brings its own contrast
-   rather than borrowing the browser's.
+   1.10  THE BROWSER TAB. Nearly full bleed, because a favicon is 16
+         device pixels in a row of twenty and every one of them counts.
+         Rendered at 16, 32 and 64 on light and dark grounds and in a
+         tab strip beside five other favicons before it was believed.
 
-   SO THE TAB GETS A SILHOUETTE. Filled, not stroked — a fill has no
-   width to lose. No crane, no crest, no aircraft: at 16px there are
-   about 256 pixels to spend and a bird with a beak, an eye and two legs
-   spends them all on noise. What survives is the shield's proportion
-   and the gold-on-charcoal pairing, which is enough to find in a row of
-   twenty tabs, and that is the entire job of a favicon.
+   1.25  APP ICONS AND THE TOUCH ICON. Mark at 80% of the tile, which is
+         the breathing room a home-screen icon wants and a tab icon
+         cannot afford.
 
-   The other four icons are unchanged. A home-screen tile is rendered at
-   192px and up, is seen alone rather than in a row, and is the one
-   place the full mark should be drawn.
+   1.60  MASKABLE, and this one is measured. The mask crops to the outer
+         20%, leaving a safe circle of 0.8 x 512 = 409.6px. What has to
+         fit that circle is the mark's DIAGONAL, not either edge: the
+         mark is 330x425, so drawn at height 512/pad its diagonal is
+         (512/pad) x sqrt((330/425)^2 + 1) = 648.2/pad. Setting that at
+         or under 409.6 gives pad >= 1.583, so 1.60 — the smallest value
+         that fits, with 6px to spare. Rounding DOWN here is what shaves
+         the shield's corners off on a circular mask, which is the exact
+         failure the safe zone exists to prevent.
    ===================================================================== */
-function silhouette({ size, background, mark }) {
-  /* The shield occupies x 4..116, y 4..136 of the 120x140 artboard. */
-  const ART_X = 4;
-  const ART_Y = 4;
-  const ART_W = 112;
-  const ART_H = 132;
+const RASTER = [
+  { to: 'favicon-32.png', size: 32, pad: 1.1, ink: GOLD, ground: CHARCOAL },
+  { to: 'icon-192.png', size: 192, pad: 1.25, ink: GOLD, ground: CHARCOAL },
+  { to: 'icon-512.png', size: 512, pad: 1.25, ink: GOLD, ground: CHARCOAL },
+  { to: 'maskable-512.png', size: 512, pad: 1.6, ink: GOLD, ground: CHARCOAL },
+  // iOS reads this one and only this one. 180 is the size it asks for.
+  { to: 'apple-touch-icon.png', size: 180, pad: 1.25, ink: GOLD, ground: CHARCOAL },
+  /* THE TWO THAT BRING NO GROUND, for the mark inside the product
+     rather than on a tile. Transparent, so each takes the surface it is
+     placed on, and there are two because the surfaces are opposite —
+     the guidelines list a monochrome variant for each and this is
+     those, not an invention.
 
-  /* 86% of the canvas. Full bleed would clip the shield's shoulders
-     against the tab's own rounding on some browsers, and much less than
-     this wastes the pixels the whole exercise is about. */
-  const scale = (size * 0.86) / ART_H;
-  const dx = (size - ART_W * scale) / 2 - ART_X * scale;
-  const dy = (size - ART_H * scale) / 2 - ART_Y * scale;
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <rect width="${size}" height="${size}" fill="${background}"/>
-  <g transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)}) scale(${scale.toFixed(4)})">
-    <path d="${SHIELD}" fill="${mark}"/>
-  </g>
-</svg>
-`;
-}
+     SIZED TO WHERE THEY ARE USED, not to a round number. The header and
+     footer lockup draws at 34px, so 128 covers a 3.7x display; the home
+     hero draws at 116px, so 256 covers 2.2x. Shipping both at 256 would
+     cost 10 KB for pixels a header never renders. */
+  { to: 'mark-light-128.png', size: 128, pad: 1, ink: CHARCOAL, ground: null },
+  { to: 'mark-dark-256.png', size: 256, pad: 1, ink: GOLD, ground: null },
+];
 
 mkdirSync(OUT, { recursive: true });
 
-const FILES = {
-  // Browser tab. A SILHOUETTE, not a reduction of the logo — see the
-  // note above silhouette(): an outline loses its stroke to sub-pixel
-  // rounding at tab size, and a transparent ground loses the mark
-  // itself on a dark tab bar.
-  'favicon.svg': silhouette({ size: 32, background: CHARCOAL, mark: GOLD }),
-  // The installed app icon is the PRIMARY logo — the quartered shield
-  // from the identity guidelines, not a monochrome reduction. This is
-  // the one place the brand is seen at size and out of context.
-  'icon-192.svg': icon({ size: 192, background: SAND, ink: CHARCOAL, accent: GOLD, colour: true }),
-  'icon-512.svg': icon({ size: 512, background: SAND, ink: CHARCOAL, accent: GOLD, colour: true }),
-  // Maskable: dark field, gold mark, artwork inside the safe zone.
-  'maskable-512.svg': icon({
-    size: 512,
-    background: CHARCOAL,
-    ink: GOLD,
-    accent: GOLD,
-    safeZone: true,
-  }),
-  // Transparent, for use inside documents and exports.
-  'mark.svg': icon({ size: 256, background: 'none', ink: CHARCOAL, accent: GOLD }),
-};
-
-for (const [name, contents] of Object.entries(FILES)) {
-  writeFileSync(resolve(OUT, name), contents);
-  console.log(`  wrote icons/${name}`);
+/* THE DRAWN ICONS ARE DELETED RATHER THAN LEFT, and this loop is here
+   because leaving them is how a browser goes on picking one. They were
+   generated from Logo.js and none of them is regenerated now; a stale
+   icon-512.svg sitting in public/ is a second logo the manifest or a
+   future edit can still reach. check-assets.mjs fails on an undeclared
+   file, so this and that gate close from opposite ends. */
+for (const stale of readdirSync(OUT).filter((f) => f.endsWith('.svg'))) {
+  unlinkSync(resolve(OUT, stale));
+  console.log(`  removed icons/${stale}  (drawn, superseded by the crop)`);
 }
-
-/* ============================================================
-   PNG, because an SVG-only manifest is not an installable app.
-
-   This shipped with SVG icons alone, which looks tidy and is not
-   installable in the two places that matter:
-
-     · iOS ignores an SVG apple-touch-icon completely. Add to Home
-       Screen produces a screenshot of the page as the icon — the app
-       arrives on someone's home screen looking like a bookmark of a
-       half-rendered form.
-     · Chrome's install criteria want a raster icon at 192 and 512, and
-       a maskable one to avoid the white circle that Android draws
-       around anything it cannot mask.
-
-   Rasterised with Playwright rather than by adding sharp or canvas:
-   Playwright is already a devDependency because the smoke suite drives
-   a real browser, and the browser that renders the app is the correct
-   authority on what its own SVG looks like. No new dependency, and no
-   second renderer to disagree with the first.
-   ============================================================ */
-const RASTER = [
-  { from: 'icon-192.svg', to: 'icon-192.png', size: 192 },
-  { from: 'icon-512.svg', to: 'icon-512.png', size: 512 },
-  { from: 'maskable-512.svg', to: 'maskable-512.png', size: 512 },
-  // iOS reads this one and only this one. 180 is the size it asks for.
-  { from: 'icon-512.svg', to: 'apple-touch-icon.png', size: 180 },
-  { from: 'favicon.svg', to: 'favicon-32.png', size: 32 },
-];
 
 /* The rasterised PNGs are COMMITTED, and this step regenerates them
    where a browser exists rather than requiring one everywhere.
@@ -322,27 +277,16 @@ try {
 
 if (browser) {
   try {
-    for (const { from, to, size } of RASTER) {
-      const page = await browser.newPage({
-        viewport: { width: size, height: size },
-        deviceScaleFactor: 1,
-      });
-      const svg = readFileSync(resolve(OUT, from), 'utf8');
-      /* The SVG is inlined into a page sized exactly to the icon, with
-         no margin and a transparent ground, so the raster is the artwork
-         and nothing else. `omitBackground` keeps the favicon's
-         transparency — a 32px charcoal mark on an opaque white square is
-         a white square in a dark browser theme. */
-      await page.setContent(
-        `<!doctype html><meta charset="utf-8">` +
-          `<style>html,body{margin:0;padding:0;background:transparent}` +
-          `svg{display:block;width:${size}px;height:${size}px}</style>` +
-          svg
+    const page = await browser.newPage();
+    await page.setContent('<!doctype html><meta charset="utf-8"><body></body>');
+    for (const spec of RASTER) {
+      writeFileSync(resolve(OUT, spec.to), await cropMark(page, spec));
+      console.log(
+        `  wrote icons/${spec.to}  (${spec.size}px, pad ${spec.pad}, ` +
+          `${spec.ground ? 'on charcoal' : 'transparent'})`,
       );
-      await page.screenshot({ path: resolve(OUT, to), omitBackground: true });
-      await page.close();
-      console.log(`  wrote icons/${to}  (${size}px, rasterised from ${from})`);
     }
+    await page.close();
   } finally {
     await browser.close();
   }
@@ -350,18 +294,20 @@ if (browser) {
   const missing = RASTER.filter(({ to }) => !existsSync(resolve(OUT, to))).map((r) => r.to);
   if (missing.length > 0) {
     console.error(
-      `\nFATAL: ${missing.length} raster icon(s) missing and no browser to draw them:\n` +
+      `\nFATAL: ${missing.length} icon(s) missing and no browser to crop them:\n` +
         missing.map((m) => `  · icons/${m}`).join('\n') +
         `\n\n  These are committed to the repository. Regenerate them on a machine\n` +
         `  with Playwright's Chromium and commit the result:\n\n` +
         `      npx playwright install chromium && npm run icons\n\n` +
-        `  Do not ship without them: an SVG-only manifest is not installable —\n` +
-        `  iOS substitutes a screenshot of the page for the touch icon.`
+        `  Do not ship without them: an icon-less manifest is not installable —\n` +
+        `  iOS substitutes a screenshot of the page for the touch icon.`,
     );
     process.exit(1);
   }
   for (const { to } of RASTER) console.log(`  verified icons/${to} (committed)`);
 }
 
-const total = Object.keys(FILES).length + RASTER.length;
-console.log(`\n${total} icons generated from Logo.js geometry.`);
+console.log(
+  `\n${RASTER.length} icons, every one cropped from docs/brand/lockup-wide.jpg. ` +
+    `Nothing drawn.`,
+);

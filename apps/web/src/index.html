@@ -23,11 +23,17 @@
          them tappable telephone links is noise at best and a misdial in
          a hangar at worst. -->
     <meta name="format-detection" content="telephone=no" />
-    <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
     <!-- iOS ignores an SVG touch icon entirely and substitutes a
          screenshot of the page, so Add to Home Screen produced a
          bookmark of a half-rendered form. PNG, 180px, as it asks. -->
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <!-- PNG only, and there used to be an SVG one listed above it. The
+         vector was drawn from Logo.js, whose geometry has no contrail
+         arc — the sweeping line carrying the aircraft, and the most
+         recognisable thing in the mark. A browser preferring the SVG
+         would therefore have shown the wrong logo. This one is cropped
+         from the supplied lockup by scripts/build-icons.mjs; browsers
+         downscale it for the 16px slot better than keying at 16 does. -->
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="manifest" href="/manifest.json" />
     <!-- ONE preload now, not two. DM Sans ships as a variable face

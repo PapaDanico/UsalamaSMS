@@ -3122,6 +3122,88 @@ try {
     );
   });
 
+  await check('THE MARK IS VISIBLE AGAINST THE GROUND IT IS ON', async () => {
+    // The mark used to be an inline SVG of the quartered shield —
+    // terracotta, teal and gold — which reads on any ground because it
+    // brings three colours of its own. It is now a cropped PNG of the
+    // supplied artwork, and monochrome: charcoal ink for light grounds,
+    // gold for dark. Two files, and the caller picks.
+    //
+    // A caller that picks wrong renders a charcoal mark on the charcoal
+    // footer, which is a logo you cannot see. That is not hypothetical
+    // — it is what the first version of this change shipped into the
+    // build, and NOTHING caught it. check:brand compares colour TOKENS
+    // against the grounds they are declared on; check:a11y reads text
+    // contrast. An <img> that happens to match the panel behind it is
+    // neither, so it took a screenshot to find.
+    //
+    // This is that screenshot, as an assertion. The home page carries
+    // all three cases at once: the header lockup on Warm Sand, the hero
+    // mark on the dark band, and the footer lockup on charcoal.
+    //
+    // IT MEASURES PIXELS RATHER THAN COMPUTED STYLES, and the first
+    // version did the latter — walking up for a background-color and
+    // comparing luminance. That reported the hero mark as sitting on
+    // WHITE, because the hero band paints a gradient through
+    // background-image and its background-color is transparent. The
+    // check was wrong about the one case it was written for.
+    //
+    // So it screenshots each mark as composited and reads the range of
+    // luminance inside it. That is the property that matters and it
+    // cannot be fooled by how the ground is painted: a mark you can see
+    // has light and dark pixels in its own box; a mark that matches its
+    // ground has one flat value.
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+
+    const marks = page.locator('img.us-mark');
+    const count = await marks.count();
+    assert(count > 0, 'no mark rendered on the home page at all');
+
+    for (let i = 0; i < count; i++) {
+      const el = marks.nth(i);
+      const src = await el.getAttribute('src');
+      const shot = (await el.screenshot()).toString('base64');
+
+      const range = await page.evaluate(async (b64) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${b64}`;
+        await img.decode();
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const g = c.getContext('2d');
+        g.drawImage(img, 0, 0);
+        const d = g.getImageData(0, 0, c.width, c.height).data;
+        const lum = (r, gr, bl) =>
+          [r, gr, bl]
+            .map((v) => {
+              const s = v / 255;
+              return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+            })
+            .reduce((a, v, k) => a + v * [0.2126, 0.7152, 0.0722][k], 0);
+        let lo = 1;
+        let hi = 0;
+        for (let n = 0; n < d.length; n += 4) {
+          const L = lum(d[n], d[n + 1], d[n + 2]);
+          if (L < lo) lo = L;
+          if (L > hi) hi = L;
+        }
+        // WCAG's contrast ratio between the lightest and darkest pixel.
+        return (hi + 0.05) / (lo + 0.05);
+      }, shot);
+
+      /* 3:1 is the WCAG floor for a non-text graphic that has to be
+         distinguishable. The two correct pairings land near 6:1; the
+         charcoal-on-charcoal defect measured about 1.05:1. */
+      assert(
+        range >= 3,
+        `${src} renders at a contrast of ${range.toFixed(2)}:1 against the ground it is ` +
+          `composited on. Below 3:1 the mark is not distinguishable — the light and dark ` +
+          `variants are two files and this one is on the wrong ground.`
+      );
+    }
+  });
+
   await check('the service worker registers and precaches the shell', async () => {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     const state = await page.evaluate(async () => {
