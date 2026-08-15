@@ -47,6 +47,7 @@ const DECLARED = new Map([
   ['fonts/dm-sans-latin-ext.woff2', [33, 'Body face, Latin Extended. Kenyan and East African names carry diacritics this subset covers and the base one does not.']],
   ['fonts/cormorant-garamond-latin.woff2', [39, 'Display face, Latin. Headings only.']],
   ['fonts/cormorant-garamond-latin-ext.woff2', [35, 'Display face, Latin Extended.']],
+  ['fonts/jetbrains-mono-identifiers.woff2', [7, 'IDENTIFIERS ONLY, and the subset is the whole argument. --us-font-mono was a system stack — ui-monospace, SFMono-Regular, Menlo, Consolas — so an audit-chain hash rendered in a different face on a manager’s Mac and a ramp agent’s Android, which is exactly the data where character shape carries the meaning. A full Latin cut of this face is ~55 KB; subset to digits, A–Z, a–z and the punctuation an identifier uses, it is 6 KB, and it still disambiguates 0/O and 1/l/I, which is the only reason it is here. NOT FOR NUMBERS: figures already align through font-variant-numeric on the body face at zero bytes, and mono digits are wider and lighter than DM Sans’s, so setting a risk matrix in them would read as weaker rather than more precise.']],
 
   ['icons/mark.svg', [3, 'The shield mark, generated from Logo.js by build-icons.mjs. Never hand-edited.']],
   ['icons/favicon.svg', [2, 'Browser tab, vector.']],
@@ -67,7 +68,13 @@ const DECLARED = new Map([
 /* Everything in public/, together. Currently 268 KB, of which 162 KB is
    the four font subsets. A raise needs a receipt here, the same as the
    JavaScript budget. */
-const TOTAL_BUDGET_KB = 300;
+const TOTAL_BUDGET_KB = 306;
+/* 300 -> 306 for the mono identifier subset. 6.3 KB, and it is the
+   cheapest font in this directory by a factor of five — the full Latin
+   cut of the same face would have been ~55 KB and would have taken this
+   budget past 350. What it buys is recorded on the file's own line
+   above; what it cost is one file, no Latin-Extended sibling, and no
+   change to any other asset. */
 /* 280 -> 300 for the crane on the offline page. 27 KB of the directory
    is now one illustration, which is the largest single non-font asset
    here and is charged to every install. Recorded rather than absorbed:

@@ -36,7 +36,12 @@
   /* Tabular figures matter here in a way they do not on a marketing
      site: risk indices, SPI values and report references are read in
      columns and compared down the column. */
-  --us-font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  /* IDENTIFIERS, NOT NUMBERS. See fonts.css — a system mono stack is
+     four different faces, and an audit hash that reads `1` on one screen
+     and `l` on another is a hash two people cannot agree on. Figures
+     stay in the body face and align through font-variant-numeric below,
+     which costs nothing. */
+  --us-font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
   /* THE LADDER, AND IT IS NOW THE ONLY ONE.
 
@@ -1535,9 +1540,18 @@ html { scroll-padding-top: var(--us-chrome); }
   color: var(--us-text-secondary);
 }
 
+/* THE CODE ITSELF IN MONO, AND ONLY THE CODE. A CICTT category and an
+   aircraft type mix letters and digits — LOC-I, SCF-PP, C208, B738,
+   F100, L410 — which is precisely where a proportional face lets 0 and
+   O, or 1 and l, land on the same shape. Its NAME beside it stays in
+   the body face, because that is prose and mono prose is harder to
+   read, not easier. See fonts.css: 6 KB, subset to the characters an
+   identifier can contain. */
 .queue__code b {
   color: var(--us-text-primary);
   font-weight: 700;
+  font-family: var(--us-font-mono);
+  font-size: .95em;
 }
 
 /* NOT AN ERROR, and it must not read as one. A report filed an hour ago

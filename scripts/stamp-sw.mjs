@@ -1565,7 +1565,36 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    THE ENTRY RULE STILL STANDS. Entry beginning to track total is the
    moment to take something out instead of buying more, and it has now
    held flat across three consecutive raises. */
-const BUDGET = { entry: 217 * 1024, js: 500 * 1024, css: 60 * 1024 };
+/* CSS 60 -> 61 KB, for the identifier face, and it is FOUR
+   DECLARATIONS. The stylesheet had two bytes of headroom — 61,438 of
+   61,440 — which is why this raise exists at all rather than being
+   absorbed the way a normal rule would be.
+
+     css        61,438 -> 61,747  +309 bytes
+     entry     217,441 -> 217,441 UNMOVED
+     total js  511,314 -> 511,314 UNMOVED
+
+   WHAT IT BUYS. `--us-font-mono` was declared in the brand file and
+   read by NOTHING — a token naming a system stack that no rule ever
+   applied. Pointing it at a self-hosted face without also using it
+   would have been worse than leaving it alone: the service worker
+   precaches by extension, so the file would have been downloaded by
+   every reporter on install and rendered on no screen.
+
+   So it goes where the confusion is real. A CICTT category and an
+   aircraft type mix letters and digits — LOC-I, SCF-PP, C208, B738,
+   F100, L410 — and a proportional face lets 0 and O, or 1 and l, land
+   on the same shape. The code goes mono; its NAME beside it stays in
+   the body face, because that is prose.
+
+   AND THE HONEST LIMIT, recorded because it is the reason this is 309
+   bytes rather than a typographic pass: the strongest case for a mono
+   face is the audit-chain hash, and NO HASH IS RENDERED ANYWHERE IN
+   THIS PRODUCT YET. When the verification output gets a surface, it
+   reads --us-font-mono and this is already paid for. Until then the
+   claim is the codes, and the receipt says so rather than implying the
+   larger one. */
+const BUDGET = { entry: 217 * 1024, js: 500 * 1024, css: 61 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
