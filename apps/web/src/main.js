@@ -282,7 +282,7 @@ function lazy(el, load) {
 
 router
   .register('/', (el) => renderHome(el), { title: 'Safety intelligence for African skies' })
-  .register('/report', (el) => renderReport(el), { title: 'File a report' })
+  .register('/report', (el) => renderReport(el), { title: 'File a report', surface: 'tool' })
   /* LAZY, and this was the entry budget's last 4 KB.
 
      The queue is a working destination and splitting it is not free —
@@ -300,25 +300,25 @@ router
   .register(
     '/today',
     (el) => lazy(el, () => import('./tools/today/index.js').then((m) => (o) => m.render(o))),
-    { title: 'What needs you today' }
+    { title: 'What needs you today', surface: 'tool' }
   )
   .register(
     '/triage',
     (el) => lazy(el, () => import('./tools/triage/index.js').then((m) => (o) => void m.render(o))),
-    { title: 'The reporting queue' }
+    { title: 'The reporting queue', surface: 'tool' }
   )
   // NOT a guard in front of the report form, deliberately. Filing must
   // never require a password — see the header of tools/login. This route
   // is where someone goes to make the queue send, not a gate they pass
   // through to reach the product.
-  .register('/account', (el) => renderLogin(el), { title: 'Sign in' })
+  .register('/account', (el) => renderLogin(el), { title: 'Sign in', surface: 'tool' })
   /* LAZY, like every other destination below. The profile form is
      opened rarely and by somebody already signed in, so it has no claim
      on the chunk a reporter downloads to file a hazard. */
   .register(
     '/account/profile',
     (el) => import('./tools/login/profile.js').then((m) => m.render(el)),
-    { title: 'Your profile' }
+    { title: 'Your profile', surface: 'tool' }
   )
   /* LAZY, all of them. A ramp agent filing a hazard at a remote strip
      opens none of these, and every kilobyte here would otherwise be
@@ -334,7 +334,7 @@ router
   .register(
     '/picture',
     (el) => lazy(el, () => import('./tools/picture/index.js').then((m) => (o) => void m.render(o))),
-    { title: 'The risk picture' }
+    { title: 'The risk picture', surface: 'tool' }
   )
   .register(
     '/methodology',
@@ -344,27 +344,27 @@ router
   .register(
     '/toolkits',
     (el) => lazy(el, () => import('./tools/toolkits/index.js').then((m) => (o) => m.render(o))),
-    { title: 'Toolkits' }
+    { title: 'Toolkits', surface: 'tool' }
   )
   .register(
     '/toolkits/register',
     (el) => lazy(el, () => import('./tools/register/index.js').then((m) => (o) => m.render(o))),
-    { title: 'Risk register' }
+    { title: 'Risk register', surface: 'tool' }
   )
   .register(
     '/toolkits/sra',
     (el) => lazy(el, () => import('./tools/sra/index.js').then((m) => (o) => m.render(o))),
-    { title: 'Safety risk assessment' }
+    { title: 'Safety risk assessment', surface: 'tool' }
   )
   .register(
     '/toolkits/spi',
     (el) => lazy(el, () => import('./tools/spi/index.js').then((m) => (o) => m.render(o))),
-    { title: 'Safety performance indicators' }
+    { title: 'Safety performance indicators', surface: 'tool' }
   )
   .register(
     '/toolkits/maturity',
     (el) => lazy(el, () => import('./tools/maturity/index.js').then((m) => (o) => m.render(o))),
-    { title: 'SMS maturity assessment' }
+    { title: 'SMS maturity assessment', surface: 'tool' }
   )
   .register(
     '/templates',
@@ -374,12 +374,12 @@ router
   .register(
     '/sms',
     (el) => lazy(el, () => import('./tools/sms/index.js').then((m) => (o) => m.render(o))),
-    { title: 'The SMS record' }
+    { title: 'The SMS record', surface: 'tool' }
   )
   .register(
     '/coverage',
     (el) => lazy(el, () => import('./tools/coverage/index.js').then((m) => (o) => m.render(o))),
-    { title: 'What this covers' }
+    { title: 'What this covers', surface: 'tool' }
   )
   .register(
     '/glossary',

@@ -25,6 +25,7 @@ const toolkitsPage = read('apps/web/src/tools/toolkits/index.js');
 const sitemap = read('apps/web/src/shared/sitemap.js');
 const hints = read('apps/web/src/shared/menu-hints.js');
 const main = read('apps/web/src/main.js');
+const account = read('packages/shared/src/account.ts');
 
 /* sitemap.js is browser code with no type declarations, so it is read
    as source here rather than imported — the same way the pages are.
@@ -150,6 +151,52 @@ describe('the information architecture', () => {
         `${path} is a registered route that no section of the sitemap advertises — ` +
           'it ships reachable only by whatever happens to link to it',
       ).toBe(true);
+    }
+  });
+
+  /* WHICH SURFACE A SCREEN DECLARES ITSELF TO BE.
+   *
+   * The router stamps data-surface on the root and style.css answers it
+   * — tool screens get 27px sans headings and tighter panels, document
+   * pages keep the 52px Cormorant hero. The default is 'document',
+   * chosen so a screen that forgets to declare itself gets the
+   * editorial treatment: wrong in a way somebody notices, rather than
+   * wrong in a way that quietly under-sets a landing page.
+   *
+   * WHICH MAKES THE OMISSION SILENT IN THE OTHER DIRECTION. A new tool
+   * screen that forgets `surface: 'tool'` renders with a marketing hero
+   * over the queue and nothing fails — it just looks like the defect
+   * this split was built to remove. So the two declarations are tied
+   * together here: every destination the ACCOUNT AREA offers a
+   * signed-in person is a screen they OPERATE, and must say so.
+   *
+   * account.ts is the right source for that list rather than a second
+   * one typed here, because it is already the answer to "what does
+   * somebody signed in reach". */
+  it('declares every signed-in destination a tool surface', () => {
+    const destinations = [...account.matchAll(/href: "(\/[^"]*)"/g)].map((m) => m[1]!);
+    expect(
+      destinations.length,
+      'no destinations were read out of account.ts — this gate is blind',
+    ).toBeGreaterThan(6);
+
+    /* Each .register(...) call as its own chunk, so a path is matched
+       against ITS OWN registration rather than against whatever meta
+       happens to appear within N characters of it. */
+    const registrations = main.split('.register(').slice(1);
+    expect(registrations.length, 'no routes were read out of main.js').toBeGreaterThan(10);
+
+    for (const href of destinations) {
+      const own = registrations.find((chunk) => chunk.trimStart().startsWith(`'${href}'`));
+      expect(own, `${href} is offered by the account area and has no route`).toBeTruthy();
+      /* The chunk IS this one registration — the split ended it at the
+         next .register( — so it is searched whole rather than sliced to
+         a delimiter that may not appear in it. */
+      expect(
+        own,
+        `${href} is a screen somebody OPERATES and does not declare surface: 'tool' — ` +
+          'it will render with a 52px marketing hero over the work',
+      ).toContain("surface: 'tool'");
     }
   });
 
