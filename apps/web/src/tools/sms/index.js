@@ -333,17 +333,42 @@ const RENDER = {
     ),
 
   documents: (rows) =>
-    rows.map(
-      (d) => html`<article class="rec">
+    rows.map((d) => {
+      /* THE DISTRIBUTION RECORD, WHICH THE SERVER HAS ALWAYS RETURNED
+         AND THIS SCREEN HAS NEVER SHOWN.
+
+         Element 1.5's coverage entry claims "a record of who has read
+         the revision NOW IN FORCE", and the register carried the count
+         and the caller's own acknowledgement in every response — while
+         the only route that could CREATE one had no caller anywhere in
+         the product. So the claim was kept by a route nobody could
+         reach, which is a claim kept by nothing.
+
+         THE COUNT IS OF THIS REVISION, not of the document. A
+         supersession retires the previous revision and its reads with
+         it; somebody who read v3 has not read v4, and a register that
+         carried the old number forward would report a manual as
+         distributed on the strength of a version nobody is working to. */
+      const readOn = d.reads?.[0]?.acknowledgedAt;
+      const count = d._count?.reads ?? 0;
+      return html`<article class="rec">
         <div class="rec__head"><h4>${d.reference} · ${d.title}</h4>
           <span class="tag">v${d.version}</span></div>
         <p class="rec__meta">
           <span>${d.approvedBy?.name ? `Approved by ${d.approvedBy.name}` : 'Not approved'}</span>
           <span>${fmtDate(d.approvedOn)}</span>
           <span>${d.reviewBy ? `review by ${fmtDate(d.reviewBy)}` : 'no review date'}</span>
+          <span>${count === 1 ? '1 person has read this revision' : `${count} people have read this revision`}</span>
         </p>
-      </article>`
-    ),
+        ${readOn
+          ? html`<p class="rec__meta"><span>You read this revision on ${fmtDate(readOn)}</span></p>`
+          : html`<p class="rec__meta">
+              <button type="button" class="btn btn-ghost btn-sm" data-read="${d.id}">
+                I have read this revision
+              </button>
+            </p>`}
+      </article>`;
+    }),
 
   findings: (rows) =>
     rows.map((f) => {
@@ -1334,6 +1359,45 @@ export async function render(outlet) {
      is now — letting either be supplied would allow an approval
      attributed to somebody who did not give it, or dated to suit. */
   body.addEventListener('click', async (event) => {
+    /* ACKNOWLEDGING A CONTROLLED DOCUMENT.
+
+       IT IS THE READER'S OWN ACT, and the permission says so:
+       document.read, not document.manage. Requiring a manager's
+       permission would mean the safety office recording "everybody has
+       read the manual" on everybody's behalf, which is a record of
+       what the safety office believes rather than of what happened —
+       and an auditor asking who has read revision 4 is asking the
+       second question.
+
+       NO CONFIRM. The other acts on this screen are attributions that
+       cannot be undone by their nature — an approval, a review. This
+       one is idempotent by unique constraint: reading twice is not two
+       readings, and a second acknowledgement returns the FIRST
+       timestamp rather than moving it. Guarding an idempotent, honest
+       statement behind a dialog teaches people to dismiss dialogs. */
+    const reader = event.target.closest?.('[data-read]');
+    if (reader) {
+      const label = reader.textContent;
+      reader.disabled = true;
+      reader.textContent = 'Saving…';
+      try {
+        const res = await authFetch(`/api/v1/sms/documents/${reader.dataset.read}/read`, {
+          method: 'POST'
+        });
+        if (!res.ok) {
+          const answer = await res.json().catch(() => ({}));
+          window.alert(answer.message ?? 'That was not accepted. Nothing was recorded.');
+        }
+      } catch {
+        window.alert('The safety office could not be reached. Nothing was recorded.');
+      } finally {
+        reader.disabled = false;
+        reader.textContent = label;
+        await render(outlet);
+      }
+      return;
+    }
+
     const change = event.target.closest?.('[data-approve-change], [data-review-change]');
     if (change) {
       const approving = Boolean(change.dataset.approveChange);

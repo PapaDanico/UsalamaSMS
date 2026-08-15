@@ -1009,7 +1009,42 @@ assert(
      MUTATION-CHECK THIS BY REMOVING A PATH ENTIRELY, not by renaming
      one call site — the second leaves the string present and the gate
      correctly stays green. */
-  const reachable = (route) => web.includes(route.split("/:")[0]);
+  /* THE VERB AFTER THE PARAMETER COUNTS, AND THE FIRST ATTEMPT AT THIS
+     CRIED WOLF.
+
+     It read `route.split("/:")[0]`, which truncates
+     /api/v1/sms/documents/:id/read to /api/v1/sms/documents — a string
+     the screen that LISTS documents contains, so the check passed on
+     the prefix and never looked at the verb. That route shipped with
+     no caller anywhere in the product while element 1.5 claimed "a
+     record of who has read the revision now in force", which is a
+     claim kept by a route nobody could reach.
+
+     THE OBVIOUS TIGHTENING IS WRONG, and this file already said so
+     about a different check. Requiring the literal `/verb` in the
+     bundle fails four CORRECT routes, because the screens build the
+     verb by interpolation — `/api/v1/actions/${id}/${what}` and
+     `/api/v1/changes/${id}/${approving ? 'approve' : 'review'}`. The
+     path fragment genuinely is not in the source; the call genuinely
+     is.
+
+     So a verb counts as reached if the bundle contains it as a PATH
+     FRAGMENT or as a QUOTED STRING — the two ways a screen can
+     actually name it. Measured against every verb route the API
+     registers at the time of writing: complete, cancel, approve and
+     review pass on the quoted form, verify and notified on the path
+     form, and read failed on both, which was the one real defect.
+     Zero false positives and one true positive is the discrimination
+     this needs; a rule that cannot tell those apart is one somebody
+     turns off. */
+  const reachable = (route) => {
+    const [prefix, ...rest] = route.split("/:");
+    if (!web.includes(prefix)) return false;
+    const verbs = rest.flatMap((chunk) => chunk.split("/").slice(1)).filter(Boolean);
+    return verbs.every(
+      (verb) => web.includes(`/${verb}`) || new RegExp(`['"]${verb}['"]`).test(web),
+    );
+  };
 
   const NOT_FROM_A_SCREEN = new Map([
     ["/api/v1/auth/logout", "Called by the session module, which is not a screen."],
