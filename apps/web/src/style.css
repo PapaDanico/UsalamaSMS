@@ -1820,6 +1820,40 @@ html { scroll-padding-top: var(--us-chrome); }
   max-width: 62ch;
 }
 
+/* THE ACCOUNT INDEX. The grid itself is .picture-grid — the same
+   auto-fit that lays out the risk picture's figures, and the same
+   reason: cards per row should follow the width rather than a
+   breakpoint kept in step with a count by hand. .account-grid carries
+   only what a LIST needs that a figure grid does not. */
+.account-grid { list-style: none; padding: 0; }
+
+/* Whole card is the target, not the label inside it. */
+.account-card a {
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-1);
+  height: 100%;
+  min-height: 44px;
+  padding: var(--us-space-3);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-sm);
+  background: var(--us-surface-sunk);
+  color: var(--us-text-secondary);
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+  text-decoration: none;
+}
+
+.account-card a:hover { border-color: var(--us-teal); }
+.account-card strong { color: var(--us-text-primary); }
+
+/* Facts about the account, read rather than scanned — so a row each
+   rather than the figure grid above. */
+.account-facts { margin: var(--us-space-4) 0 0; font-size: var(--us-text-sm); }
+.account-facts > div { display: flex; gap: var(--us-space-2); padding: var(--us-space-1) 0; }
+.account-facts dt { color: var(--us-text-tertiary); min-width: 8rem; }
+.account-facts dd { margin: 0; color: var(--us-text-primary); }
+
 .picture-list {
   margin: var(--us-space-3) 0;
   padding-left: var(--us-space-5);

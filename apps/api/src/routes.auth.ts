@@ -9,6 +9,24 @@
 import type { FastifyInstance } from "fastify";
 import { LoginSchema } from "@usalamasms/shared";
 import { SignupSchema } from "../../../packages/shared/src/signup";
+import { z } from "zod";
+import { PERMISSIONS, type Role } from "@usalamasms/shared";
+
+/* WHAT A PERSON MAY CHANGE ABOUT THEMSELVES, and the email is not on
+   the list — see the route below. Trimmed and bounded to the same
+   shape SignupSchema uses for the same column, so a name that was
+   acceptable at signup stays acceptable afterwards. */
+const ProfileSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+});
+
+/* THE CURRENT ONE IS REQUIRED, and the new one meets the same minimum
+   LoginSchema demands — a change route with a weaker floor than the
+   sign-up form is a downgrade dressed as a feature. */
+const PasswordChangeSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(12),
+});
 /* By path, not through the barrel — routes.reports.ts records why: the
    report form imports the barrel, so anything it re-exports rides in
    the entry chunk a ramp agent downloads before filing. */
@@ -541,17 +559,233 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
      AOC number too, where the operator has one, because that is the
      reference a regulator files a pack under. */
   app.get("/api/v1/auth/me", { preHandler: [authenticate] }, async (req) => {
-    const org = await prisma.org.findUnique({
-      where: { id: req.auth!.org },
-      select: { name: true, aocNumber: true, jurisdiction: true },
-    });
+    const [org, user] = await Promise.all([
+      prisma.org.findUnique({
+        where: { id: req.auth!.org },
+        select: { name: true, aocNumber: true, jurisdiction: true },
+      }),
+      /* WHO THE PERSON IS, not only which tenant they are in. The
+         account area could not say "you are signed in as" without this
+         — it had the org's name and not the reader's, which is the
+         wrong way round for a page about them.
+
+         Scoped by org as well as by id. The id comes from a verified
+         token so the org clause adds nothing today; it costs nothing
+         and it is the clause somebody would otherwise have to remember
+         to add the day this is reached any other way. */
+      prisma.user.findFirst({
+        where: { id: req.auth!.sub, orgId: req.auth!.org },
+        select: { name: true, email: true, createdAt: true },
+      }),
+    ]);
+
     return {
       userId: req.auth!.sub,
       orgId: req.auth!.org,
       role: req.auth!.role,
+      name: user?.name ?? null,
+      email: user?.email ?? null,
+      memberSince: user?.createdAt?.toISOString() ?? null,
       orgName: org?.name ?? null,
       aocNumber: org?.aocNumber ?? null,
       jurisdiction: org?.jurisdiction ?? null,
+      /* THE PERMISSIONS THEMSELVES, and this is what stops the account
+         area becoming a second copy of the matrix.
+
+         The queue already returns which moves a caller may make rather
+         than letting the screen work it out, for exactly this reason: a
+         client that decides for itself what a role may do is a second
+         copy of the permission table, and it is the copy that goes
+         stale. An index of destinations is the same problem one layer
+         out — so the server says what this caller holds, and the screen
+         filters on the answer. */
+      permissions: [...(PERMISSIONS[req.auth!.role as Role] ?? [])],
     };
   });
+
+  /* ------------------------------------------------------------------
+     CHANGING YOUR OWN NAME.
+
+     Small, and it existed nowhere. A user could be renamed by nobody —
+     not an administrator, not themselves — so a person who married, or
+     was entered with a typo on the day the operator was seeded, carried
+     it on every report they filed and every disposition they recorded
+     for the life of the account.
+
+     THE EMAIL IS NOT CHANGEABLE HERE, deliberately. It is the login
+     identifier and the key an administrator resets against, so changing
+     it is an account migration rather than a profile edit — it needs
+     the old address told, which needs the mail path, and doing it
+     casually is how somebody locks themselves out of a safety record.
+     ------------------------------------------------------------------ */
+  app.patch(
+    "/api/v1/auth/me",
+    {
+      preHandler: [authenticate],
+      config: { rateLimit: { max: 20, timeWindow: "15 minutes" } },
+    },
+    async (req, reply) => {
+      const parsed = ProfileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: "invalid", detail: parsed.error.flatten() });
+      }
+
+      const before = await prisma.user.findFirst({
+        where: { id: req.auth!.sub, orgId: req.auth!.org },
+        select: { name: true },
+      });
+      if (!before) return reply.code(404).send({ error: "user_not_found" });
+
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: req.auth!.sub },
+          data: { name: parsed.data.name },
+        });
+        /* BOTH SIDES. A name is what appears against a disposition an
+           investigator later reads, so "was X, is now Y" is the fact
+           that answers whether two entries were the same person. */
+        await appendAuditTx(tx, {
+          orgId: req.auth!.org,
+          userId: req.auth!.sub,
+          action: "user.profile.update",
+          entityType: "User",
+          entityId: req.auth!.sub,
+          detail: { name: { from: before.name, to: parsed.data.name } },
+        });
+      });
+
+      return reply.send({ name: parsed.data.name });
+    },
+  );
+
+  /* ------------------------------------------------------------------
+     CHANGING YOUR OWN PASSWORD, WHICH NOTHING COULD DO.
+
+     THE ADMIN RESET ABOVE ENDS BY SAYING "hand it over directly and
+     have them change it" — and until this route existed there was no
+     way to change it. A temporary password generated by an
+     administrator, handed over in person, was the permanent password of
+     that account: the instruction had no mechanism, which is the same
+     defect the demo-password rotation had before `--rotate` was
+     written.
+
+     It is worse here than there. That one was a demo; this is an
+     operator's safety officer, holding a credential a second person has
+     seen and cannot stop knowing.
+
+     THE CURRENT PASSWORD IS REQUIRED. Not ceremony: an access token
+     lives fifteen minutes and can be left behind on a shared handset in
+     a ready room, and a change-password route that trusts the token
+     alone turns a borrowed screen into a permanent account takeover.
+     Proving the current password is what makes the person at the
+     keyboard the account holder rather than whoever sat down next.
+
+     EVERY OTHER SESSION IS REVOKED, and that is the whole point of
+     changing a password you believe somebody knows. A refresh token
+     minted before the change still mints access tokens after it, so a
+     change that leaves one alive has ended nothing — the same sentence
+     CLAUDE.md writes about rotation, applied to the one route a user
+     can reach on their own.
+
+     EVERY SESSION, INCLUDING THIS ONE, and the first draft of this
+     route claimed otherwise. It said the caller's own session was
+     spared — which would be kinder, and the code cannot do it: an
+     access token carries no `jti`, and RefreshToken has no column
+     tying it to the access token presented here. There is no way from
+     this request to say which stored token belongs to the caller.
+
+     So it revokes all of them and SAYS SO. The alternative was to add
+     a claim and a column to buy the nicer behaviour, and that is a
+     schema change made to soften a message on the one route whose
+     entire purpose is ending sessions somebody else might hold. The
+     access token in hand keeps working until it expires, so nothing is
+     interrupted mid-page; the next refresh is the sign-in.
+     ------------------------------------------------------------------ */
+  app.post(
+    "/api/v1/auth/password",
+    {
+      preHandler: [authenticate],
+      /* Tighter than the profile edit. This verifies a password, so an
+         attacker with a borrowed token gets few guesses at the one
+         thing that would make the takeover permanent. */
+      config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
+    },
+    async (req, reply) => {
+      const parsed = PasswordChangeSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: "invalid", detail: parsed.error.flatten() });
+      }
+
+      const user = await prisma.user.findFirst({
+        where: { id: req.auth!.sub, orgId: req.auth!.org },
+        select: { id: true, passwordHash: true, email: true },
+      });
+      if (!user) return reply.code(404).send({ error: "user_not_found" });
+
+      const ok = await verifyPassword(user.passwordHash, parsed.data.currentPassword);
+      if (!ok) {
+        req.log.warn(
+          { user: hmac(user.email) },
+          "password change refused — current password did not verify",
+        );
+        /* SAYS WHICH ONE WAS WRONG, unlike the login route, and the
+           difference is who is asking. Login must not confirm that an
+           address exists; here the caller has already proved they hold
+           a token for this account, so telling them their current
+           password was wrong reveals nothing they did not know and
+           saves them retyping the new one twice. */
+        return reply.code(403).send({
+          error: "current_password_incorrect",
+          message: "That is not the current password for this account. Nothing was changed.",
+        });
+      }
+
+      /* REFUSED WHEN IT IS THE SAME PASSWORD. Somebody changing a
+         credential they believe is known has not changed anything by
+         setting it back to itself, and the route that answered 200
+         would have told them they had. */
+      if (parsed.data.currentPassword === parsed.data.newPassword) {
+        return reply.code(400).send({
+          error: "unchanged",
+          message:
+            "The new password is the same as the current one. If you are changing it " +
+            "because somebody else knows it, it needs to be different.",
+        });
+      }
+
+      const passwordHash = await argon2.hash(parsed.data.newPassword, { type: argon2.argon2id });
+
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({ where: { id: user.id }, data: { passwordHash } });
+
+        /* EVERY LIVE SESSION FOR THIS ACCOUNT. Not "every other" — see
+           the note above: nothing in this request identifies which
+           stored token is the caller's, and a revocation that guesses
+           is a revocation that leaves the wrong one alive. */
+        await tx.refreshToken.updateMany({
+          where: { userId: user.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+
+        await appendAuditTx(tx, {
+          orgId: req.auth!.org,
+          userId: user.id,
+          action: "auth.password.change",
+          entityType: "User",
+          entityId: user.id,
+          /* THE ACT, NEVER THE CREDENTIAL — not the old one, not the
+             new one, not a prefix of either. */
+          detail: { self: true },
+        });
+      });
+
+      return reply.send({
+        changed: true,
+        message:
+          "Password changed. Every signed-in device for this account has been signed " +
+          "out, including this one — you can carry on here until this session expires, " +
+          "then sign in with the new password.",
+      });
+    },
+  );
 }

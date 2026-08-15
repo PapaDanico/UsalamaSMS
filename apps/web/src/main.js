@@ -312,6 +312,14 @@ router
   // is where someone goes to make the queue send, not a gate they pass
   // through to reach the product.
   .register('/account', (el) => renderLogin(el), { title: 'Sign in' })
+  /* LAZY, like every other destination below. The profile form is
+     opened rarely and by somebody already signed in, so it has no claim
+     on the chunk a reporter downloads to file a hazard. */
+  .register(
+    '/account/profile',
+    (el) => import('./tools/login/profile.js').then((m) => m.render(el)),
+    { title: 'Your profile' }
+  )
   /* LAZY, all of them. A ramp agent filing a hazard at a remote strip
      opens none of these, and every kilobyte here would otherwise be
      charged to the screen they do open — which loads over the link that
