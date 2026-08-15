@@ -153,6 +153,14 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
         id: true, clientId: true, state: true, type: true, title: true,
         createdAt: true, isAnonymous: true, jurisdiction: true, awareAt: true,
         occurredAt: true, location: true, phase: true, cicttCodes: true,
+        /* WHETHER THE DUTY WAS DISCHARGED. The queue computes a
+           reporting deadline per row and, until this column travelled
+           with the row, had no way to know the call had been made — so
+           the countdown counted down for ever and the screen could
+           offer no way to stop it. The REFERENCE is deliberately not
+           here: it is the operator's record to hand over, not a field
+           to spray across every queue response. */
+        reportedToAuthorityAt: true,
       },
     });
 
@@ -175,6 +183,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
         location: r.location,
         phase: r.phase,
         cicttCodes: r.cicttCodes,
+        reportedToAuthorityAt: r.reportedToAuthorityAt?.toISOString() ?? null,
         available: transitionsFrom(r.state as ReportState)
           .filter((t) => can(auth.role as never, t.needs))
           .map((t) => ({ to: t.to, label: t.label, requiresNote: t.requiresNote })),

@@ -63,11 +63,17 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = resolve(ROOT, 'apps/web/src');
 
-/* MEASURED, NOT CHOSEN. 19.2 KB at the commit that introduced this
-   gate, after the pricing page was cleared. The ceiling sits a little
-   above so a genuine one-line marker does not fail a build, and far
-   enough below the next round number that a paragraph does. */
-const CEILING_KB = 19.5;
+/* MEASURED, NOT CHOSEN, and it ratchets.
+
+   19.5 when this gate landed, against 19.2 KB actually shipped after the
+   pricing page was cleared. 13.0 now, against 12.7: hoisting twelve
+   notes out of the triage template recovered 6.5 KB, and a ceiling left
+   at the old number would have let that space refill silently with the
+   same mistake it was just cleaned of.
+
+   It sits a little above what the tree ships, so a genuine one-line
+   marker does not fail a build and a paragraph does. */
+const CEILING_KB = 13.0;
 
 const files = [];
 (function walk(dir) {

@@ -200,6 +200,47 @@ describe.skipIf(!hasDatabase)("POST /api/v1/reports/:id/notified", () => {
     });
   });
 
+  /* THE FACT HAS TO REACH THE SCREEN THAT OFFERS THE BUTTON.
+
+     The triage queue computes a reporting deadline per row and passes
+     `submittedAt` to deadlineStatus — the parameter meaning "the duty
+     was discharged", which it had never had a value for. If the queue
+     does not carry this column the countdown counts down for ever
+     whatever the operator recorded, and the button that records it
+     never disappears. That is the whole change failing silently, so it
+     is asserted rather than assumed. */
+  describe("what the triage queue then carries", () => {
+    const queue = (token: string) =>
+      app.inject({
+        method: "GET", url: "/api/v1/reports/queue",
+        headers: { authorization: `Bearer ${token}` },
+      });
+
+    const rowFor = async (id: string) => {
+      const res = await queue(manager());
+      expect(res.statusCode).toBe(200);
+      return res.json().reports.find((r: { id: string }) => r.id === id);
+    };
+
+    it("says nothing was recorded until something is", async () => {
+      expect((await rowFor(morId)).reportedToAuthorityAt).toBeNull();
+    });
+
+    it("carries the time the authority was told", async () => {
+      const at = "2026-08-10T09:30:00.000Z";
+      await notify(manager(), morId, { at });
+      expect((await rowFor(morId)).reportedToAuthorityAt).toBe(at);
+    });
+
+    /* The reference is the operator's record to hand over deliberately,
+       not a field sprayed across every queue response. */
+    it("does not carry the authority's reference", async () => {
+      await notify(manager(), morId, { reference: "KCAA/OCC/2026/114" });
+      const res = await queue(manager());
+      expect(JSON.stringify(res.json())).not.toContain("KCAA/OCC/2026/114");
+    });
+  });
+
   describe("what the digest then says", () => {
     const digest = (token: string) =>
       app.inject({
