@@ -58,18 +58,59 @@ describe.skipIf(!hasDatabase)("row-level security posture", () => {
     ).toEqual([]);
   });
 
-  it("carries NO policies, which is the posture and not an omission", async () => {
-    const policies = await prisma().$queryRawUnsafe<Array<{ tablename: string; policyname: string }>>(
-      `SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public'`,
+  /* THE POSTURE CHANGED, AND THIS ASSERTION CHANGED WITH IT.
+   *
+   * It used to require ZERO policies. That denied — but only for as long
+   * as nobody added one, and the pressure to add one is constant:
+   * Supabase's advisor reports the absence on every table and its agent
+   * skill recommends fixing it. That pressure produced exactly what it
+   * was always going to: twenty-seven policies appeared on the
+   * production database, twelve of them GRANTING the `authenticated`
+   * role every operation on rows matching a JWT claim.
+   *
+   * The deny policies alongside them denied nothing, because they were
+   * PERMISSIVE and permissive policies are OR'd. That is the trap this
+   * assertion now closes: it is not enough for a deny policy to exist,
+   * it has to be RESTRICTIVE, because only a restrictive one cannot be
+   * widened by adding another policy beside it.
+   *
+   * So the rule is no longer "nothing is here". It is "the backstop is
+   * here, on every table, and nothing permissive sits beside it" —
+   * which survives somebody acting on the advisor, where the old one
+   * only survived nobody acting.
+   */
+  it("gives every table a RESTRICTIVE deny-all, which is the backstop", async () => {
+    const rows = await prisma().$queryRawUnsafe<Array<{ tablename: string }>>(
+      `SELECT c.relname AS tablename
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'r'
+          AND NOT EXISTS (
+            SELECT 1 FROM pg_policies p
+             WHERE p.schemaname = 'public' AND p.tablename = c.relname
+               AND p.permissive = 'RESTRICTIVE' AND p.qual = 'false')`,
     );
     expect(
-      policies.map((p) => `${p.tablename}.${p.policyname}`),
-      "a policy exists on a schema whose access model from the anon role is NONE. " +
-        "Supabase's advisor and its agent skill both recommend adding these; both are " +
-        "correct for a product that talks to PostgREST from a browser and wrong for this " +
-        "one. If the Data API is genuinely being adopted, that needs the grants, the " +
-        "policies and a test that a second tenant cannot read the first one's reports, " +
-        "in the same change — and this assertion updated deliberately.",
+      rows.map((r) => r.tablename),
+      "these tables have no RESTRICTIVE deny-all policy. RLS with no policy denies " +
+        "today and stops denying the moment somebody adds one on the advisor's " +
+        "recommendation. A restrictive policy is AND'd with every other, so it cannot " +
+        "be widened by anything added beside it.",
+    ).toEqual([]);
+  });
+
+  it("carries NO permissive policy, because a permissive one can only GRANT", async () => {
+    const granting = await prisma().$queryRawUnsafe<Array<{ tablename: string; policyname: string }>>(
+      `SELECT tablename, policyname FROM pg_policies
+        WHERE schemaname = 'public' AND permissive = 'PERMISSIVE'`,
+    );
+    expect(
+      granting.map((p) => `${p.tablename}.${p.policyname}`),
+      "a PERMISSIVE policy exists on a schema whose access model from the anon and " +
+        "authenticated roles is NONE. Permissive policies are OR'd, so this widens " +
+        "access however narrow its own USING clause looks. If the Data API is genuinely " +
+        "being adopted, that needs the grants, the policies and a test that a second " +
+        "tenant cannot read the first one's reports, in the same change — and this " +
+        "assertion updated deliberately.",
     ).toEqual([]);
   });
 
