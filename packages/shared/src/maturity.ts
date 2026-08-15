@@ -730,6 +730,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "/api/v1/reports/queue",
       "/api/v1/reports/:id/disposition",
       "/api/v1/reports/:id/codes",
+      "/api/v1/reports/:id/notified",
     ],
     has:
       "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +
@@ -742,7 +743,9 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "rather than typed. Each occurrence is also classified to ICAO's own categories, from " +
       "the CAST/ICAO Common Taxonomy Team — which is what a State files, rather than this " +
       "product's six report types — with more than one code where more than one applies, " +
-      "because that is the taxonomy's own rule.",
+      "because that is the taxonomy's own rule. The discharge is recorded too — when the " +
+      "authority was told and by whom, which is a claim about a call this product did not " +
+      "place rather than proof of one, so a reported occurrence stops counting down.",
     missing:
       "Proactive and predictive identification — surveys, flight data, and the analysis " +
       "Doc 10159 asks for. And disposition is a connected act: the queue shows this " +
@@ -926,16 +929,21 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        training matrix useful, which is being told before the expiry
        rather than after it. */
     state: "PARTIAL",
-    serverRoutes: ["/api/v1/sms/training"],
+    serverRoutes: ["/api/v1/sms/training", "/api/v1/digest"],
     has:
       "A training matrix: person, course, completion and expiry, with each person's own " +
-      "record visible to them and the whole matrix to those who manage it.",
+      "record visible to them and the whole matrix to those who manage it \u2014 and a " +
+      "daily digest computed and readable at /api/v1/digest \u2014 counts only, never what " +
+      "a report says, because an inbox sits outside every access control this product " +
+      "has.",
     missing:
-      "Reaching somebody who does not open the screen. The matrix now anticipates \u2014 " +
-      "each row is current, lapsing soon or lapsed, against a window proportional to " +
-      "its own validity, with the count and the next lapse stated above the list. What " +
-      "it does not do is arrive: there is no digest, no email and no push, so a currency " +
-      "still lapses quietly for an operator who does not look.",
+      "Delivery, and the curriculum behind the matrix. The digest can be looked at and " +
+      "cannot ARRIVE \u2014 no schedule, no address, no key \u2014 so a currency still " +
+      "lapses quietly for an operator who does not look; the provider adapter reports " +
+      "NOT_CONFIGURED rather than appearing to work. And the role-keyed course list that " +
+      "would let the matrix answer WHO IS MISSING TRAINING THEIR ROLE REQUIRES is written " +
+      "and unit-tested but wired to no route, so today the matrix still answers only what " +
+      "has expired.",
     href: "/sms",
   },
   {

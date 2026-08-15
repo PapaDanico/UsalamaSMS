@@ -165,11 +165,13 @@ export const ABOUT = {
 export const TUTORIALS = {
   eyebrow: 'Tutorials',
   title: 'From a first report to a record an auditor can read',
-  lede: `The order that makes the parts compound. Each step names what you need in
-         front of you, what it produces, and the mistake most operators make at it.`,
+  lede: `Two acts. The first gets a report filed and arriving; the second turns
+         what arrives into a risk somebody has signed for. Each step names what
+         you need in front of you, what it produces, and the mistake most
+         operators make at it.`,
   stats: [
-    { value: '~40 min', label: 'End to end' },
-    { value: '5', label: 'Steps' },
+    { value: '~90 min', label: 'End to end' },
+    { value: '10', label: 'Steps, in two acts' },
     { value: '0', label: 'Signups to read this' },
     { value: '1', label: 'Auditable record out' }
   ],
@@ -190,7 +192,7 @@ export const TUTORIALS = {
     },
     {
       id: 'steps',
-      title: 'The five steps',
+      title: 'Act one — getting a report to arrive',
       kind: 'steps',
       items: [
         {
@@ -248,6 +250,78 @@ export const TUTORIALS = {
           pitfall: `Treating the 24-hour window as the review cadence. It is
                     the regulatory floor for notifying an authority, not a
                     substitute for reading what your own people filed.`
+        }
+      ]
+    },
+    {
+      id: 'risk',
+      title: 'Act two — turning what arrived into a risk',
+      kind: 'steps',
+      items: [
+        {
+          title: 'Raise a hazard from the report that revealed it',
+          body: `<p>A report is an event that happened once. A hazard is the
+                 condition that let it happen and will let it happen again, and
+                 they are different objects on purpose. Open the report in
+                 triage and raise the hazard from it, so the register carries
+                 the evidence it came from rather than somebody's recollection
+                 of it.</p>`,
+          pitfall: `Raising one hazard per report. Six reports about the same
+                    unlit apron are one hazard with six pieces of evidence, and
+                    filing them separately is how a register grows long while
+                    saying less.`
+        },
+        {
+          title: 'Assess it, and justify a tolerable one',
+          body: `<p>Severity against likelihood on the five-by-five matrix,
+                 which is Doc 9859's and not ours. The band comes back
+                 computed. An amber result asks for an ALARP justification and
+                 will not accept an empty one — a tolerable risk is only
+                 tolerable once it has been driven as low as reasonably
+                 practicable, and the justification is the evidence that
+                 happened.</p>`,
+          pitfall: `Assessing the consequence you saw rather than the one the
+                    hazard can produce. The apron incident that bruised a
+                    shin and the one that kills a loader are the same hazard;
+                    severity is about the credible worst outcome, not the
+                    outcome you got.`
+        },
+        {
+          title: 'Get it accepted by somebody senior enough to accept it',
+          body: `<p>The register will refuse a signature from a role too junior
+                 for the band, and refuses an intolerable risk outright from
+                 anybody — a red risk is not accepted, it is controlled until
+                 it is no longer red. Authority to hold a risk is a function of
+                 its band, which is UK MAA RA 1210's rule and the clearest
+                 statement of it in print.</p>`,
+          pitfall: `Reading the refusal as a permissions bug. It is the
+                    control. If the only person who can accept a risk is
+                    unavailable, that is the finding — not a reason to sign it
+                    at a lower level.`
+        },
+        {
+          title: 'Open a corrective action, and close it with evidence',
+          body: `<p>An action is its own object with an owner and a due date,
+                 not a sentence inside the assessment. Closing one asks what
+                 verified that it worked. That question is the difference
+                 between a corrective action programme and a list of good
+                 intentions with dates on them.</p>`,
+          pitfall: `Closing on completion rather than on effect. "New signage
+                    installed" is completion. "No further reports at that
+                    stand in two quarters" is verification, and only the second
+                    survives an audit.`
+        },
+        {
+          title: 'Set one indicator, and record a period',
+          body: `<p>One. An operator of six aircraft with fourteen safety
+                 performance indicators has a reporting exercise, not a
+                 measurement. Pick the thing you would actually change a
+                 decision over, record a period from the queue, and let the
+                 second one wait until the first has told you something.</p>`,
+          pitfall: `Choosing an indicator that only moves when something goes
+                    wrong. Report volume rising is usually a system working,
+                    and an indicator read the other way punishes the reporting
+                    the whole system depends on.`
         }
       ]
     },

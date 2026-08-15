@@ -104,6 +104,33 @@ recorded where it happened:
 red.** Every fix in this repo that claims to be verified was
 mutation-checked that way.
 
+## An HTML comment inside a template literal is not a comment
+
+Every screen in `apps/web/src` renders through a tagged template
+literal. Text between `<!--` and `-->` inside one of those is **string
+content**: no minifier removes it, and a reporter at a remote strip
+downloads it with the code. It looks like a comment in the editor and
+behaves like a paragraph on the wire.
+
+Two consequences, and the repository has met both:
+
+- **A backtick in one of them breaks the build at runtime.** The
+  literal ends at the backtick and the rest parses as JavaScript, so
+  quoting a class name the way prose normally would shipped
+  `scheme is not defined` — a message about the page, not about the
+  comment, so the search starts in the wrong place. That was the
+  *third* time `tools/pricing/index.js` broke that way.
+- **It is weight charged to the wrong person.** Five notes explaining
+  the pricing page to a developer cost 2 KB and pushed the total
+  bundle over budget, which is the only reason anybody noticed.
+
+So: **put the explanation above the import**, as a real JavaScript
+comment. It reads better collected at the top of the file than
+interleaved with the markup, the minifier strips it, and it can hold a
+backtick safely. `npm run check:prose` fails on a backtick inside an
+HTML comment and holds the remaining prose under a ceiling that
+ratchets down.
+
 ## Rotating a demo password
 
 `npm run seed:demo -- --rotate`. It re-issues a password for accounts

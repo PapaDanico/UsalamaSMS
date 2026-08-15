@@ -116,6 +116,33 @@ model Org {
   aocNumber    String?
   createdAt    DateTime     @default(now())
 
+  /// HOW MANY AIRCRAFT, AND THEREFORE WHAT IT COSTS.
+  ///
+  /// The BAND IS NOT STORED. pricing.ts derives it from this number, so
+  /// an operator that buys a fourth aircraft moves band by changing one
+  /// fact rather than by somebody remembering to change two. A stored
+  /// band is a value that can disagree with the fleet it was computed
+  /// from, and then the invoice and the product disagree in front of a
+  /// customer.
+  ///
+  /// NULLABLE, and that is deliberate rather than lazy: every Org that
+  /// existed before this field did has no fleet size, and
+  /// `billableBand` returns null for a missing one instead of quietly
+  /// invoicing the cheapest band off an absent fact.
+  fleetSize Int?
+
+  /// The two dates a subscription is computed from — see
+  /// packages/shared/src/subscription.ts. TRIAL, ACTIVE, GRACE and
+  /// LAPSED are derived from these on every read and never written
+  /// down, so no failed webhook can leave an operator in a state that
+  /// disagrees with what they have actually paid for.
+  ///
+  /// `paidThrough` is the ONLY field a payment rail ever writes, which
+  /// is what stops M-Pesa, a card processor and a bank transfer from
+  /// becoming three different state machines.
+  trialEndsOn DateTime?
+  paidThrough DateTime?
+
   users     User[]
   reports   SafetyReport[]
   hazards   Hazard[]
@@ -124,22 +151,22 @@ model Org {
   spis      Spi[]
 
   // The other eight Annex 19 elements.
-  policies         SafetyPolicy[]
-  voluntaryScheme  VoluntaryScheme?
-  policyReads      PolicyAcknowledgement[]
-  accountabilities Accountability[]
-  appointments     Appointment[]
-  exercises        EmergencyExercise[]
+  policies          SafetyPolicy[]
+  voluntaryScheme   VoluntaryScheme?
+  policyReads       PolicyAcknowledgement[]
+  accountabilities  Accountability[]
+  appointments      Appointment[]
+  exercises         EmergencyExercise[]
   emergencyContacts EmergencyContact[]
-  documents        ControlledDocument[]
-  findings         AuditFinding[]
-  training         TrainingRecord[]
-  communications   SafetyCommunication[]
-  changes          ChangeAssessment[]
-  documentReads    DocumentAcknowledgement[]
-  reportMoves      ReportTransition[]
-  actions          CorrectiveAction[]
-  config           OrgConfig?
+  documents         ControlledDocument[]
+  findings          AuditFinding[]
+  training          TrainingRecord[]
+  communications    SafetyCommunication[]
+  changes           ChangeAssessment[]
+  documentReads     DocumentAcknowledgement[]
+  reportMoves       ReportTransition[]
+  actions           CorrectiveAction[]
+  config            OrgConfig?
 }
 
 model User {
@@ -167,6 +194,7 @@ model User {
   documentsApproved ControlledDocument[]      @relation("documentApprover")
   findingsVerified  AuditFinding[]            @relation("findingVerifier")
   training          TrainingRecord[]          @relation("trainee")
+  authorityNotices  SafetyReport[]            @relation("authorityNotifier")
   communications    SafetyCommunication[]     @relation("communicator")
   changesApproved   ChangeAssessment[]        @relation("changeApprover")
   documentReads     DocumentAcknowledgement[]
@@ -266,7 +294,7 @@ model SafetyReport {
   // code the product has not got yet is a gap in the product, not an
   // error in the report. The occurrence is recorded and the gap is
   // reported — see unrecognised() in packages/shared/src/cictt.ts.
-  cicttCodes   String[]
+  cicttCodes String[]
 
   // ------------------------ Confidentiality ------------------------
   isAnonymous           Boolean   @default(false)
@@ -278,11 +306,35 @@ model SafetyReport {
   deIdentifiedAt        DateTime?
   deIdentifiedNarrative String?   @db.Text
 
+  /// WHEN THE AUTHORITY WAS NOTIFIED, AND WHO SAYS SO.
+  ///
+  /// The product computed reporting deadlines from the day it shipped
+  /// and had nowhere to record that one had been MET. `deadlineStatus`
+  /// takes a `submittedAt` meaning "discharged" and was called from
+  /// nowhere in the API, so every occurrence's window simply passed —
+  /// and a notified report was indistinguishable from a forgotten one.
+  ///
+  /// IT IS A CLAIM ABOUT AN ACT OUTSIDE THIS SYSTEM. L.N. 32 expects
+  /// the urgent classes by telephone; nothing here places the call. So
+  /// this records WHEN the operator says they notified, WHO recorded
+  /// that, and the authority's own reference where one was given —
+  /// which is the part that makes it evidence rather than an assertion.
+  ///
+  /// NULLABLE FOREVER. Most reports are not occurrences and owe nobody
+  /// a notification; a default would turn "not applicable" into "done".
+  reportedToAuthorityAt   DateTime?
+  reportedToAuthorityById String?
+  /// The authority's acknowledgement, as they issued it. Never sent in
+  /// a digest — see packages/shared/src/digest.ts on what leaves the
+  /// access control.
+  authorityReference      String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   org         Org                   @relation(fields: [orgId], references: [id], onDelete: Cascade)
   reporter    User?                 @relation(fields: [reporterId], references: [id], onDelete: SetNull)
+  reportedBy  User?                 @relation("authorityNotifier", fields: [reportedToAuthorityById], references: [id], onDelete: Restrict)
   feedback    SafetyCommunication[]
   hazards     Hazard[]
   transitions ReportTransition[]
@@ -299,6 +351,11 @@ model SafetyReport {
   // awareAt. If you are about to add this column, read that module first.
 
   @@unique([orgId, clientId])
+  /// Declared here as well as in the migration. Without it the next
+  /// `prisma migrate dev` sees an index the schema does not describe
+  /// and generates a DROP — the digest's deadline query loses its index
+  /// silently, and nothing fails until the table is large.
+  @@index([orgId, reportedToAuthorityAt])
   @@index([orgId, state, createdAt])
   @@index([orgId, type, occurredAt])
   // The aggregation this taxonomy exists to make possible.

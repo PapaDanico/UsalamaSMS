@@ -94,6 +94,24 @@ const TransitionSchema = z.object({
    drifts is whichever is edited second. */
 const CodesSchema = z.object({ cicttCodes: CicttCodes });
 
+/* RECORDING THAT THE AUTHORITY WAS NOTIFIED.
+ *
+ * `at` is optional and defaults to receipt on the server. That is the
+ * same choice awareAt makes and for the same reason: the earliest
+ * moment this system can PROVE is when it was told, and a required
+ * field here would push somebody to guess rather than leave it. When it
+ * is supplied it is the operator stating when the call was actually
+ * made, which is usually earlier than when anybody sat down to record
+ * it — and that gap is exactly what a deadline turns on.
+ *
+ * `reference` is what the authority issued back. Optional because not
+ * every authority issues one on a telephone call, and a required field
+ * that people cannot satisfy is a field people put "n/a" in. */
+const NotifiedSchema = z.object({
+  at: z.coerce.date().optional(),
+  reference: z.string().max(120).optional(),
+});
+
 export async function reportRoutes(app: FastifyInstance): Promise<void> {
   const limited = {
     preHandler: [authenticate],
@@ -135,6 +153,14 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
         id: true, clientId: true, state: true, type: true, title: true,
         createdAt: true, isAnonymous: true, jurisdiction: true, awareAt: true,
         occurredAt: true, location: true, phase: true, cicttCodes: true,
+        /* WHETHER THE DUTY WAS DISCHARGED. The queue computes a
+           reporting deadline per row and, until this column travelled
+           with the row, had no way to know the call had been made — so
+           the countdown counted down for ever and the screen could
+           offer no way to stop it. The REFERENCE is deliberately not
+           here: it is the operator's record to hand over, not a field
+           to spray across every queue response. */
+        reportedToAuthorityAt: true,
       },
     });
 
@@ -157,6 +183,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
         location: r.location,
         phase: r.phase,
         cicttCodes: r.cicttCodes,
+        reportedToAuthorityAt: r.reportedToAuthorityAt?.toISOString() ?? null,
         available: transitionsFrom(r.state as ReportState)
           .filter((t) => can(auth.role as never, t.needs))
           .map((t) => ({ to: t.to, label: t.label, requiresNote: t.requiresNote })),
@@ -292,6 +319,160 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
       cicttCodes: parsed.data.cicttCodes,
       ...(unknown.length ? { unrecognisedCodes: unknown } : {}),
     });
+  });
+
+  /* ------------------------------------------------------------------
+     Say the authority was told.
+
+     THE ACT HAPPENS OUTSIDE THIS SYSTEM. L.N. 32 expects the urgent
+     occurrence classes by telephone, and nothing here places the call.
+     So this records a CLAIM: when the operator says they notified, who
+     recorded that, and the authority's own reference where one was
+     given — which is the part that makes it evidence rather than an
+     assertion, and the reason `reference` is stored even though it is
+     never transmitted anywhere.
+
+     Until this existed, `deadlineStatus` could not be called from
+     anywhere in the API: it takes a `submittedAt` meaning discharged
+     and no column held one, so an occurrence that WAS notified and one
+     that was forgotten were the same row.
+     ------------------------------------------------------------------ */
+  app.post("/api/v1/reports/:id/notified", limited, async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const auth = req.auth!;
+
+    /* report.triage, not report.close. Telling the authority is part of
+       handling a report, not the end of handling it — an occurrence is
+       notified long before it is investigated, and requiring the
+       closing permission would put the regulatory act behind the
+       seniority the LAST act needs. */
+    if (!can(auth.role as never, "report.triage")) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+
+    const parsed = NotifiedSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid", detail: parsed.error.flatten() });
+    }
+
+    const report = await prisma.safetyReport.findFirst({
+      where: { ...tenantWhere(req), id },
+      select: {
+        id: true, type: true, occurredAt: true, createdAt: true,
+        reportedToAuthorityAt: true,
+      },
+    });
+    if (!report) return reply.code(404).send({ error: "not_found" });
+
+    /* ONLY AN OCCURRENCE OWES A NOTIFICATION. A hazard, a suggestion or
+       a near miss has no authority to be told, and letting somebody
+       stamp one notified would put a discharge on a duty that never
+       existed — which reads, later, as evidence of a report that was
+       never reportable. */
+    if (report.type !== "MOR") {
+      return reply.code(409).send({
+        error: "not_reportable",
+        message:
+          "Only an occurrence carries a notification duty. This report has none, so " +
+          "there is nothing for a notification to discharge.",
+      });
+    }
+
+    const now = new Date();
+    const at = parsed.data.at ?? now;
+
+    /* NOT IN THE FUTURE. A notification dated tomorrow discharges a
+       deadline that has not arrived, which is the one entry that would
+       make an overdue report look compliant. */
+    if (at.getTime() > now.getTime()) {
+      return reply.code(400).send({
+        error: "invalid",
+        message: "A notification cannot be dated in the future.",
+      });
+    }
+
+    /* NOT BEFORE THE OCCURRENCE. Telling an authority about something
+       that has not happened is not a data-entry slip worth accepting
+       quietly — it is a typed year, and it silently moves the record
+       into a window it never belonged to. */
+    const happened = report.occurredAt ?? report.createdAt;
+    if (at.getTime() < happened.getTime()) {
+      return reply.code(400).send({
+        error: "invalid",
+        message: "A notification cannot precede the occurrence it reports.",
+      });
+    }
+
+    /* ALREADY RECORDED IS A CONFLICT, NOT AN OVERWRITE. The first entry
+       is the one a deadline was judged against; letting a second
+       silently replace it would let a late notification be re-dated
+       into compliance, and the audit chain would carry the correction
+       without anybody being asked to justify it. */
+    if (report.reportedToAuthorityAt) {
+      return reply.code(409).send({
+        error: "already_recorded",
+        message:
+          "This occurrence is already recorded as notified. Correcting that date is a " +
+          "change to a regulatory record and is not done by filing it again.",
+        reportedToAuthorityAt: report.reportedToAuthorityAt.toISOString(),
+      });
+    }
+
+    /* ONE TRANSACTION, AND THE WRITE IS ITSELF CONDITIONAL.
+       
+       The `already_recorded` check above is a READ, and a read followed
+       by an unconditional update is a race: two notifications submitted
+       together both pass the check and the second overwrites the first,
+       which is precisely the re-dating this route refuses. So the
+       update carries `reportedToAuthorityAt: null` in its own WHERE and
+       reports how many rows it actually touched — zero means somebody
+       else got there first, and the 409 is returned from the losing
+       side rather than from a stale read.
+       
+       BOTH WRITES OR NEITHER, for the reason the /codes route beside
+       this one gives: a regulatory discharge committed without its
+       hash-chain entry is a record an inspector cannot date. */
+    const saved = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.safetyReport.updateMany({
+        where: { id: report.id, orgId: auth.org, reportedToAuthorityAt: null },
+        data: {
+          reportedToAuthorityAt: at,
+          reportedToAuthorityById: auth.sub,
+          authorityReference: parsed.data.reference ?? null,
+        },
+      });
+      if (claimed.count === 0) return null;
+
+      /* THE REFERENCE IS NOT IN THE AUDIT DETAIL. The chain is
+         exportable and the detail travels with it; the authority's
+         acknowledgement is the operator's record to hand over
+         deliberately, not something duplicated into every export. */
+      await appendAuditTx(tx, {
+        orgId: auth.org,
+        userId: auth.sub,
+        action: "report.notified_authority",
+        entityType: "SafetyReport",
+        entityId: report.id,
+        detail: { at: at.toISOString(), hasReference: Boolean(parsed.data.reference) },
+      });
+
+      return tx.safetyReport.findUniqueOrThrow({
+        where: { id: report.id },
+        select: { id: true, reportedToAuthorityAt: true, authorityReference: true },
+      });
+    });
+
+    if (saved === null) {
+      return reply.code(409).send({
+        error: "already_recorded",
+        message:
+          "This occurrence was recorded as notified while this request was in flight. " +
+          "Correcting that date is a change to a regulatory record and is not done by " +
+          "filing it again.",
+      });
+    }
+
+    return reply.send(saved);
   });
 
   /* ------------------------------------------------------------------

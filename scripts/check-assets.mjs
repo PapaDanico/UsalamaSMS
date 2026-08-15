@@ -60,14 +60,18 @@ const DECLARED = new Map([
   ['icons/apple-touch-icon.png', [14, 'iOS home screen. iOS does not accept an SVG icon — see docs/05-SWITCHES.md.']],
 
   ['manifest.json', [2, 'The PWA manifest. Installability is the offline promise.']],
-  ['offline.html', [8, 'The page served when there is no network. Self-contained by necessity — it cannot reference a stylesheet, a font or an image that might not be cached — so its own weight is its whole cost.']],
+  ['offline.html', [39, 'The page served when there is no network. Self-contained by necessity — it cannot reference a stylesheet, a font or an image that might not be cached — so its own weight is its whole cost. WENT 6 -> 37 KB WHEN THE CRANE WAS INLINED: 22 KB of that is a WebP of docs/brand/crane.png, resampled by scripts/derive-brand.mjs and never redrawn, with its ground flood-filled transparent from the edges so the patterned sand this page paints shows through, rather than a second and slightly different sand sitting on top of it — which is what the first attempt shipped, and what only a screenshot could catch. It is DECORATION, it is precached, and every user pays for it once on install — so if this budget ever needs room, this is the first thing to cut and the ceiling is set to make that visible rather than comfortable. What buys it: this is the page a ramp agent sees at the moment they most need to trust the product, and it is the only identity surface reachable while the shared stylesheet sits at 59.9 of 60 KB.']],
   ['sw.js', [12, 'The service worker, stamped by stamp-sw.mjs on every build.']],
 ]);
 
 /* Everything in public/, together. Currently 268 KB, of which 162 KB is
    the four font subsets. A raise needs a receipt here, the same as the
    JavaScript budget. */
-const TOTAL_BUDGET_KB = 280;
+const TOTAL_BUDGET_KB = 300;
+/* 280 -> 300 for the crane on the offline page. 27 KB of the directory
+   is now one illustration, which is the largest single non-font asset
+   here and is charged to every install. Recorded rather than absorbed:
+   the fonts are 162 KB and are load-bearing; this is not. */
 
 /* THE BRAND MASTERS ARE NOT PRODUCT ASSETS, and this is where that is
    enforced rather than remembered. They live in docs/brand/ — 1536px

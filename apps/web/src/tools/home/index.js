@@ -29,6 +29,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import { Mark } from '../../components/Logo.js';
 import {
   MOR_OBLIGATIONS,
   isStale,
@@ -114,10 +115,12 @@ const STEPS = [
    chunk 1.1 KB over budget, which is the only reason anybody noticed. */
 function Hero() {
   return html`
-    <section class="band-dark">
+    <section class="band-dark band-dark--hero">
       <div class="wrap">
+        ${Mark({ height: 116, tone: 'gold', title: '' })}
         <span class="eyebrow">Aviation safety management</span>
         <h1>Safety intelligence for African skies</h1>
+        <p class="tagline">Safety born of African soil</p>
         <p class="lede">
           The reporting and risk-classification layer of an SMS, for operators
           of three to fifteen aircraft. It records a report without a

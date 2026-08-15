@@ -38,15 +38,60 @@
      columns and compared down the column. */
   --us-font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
+  /* THE LADDER, AND IT IS NOW THE ONLY ONE.
+
+     It always existed. What also existed was a second, undeclared scale
+     of rem literals written one at a time — .66, .7, .72, .77, .78, .82,
+     .86, .88, .89, .9, .91, .93, .98, 1.02, 1.32, 1.4, 2.1, 2.4 — plus
+     six bespoke clamp() triples. Measured over the twenty-one rendered
+     screens that came to TWENTY-SIX distinct font sizes, five of them
+     crowded between 14.08px and 14.88px, which is what "the sizes are
+     not standardised" looks like from a handset. Thirteen now.
+
+     Nothing here changed. Every declaration that had drifted was moved
+     to the nearest rung, and the six clamps were replaced by the three
+     tokens that already said the same thing — which SAVED bytes, since
+     `var(--us-text-3xl)` is shorter than the clamp it replaced.
+
+     FOUR SIZES REMAIN OFF THE LADDER, all of them on purpose, and they
+     are listed here so the next person can tell a reason from a drift:
+
+       16px  form controls, and the body text that inherits it. Below
+             16px iOS zooms the page when an input takes focus, which
+             on a report form throws the reporter out of their place.
+       8px   the lockup descriptor — part of the mark, sized to it.
+       9px   the 5x5 risk matrix under 380px only. Twenty-five cells of
+       9.5px header text have to fit the narrowest handset this product
+             supports; the alternative is a matrix that scrolls, and a
+             risk matrix read one column at a time is not a matrix.
+
+     Anything else off the ladder is drift. */
   --us-text-2xs: 11px;
   --us-text-xs: 12px;
   --us-text-sm: 13.5px;
   --us-text-base: 15px;
   --us-text-md: 17px;
-  --us-text-lg: clamp(20px, 2.2vw, 24px);
-  --us-text-xl: clamp(24px, 3vw, 32px);
-  --us-text-2xl: clamp(30px, 4.2vw, 46px);
-  --us-text-3xl: clamp(38px, 6vw, 68px);
+  /* THE DISPLAY END CAME DOWN, AND THE READING END DID NOT.
+
+     "Reduce the font sizes to reduce the footprint" is two different
+     requests depending on which end of the ladder it lands on. At the
+     reading end it costs legibility for a reporter squinting at a
+     handset on a windy apron, and buys almost nothing: body copy is
+     already a measure, and shrinking 15px to 14px reclaims a few
+     pixels per line while making every line harder. At the DISPLAY end
+     it costs nothing anybody reads and buys whole screenfuls — a 68px
+     hero heading over three lines is 250px of vertical space spent
+     saying what 52px says.
+
+     So the four display rungs came down about 20%, the five reading
+     rungs (2xs through md) are untouched, and the four sanctioned
+     off-ladder sizes below are untouched for the same reason. The
+     accessibility sweep runs over all twenty-one rendered screens and
+     is the check that this stayed legible rather than the claim. */
+  --us-text-lg: clamp(18px, 1.9vw, 21px);
+  --us-text-xl: clamp(21px, 2.5vw, 27px);
+  --us-text-2xl: clamp(26px, 3.4vw, 37px);
+  --us-text-3xl: clamp(32px, 4.8vw, 52px);
 
   --us-weight-normal: 400;
   --us-weight-medium: 500;
@@ -169,6 +214,11 @@
      base size, which is where a line stops being comfortable. */
   --us-container: 46rem;
   --us-container-wide: 68rem;
+  /* The routed screen. Between the two above, and deliberately: wide
+     enough that a five-column table is not scrolling sideways inside a
+     half-empty laptop screen, narrow enough that a screen which IS a
+     form does not look lost in it. See the note on `.page`. */
+  --us-page: 60rem;
 
   /* 48, not 44. The WCAG floor is 44 and this is a form filled in with
      gloves on, in sunlight, one-handed, sometimes on a moving airstair.
@@ -190,9 +240,17 @@
   --us-ring: 0 0 0 3px rgb(var(--us-teal-rgb) / 0.22);
 
   /* Section rhythm. Two values, used everywhere, so vertical spacing is
-     a decision made once rather than per screen. */
-  --us-section: clamp(32px, 5vw, 56px);
-  --us-section-tight: clamp(20px, 3.4vw, 32px);
+     a decision made once rather than per screen.
+
+     TIGHTENED, because the space between sections was doing the same
+     job twice. A section already announces itself with a heading, a
+     rule or a change of ground; 56px of air on top of that is a
+     magazine's separation applied to a working tool, and on a handset
+     it meant a safety manager scrolled past emptiness to reach the
+     next thing to do. 40px still separates. What it stops doing is
+     separating so hard that two related sections read as two pages. */
+  --us-section: clamp(24px, 3.6vw, 40px);
+  --us-section-tight: clamp(16px, 2.6vw, 24px);
 
   /* ============================================================
      RISK — the tolerability scale
@@ -394,8 +452,8 @@ body {
    a geometric sans closes an old-style serif up until it looks cramped,
    so it is nearly neutral now. */
 h1, h2, h3, h4 { font-family: var(--us-font-display); font-weight: 600; margin: 0 0 .4em; text-wrap: balance; }
-h1 { font-size: clamp(2.45rem, 5.4vw, 3.9rem);  line-height: 1.08; letter-spacing: -.008em; }
-h2 { font-size: clamp(1.85rem, 3.7vw, 2.7rem);  line-height: 1.14; letter-spacing: -.004em; }
+h1 { font-size: var(--us-text-3xl);  line-height: 1.08; letter-spacing: -.008em; }
+h2 { font-size: var(--us-text-2xl);  line-height: 1.14; letter-spacing: -.004em; }
 /* Component heading rules below are written :is(h2, h3, h4) rather than
    pinned to one tag. Appearance belongs to the component; the LEVEL
    belongs to the document, and the two were fused here — a footer
@@ -409,7 +467,7 @@ h2 { font-size: clamp(1.85rem, 3.7vw, 2.7rem);  line-height: 1.14; letter-spacin
    and these are all type selectors, so (0,0,1) either way — and it
    means a heading can be renumbered for the outline without anyone
    having to re-style it. */
-h3 { font-size: clamp(1.25rem, 2vw, 1.6rem);  line-height: 1.18; letter-spacing: -.008em; }
+h3 { font-size: var(--us-text-lg);  line-height: 1.18; letter-spacing: -.008em; }
 h4 { line-height: 1.25; letter-spacing: 0; }
 /* Body copy wants a sane measure and no orphans. */
 p { text-wrap: pretty; }
@@ -451,7 +509,7 @@ dd a:not(.btn):not(.us-lockup) {
   text-decoration-thickness: 1px;
 }
 img { max-width: 100%; display: block; }
-.eyebrow { font-family: var(--us-font); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: .72rem; color: var(--us-teal); margin: 0 0 .8rem; }
+.eyebrow { font-family: var(--us-font); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; font-size: var(--us-text-2xs); color: var(--us-teal); margin: 0 0 .8rem; }
 section { padding: var(--us-section) 0; }
 :focus-visible { outline: 2px solid var(--us-teal); outline-offset: 3px; border-radius: 2px; }
 /* On the ink surfaces a terracotta ring disappears into the background; the
@@ -477,7 +535,7 @@ html { scroll-padding-top: var(--us-chrome); }
 .skip-link {
   position: absolute; left: -9999px; top: 0; z-index: 200;
   background: var(--us-charcoal); color: #fff; padding: .8rem 1.2rem;
-  border-radius: 0 0 var(--us-radius-sm) 0; font-weight: 700; font-size: .9rem;
+  border-radius: 0 0 var(--us-radius-sm) 0; font-weight: 700; font-size: var(--us-text-sm);
 }
 .skip-link:focus { left: 0; text-decoration: none; }
 
@@ -494,7 +552,7 @@ html { scroll-padding-top: var(--us-chrome); }
 /* ---------- buttons ---------- */
 .btn {
   display: inline-flex; align-items: center; gap: .5rem;
-  font-family: var(--us-font); font-weight: 700; font-size: .98rem;
+  font-family: var(--us-font); font-weight: 700; font-size: var(--us-text-base);
   padding: .85rem 1.5rem; border-radius: var(--us-radius-sm);
   border: 2px solid transparent; cursor: pointer;
   transition: transform var(--us-dur-fast) var(--us-ease),
@@ -513,7 +571,7 @@ html { scroll-padding-top: var(--us-chrome); }
 .btn-ghost { background: transparent; color: var(--us-charcoal); border-color: var(--us-border-strong); }
 .btn-ghost:hover { border-color: var(--us-teal); color: var(--us-teal); }
 .btn-ghost:disabled { border-color: var(--us-border); color: var(--us-ink-600); cursor: not-allowed; transform: none; }
-.btn-sm { padding: .55rem 1rem; font-size: .86rem; }
+.btn-sm { padding: .55rem 1rem; font-size: var(--us-text-sm); }
 .nav-links { display: flex; align-items: center; gap: 1.3rem; }
 /* :not(.btn) is load-bearing, not tidiness. The nav carries one button —
    the "Start free" CTA, which appears on all 28 pages and is the most
@@ -523,7 +581,7 @@ html { scroll-padding-top: var(--us-chrome); }
    The same applies to the :hover rule below, which was pushing it to
    1.87:1. A button dropped into the nav later should look like a button,
    not like a nav link that happens to have a background. */
-.nav-links a:not(.btn) { color: var(--us-charcoal); font-weight: 600; font-size: .93rem; transition: color var(--us-dur-fast) var(--us-ease); }
+.nav-links a:not(.btn) { color: var(--us-charcoal); font-weight: 600; font-size: var(--us-text-base); transition: color var(--us-dur-fast) var(--us-ease); }
 .nav-links a:not(.btn):hover { color: var(--us-teal); text-decoration: none; }
 .nav-links a:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 4px; border-radius: 3px; }
 @media (max-width: 980px) {
@@ -566,7 +624,7 @@ html { scroll-padding-top: var(--us-chrome); }
 
 /* ---------- footer ---------- */
 .footer { background: var(--us-charcoal); padding: 54px 0 28px; }
-.footer :is(h2, h3, h4) { color: #fff; font-family: var(--us-font); font-size: .88rem; letter-spacing: .06em; text-transform: uppercase; }
+.footer :is(h2, h3, h4) { color: #fff; font-family: var(--us-font); font-size: var(--us-text-sm); letter-spacing: .06em; text-transform: uppercase; }
 /* On ink, at 0.78 alpha sand, a link was the exact colour of the
    sentence around it — colour as the sole signal, which WCAG 1.4.1
    asks 3:1 for and this gave 1.0:1. Underlined instead, which works
@@ -588,10 +646,10 @@ html { scroll-padding-top: var(--us-chrome); }
    per line with no surrounding prose, so they are not links "in a text
    block" and underlining them would be noise. */
 .footer .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); gap: clamp(2rem, 5vw, 3.5rem); }
-.footer .ver { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: .77rem; color: #a89a92; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.footer .ver { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: var(--us-text-xs); color: #a89a92; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
 
 
-.footer p { font-size: .89rem; margin-bottom: .45rem; }
+.footer p { font-size: var(--us-text-sm); margin-bottom: .45rem; }
 
 
 /* Embedded mode (?embed=1) — the content, without JK's furniture.
@@ -610,8 +668,26 @@ html { scroll-padding-top: var(--us-chrome); }
    of the next, and a label reads as belonging to whatever is nearest —
    so "Tell us more" looked like part of the field above it. */
 .field { margin-bottom: 26px; }
-.field label { display: block; font-weight: 600; font-size: .91rem; margin-bottom: .35rem; }
-.field .hint { font-size: .78rem; color: var(--us-ink-600); margin-top: .25rem; }
+/* TWO NAMES FOR THE SAME LABEL, and they were declared twice. `.field
+   label` styles a label inside a field wrapper; `.field-label` styles
+   one where the markup has no wrapper. Different selectors, genuinely —
+   but byte-for-byte identical declarations, kept in sync by nobody, a
+   thousand lines apart. Same story for the hint below. Sharing the
+   block is not a saving trick: it is the only arrangement in which
+   changing the size changes BOTH, which is what "standardise the sizes"
+   has to mean if it is to survive the next edit. */
+.field label,
+.field-label { display: block; font-weight: 600; font-size: var(--us-text-base); margin-bottom: .35rem; }
+/* NOT `.field .hint`, and the descendant selector was the bug. Nine
+   paragraphs across login, the admin reset, the export panel and the
+   pricing cards carry class="hint" OUTSIDE a field, where this rule
+   never reached them — so they inherited body size and rendered LARGER
+   than the text they annotate. On the pricing card the hint about the
+   annual figure came out at 16px above a price at 13.5px, which is what
+   "the sizes are not standardised" looks like from a handset. Removing
+   the ancestor costs seven bytes less than keeping it. */
+.hint,
+.field-hint { font-size: var(--us-text-xs); color: var(--us-ink-600); margin-top: .25rem; }
 .field input, .field select, .field textarea {
   width: 100%; padding: .78rem 1rem; border: 1px solid var(--us-border-strong);
   border-radius: var(--us-radius-sm); font-size: 1rem; font-family: var(--us-font);
@@ -627,7 +703,7 @@ html { scroll-padding-top: var(--us-chrome); }
 
 /* regulatory citation chip */
 .cite {
-  display: inline-flex; align-items: center; gap: .35rem; font-size: .7rem; font-weight: 700;
+  display: inline-flex; align-items: center; gap: .35rem; font-size: var(--us-text-2xs); font-weight: 700;
   padding: .16rem .55rem; border-radius: 99px; letter-spacing: .02em;
   background: rgb(var(--us-teal-rgb) / 0.08); color: var(--us-teal-text); border: 1px solid transparent;
   white-space: nowrap; margin: .3rem .3rem 0 0;
@@ -635,7 +711,7 @@ html { scroll-padding-top: var(--us-chrome); }
 .cite a { color: inherit; text-decoration: underline; }
 
 
-.tag { font-size: .66rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: .16rem .5rem; border-radius: 4px; background: var(--us-sand); color: var(--us-ink-600); }
+.tag { font-size: var(--us-text-2xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: .16rem .5rem; border-radius: 4px; background: var(--us-sand); color: var(--us-ink-600); }
 
 @media (max-width: 980px) {
   .footer .cols { grid-template-columns: 1fr; }
@@ -711,7 +787,7 @@ html { scroll-padding-top: var(--us-chrome); }
 
 .print-id__org {
   font-family: var(--us-font-display);
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
 }
@@ -723,7 +799,7 @@ html { scroll-padding-top: var(--us-chrome); }
 
 .print-id__meta {
   margin: .2em 0 0;
-  font-size: .82rem;
+  font-size: var(--us-text-sm);
   color: #000;
 }
 
@@ -1170,7 +1246,13 @@ html { scroll-padding-top: var(--us-chrome); }
 }
 
 /* A chevron that rotates, rather than the platform triangle. */
-.report__more summary::after {
+/* ONE CHEVRON, TWO DISCLOSURES. This rule and the filter shell's were
+   byte-for-byte identical 770 lines apart — the same eight declarations
+   and the same rotation, maintained by nobody in particular. A reader
+   who found one had no way to know the other existed, so a change to
+   the affordance gets made once and ships inconsistently. */
+.report__more summary::after,
+.filters-shell summary::after {
   content: '';
   width: 8px;
   height: 8px;
@@ -1181,7 +1263,8 @@ html { scroll-padding-top: var(--us-chrome); }
   transition: transform var(--us-dur) var(--us-ease);
 }
 
-.report__more[open] summary::after {
+.report__more[open] summary::after,
+.filters-shell[open] summary::after {
   transform: rotate(-135deg) translate(-2px, -2px);
 }
 
@@ -1625,7 +1708,7 @@ html { scroll-padding-top: var(--us-chrome); }
 
 .picture-figure__value {
   font-family: var(--us-font-display);
-  font-size: 2.4rem;
+  font-size: var(--us-text-2xl);
   font-weight: 600;
   line-height: 1.1;
   /* Digits in a row of figures must line up as the numbers change. */
@@ -1940,21 +2023,6 @@ html { scroll-padding-top: var(--us-chrome); }
   display: none;
 }
 
-.filters-shell summary::after {
-  content: '';
-  width: 8px;
-  height: 8px;
-  margin-left: auto;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: rotate(45deg) translate(-2px, -2px);
-  transition: transform var(--us-dur) var(--us-ease);
-}
-
-.filters-shell[open] summary::after {
-  transform: rotate(-135deg) translate(-2px, -2px);
-}
-
 .filters-shell[open] summary {
   border-bottom: 1px solid var(--us-border);
 }
@@ -2061,13 +2129,35 @@ html { scroll-padding-top: var(--us-chrome); }
    and the class is the role, and a second outlet (a print view, a
    dialog) should get the layout by naming the role.
    ============================================================ */
+/* THE SCREEN IS WIDER THAN THE SENTENCE, and conflating the two is what
+   wasted the space.
+
+   `.page` was one width — 46rem, the reading measure — for every routed
+   screen. That is right for the report form and wrong for everything
+   the safety office actually sits in front of: the triage queue, the
+   hazard register, the risk picture, the indicator table. Those are
+   grids and lists, and constraining a five-column table to a
+   comfortable line length on a 15-inch laptop leaves forty per cent of
+   the screen empty while the table scrolls sideways inside it.
+
+   So the CONTAINER widens and the MEASURE is imposed where measure
+   actually matters — on flowing text, in characters, which is the unit
+   a line length is properly expressed in. A table gets the width; a
+   paragraph gets 68 characters wherever it sits. Forms are unaffected:
+   `.panel > .card` and `.panel > form.card` already pin themselves to
+   --us-container, and that is now doing visible work rather than
+   restating the parent. */
 .page {
   width: 100%;
-  max-width: var(--us-container);
+  max-width: var(--us-page);
   margin-inline: auto;
   padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-8));
   padding-block: var(--us-section-tight) var(--us-section);
 }
+
+/* Measure, not width. Applies to text wherever it lands — including
+   inside a card that is already narrower, where it simply never binds. */
+.page :is(p, li) { max-width: 68ch; }
 
 /* A screen supplying its own full-bleed band takes the gutter back — a
    band inset by the page padding is a card, not a band. */
@@ -2185,7 +2275,11 @@ html { scroll-padding-top: var(--us-chrome); }
 
 .nav-item[data-current] .nav-item-title { color: var(--us-teal-text); }
 
-.nav-item-summary {
+/* The contents list's one-line summary was identical to the menu's and
+   its own comment said so — "in the menu's pattern". Now it is that
+   pattern rather than a copy of it. */
+.nav-item-summary,
+.toc-summary {
   display: block;
   margin-top: 2px;
   font-size: var(--us-text-sm);
@@ -2232,6 +2326,45 @@ html { scroll-padding-top: var(--us-chrome); }
   color: var(--us-sand);
 }
 
+/* THE HERO IS WHERE THE IDENTITY ACTUALLY LIVES, and until now it did
+   not live anywhere.
+
+   The brand masters in docs/brand/ are a gold shield carrying the grey
+   crowned crane over a runway, a wordmark, and the line "Safety born of
+   African soil", set against a Rift Valley sunset. The product shipped
+   a 34px mark in the header and nothing else — every other surface was
+   charcoal with two teal washes, which is a competent dark band and is
+   not this product's face. Somebody who had seen the deck and then
+   opened the site would not know they were the same thing.
+
+   THE SUNSET IS A GRADIENT, NOT A PHOTOGRAPH, and that is the whole
+   reason it fits. The splash master is 139 KB; public/ has 1.6 KB of
+   its budget left, and a hero image is the wrong thing to spend it on
+   for a reporter on a rural link. Four colour stops cost eighty bytes
+   and carry the same horizon.
+
+   IT STAYS DARK WHERE THE TEXT IS. The stops hold near-indigo through
+   the top seventy per cent — the eyebrow, the heading and the lede all
+   sit there — and only reach the burnt orange below the buttons. That
+   is not a stylistic choice: Savannah Gold on the terracotta end is
+   about 2.6:1, and the eyebrow is gold. The accessibility sweep over
+   twenty-one screens is what decides whether this is right, and it was
+   run against this gradient rather than around it. */
+.band-dark--hero {
+  background:
+    linear-gradient(180deg, #0f1430 0%, #171a38 46%, #3a2247 74%, #7d3a29 100%);
+}
+.band-dark--hero .us-mark { display: block; margin-bottom: var(--us-space-3); }
+/* The tagline is the master's, set in the display face and italic as
+   the deck sets it. It is the one line on the site that says what the
+   product is FOR rather than what it does. */
+.tagline {
+  font-family: var(--us-font-display);
+  font-style: italic;
+  font-size: var(--us-text-lg);
+  color: var(--us-gold);
+  margin: 0 0 var(--us-space-4);
+}
 .band-dark h1,
 .band-dark h2 { color: var(--us-sand); }
 .band-dark .lede { color: rgb(var(--us-sand-rgb) / 0.86); }
@@ -2284,7 +2417,7 @@ html { scroll-padding-top: var(--us-chrome); }
    every screen. */
 .lede {
   max-width: 62ch;
-  font-size: clamp(1.02rem, 1.4vw, 1.15rem);
+  font-size: var(--us-text-md);
   line-height: var(--us-leading-normal);
   color: var(--us-ink-600);
 }
@@ -2311,8 +2444,37 @@ html { scroll-padding-top: var(--us-chrome); }
    it. The 1.15 is the ratio that puts the two x-heights level; it is a
    property of this typeface pairing, which is why it lives on the rule
    that uses the display face rather than in the scale itself. */
+/* THE PRICE IS THE POINT OF THE CARD AND WAS THE SMALLEST THING ON IT.
+
+   It rendered through `.cov__has` — the coverage list's treatment, at
+   13.5px — so on a handset "$399 a month" sat at the same weight as the
+   sentence describing who the band is for, under a hint that was
+   LARGER than it. Nothing about the card said which line the reader
+   came for.
+
+   A NEW CLASS, on a page whose own note says to add none, and the
+   exception is the reason that note gives: reuse an existing treatment
+   where one fits. None does. The stat treatment is the product's only
+   large-figure rule and it is written for the dark band — the
+   accessibility sweep caught it here at 2.16:1, gold on white. So the
+   choice was a new rule or a price the size of a caption.
+
+   It costs about 150 bytes on a sheet with 200 left, which is inside
+   the standing receipt rather than a raise against it. Both sizes are
+   rungs of the existing ladder, so it adds a rule and not a scale. */
+.price { font-size: var(--us-text-xl); font-weight: 600; line-height: 1.12; margin: 0 0 var(--us-space-1); }
+.price small { font-size: var(--us-text-sm); font-weight: 400; color: var(--us-ink-600); }
+
+/* ON THE LADDER, not 1.15 times a rung of it. The old `calc()` put
+   section titles at 19.55px above list items at 16px — a step of 1.22,
+   which is not enough of one. Rendered on a handset the pricing page's
+   two headings read as slightly larger bullets rather than as the start
+   of a new subject, which is what prompted this. `--us-text-lg` is the
+   rung the ladder already has for exactly this, it clamps down to 20px
+   on a narrow screen, and naming it costs twelve bytes LESS than
+   computing an off-ladder size from a smaller one. */
 .section-title {
-  font-size: calc(var(--us-text-md) * 1.15);
+  font-size: var(--us-text-lg);
   letter-spacing: -.01em;
   margin: 0 0 var(--us-space-3);
 }
@@ -2337,9 +2499,7 @@ html { scroll-padding-top: var(--us-chrome); }
 /* The form. JK styles `.field input`; this app labels with a <span>
    and classes its controls, because a screen reader on a report form
    is not a nice-to-have and `.field label` cannot carry an error. */
-.field-label { display: block; font-weight: 600; font-size: .91rem; margin-bottom: .35rem; }
-.field-hint { font-size: .78rem; color: var(--us-ink-600); margin-top: .25rem; }
-.field-error { font-size: .78rem; color: var(--us-ochre-text); margin-top: .3rem; min-height: 1.1em; }
+.field-error { font-size: var(--us-text-xs); color: var(--us-ochre-text); margin-top: .3rem; min-height: 1.1em; }
 .input-field {
   width: 100%; min-height: var(--us-tap); padding: .78rem 1rem;
   border: 1px solid var(--us-border-strong); border-radius: var(--us-radius-sm);
@@ -2504,7 +2664,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    in Chrome — which is why four bullets sat in the middle of the ink
    band. The reset is the fix; the rest is JK's rule. */
 .trust-strip { list-style: none; padding-left: 0; }
-.trust-item { display: flex; align-items: flex-start; gap: .55rem; flex: 1 1 20rem; font-size: .89rem; font-weight: 600; line-height: var(--us-leading-snug); }
+.trust-item { display: flex; align-items: flex-start; gap: .55rem; flex: 1 1 20rem; font-size: var(--us-text-sm); font-weight: 600; line-height: var(--us-leading-snug); }
 .band-dark .trust-strip { border-top-color: rgb(var(--us-sand-rgb) / 0.18); }
 
 /* Shell chrome. #app-shell is the router's host and the boot splash is
@@ -2650,7 +2810,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border-top: 1px solid var(--us-border);
 }
 
-.doc-section h2 { font-size: clamp(1.32rem, 2.4vw, 1.75rem); margin: 0 0 var(--us-space-4); }
+.doc-section h2 { font-size: var(--us-text-lg); margin: 0 0 var(--us-space-4); }
 .doc-section h3 { font-size: var(--us-text-md); margin: 0 0 var(--us-space-2); }
 .doc-section p { max-width: 68ch; }
 
@@ -2690,13 +2850,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .toc a:hover { color: var(--us-teal); }
 /* A contents list that is only titles asks the reader to open each one
    to find out which is theirs. One line each, in the menu's pattern. */
-.toc-summary {
-  display: block;
-  margin-top: 2px;
-  font-size: var(--us-text-sm);
-  line-height: var(--us-leading-snug);
-  color: var(--us-text-tertiary);
-}
 .toc__count {
   margin-left: var(--us-space-2);
   font-size: var(--us-text-2xs);
@@ -2727,7 +2880,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .stat { min-width: 0; }
 
 .stat__value {
-  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  font-size: var(--us-text-xl);
   font-weight: var(--us-weight-bold);
   letter-spacing: -.02em;
   line-height: 1.1;
@@ -3176,7 +3329,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .mat-summary { padding-bottom: var(--us-space-4); border-bottom: 1px solid var(--us-border); }
 .mat-summary__mean { margin: 0; display: flex; align-items: baseline; gap: var(--us-space-2); }
 .mat-summary__value {
-  font-size: 2.1rem;
+  font-size: var(--us-text-2xl);
   font-weight: var(--us-weight-bold);
   letter-spacing: -.02em;
   color: var(--us-teal-text);

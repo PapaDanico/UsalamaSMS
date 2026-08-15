@@ -1,4 +1,130 @@
 /* ============================================================
+   THE NOTES ABOUT THE MARKUP, COLLECTED OUT OF THE TEMPLATE.
+
+   An `<!-- -->` inside a tagged template literal is not a comment, it
+   is STRING CONTENT: no minifier removes it, and a reporter at a
+   remote strip downloads every word of it. Twelve notes on this screen
+   came to 6.6 KB of somebody else's airtime spent explaining this
+   file to a developer who was never going to read it here. A backtick
+   in one of them also ends the literal and breaks the build at
+   runtime, which is how tools/pricing/index.js shipped
+   `scheme is not defined` three times.
+
+   They read better collected anyway. In the order the markup reaches
+   them:
+
+   1. CHARTER RULE 8, ON THE SCREEN. Showing the handset's reports
+      as though they were the operator's, when the safety office
+      could not be reached, is the failure this whole product is
+      built against. It says so instead.
+
+   2. THE CLOCK, HANDED TO A CHANNEL THIS PRODUCT DOES NOT OWN.
+      A reporting deadline is computed on this screen and reaches
+      nobody who has not opened it. The real answer is SMS and it is
+      blocked on credentials; this is the part that needs none — the
+      product writes the sentence and the safety manager sends it
+      from whatever they already have open, which here is WhatsApp.
+      IT IS NOT ALERTING AND MUST NOT READ AS IT. The copy says
+      "send" rather than "notify", because somebody who believes
+      they are being alerted stops looking at the screen — and this
+      only ever reaches a person who is already on it.
+      COUNTS ONLY. The message carries how many and how soon. Never
+      a title, never a name: a WhatsApp message is forwarded,
+      backed up and read by people no permission matrix has heard
+      of, and the title of a fatigue report is the sentence that
+      identifies its author at a six-aircraft operator. The
+      composer has no parameter that could carry one.
+
+   3. COLLAPSED BY DEFAULT. Three stacked dropdowns are a full
+      handset screen, and they were pushing every report below the
+      fold — on the one screen whose job is to show reports. The
+      summary carries the active count, so a filtered view can never
+      be mistaken for an empty queue while the controls are shut.
+
+   4. KIND on the left, STATE on the right, and nothing else on
+      this line. Two badges plus a label wrapped onto three lines at
+      390px, which is a card that has stopped being scannable.
+
+   5. PROTECTED, from the identity's six. It is the badge that means
+      confidentiality rather than delivery — which is what an
+      anonymous report carries and what "sent" does not. It sits
+      under the title because it describes the REPORT, where the
+      badge above describes what has happened to it.
+
+   6. THE ACTION THE STRIP HAS BEEN POINTING AT. It said "open
+      Triage to review" and this screen had nothing to press.
+      Copy sits beside Try again because some reports genuinely
+      cannot send — a validation rejection will be rejected again,
+      and a role that may not file this type still may not. The
+      person standing there needs the words out of the device and
+      into a phone call, and refusing them that is how an
+      occurrence ends up unreported rather than merely unsent.
+
+   7. WHAT HAPPENED TO IT, and what may happen next.
+      Only on rows the server knows about: a report still in the
+      outbox has no row to move, and offering to close it would be
+      offering to lose it. The available moves come from the server
+      rather than being worked out here, so buttons cannot disagree
+      with the permission matrix — a second copy of that matrix in
+      the browser is the copy that goes stale.
+
+   8. RAISE AN ACTION FROM THE THING THAT PROMPTED IT.
+      An action always has a source — that is a CHECK constraint in
+      the migration, not a convention — and the natural place to
+      raise one is the report it came out of. Raising it from a
+      list of actions would ask somebody to pick a source from a
+      dropdown of every report the operator has, which is how the
+      wrong report gets attached.
+      Only on rows the server knows about, like the disposition:
+      an action against a report still in the outbox has nothing
+      to hang off.
+
+   9. WHAT THE STATE FILES IT UNDER.
+      The report TYPE above says what kind of report arrived. This
+      says what kind of OCCURRENCE it was, in ICAO's own categories
+      — and those are what an authority files, not this product's
+      six types. An operator whose reports carry no code hands its
+      authority data somebody re-codes by hand.
+      HERE AND NOT ON THE REPORT FORM. Coding to ADREP is a trained
+      judgement made after reading the narrative; a reporter at a
+      strip has not made it and must not be asked to, which is the
+      same reason the form does not ask whether the event meets
+      Annex 13's definition of an accident.
+      The codes render as words, not only as codes: "RE" on its own
+      is a badge only somebody who already knows the taxonomy can
+      read, and this screen is read by people learning it.
+
+   10. AN INLINE PANEL, NOT A PROMPT. Every other confirmation
+      on this screen is a window.prompt, which is right for
+      one line of free text and wrong for twenty grouped
+      choices: a prompt cannot show a group, cannot show what
+      is already selected, and cannot carry the caveat that
+      has to travel with these codes. Details/summary rather
+      than a modal — it keeps the choice next to the report it
+      is about, and it works with a keyboard without any of
+      the focus-trapping a modal would need.
+
+   11. MORE THAN ONE IS THE TAXONOMY'S OWN RULE, said where
+      somebody is choosing. CICTT codes a runway excursion
+      that became a loss of control as BOTH, and a safety
+      officer who assumes one code per occurrence records
+      half of exactly the events worth learning from.
+
+   12. RAISE A HAZARD FROM THE REPORT THAT REVEALED IT.
+      The join this product did not have. Hazard.reportId has
+      been in the schema since the first migration and nothing
+      ever wrote it, so every register was a list of hazards
+      somebody remembered to type — while the reports that
+      should have produced them sat in this queue. Element 2.1
+      asks for hazard identification FED by reporting, and
+      /coverage has been saying so in 2.2's own words.
+      IT CARRIES AN ID AND NOTHING ELSE. The register is
+      printed and shown to an inspector; a narrative is
+      protected and may be anonymous. So this link puts no
+      content in the URL either — the register screen finds
+      the report in the queue it already reads.
+   ============================================================ */
+/* ============================================================
    Triage queue.
 
    LOCAL FIRST, then the organisation on top of it. The device's own
@@ -227,10 +353,6 @@ export async function render(outlet) {
         </p>
       </header>
 
-      <!-- CHARTER RULE 8, ON THE SCREEN. Showing the handset's reports
-           as though they were the operator's, when the safety office
-           could not be reached, is the failure this whole product is
-           built against. It says so instead. -->
       ${!remote
         ? html`<p class="notice">
             ${isSignedIn()
@@ -245,25 +367,6 @@ export async function render(outlet) {
           </p>`
         : ''}
 
-      <!-- THE CLOCK, HANDED TO A CHANNEL THIS PRODUCT DOES NOT OWN.
-
-           A reporting deadline is computed on this screen and reaches
-           nobody who has not opened it. The real answer is SMS and it is
-           blocked on credentials; this is the part that needs none — the
-           product writes the sentence and the safety manager sends it
-           from whatever they already have open, which here is WhatsApp.
-
-           IT IS NOT ALERTING AND MUST NOT READ AS IT. The copy says
-           "send" rather than "notify", because somebody who believes
-           they are being alerted stops looking at the screen — and this
-           only ever reaches a person who is already on it.
-
-           COUNTS ONLY. The message carries how many and how soon. Never
-           a title, never a name: a WhatsApp message is forwarded,
-           backed up and read by people no permission matrix has heard
-           of, and the title of a fatigue report is the sentence that
-           identifies its author at a six-aircraft operator. The
-           composer has no parameter that could carry one. -->
       ${(() => {
         const clocked = rows.filter((r) => r.deadline?.status);
         const overdue = clocked.filter((r) => r.deadline.status === 'OVERDUE').length;
@@ -287,11 +390,6 @@ export async function render(outlet) {
         </div>`;
       })()}
 
-      <!-- COLLAPSED BY DEFAULT. Three stacked dropdowns are a full
-           handset screen, and they were pushing every report below the
-           fold — on the one screen whose job is to show reports. The
-           summary carries the active count, so a filtered view can never
-           be mistaken for an empty queue while the controls are shut. -->
       <details class="filters-shell" ${activeFilters > 0 ? raw('open') : ''}>
         <summary>
           <span>Filter</span>
@@ -483,6 +581,56 @@ function bindOnce(outlet) {
        a hand-built modal that traps focus badly on the screen a safety
        manager works a queue on is worse than a plain one.
        ------------------------------------------------------------ */
+    /* ------------------------------------------------------------
+       RECORDING THAT THE AUTHORITY WAS TOLD.
+
+       The route for this has existed since the previous commit and
+       nothing could reach it, which is a capability with no surface —
+       the exact shape /coverage was caught claiming about the CAPA
+       loop, and the reason there is a gate for it.
+
+       THE REFERENCE IS ASKED FOR AND MAY BE REFUSED. An authority that
+       answers the telephone does not always give a reference on the
+       call, and a field that must be filled to record a notification
+       would either stop the record being made or invite a made-up
+       number into it. Empty means "no reference", not "not notified".
+
+       THE SERVER OWNS THE REFUSALS. A future date, a date before the
+       occurrence, a second notification over the first — all four are
+       enforced in one transaction there, and this screen shows the
+       sentence it gets back rather than pre-judging any of them. A
+       second copy of those rules in the browser is the copy that goes
+       stale.
+       ------------------------------------------------------------ */
+    const teller = event.target.closest?.('[data-notified]');
+    if (teller) {
+      const reference = window.prompt(
+        'Record that the authority was told.\n\nIf they gave you a reference, put it here. Leave it empty if they did not — the notification is recorded either way.'
+      );
+      if (reference === null) return;
+      const label = teller.textContent;
+      teller.disabled = true;
+      teller.textContent = 'Saving…';
+      try {
+        const res = await authFetch(`/api/v1/reports/${teller.dataset.notified}/notified`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(reference.trim() ? { reference: reference.trim() } : {})
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          window.alert(body.message ?? 'The safety office could not be reached. Nothing was recorded.');
+        }
+      } catch {
+        window.alert('The safety office could not be reached. Nothing was recorded.');
+      } finally {
+        teller.disabled = false;
+        teller.textContent = label;
+        await render(outlet);
+      }
+      return;
+    }
+
     const mover = event.target.closest?.('[data-move]');
     if (mover) {
       let note;
@@ -636,7 +784,14 @@ function decorate(report, now) {
         occurredAt: new Date(report.occurredAt ?? report.awareAt),
         awareAt: new Date(report.awareAt)
       });
-      deadline = { due, status: deadlineStatus(due, now, { obligation }), obligation };
+      /* THE PARAMETER THAT MEANS "THE DUTY WAS DISCHARGED", finally
+         supplied. deadlineStatus has taken a submittedAt since it was
+         written and this screen has never had one to give it, because
+         no column held the fact — so every notified occurrence stayed
+         OVERDUE and the most carefully tested function in the
+         repository was answering a question nobody could complete. */
+      const told = report.reportedToAuthorityAt ? new Date(report.reportedToAuthorityAt) : null;
+      deadline = { due, status: deadlineStatus(due, now, { obligation, submittedAt: told }), obligation, told };
     } catch {
       // A malformed pair must not remove the report from the queue.
       // Losing a row is worse than losing its clock.
@@ -669,9 +824,6 @@ function compare(a, b) {
 function row(r) {
   return html`
     <li class="queue__item" data-sync="${r.syncState}">
-      <!-- KIND on the left, STATE on the right, and nothing else on
-           this line. Two badges plus a label wrapped onto three lines at
-           390px, which is a card that has stopped being scannable. -->
       <div class="queue__head">
         <span class="queue__type">${TYPE_LABEL[r.type] ?? r.type}</span>
         ${syncBadge(r.syncState)}
@@ -679,11 +831,6 @@ function row(r) {
 
       <p class="queue__title">${r.title}</p>
 
-      <!-- PROTECTED, from the identity's six. It is the badge that means
-           confidentiality rather than delivery — which is what an
-           anonymous report carries and what "sent" does not. It sits
-           under the title because it describes the REPORT, where the
-           badge above describes what has happened to it. -->
       ${r.isAnonymous ? html`<p class="queue__meta">${StatusBadge('PROTECTED', { label: 'Anonymous' })}</p>` : ''}
 
       ${r.location || r.phase
@@ -700,62 +847,28 @@ function row(r) {
           `
         : ''}
 
+      ${r.deadline && r.serverId
+        ? r.deadline.told
+          ? html`<p class="queue__where">
+              Authority notified ${new Date(r.deadline.told).toLocaleString()}
+            </p>`
+          : html`<p class="queue__actions">
+              <button type="button" class="btn btn-ghost btn-sm" data-notified="${r.serverId}">
+                Record that the authority was told
+              </button>
+            </p>`
+        : ''}
+
       ${r.syncState === 'error' && r.lastError
         ? html`<p class="queue__error">${r.lastError}</p>`
         : ''}
 
-      <!-- THE ACTION THE STRIP HAS BEEN POINTING AT. It said "open
-           Triage to review" and this screen had nothing to press.
-
-           Copy sits beside Try again because some reports genuinely
-           cannot send — a validation rejection will be rejected again,
-           and a role that may not file this type still may not. The
-           person standing there needs the words out of the device and
-           into a phone call, and refusing them that is how an
-           occurrence ends up unreported rather than merely unsent. -->
-      <!-- WHAT HAPPENED TO IT, and what may happen next.
-
-           Only on rows the server knows about: a report still in the
-           outbox has no row to move, and offering to close it would be
-           offering to lose it. The available moves come from the server
-           rather than being worked out here, so buttons cannot disagree
-           with the permission matrix — a second copy of that matrix in
-           the browser is the copy that goes stale. -->
       ${r.state
         ? html`<p class="queue__state" data-state="${r.state}">
             <span class="queue__state-label">${DISPOSITION_LABEL[r.state] ?? r.state}</span>
           </p>`
         : ''}
 
-      <!-- RAISE AN ACTION FROM THE THING THAT PROMPTED IT.
-
-           An action always has a source — that is a CHECK constraint in
-           the migration, not a convention — and the natural place to
-           raise one is the report it came out of. Raising it from a
-           list of actions would ask somebody to pick a source from a
-           dropdown of every report the operator has, which is how the
-           wrong report gets attached.
-
-           Only on rows the server knows about, like the disposition:
-           an action against a report still in the outbox has nothing
-           to hang off. -->
-      <!-- WHAT THE STATE FILES IT UNDER.
-
-           The report TYPE above says what kind of report arrived. This
-           says what kind of OCCURRENCE it was, in ICAO's own categories
-           — and those are what an authority files, not this product's
-           six types. An operator whose reports carry no code hands its
-           authority data somebody re-codes by hand.
-
-           HERE AND NOT ON THE REPORT FORM. Coding to ADREP is a trained
-           judgement made after reading the narrative; a reporter at a
-           strip has not made it and must not be asked to, which is the
-           same reason the form does not ask whether the event meets
-           Annex 13's definition of an accident.
-
-           The codes render as words, not only as codes: "RE" on its own
-           is a badge only somebody who already knows the taxonomy can
-           read, and this screen is read by people learning it. -->
       ${r.serverId
         ? html`<div class="queue__coding">
             ${r.cicttCodes?.length
@@ -767,15 +880,6 @@ function row(r) {
                   )}
                 </ul>`
               : html`<p class="queue__uncoded">Not yet classified to ICAO's categories.</p>`}
-            <!-- AN INLINE PANEL, NOT A PROMPT. Every other confirmation
-                 on this screen is a window.prompt, which is right for
-                 one line of free text and wrong for twenty grouped
-                 choices: a prompt cannot show a group, cannot show what
-                 is already selected, and cannot carry the caveat that
-                 has to travel with these codes. Details/summary rather
-                 than a modal — it keeps the choice next to the report it
-                 is about, and it works with a keyboard without any of
-                 the focus-trapping a modal would need. -->
             <details class="queue__classify">
               <summary>
                 ${r.cicttCodes?.length ? 'Change the classification' : 'Classify the occurrence'}
@@ -797,11 +901,6 @@ function row(r) {
                     )}
                   </fieldset>`
                 )}
-                <!-- MORE THAN ONE IS THE TAXONOMY'S OWN RULE, said where
-                     somebody is choosing. CICTT codes a runway excursion
-                     that became a loss of control as BOTH, and a safety
-                     officer who assumes one code per occurrence records
-                     half of exactly the events worth learning from. -->
                 <p class="queue__cat-note">
                   Pick every category that applies — a runway excursion that became a
                   loss of control is both, and recording one loses the other.
@@ -824,21 +923,6 @@ function row(r) {
             >
               Record an action
             </button>
-            <!-- RAISE A HAZARD FROM THE REPORT THAT REVEALED IT.
-
-                 The join this product did not have. Hazard.reportId has
-                 been in the schema since the first migration and nothing
-                 ever wrote it, so every register was a list of hazards
-                 somebody remembered to type — while the reports that
-                 should have produced them sat in this queue. Element 2.1
-                 asks for hazard identification FED by reporting, and
-                 /coverage has been saying so in 2.2's own words.
-
-                 IT CARRIES AN ID AND NOTHING ELSE. The register is
-                 printed and shown to an inspector; a narrative is
-                 protected and may be anonymous. So this link puts no
-                 content in the URL either — the register screen finds
-                 the report in the queue it already reads. -->
             <a
               class="btn btn-ghost btn-sm"
               href="/toolkits/register?from=${r.serverId}"
