@@ -2536,6 +2536,43 @@ html { scroll-padding-top: var(--us-chrome); }
    above the fold, which is the entire point. */
 [data-surface='tool'] .panel { padding-block: var(--us-space-5); }
 [data-surface='tool'] .page-head { margin-bottom: var(--us-space-4); }
+
+/* ---------------------------------------------------------------------
+   DENSITY, AND THE THING THAT READS AS EXPENSIVE IS THE RESTRAINT.
+
+   `.card` is 28px of padding under a medium shadow, and it LIFTS four
+   pixels when the pointer crosses it. That is a marketing card and it
+   is the right one on /pricing, where a card is an object being offered
+   to somebody deciding.
+
+   A row in the reporting queue is not being offered. It is being
+   worked. A row that jumps when the mouse passes over it is motion
+   nobody asked for on a screen somebody reads forty times a day, and a
+   shadow under every row is depth doing no work — the software that
+   reads as expensive in this category is flatter and quieter than the
+   software that does not.
+
+   So on tool surfaces a card keeps its border and loses its lift, its
+   shadow and ten pixels of padding. The hover still ANSWERS — the
+   border strengthens — because a target that gives no feedback is a
+   different defect from one that gives too much.
+
+   AND THE MOTION IS DROPPED RATHER THAN SHORTENED. prefers-reduced-
+   motion already turns transforms off for the people who ask; this
+   turns it off for a surface where it was never appropriate, which is
+   not the same question and should not wait for somebody to set a
+   system preference.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .card {
+  padding: var(--us-space-5);
+  box-shadow: none;
+}
+[data-surface='tool'] .card:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--us-border-strong);
+}
+[data-surface='tool'] .queue__item { padding: var(--us-space-3) var(--us-space-4); }
 .panel + .panel { padding-top: 0; }
 .page-head { margin-bottom: var(--us-space-6); }
 .page-head h1 { margin: 0 0 var(--us-space-2); }
