@@ -1717,8 +1717,37 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    .picture-grid — the same auto-fit that lays out the risk picture's
    figures — because cards per row should follow the width rather than a
    breakpoint somebody keeps in step with a count by hand. Only what a
-   list needs beyond a figure grid is new. */
-const BUDGET = { entry: 217 * 1024, js: 513 * 1024, css: 62 * 1024 };
+   list needs beyond a figure grid is new.
+
+   ---------------------------------------------------------------
+   CSS 62 -> 63 KB, AND THE RECEIPT IS TWO RULES.
+
+   `.fact` and `.fact strong`: a cell that is neither a link nor a
+   figure. .picture-grid already lays out auto-fit cells and
+   .account-card already styles one, but that rule hangs off `a` and
+   these are not links — so this is the same cell without the anchor,
+   and deliberately without a hover, because a card that lifts under
+   the pointer and does nothing when clicked is worse than a plain one.
+
+   WHAT IT BOUGHT. The containers were widened first, and that did not
+   remove the blank space on the signed-out screens — it MOVED it. Body
+   text is capped at 68ch and should be, so a wider panel just puts the
+   emptiness inside itself. Space has to be USED, and the thing to use
+   it with was already on those screens as prose: /sms spent a
+   four-line sentence naming the eight Annex 19 elements behind the
+   sign-in, and /picture was a heading, two sentences and a button on a
+   page the sticky footer stretched to the full viewport.
+
+   Both now list what is behind the sign-in, from data rather than from
+   a second copy of it — /sms intersects SURFACES with SMS_COMPONENTS
+   so the offer cannot name an element the screen does not hold, and
+   /picture's four are gated against the screen's own headings by
+   tests/picture-offer.test.ts, mutation-checked in both directions.
+
+   0.2 KB of the 1 KB is spent. The rest is headroom for the same
+   treatment on the remaining signed-out screens, which is the next
+   piece of this work rather than a reason to raise it again. */
+const BUDGET = { entry: 217 * 1024, js: 513 * 1024, css: 63 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

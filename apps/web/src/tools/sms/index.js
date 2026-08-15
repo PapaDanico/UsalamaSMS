@@ -708,6 +708,23 @@ function Field(f, people) {
   </label>`;
 }
 
+/* WHAT THE SIGNED-OUT SCREEN OFFERS, DERIVED FROM WHAT IT ACTUALLY
+   HOLDS rather than retyped.
+
+   The lede used to name all eight in one four-line sentence — a list
+   written out longhand, which is unscannable AND left the whole right
+   half of a 1440px screen empty. It was also a second copy: add a
+   surface below and the sentence goes quietly stale, in the one place
+   a visitor decides whether this product does what they need.
+
+   SURFACES is the set of elements this screen genuinely renders, and
+   SMS_COMPONENTS carries their ICAO names and the question each is
+   assessed by. Intersecting them means the offer cannot claim an
+   element the screen does not hold, in either direction. */
+const LOCKED_ELEMENTS = SMS_COMPONENTS.flatMap((c) => [...c.elements]).filter(
+  (e) => SURFACES[e.id]
+);
+
 export async function render(outlet) {
   if (!isSignedIn()) {
     outlet.innerHTML = html`
@@ -717,9 +734,7 @@ export async function render(outlet) {
           <h1>Your organisation's safety management system</h1>
           <p class="lede">
             The eight Annex 19 elements your operator holds rather than this
-            device: the signed policy, who is accountable, the appointments,
-            the emergency exercises, the controlled documents, the internal
-            audit findings, the training matrix and what reporters were told.
+            device.
           </p>
           <div class="hero-actions"><a class="btn btn-primary" href="/account">Sign in</a></div>
         </div>
@@ -732,6 +747,15 @@ export async function render(outlet) {
           append-only chain. Signing in is what tells the server which operator
           you belong to. Filing a report has never needed one and never will.
         </p>
+        <h2 class="section-title">What is behind it</h2>
+        <ul class="picture-grid" role="list">
+          ${LOCKED_ELEMENTS.map(
+            (e) => html`<li class="fact">
+              <strong>${e.name}</strong>
+              <span>${e.question}</span>
+            </li>`
+          )}
+        </ul>
       </div>
     `.toString();
     return;

@@ -1924,6 +1924,36 @@ html { scroll-padding-top: var(--us-chrome); }
 .account-card a:hover { border-color: var(--us-teal); }
 .account-card strong { color: var(--us-text-primary); }
 
+/* =====================================================================
+   A CELL THAT IS NOT A LINK AND NOT A FIGURE.
+
+   Widening the containers did not remove the blank space on the
+   signed-out screens, it MOVED it: body text is capped at 68ch and
+   should be, so a wider container just puts the emptiness inside the
+   panel instead of beside it. Space has to be USED, and the thing to
+   use it with was already on the page as prose — /sms spent a
+   four-line sentence naming the eight Annex 19 elements behind the
+   sign-in, which is a list written out longhand.
+
+   .picture-grid already lays out auto-fit cells and .account-card
+   already styles one — but that rule hangs off `a`, and none of these
+   are links. This is the same cell without the anchor, which is the
+   only thing genuinely missing. Two rules rather than a component.
+
+   It is deliberately NOT interactive: no hover, no cursor. A card that
+   lifts under the pointer and does nothing when clicked is a worse
+   defect than a plain one. */
+.fact {
+  display: flex; flex-direction: column; gap: var(--us-space-1);
+  padding: var(--us-space-3);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-sm);
+  background: var(--us-surface-sunk);
+  color: var(--us-text-secondary);
+  font-size: var(--us-text-sm);
+}
+.fact strong { color: var(--us-text-primary); }
+
 /* Facts about the account, read rather than scanned — so a row each
    rather than the figure grid above. */
 .account-facts { margin: var(--us-space-4) 0 0; font-size: var(--us-text-sm); }
