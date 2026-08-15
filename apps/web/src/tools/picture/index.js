@@ -195,6 +195,43 @@ function sourceOf(a) {
   return '';
 }
 
+/* THE FOUR SECTIONS THIS SCREEN RENDERS, named once.
+
+   Signed out, /picture was a heading, two sentences and a button on a
+   page stretched to the full viewport by the sticky footer — the
+   emptiest screen in the product, and it told a visitor evaluating
+   this thing nothing about what they would get for signing in.
+
+   The titles are the same four the signed-in screen renders as h2s
+   below. They are NOT interpolated into those headings — a heading is
+   prose in place and threading it through a constant to save four
+   strings makes the screen harder to read than the duplication does.
+
+   So the agreement is asserted instead: tests/picture-offer.test.ts
+   reads this file and fails if a title here has no matching h2, or an
+   h2 has no entry here. An offer that advertises a section the screen
+   dropped is the failure worth catching, and it is silent — nothing
+   else in the build compares a marketing list to the thing it
+   describes. */
+const LOCKED_SECTIONS = Object.freeze([
+  {
+    title: 'Reporting',
+    what: 'How much is being filed, by whom, and whether the rate is holding up — the question an accountable executive asks first.'
+  },
+  {
+    title: 'The register',
+    what: 'The risk position the operator is carrying, and how much of it is past its own review date.'
+  },
+  {
+    title: 'Indicators',
+    what: 'The safety performance indicators regulation 9(5) asks for, against the targets somebody set.'
+  },
+  {
+    title: 'What needs attention',
+    what: 'The few things actually overdue or unowned, rather than everything sorted by date.'
+  }
+]);
+
 export async function render(outlet) {
   if (!isSignedIn()) {
     outlet.innerHTML = html`
@@ -208,6 +245,16 @@ export async function render(outlet) {
           its register and its indicators. Sign in to see it.
         </p>
         <p><a class="btn btn-primary" href="/account">Sign in</a></p>
+
+        <h2 class="section-title">What it puts on one screen</h2>
+        <ul class="picture-grid" role="list">
+          ${LOCKED_SECTIONS.map(
+            (s) => html`<li class="fact">
+              <strong>${s.title}</strong>
+              <span>${s.what}</span>
+            </li>`
+          )}
+        </ul>
       </section>
     `.toString();
     return;

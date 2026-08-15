@@ -250,7 +250,10 @@
      enough that a five-column table is not scrolling sideways inside a
      half-empty laptop screen, narrow enough that a screen which IS a
      form does not look lost in it. See the note on `.page`. */
-  --us-page: 60rem;
+  /* 76, not 60, and not 68 either — the working surface sits ABOVE
+     --us-container-wide rather than below it. Measured at 1440px:
+     60rem gave the queue 896px while the prose pages took 1088. */
+  --us-page: 76rem;
 
   /* 48, not 44. The WCAG floor is 44 and this is a form filled in with
      gloves on, in sunlight, one-handed, sometimes on a moving airstair.
@@ -279,10 +282,22 @@
      rule or a change of ground; 56px of air on top of that is a
      magazine's separation applied to a working tool, and on a handset
      it meant a safety manager scrolled past emptiness to reach the
-     next thing to do. 40px still separates. What it stops doing is
-     separating so hard that two related sections read as two pages. */
-  --us-section: clamp(24px, 3.6vw, 40px);
-  --us-section-tight: clamp(16px, 2.6vw, 24px);
+     next thing to do.
+
+     REDUCED AGAIN, and the reason it needed a second pass is that
+     these two numbers are not the whole vertical budget — they are one
+     of THREE layers that stack. `section` pays --us-section top AND
+     bottom, `.panel` pays its own padding inside that, and a screen
+     puts a panel inside a section as a matter of course. Measuring the
+     gap BETWEEN top-level blocks reported zero every time, which is
+     what made this hard to see from the markup: the emptiness is not
+     between the blocks, it is inside them, twice.
+
+     So the fix is applied at every layer that contributes rather than
+     to the token that is easiest to find — here, on `.panel`, on
+     `.band-dark` and on the footer. 28px still separates. */
+  --us-section: clamp(16px, 2.4vw, 28px);
+  --us-section-tight: clamp(10px, 1.6vw, 16px);
 
   /* ============================================================
      RISK — the tolerability scale
@@ -666,7 +681,7 @@ html { scroll-padding-top: var(--us-chrome); }
 .band-dark .eyebrow { color: var(--us-gold); }
 
 /* ---------- footer ---------- */
-.footer { background: var(--us-charcoal); padding: 54px 0 28px; }
+.footer { background: var(--us-charcoal); padding: 32px 0 20px; }
 .footer :is(h2, h3, h4) { color: #fff; font-family: var(--us-font); font-size: var(--us-text-sm); letter-spacing: .06em; text-transform: uppercase; }
 /* On ink, at 0.78 alpha sand, a link was the exact colour of the
    sentence around it — colour as the sole signal, which WCAG 1.4.1
@@ -688,7 +703,31 @@ html { scroll-padding-top: var(--us-chrome); }
    Scoped to .ver rather than .footer: the column links above sit one
    per line with no surrounding prose, so they are not links "in a text
    block" and underlining them would be noise. */
-.footer .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); gap: clamp(2rem, 5vw, 3.5rem); }
+/* ONE GRID, NOT TWO COLUMNS — and the dead space is why.
+
+   This was `1fr / 1.9fr`: a brand block on the left, every link group
+   crammed into the right. At 1440px that gave the links ~645px, which
+   auto-fit into FOUR columns, which put seven groups on two rows — so
+   the link side ran ~500px tall beside a brand block ~200px tall, and
+   the bottom 350px of the left-hand third of the footer was empty
+   while "WHEN SOMETHING HAPPENS" wrapped onto three lines eight
+   pixels to its right. Space starved and wasted on the same row.
+
+   The brand is now a CELL in the same grid, spanning two tracks. Seven
+   groups plus a double-width brand is nine tracks: at 1440 that lays
+   out as five and four rather than as a short column beside a tall
+   one, and no cell is empty. Below the breakpoints further down it
+   collapses the same way it always did. */
+.footer .cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--us-space-8) clamp(1.5rem, 3vw, 2.5rem);
+}
+.footer .footer-brand { grid-column: span 2; }
+/* The link groups are cells of the SAME grid now, so this element is
+   only a wrapper — it has to stop being a grid of its own or its
+   children get a second, narrower set of tracks inside one cell. */
+.footer .footer-cols { display: contents; }
 .footer .ver { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: var(--us-text-xs); color: #a89a92; display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
 
 
@@ -1885,6 +1924,36 @@ html { scroll-padding-top: var(--us-chrome); }
 .account-card a:hover { border-color: var(--us-teal); }
 .account-card strong { color: var(--us-text-primary); }
 
+/* =====================================================================
+   A CELL THAT IS NOT A LINK AND NOT A FIGURE.
+
+   Widening the containers did not remove the blank space on the
+   signed-out screens, it MOVED it: body text is capped at 68ch and
+   should be, so a wider container just puts the emptiness inside the
+   panel instead of beside it. Space has to be USED, and the thing to
+   use it with was already on the page as prose — /sms spent a
+   four-line sentence naming the eight Annex 19 elements behind the
+   sign-in, which is a list written out longhand.
+
+   .picture-grid already lays out auto-fit cells and .account-card
+   already styles one — but that rule hangs off `a`, and none of these
+   are links. This is the same cell without the anchor, which is the
+   only thing genuinely missing. Two rules rather than a component.
+
+   It is deliberately NOT interactive: no hover, no cursor. A card that
+   lifts under the pointer and does nothing when clicked is a worse
+   defect than a plain one. */
+.fact {
+  display: flex; flex-direction: column; gap: var(--us-space-1);
+  padding: var(--us-space-3);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-sm);
+  background: var(--us-surface-sunk);
+  color: var(--us-text-secondary);
+  font-size: var(--us-text-sm);
+}
+.fact strong { color: var(--us-text-primary); }
+
 /* Facts about the account, read rather than scanned — so a row each
    rather than the figure grid above. */
 .account-facts { margin: var(--us-space-4) 0 0; font-size: var(--us-text-sm); }
@@ -2232,7 +2301,29 @@ html { scroll-padding-top: var(--us-chrome); }
    paragraph gets 68 characters wherever it sits. Forms are unaffected:
    `.panel > .card` and `.panel > form.card` already pin themselves to
    --us-container, and that is now doing visible work rather than
-   restating the parent. */
+   restating the parent.
+
+   ---------------------------------------------------------------
+   AND IT DID NOT GO FAR ENOUGH, which only measuring showed. 46rem ->
+   60rem was the right move and it left the working surface NARROWER
+   THAN THE BROCHURE: --us-page was 60rem while .wrap — the container
+   the document and marketing screens use — was 68rem. Driven at
+   1440px, /triage, /report and /picture rendered 896px of content and
+   /coverage, /sms and /today rendered 1088. Sixty-two per cent against
+   seventy-six, with the narrower number on the queue and the risk
+   picture: exactly the screens the paragraph above says need the
+   width, and the wider number on the pages that are prose.
+
+   Nobody chose that. A screen gets .wrap or it does not depending on
+   which markup it happened to be written with, so the two containers
+   drifted apart and the drift was invisible until somebody measured
+   the rendered pages rather than reading the stylesheet.
+
+   76rem puts the working surface at 1152px of content on a 1440px
+   screen — 80% — and above .wrap rather than below it, which is the
+   right order: the instrument gets more room than the document. The
+   guards that make this safe are already in place and are the reason
+   this is a token change rather than a layout rewrite. */
 .page {
   width: 100%;
   max-width: var(--us-page);
@@ -2244,6 +2335,30 @@ html { scroll-padding-top: var(--us-chrome); }
 /* Measure, not width. Applies to text wherever it lands — including
    inside a card that is already narrower, where it simply never binds. */
 .page :is(p, li) { max-width: 68ch; }
+
+/* A .wrap INSIDE .page is a container inside a container, and after
+   --us-page went past --us-container-wide it became the binding one —
+   so /toolkits/register and /sms sat at 1088px while /triage beside
+   them took 1152, for no reason anybody chose. Which screens carry a
+   .wrap is a fact about how each was written, not a decision about how
+   wide it should be.
+
+   So it takes the SAME width token rather than its own. It does not
+   simply stop constraining — that was the first attempt and it is
+   wrong: on a screen that supplies its own full-bleed band, `.page`
+   deliberately drops to `max-width: none` and the inner `.wrap` IS the
+   container. Removing its width there ran /, /today, /sms and
+   /coverage edge to edge at 1440 with no gutter at all, measured at
+   100% of the viewport, which is how that mistake was caught.
+
+   Sharing the token holds in both cases: inside a constrained .page it
+   never binds, because the parent is already narrower; inside a
+   full-bleed one it is the only container and now matches every other
+   screen's width instead of sitting 128px under it.
+
+   The footer's and the header's wraps are outside .page and keep JK's
+   width, which is theirs to keep. */
+.page .wrap { max-width: var(--us-page); }
 
 /* A screen supplying its own full-bleed band takes the gutter back — a
    band inset by the page padding is a card, not a band. */
@@ -2404,7 +2519,7 @@ html { scroll-padding-top: var(--us-chrome); }
 .band-dark {
   position: relative;
   overflow: hidden;
-  padding-block: clamp(2rem, 6vw, 3.25rem);
+  padding-block: clamp(1.25rem, 3.6vw, 2.25rem);
   background:
     radial-gradient(760px 460px at 6% 8%, rgb(var(--us-teal-rgb) / 0.36) 0%, transparent 62%),
     radial-gradient(640px 420px at 92% 0%, rgb(198 93 59 / 0.3) 0%, transparent 58%),
@@ -2513,7 +2628,10 @@ html { scroll-padding-top: var(--us-chrome); }
 /* `section` already carries JK's vertical rhythm. A panel is a screen's
    own content block, one step tighter, because it follows a band that
    has just spent that space. */
-.panel { padding-block: clamp(1.5rem, 4.5vw, 2.5rem); }
+/* One of the three stacked layers — see --us-section. 24-40px of
+   panel padding INSIDE 28px of section padding is the doubling that
+   read as emptiness. */
+.panel { padding-block: clamp(0.875rem, 2.6vw, 1.5rem); }
 
 /* =====================================================================
    AN INSTRUMENT IS NOT A DOCUMENT.
