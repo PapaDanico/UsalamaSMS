@@ -316,7 +316,14 @@ export async function render(outlet) {
           reporting.closure.median === null ? '—' : reporting.closure.median,
           reporting.closure.median === null
             ? reporting.closure.note
-            : `median of ${reporting.closure.n}; nine in ten within ${reporting.closure.p90}`
+            : `median of ${reporting.closure.n}; nine in ten within ${reporting.closure.p90}` +
+              /* The server caps how many closures it reads. A median
+                 over a capped sample is a median of a sample, and the
+                 figure has to say so — the register below already does
+                 for the same reason. */
+              (reporting.closureTruncated
+                ? '. Computed from the earliest closures only — the window holds more than this page reads'
+                : '')
         )}
         ${figure('Awaiting triage', reporting.queue.by.SUBMITTED, 'all time, not the window')}
       </div>

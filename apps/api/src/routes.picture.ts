@@ -41,6 +41,11 @@ import { prisma, authenticate, tenantWhere } from "./core";
 const DEFAULT_WINDOW_DAYS = 90;
 const MAX_WINDOW_DAYS = 730;
 const REGISTER_LIMIT = 500;
+/* Closure transitions read to compute a median. Generous, because the
+   median gets less trustworthy as the sample is cut and this is a
+   figure somebody reads out to an authority — but bounded, because a
+   two-year window on a busy operator is otherwise unbounded. */
+const CLOSURE_LIMIT = 5000;
 const ACTION_LIMIT = 1000;
 
 const REPORT_STATES = [
@@ -105,9 +110,23 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
            took as long as it took the first time; reporting the latest
            would describe reopening as slowness, and an indicator that
            punishes reopening is one that stops reports being reopened. */
+        /* CAPPED, LIKE EVERY OTHER READ IN THIS BLOCK. It was the one
+           that was not: the register takes REGISTER_LIMIT, the monthly
+           series is grouped in Postgres precisely so two years of
+           reports are not pulled across to be counted here, and this
+           sat between them reading every closure in a window the caller
+           can set to two years.
+
+           OLDEST FIRST AND THE CAP KEEPS WHAT IT READS, which is the
+           right direction for a median: taking the newest would compute
+           closure time from the most recent transitions and call it the
+           window's. Truncation is reported below rather than absorbed,
+           because a median over a capped sample is a median of a sample
+           and the screen has to say so. */
         prisma.reportTransition.findMany({
           where: { ...where, toState: "CLOSED", at: { gte: from } },
           orderBy: { at: "asc" },
+          take: CLOSURE_LIMIT,
           select: { reportId: true, at: true, report: { select: { createdAt: true } } },
         }),
 
@@ -208,6 +227,11 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
           month: m.month.toISOString().slice(0, 7), count: Number(m.n),
         })),
         closure: sampleOf(closureDays),
+        /* SAID, NOT ABSORBED. A median computed over a capped sample is
+           a median of a sample, and this is a figure somebody reads out
+           to an authority. The register beside it already reports its
+           own truncation for the same reason. */
+        closureTruncated: closures.length === CLOSURE_LIMIT,
       },
       register: {
         /* Open entries only — a closed risk is not part of the position
