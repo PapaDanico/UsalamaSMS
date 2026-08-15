@@ -1820,6 +1820,40 @@ html { scroll-padding-top: var(--us-chrome); }
   max-width: 62ch;
 }
 
+/* THE ACCOUNT INDEX. The grid itself is .picture-grid — the same
+   auto-fit that lays out the risk picture's figures, and the same
+   reason: cards per row should follow the width rather than a
+   breakpoint kept in step with a count by hand. .account-grid carries
+   only what a LIST needs that a figure grid does not. */
+.account-grid { list-style: none; padding: 0; }
+
+/* Whole card is the target, not the label inside it. */
+.account-card a {
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-1);
+  height: 100%;
+  min-height: 44px;
+  padding: var(--us-space-3);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-sm);
+  background: var(--us-surface-sunk);
+  color: var(--us-text-secondary);
+  font-size: var(--us-text-sm);
+  line-height: var(--us-leading-snug);
+  text-decoration: none;
+}
+
+.account-card a:hover { border-color: var(--us-teal); }
+.account-card strong { color: var(--us-text-primary); }
+
+/* Facts about the account, read rather than scanned — so a row each
+   rather than the figure grid above. */
+.account-facts { margin: var(--us-space-4) 0 0; font-size: var(--us-text-sm); }
+.account-facts > div { display: flex; gap: var(--us-space-2); padding: var(--us-space-1) 0; }
+.account-facts dt { color: var(--us-text-tertiary); min-width: 8rem; }
+.account-facts dd { margin: 0; color: var(--us-text-primary); }
+
 .picture-list {
   margin: var(--us-space-3) 0;
   padding-left: var(--us-space-5);
@@ -2442,6 +2476,66 @@ html { scroll-padding-top: var(--us-chrome); }
    own content block, one step tighter, because it follows a band that
    has just spent that space. */
 .panel { padding-block: clamp(1.5rem, 4.5vw, 2.5rem); }
+
+/* =====================================================================
+   AN INSTRUMENT IS NOT A DOCUMENT.
+
+   Everything above is the editorial treatment: a 52px display heading
+   over a generous measure, set in Cormorant Garamond, with a panel
+   breathing 40px at desktop. That is right for /about and /pricing,
+   where somebody is deciding whether to trust a practice, and it is the
+   treatment the identity was built for.
+
+   It was also being applied to the triage queue. `h1` is
+   clamp(32px, 4.8vw, 52px) GLOBALLY, so the screen a safety manager
+   opens forty times a day led with the same hero as the landing page —
+   about 150px of vertical between the top of the panel and the first
+   row of actual work, once the panel padding, the heading, the lede and
+   the page-head margin were counted.
+
+   THIS FILE ALREADY ARGUED FOR THE SPLIT and never enforced it. The
+   note above --us-font-display says the identity goes on "headlines,
+   the wordmark, the display type on the document pages a prospective
+   operator judges the practice by", while "the interface — fields,
+   tables, badges, the queue, the deadline figures — stays in DM Sans".
+   True of every component and never true of the headings, because the
+   h1..h4 rule sets the display face for the whole document.
+
+   So the router stamps data-surface on the root and these six rules
+   answer it. Nothing is redefined that does not need to change: the
+   reading rungs, the colours, the spacing scale and every component are
+   shared, because the two surfaces are one product and should not look
+   like two.
+
+   THE READING END IS UNTOUCHED, AGAIN. This lowers headings and
+   tightens padding; body copy stays at 15px and controls at 16px, for
+   the reason recorded on the scale itself — a reporter squinting at a
+   handset on a windy apron is the person who pays for that, and they
+   are not the person asking for a denser screen. check:a11y runs over
+   all twenty-four rendered screens and is what holds that line.
+   ===================================================================== */
+
+/* 27 / 21 / 17 rather than 52 / 37 / 21, and in the body face. A tool's
+   heading is a label on a region, not an argument for reading on. */
+[data-surface='tool'] :is(h1, h2, h3, h4) {
+  font-family: var(--us-font);
+  letter-spacing: var(--us-tracking-snug);
+}
+[data-surface='tool'] h1 { font-size: var(--us-text-xl); line-height: 1.2; }
+[data-surface='tool'] h2 { font-size: var(--us-text-lg); line-height: 1.25; }
+[data-surface='tool'] h3 { font-size: var(--us-text-md); }
+
+/* THE OPTICAL CORRECTION IS UNDONE HERE, and it has to be. The 1.15
+   multiplier on .page-head h2 exists because Cormorant's x-height is
+   smaller than DM Sans's at the same pixel size; applied to DM Sans it
+   is simply 15% too big. A correction for a typeface, left on after the
+   typeface changed, is the drift this stylesheet keeps catching. */
+[data-surface='tool'] .page-head h2 { font-size: var(--us-text-md); }
+
+/* Rhythm. ~60px reclaimed per screen — a whole extra row of the queue
+   above the fold, which is the entire point. */
+[data-surface='tool'] .panel { padding-block: var(--us-space-5); }
+[data-surface='tool'] .page-head { margin-bottom: var(--us-space-4); }
 .panel + .panel { padding-top: 0; }
 .page-head { margin-bottom: var(--us-space-6); }
 .page-head h1 { margin: 0 0 var(--us-space-2); }

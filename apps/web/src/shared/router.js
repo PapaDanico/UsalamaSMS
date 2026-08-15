@@ -266,6 +266,33 @@ class Router {
     // Keep the head in step with the route for anything that reads it
     // after navigation — social crawlers that execute JS, and the
     // browser's own history entries.
+    /* WHICH KIND OF SURFACE THIS IS, stamped on the root so the
+       stylesheet can tell an instrument from a document.
+     *
+     * The product has two audiences on one type scale and they want
+     * opposite things. A prospective operator reading /about or
+     * /pricing is being persuaded, and a 52px Cormorant heading over a
+     * generous measure is the right instrument for that. A safety
+     * manager working the triage queue is not being persuaded — they
+     * are looking for a row — and the same heading spends 150px of
+     * vertical before the first piece of work appears.
+     *
+     * style.css has argued for this split since the display face
+     * landed: the identity belongs on "headlines, the wordmark, the
+     * display type on the document pages a prospective operator judges
+     * the practice by", while "the interface — fields, tables, badges,
+     * the queue, the deadline figures — stays in DM Sans". That was
+     * true of the components and never true of the headings, because
+     * `h1, h2, h3, h4` set the display face globally. This is the line
+     * being drawn where the file already said it was.
+     *
+     * ON THE ROOT RATHER THAN THE OUTLET, so a rule can reach the
+     * header and the footer too, and DEFAULTING TO DOCUMENT: a screen
+     * that forgets to declare itself gets the editorial treatment,
+     * which is wrong in a way somebody notices rather than a way that
+     * quietly under-sets a landing page. */
+    document.documentElement.dataset.surface = match?.meta?.surface ?? 'document';
+
     document.title = match?.meta?.title
       ? `${match.meta.title} — UsalamaSMS`
       : 'UsalamaSMS — Safety intelligence for African skies';

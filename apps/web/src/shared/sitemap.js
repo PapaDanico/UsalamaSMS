@@ -341,6 +341,13 @@ export const SECTIONS = [
          weight in the entry chunk charged to every reporter who already
          has one. A footer is where a site index belongs. */
       { href: '/signup', label: 'Create an operator account' },
+      /* IN THE FOOTER, NOT THE HEADER, for the same reason /signup is:
+         the header carries the operator's SEQUENCE — what somebody
+         signed in uses the product to do — and a profile link there is
+         entry-chunk weight on every screen for a page opened once or
+         twice in the life of an account. The account area itself links
+         to it prominently, which is where somebody looks. */
+      { href: '/account/profile', label: 'Your profile' },
       { href: '/#deadlines', label: 'Regulatory basis' }
     ]
   },

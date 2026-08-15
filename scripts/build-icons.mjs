@@ -98,7 +98,22 @@ const SAND = token('us-sand');
  * with its shoulders cut off on a Pixel.
  */
 function icon({ size, background, ink, accent, safeZone = false, colour = false }) {
-  const scale = (safeZone ? 0.58 : 0.76) * (size / 140);
+  /* 0.65 rather than 0.58 for the maskable, and the number is measured
+     rather than eyeballed. The mask crops to the outer 20%, leaving a
+     safe circle of 0.8 x 512 = 409.6px. The artwork is 112x132 units,
+     so at scale s its DIAGONAL is sqrt((112s)^2 + (132s)^2) = 173s, and
+     that diagonal is what has to fit the circle rather than either
+     edge. At 0.58 the diagonal came to 367px against 409.6 available —
+     a tile with visible slack on every side, which on a launcher reads
+     as a small logo floating in a dark square while the apps beside it
+     fill theirs.
+
+     0.63 puts the diagonal at 399px, which fits with 10px to spare.
+     0.65 puts it at 412px, which OVERFLOWS by two and would have the
+     shield's corners shaved off on a circular mask — the exact failure
+     the safe zone exists to prevent, arrived at by rounding up. So the
+     number is 0.63 and it is the largest one that fits. */
+  const scale = (safeZone ? 0.63 : 0.76) * (size / 140);
   const w = 120 * scale;
   const h = 140 * scale;
   const dx = (size - w) / 2;
@@ -169,13 +184,70 @@ function icon({ size, background, ink, accent, safeZone = false, colour = false 
 `;
 }
 
+/* =====================================================================
+   THE BROWSER TAB IS NOT A SMALL VERSION OF THE LOGO.
+
+   The favicon was rendered by icon() above, at the reduced detail set —
+   which was the right instinct and the wrong output, because the
+   reduction it applies still draws the shield as an OUTLINE. At 32px
+   that 5-unit stroke scales to 0.87px; at the 16px a browser tab
+   actually renders, it is 0.43px. A sub-pixel stroke does not draw a
+   thin line, it draws a grey smudge — so the shape that carries the
+   whole identity was the first thing to disappear.
+
+   AND IT WAS INVISIBLE ON HALF THE BROWSERS IN USE. The ground was
+   `none` and the ink was charcoal, so on a dark tab bar the mark was
+   near-black on near-black. The rasteriser records the reasoning: it
+   keeps transparency because "a 32px charcoal mark on an opaque white
+   square is a white square in a dark browser theme". That is true, and
+   transparency solves it by making the mark vanish instead. Both
+   failures have one fix, and it is not transparency: an OPAQUE ground
+   in the brand's own dark, carrying the mark in gold. That reads on a
+   white tab bar and on a black one, because it brings its own contrast
+   rather than borrowing the browser's.
+
+   SO THE TAB GETS A SILHOUETTE. Filled, not stroked — a fill has no
+   width to lose. No crane, no crest, no aircraft: at 16px there are
+   about 256 pixels to spend and a bird with a beak, an eye and two legs
+   spends them all on noise. What survives is the shield's proportion
+   and the gold-on-charcoal pairing, which is enough to find in a row of
+   twenty tabs, and that is the entire job of a favicon.
+
+   The other four icons are unchanged. A home-screen tile is rendered at
+   192px and up, is seen alone rather than in a row, and is the one
+   place the full mark should be drawn.
+   ===================================================================== */
+function silhouette({ size, background, mark }) {
+  /* The shield occupies x 4..116, y 4..136 of the 120x140 artboard. */
+  const ART_X = 4;
+  const ART_Y = 4;
+  const ART_W = 112;
+  const ART_H = 132;
+
+  /* 86% of the canvas. Full bleed would clip the shield's shoulders
+     against the tab's own rounding on some browsers, and much less than
+     this wastes the pixels the whole exercise is about. */
+  const scale = (size * 0.86) / ART_H;
+  const dx = (size - ART_W * scale) / 2 - ART_X * scale;
+  const dy = (size - ART_H * scale) / 2 - ART_Y * scale;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <rect width="${size}" height="${size}" fill="${background}"/>
+  <g transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)}) scale(${scale.toFixed(4)})">
+    <path d="${SHIELD}" fill="${mark}"/>
+  </g>
+</svg>
+`;
+}
+
 mkdirSync(OUT, { recursive: true });
 
 const FILES = {
-  // Browser tab. No crest, no runway, no contrail — at 32px they turn
-  // to mud and only the silhouette survives. Same threshold the in-app
-  // mark applies, for the same measured reason.
-  'favicon.svg': icon({ size: 32, background: 'none', ink: CHARCOAL, accent: GOLD }),
+  // Browser tab. A SILHOUETTE, not a reduction of the logo — see the
+  // note above silhouette(): an outline loses its stroke to sub-pixel
+  // rounding at tab size, and a transparent ground loses the mark
+  // itself on a dark tab bar.
+  'favicon.svg': silhouette({ size: 32, background: CHARCOAL, mark: GOLD }),
   // The installed app icon is the PRIMARY logo — the quartered shield
   // from the identity guidelines, not a monochrome reduction. This is
   // the one place the brand is seen at size and out of context.

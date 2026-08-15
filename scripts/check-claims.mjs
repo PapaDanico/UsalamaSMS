@@ -917,6 +917,18 @@ assert(
     ["/api/v1/auth/logout", "As above."],
     ["/api/v1/auth/refresh", "As above."],
     ["/api/v1/auth/me", "As above."],
+    [
+      "/api/v1/auth/password",
+      "Changing your own password is account security, not one of the twelve " +
+        "things an SMS has to do. It exists because the administrator reset route " +
+        "ends by saying 'have them change it' and nothing could — an instruction " +
+        "with no mechanism, the same shape the demo-password rotation had. That " +
+        "makes it a real gap and still not a regulatory one: an inspector asks what " +
+        "an operator can evidence about its safety management, and 'our safety " +
+        "officer can rotate their own credential' is not on that list. Putting it " +
+        "on /coverage would be the page overstating in the other direction, by " +
+        "counting a security hygiene control as an Annex 19 element.",
+    ],
     ["/api/v1/export", "Evidence extraction spans every element rather than belonging to one."],
   ]);
 

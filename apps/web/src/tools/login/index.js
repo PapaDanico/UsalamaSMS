@@ -140,6 +140,8 @@ function renderSignedIn(outlet) {
       </p>
     </section>
 
+    <div id="account-home-slot"></div>
+
     <div id="admin-reset-slot"></div>
 
     <div id="export-slot"></div>
@@ -150,6 +152,15 @@ function renderSignedIn(outlet) {
     window.dispatchEvent(new CustomEvent('usalamasms:session-changed'));
     render(outlet);
   });
+
+  /* THE ACCOUNT AREA, lazily. This screen is EAGER — signing in is what
+     sends a queued report — so the index of destinations, which only
+     somebody already signed in ever sees, is loaded on demand rather
+     than parsed before first paint by a reporter at a strip. Same split,
+     and the same reason, as the admin reset and export panels below. */
+  import('./account-home.js').then((m) =>
+    m.mount(outlet.querySelector('#account-home-slot'), session)
+  );
 
   if (session.role === 'SYSTEM_ADMIN') {
     import('./admin-reset.js').then((m) => m.mount(outlet.querySelector('#admin-reset-slot')));
