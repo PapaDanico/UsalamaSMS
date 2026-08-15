@@ -1639,7 +1639,41 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    getting answered.
 
    THE ENTRY RULE STILL STANDS at 4.5 KB of headroom. */
-const BUDGET = { entry: 217 * 1024, js: 501 * 1024, css: 61 * 1024 };
+/* TOTAL 501 -> 502 KB, and every byte of it is a screen learning to say
+   "I do not know". ENTRY moved 200 bytes for two 737 variants.
+
+     register chunk   +~900 bytes  (the third state and the refusal)
+     entry           212.5 -> 212.6 KB   +2 aircraft types
+     total js        501.6 KB of 502
+     css             UNMOVED — the panel reuses .notice--error
+
+   WHAT IT BUYS, AND IT IS THE FOURTH TIME THIS DEFECT HAS APPEARED. The
+   register's load() returned `[]` when the stored copy could not be
+   parsed, and the screen rendered "Nothing on the register yet. The
+   first entry is usually the hazard behind the last report somebody
+   filed." A safety manager whose store is damaged was told they had not
+   started one — and the reasonable next action after reading that is to
+   type an entry, on top of entries that are there and cannot be shown.
+
+   THE IRONY WAS TWELVE LINES DOWN. save() already carried a comment
+   citing charter rule 8 — a refused write is reported, never swallowed
+   — and returned a boolean the caller surfaces. The READ path never got
+   the same treatment. Same file, same rule, one direction.
+
+   AND THE WARNING WAS NOT ENOUGH ON ITS OWN. The first version of this
+   change said "do not add an entry until it reads again", which is
+   telling somebody not to do a thing the software will happily let them
+   do — the same shape as a coverage entry that overstates. The submit
+   handler now REFUSES while the store is unreadable, and refuses rather
+   than queues, because the one store this screen has is the one that
+   cannot be read.
+
+   THE B733 AND B734 are the other 200 bytes. The list carried the 737
+   NG and MAX and neither Classic — the two variants an East African
+   regional freight or charter operator is most likely to be flying. A
+   type list that cannot name a customer's whole jet fleet sends that
+   fleet to the free-text escape, which is the half nobody can count. */
+const BUDGET = { entry: 217 * 1024, js: 502 * 1024, css: 61 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

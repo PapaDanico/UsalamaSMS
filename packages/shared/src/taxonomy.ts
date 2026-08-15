@@ -118,6 +118,17 @@ export const AIRCRAFT_TYPES = [
      customer's fleet sends that half to the free-text escape, and free
      text is the half nobody can count. */
   { code: 'F50', label: 'Fokker 50', category: 'Turboprop' },
+  /* THE 737 CLASSICS, and their absence was the same shape as the
+     Fokker 50's. The list carried the NG and the MAX — the fleet a
+     well-capitalised flag carrier buys — and neither of the two
+     variants an East African operator is most likely to be flying. The
+     -300 and -400 are the backbone of regional freight and charter
+     across the continent: cheap to acquire, still certified, and
+     over-represented in exactly the operations this product exists for.
+     An operator whose whole jet fleet fell into the free-text escape
+     hatch is an operator whose jet occurrences cannot be grouped. */
+  { code: 'B733', label: 'Boeing 737-300', category: 'Jet' },
+  { code: 'B734', label: 'Boeing 737-400', category: 'Jet' },
   { code: 'B738', label: 'Boeing 737-800', category: 'Jet' },
   { code: 'B38M', label: 'Boeing 737 MAX 8', category: 'Jet' },
   { code: 'B788', label: 'Boeing 787-8', category: 'Jet' },
