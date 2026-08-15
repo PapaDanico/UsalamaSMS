@@ -13,11 +13,12 @@
    geometry means two logos, eventually.
 
    THE TAB ICON IS CROPPED FROM THE SUPPLIED ARTWORK. Logo.js's geometry
-   is an approximation of the identity, and at 192px and up it is a good
-   one. At 32px it is not — see the note above cropMark(), which is
-   where that was measured rather than assumed. The two do not disagree
-   about the brand; one is the drawing and one is the photograph of it,
-   and they are used at the sizes each is right at.
+   is an approximation of the identity, and at 180px — the smallest icon
+   drawn from it — and up it is a good one. At 32px it is not; see the
+   note above cropMark(), which is where that was measured rather than
+   assumed. The two do not disagree about the brand: one is a redrawing
+   of the identity and one is the identity's own artwork, used at the
+   sizes each is right at.
 
    BOTH SVG AND PNG. An SVG-only manifest is not installable: iOS
    ignores an SVG apple-touch-icon entirely and substitutes a screenshot
