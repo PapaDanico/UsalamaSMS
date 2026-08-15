@@ -1,4 +1,56 @@
 /* ============================================================
+   NOTES ABOUT THE MARKUP, COLLECTED OUT OF THE TEMPLATE.
+
+   An `<!-- -->` inside a tagged template literal is string content:
+   no minifier removes it and every reporter downloads it. These read
+   better collected, cost nothing here, and can hold a backtick safely.
+   In the order the markup reaches them:
+
+   1. The number is COUNTED from the form below, not typed here.
+      It said "two" while the form asked for three, from the day
+      report type stopped being pre-answered — a sentence nobody
+      re-read because nothing pointed at it. Charter rule 10: a
+      count printed on a surface is derived.
+
+   2. REQUIRED AND UNANSWERED, which costs one tap on the fastest
+      path and is worth it.
+      This defaulted to HAZARD. That is the right guess for most
+      unprompted reports, and the guess is silent: someone filing an
+      actual occurrence who does not look at this control files it
+      as a hazard, and an MOR classified as a hazard never gets a
+      regulatory deadline computed for it. The operator then misses
+      a 24-hour KCAA obligation without a single screen ever
+      suggesting one existed.
+      A missed deadline is the failure this whole product is
+      organised against, so the classification is a conscious
+      choice. Every other dropdown on this form stays optional.
+
+   3. FROM THE OPERATOR'S OWN HAZARD REPORT FORM, where "Reporter's
+      Recommendations" is a section in its own right, above the
+      safety office's analysis. The person who saw it usually knows
+      the fix, and asking costs one optional field.
+      Above the optional block rather than inside it: it is the last
+      thing the reporter has to say, not an extra detail.
+
+   4. Everything below the fold is optional and is marked as such,
+      because an unmarked optional field reads as required and adds
+      the hesitation this form exists to remove.
+
+   5. The one control that is NOT a dropdown, and the reason is
+      that this field is multi-select. A native <select multiple>
+      on a touch device requires a long-press or a modifier key
+      to pick a second item — most people never discover it, and
+      the ones who do lose their first choice trying. Checkboxes
+      styled as chips are the honest control for "choose any".
+
+   6. The anonymity control is the most consequential thing on this
+      page and it is not hidden in the optional section. The label
+      states the limit as well as the promise: over-promising here
+      is how a reporter is identified by a colleague reading a
+      bulletin, and the corollary belongs where the promise is made
+      (charter rule 7), not two clicks away in a legal page.
+   ============================================================ */
+/* ============================================================
    The report form.
 
    THE ONE METRIC THIS SCREEN IS JUDGED BY: can a frontline person file
@@ -52,11 +104,6 @@ export function render(outlet) {
       <header class="page-head">
         <span class="eyebrow">Safety report</span>
         <h1>File a report</h1>
-        <!-- The number is COUNTED from the form below, not typed here.
-             It said "two" while the form asked for three, from the day
-             report type stopped being pre-answered — a sentence nobody
-             re-read because nothing pointed at it. Charter rule 10: a
-             count printed on a surface is derived. -->
         <p class="lede">
           <span id="report-required-count">Three</span> required fields. The
           report is held on this device and sends when there is signal.
@@ -65,20 +112,6 @@ export function render(outlet) {
 
       <div class="card report__card">
 
-      <!-- REQUIRED AND UNANSWERED, which costs one tap on the fastest
-           path and is worth it.
-
-           This defaulted to HAZARD. That is the right guess for most
-           unprompted reports, and the guess is silent: someone filing an
-           actual occurrence who does not look at this control files it
-           as a hazard, and an MOR classified as a hazard never gets a
-           regulatory deadline computed for it. The operator then misses
-           a 24-hour KCAA obligation without a single screen ever
-           suggesting one existed.
-
-           A missed deadline is the failure this whole product is
-           organised against, so the classification is a conscious
-           choice. Every other dropdown on this form stays optional. -->
       ${Select({
         name: 'type',
         label: 'What kind of report is this?',
@@ -152,13 +185,6 @@ export function render(outlet) {
         <span class="field-hint" id="narrative-count"></span>
       </label>
 
-      <!-- FROM THE OPERATOR'S OWN HAZARD REPORT FORM, where "Reporter's
-           Recommendations" is a section in its own right, above the
-           safety office's analysis. The person who saw it usually knows
-           the fix, and asking costs one optional field.
-
-           Above the optional block rather than inside it: it is the last
-           thing the reporter has to say, not an extra detail. -->
       <label class="field">
         <span class="field-label">What do you think should be done?</span>
         <textarea
@@ -169,9 +195,6 @@ export function render(outlet) {
         class="input-field">${draft.reporterRecommendation ?? ''}</textarea>
       </label>
 
-      <!-- Everything below the fold is optional and is marked as such,
-           because an unmarked optional field reads as required and adds
-           the hesitation this form exists to remove. -->
       <details class="report__more" ${draft.detailsOpen ? raw('open') : ''}>
         <summary>Add detail (optional)</summary>
 
@@ -225,12 +248,6 @@ export function render(outlet) {
 
         <fieldset>
           <legend>Does this relate to any of these?</legend>
-          <!-- The one control that is NOT a dropdown, and the reason is
-               that this field is multi-select. A native <select multiple>
-               on a touch device requires a long-press or a modifier key
-               to pick a second item — most people never discover it, and
-               the ones who do lose their first choice trying. Checkboxes
-               styled as chips are the honest control for "choose any". -->
           <div class="chip-row">
             ${HRC_CATEGORIES.map(
               (c) => html`
@@ -249,12 +266,6 @@ export function render(outlet) {
         </fieldset>
       </details>
 
-      <!-- The anonymity control is the most consequential thing on this
-           page and it is not hidden in the optional section. The label
-           states the limit as well as the promise: over-promising here
-           is how a reporter is identified by a colleague reading a
-           bulletin, and the corollary belongs where the promise is made
-           (charter rule 7), not two clicks away in a legal page. -->
       </div>
 
       <label class="report__anon">

@@ -1,4 +1,42 @@
 /* ============================================================
+   NOTES ABOUT THE MARKUP, COLLECTED OUT OF THE TEMPLATE.
+
+   An `<!-- -->` inside a tagged template literal is string content:
+   no minifier removes it and every reporter downloads it. These read
+   better collected, cost nothing here, and can hold a backtick safely.
+   In the order the markup reaches them:
+
+   1. No lockup here. A hero carries one when the nav lockup is
+      small and a hundred pixels of scroll away; ours is the same
+      size and sits directly above, so a second copy reads as a
+      rendering mistake rather than as a statement.
+
+   2. Shown only to a role that actually holds user.manage. The
+      server checks too — this is so the screen does not offer an
+      action that will be refused, not so the rule lives here.
+
+   3. Filled by a lazily-imported module, and only for a role that
+      holds user.manage. It lived here first and cost 2.5 KB of the
+      ENTRY bundle — charged to every ramp agent filing a report, to
+      carry a panel one person opens twice a year. The budget caught
+      it.
+
+   4. The operator's own copy. Lazily imported and permission-gated
+      inside that module, for the same reason the reset panel is:
+      this screen is eager, and a button two people press once a
+      quarter must not be weight on a ramp agent's first paint.
+
+   5. A LINK, NOT A PANEL. The form began inline here and cost
+      5.6 KB of the ENTRY bundle — charged to every ramp agent
+      filing a report, to carry a form an operator fills in once in
+      its life. Moving it behind a lazy import still left half a
+      kilobyte of slot and loader on the eager screen, so it is a
+      destination instead: one anchor here, everything else in the
+      route's own chunk. It is also the honest shape — signing up
+      is a different job from signing in, and /pricing can link
+      straight to it.
+   ============================================================ */
+/* ============================================================
    Sign in.
 
    The screen that did not exist, which is why nothing this product
@@ -60,10 +98,6 @@ function Banner(headline, lede) {
   return html`
     <section class="band-dark">
       <div class="wrap">
-        <!-- No lockup here. A hero carries one when the nav lockup is
-             small and a hundred pixels of scroll away; ours is the same
-             size and sits directly above, so a second copy reads as a
-             rendering mistake rather than as a statement. -->
         <span class="eyebrow">Account</span>
         <h1>${headline}</h1>
         <p class="lede">${lede}</p>
@@ -106,20 +140,8 @@ function renderSignedIn(outlet) {
       </p>
     </section>
 
-    <!-- Shown only to a role that actually holds user.manage. The
-         server checks too — this is so the screen does not offer an
-         action that will be refused, not so the rule lives here. -->
-    <!-- Filled by a lazily-imported module, and only for a role that
-         holds user.manage. It lived here first and cost 2.5 KB of the
-         ENTRY bundle — charged to every ramp agent filing a report, to
-         carry a panel one person opens twice a year. The budget caught
-         it. -->
     <div id="admin-reset-slot"></div>
 
-    <!-- The operator's own copy. Lazily imported and permission-gated
-         inside that module, for the same reason the reset panel is:
-         this screen is eager, and a button two people press once a
-         quarter must not be weight on a ramp agent's first paint. -->
     <div id="export-slot"></div>
   `.toString();
 
@@ -174,15 +196,6 @@ function renderForm(outlet) {
         <p class="field-error" id="login-status" role="status" aria-live="polite"></p>
       </form>
 
-      <!-- A LINK, NOT A PANEL. The form began inline here and cost
-           5.6 KB of the ENTRY bundle — charged to every ramp agent
-           filing a report, to carry a form an operator fills in once in
-           its life. Moving it behind a lazy import still left half a
-           kilobyte of slot and loader on the eager screen, so it is a
-           destination instead: one anchor here, everything else in the
-           route's own chunk. It is also the honest shape — signing up
-           is a different job from signing in, and /pricing can link
-           straight to it. -->
       <p class="hint">
         <a href="/signup">My operator does not have an account yet</a>
       </p>

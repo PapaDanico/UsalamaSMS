@@ -292,6 +292,16 @@ router
      just filed something has a connection often enough that the chunk
      is there before they look. What the entry cannot afford is a
      screen nobody has asked for yet. */
+  /* LAZY, for the same reason the queue is. This is the screen a SAFETY
+     MANAGER opens first and a reporter at a strip never opens at all —
+     it needs a session and reads the organisation's record. Charging
+     its weight to the entry chunk would bill the person filing a hazard
+     over a bad link for a screen they will never see. */
+  .register(
+    '/today',
+    (el) => lazy(el, () => import('./tools/today/index.js').then((m) => (o) => m.render(o))),
+    { title: 'What needs you today' }
+  )
   .register(
     '/triage',
     (el) => lazy(el, () => import('./tools/triage/index.js').then((m) => (o) => void m.render(o))),

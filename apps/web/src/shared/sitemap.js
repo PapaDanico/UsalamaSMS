@@ -195,6 +195,18 @@ export const SECTIONS = [
     title: 'When something happens',
     working: true,
     items: [
+      /* FIRST IN THE SEQUENCE THAT STARTS AFTER SIGNING IN, and ahead
+         of the report form deliberately. Filing is what a REPORTER
+         does; opening the day's list is what the safety office does,
+         and this section is read top to bottom by both. It sits inside
+         "when something happens" rather than in its own group because
+         it is the answer to that question, not a new subject. */
+      {
+        href: '/today',
+        label: 'What needs you today',
+        short: 'Today',
+        inHeader: true
+      },
       {
         href: '/report',
         label: 'File a report',
