@@ -70,23 +70,42 @@ import {
    one is answered on. Wording lives here rather than in digest.ts for
    the same reason mail.ts holds its own: the module holds a kind and a
    count, and how that reads to a person is presentation. */
+/* `watches` is the noun on its own, and it exists so the SIGNED-OUT
+   screen can say what this one looks at without a second list.
+
+   Signed out, /today was a heading, three sentences and two buttons on
+   a page the sticky footer stretched to the full viewport — the same
+   defect /picture had. The lede named three of these four in prose,
+   which is both unscannable and a copy that goes stale the moment a
+   fifth kind is added here.
+
+   Reading the offer off KIND means it cannot: a kind added below
+   appears on the signed-out screen in the same commit, and one removed
+   stops being advertised. No gate needed, because there is nothing to
+   disagree — which is why this is better than /picture's four, where
+   the headings are prose in place and the agreement has to be
+   asserted by a test instead. */
 const KIND = {
   DEADLINE: {
+    watches: 'Reporting deadlines',
     one: 'reporting deadline needs attention',
     many: 'reporting deadlines need attention',
     act: 'Open the queue'
   },
   CURRENCY: {
+    watches: 'Training currency',
     one: 'training currency is lapsing',
     many: 'training currencies are lapsing',
     act: 'Open the training matrix'
   },
   UNTRIAGED: {
+    watches: 'Untriaged reports',
     one: 'report is waiting to be triaged',
     many: 'reports are waiting to be triaged',
     act: 'Open the queue'
   },
   ACTION_OVERDUE: {
+    watches: 'Overdue corrective actions',
     one: 'corrective action is overdue',
     many: 'corrective actions are overdue',
     act: 'Open the register'
@@ -299,13 +318,21 @@ export async function render(outlet) {
           <span class="eyebrow">Today</span>
           <h1>What needs you today</h1>
           <p class="lede">
-            This reads your operator's own record — the reporting deadlines, the
-            training that is lapsing, the reports nobody has looked at yet. It needs a
-            session, because it is the organisation's record rather than this handset's.
+            This reads your operator's own record rather than this handset's,
+            which is why it needs a session.
           </p>
         </div>
       </section>
       <section class="panel wrap">
+        <h2 class="section-title">What it watches</h2>
+        <ul class="picture-grid" role="list">
+          ${Object.values(KIND).map(
+            (k) => html`<li class="fact">
+              <strong>${k.watches}</strong>
+              <span>${k.act}</span>
+            </li>`
+          )}
+        </ul>
         <p class="mat-actions no-print">
           <a class="btn btn-primary" href="/account">Sign in</a>
           <a class="btn btn-ghost" href="/report">File a report without signing in</a>
