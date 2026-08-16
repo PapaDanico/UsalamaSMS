@@ -69,6 +69,34 @@ export const EVIDENCE_TYPES: ReadonlyArray<string> = Object.freeze([
  */
 export const EVIDENCE_MAX_BYTES = 3 * 1024 * 1024;
 
+/**
+ * THE REQUEST BODY A MAX-SIZED ATTACHMENT NEEDS, in bytes.
+ *
+ * COMPUTED FROM THE RULE ABOVE, never typed — charter rule 10. The two
+ * numbers are the same decision expressed in two units, and a typed
+ * second one is how they come to disagree.
+ *
+ * IT EXISTS BECAUSE THEY DID DISAGREE, silently, from the day the
+ * upload was written. `apps/api/src/server.ts` caps the JSON body at
+ * 1 MB — sized for a narrative and a sync batch, correct for every
+ * other route in the product — and the attachment route inherited it.
+ * Base64 costs four characters for every three bytes, so a 3 MB
+ * photograph arrives as about 4 MB of request and Fastify refused it
+ * before the handler ran. The EFFECTIVE ceiling was 786 KB: under the
+ * limit this file states, under the limit the form quotes to the
+ * reporter, and announced as `FST_ERR_CTP_BODY_TOO_LARGE` rather than
+ * as any of the sentences written here to explain a refusal.
+ *
+ * Nothing could have caught it. Both numbers are right about their own
+ * job, neither file mentions the other, and the feature had no test
+ * that sent a file bigger than a few kilobytes.
+ *
+ * The 4096 is the JSON envelope — the content type, the label, the
+ * braces and quotes — with room. Base64 contains no character JSON has
+ * to escape, so the encoded run costs exactly its own length.
+ */
+export const EVIDENCE_MAX_BODY_BYTES = Math.ceil(EVIDENCE_MAX_BYTES / 3) * 4 + 4096;
+
 /** The longest edge a photograph is reduced to on the device. */
 export const EVIDENCE_MAX_EDGE = 1600;
 
@@ -171,6 +199,43 @@ export function checkEvidenceCount(existing: number): EvidenceVerdict {
     };
   }
   return { ok: true, type: "", bytes: 0 };
+}
+
+/**
+ * WHETHER A STRING IS ACTUALLY BASE64.
+ *
+ * `Buffer.from(value, "base64")` NEVER THROWS. It silently discards
+ * every character that is not in the alphabet and returns whatever it
+ * managed to assemble out of the rest, so the route's
+ *
+ *     try { bytes = Buffer.from(body.data, "base64"); } catch { ... }
+ *
+ * was a catch block that could not fire — a check that cannot fail,
+ * which this repository holds to be worse than no check, because it
+ * reads as protection.
+ *
+ * What it was protecting against is not hypothetical. A truncated
+ * upload, a proxy that mangled the payload, a client that concatenated
+ * two chunks wrongly: all of those arrive as a string that decodes to
+ * FEWER bytes than were sent, without complaint. The route would then
+ * store those bytes, hash those bytes, and put that hash in the audit
+ * chain — so the record would be perfectly consistent about a file
+ * that is not the one the reporter chose. The chain would attest to
+ * the corruption rather than detect it.
+ *
+ * Strict on purpose: no whitespace, no newlines, no URL-safe variant.
+ * The only producer is `btoa()` in evidence-panel.js, which emits none
+ * of those, so anything carrying them did not come from this product's
+ * upload path and refusing it costs nothing.
+ */
+export function isBase64(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0) return false;
+  /* Base64 encodes in quanta of four characters. A length that is not
+     a multiple of four is a truncation, which is exactly the failure
+     this exists to catch. */
+  if (value.length % 4 !== 0) return false;
+  /* At least one payload character, then at most two padding ones. */
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 }
 
 /**

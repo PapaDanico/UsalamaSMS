@@ -35,7 +35,9 @@ import {
   checkEvidence,
   checkEvidenceCount,
   evidenceKey,
+  isBase64,
   EVIDENCE_MAX_FILES,
+  EVIDENCE_MAX_BODY_BYTES,
 } from "../../../packages/shared/src/evidence";
 import { prisma, authenticate, appendAudit, tenantWhere } from "./core";
 
@@ -103,7 +105,26 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
 
   /* ----------------------------- upload ----------------------------- */
 
-  app.post("/api/v1/reports/:id/attachments", limited, async (req, reply) => {
+  app.post("/api/v1/reports/:id/attachments", {
+    ...limited,
+    /* THE ONLY ROUTE IN THIS PRODUCT THAT IS ALLOWED A BIG BODY, and
+       it is sized from the rule rather than chosen.
+
+       server.ts caps JSON at 1 MB for everything, which is right for a
+       narrative and a sync batch and was silently wrong here: base64
+       costs four characters per three bytes, so this route's own 3 MB
+       ceiling needed about 4 MB of request and got a 1 MB one. The
+       effective limit was 786 KB — announced as a Fastify parser error
+       rather than as any of the sentences evidence.ts writes to explain
+       a refusal, and never noticed because nothing ever posted a file
+       larger than a few kilobytes.
+
+       A route-level bodyLimit overrides the content-type parser's;
+       confirmed by booting Fastify with this exact configuration and
+       posting 4.2 MB, which the parser refuses at the default and this
+       route accepts. Everything else keeps the 1 MB. */
+    bodyLimit: EVIDENCE_MAX_BODY_BYTES,
+  }, async (req, reply) => {
     const auth = req.auth!;
     /* The same permission that reads the operator's queue. Somebody who
        can see the report can add evidence to it; a frontline reporter
@@ -152,14 +173,25 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "rejected", message: "No file was supplied." });
     }
 
+    /* CHECKED BEFORE IT IS DECODED, because decoding cannot refuse.
+       Buffer.from(x, "base64") never throws — it drops whatever is not
+       in the alphabet and returns the rest — so a truncated or mangled
+       payload would be stored, hashed and chained as though it were the
+       file the reporter chose. The argument is in evidence.ts; what
+       matters here is that the refusal happens rather than the decode
+       silently succeeding on the wrong bytes. */
+    if (!isBase64(body.data)) {
+      return reply.code(400).send({
+        error: "rejected",
+        message:
+          "That file did not arrive intact, so nothing was stored. Attach it again — " +
+          "if it keeps failing, the connection is dropping part of the upload.",
+      });
+    }
+
     /* Decoded before it is measured, because the size that matters is
        the size of the FILE rather than of its encoding. */
-    let bytes: Buffer;
-    try {
-      bytes = Buffer.from(body.data, "base64");
-    } catch {
-      return reply.code(400).send({ error: "rejected", message: "That file could not be read." });
-    }
+    const bytes = Buffer.from(body.data, "base64");
 
     const verdict = checkEvidence(body.contentType, bytes.byteLength);
     if (!verdict.ok) {

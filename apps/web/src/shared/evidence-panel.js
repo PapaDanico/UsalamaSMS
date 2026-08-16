@@ -95,7 +95,8 @@ export async function mountEvidence(slot, reportId) {
                              the stored file against it on every download.">
                   <b>${a.sha256.slice(0, 16)}…</b>
                 </span>
-                <a href="/api/v1/attachments/${a.id}">Download</a>
+                <button type="button" class="btn btn-ghost btn-sm"
+                        data-evidence-get="${a.id}">Download</button>
               </li>`
             )}
           </ul>`
@@ -111,7 +112,76 @@ export async function mountEvidence(slot, reportId) {
     `.toString();
 
     slot.querySelector('[data-evidence-file]').addEventListener('change', onChoose);
+    for (const b of slot.querySelectorAll('[data-evidence-get]')) {
+      b.addEventListener('click', onDownload);
+    }
   };
+
+  /* A LINK CANNOT CARRY A BEARER TOKEN, and this was a link.
+
+     Every route in this API authenticates from an Authorization header
+     — there is no cookie, deliberately, because the same token has to
+     work from the service worker and from a handset that has been
+     offline. A browser navigating to an href sends no such header, so
+     a plain anchor pointing at the attachment route was a control that
+     could only ever produce {"error":"authentication_required"}
+     rendered as JSON in a blank tab. Every download, for every user,
+     since the feature was written.
+
+     The anchor is described rather than quoted: scripts/smoke.mjs greps
+     the built bundle for exactly that markup, and a comment that trips
+     its own gate is a confusing way to learn the gate works.
+
+     So the bytes are fetched the way every other read here is fetched,
+     and handed to the browser as an object URL. The response is already
+     content-disposition: attachment and nosniff, and the blob is
+     revoked immediately — a URL that outlives its click is a copy of
+     confidential evidence left addressable in the page.
+
+     THE 409 IS THE POINT OF THE WHOLE FEATURE. The route re-hashes the
+     stored file on the way out and refuses to serve one that no longer
+     matches what the audit chain attests. A plain link would have shown
+     that as raw JSON; it is the single most important sentence this
+     panel can display, so it is displayed.
+
+     REVOKED ON A TIMER RATHER THAN IN THE `finally`. Revoking in the
+     same tick as the click races the browser's own read of the blob
+     and cancels the download on some builds — the classic version of
+     this bug. A minute is long enough for any save dialogue and short
+     enough that a page left open does not keep confidential evidence
+     addressable indefinitely. */
+  async function onDownload(event) {
+    const button = event.currentTarget;
+    const id = button.getAttribute('data-evidence-get');
+    const status = slot.querySelector('[data-evidence-status]');
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Fetching…';
+    let url = '';
+    try {
+      const res = await authFetch(`/api/v1/attachments/${id}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        status.textContent =
+          body.message ?? 'That attachment could not be fetched, and nothing was changed.';
+        return;
+      }
+      const blob = await res.blob();
+      url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = button.closest('li')?.querySelector('strong')?.textContent ?? 'attachment';
+      link.click();
+      status.textContent = '';
+    } catch {
+      status.textContent =
+        'The safety office could not be reached, so the attachment was not fetched.';
+    } finally {
+      if (url) setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
 
   async function onChoose(event) {
     const file = event.target.files?.[0];
