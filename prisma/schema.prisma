@@ -192,6 +192,7 @@ model Org {
   reportMoves       ReportTransition[]
   actions           CorrectiveAction[]
   config            OrgConfig?
+  attachments       ReportAttachment[]
 }
 
 model User {
@@ -428,6 +429,7 @@ model SafetyReport {
   retractedBy User?                 @relation("reportRetractor", fields: [retractedById], references: [id], onDelete: SetNull)
   feedback    SafetyCommunication[]
   hazards     Hazard[]
+  attachments ReportAttachment[]
   transitions ReportTransition[]
   actions     CorrectiveAction[]
 
@@ -1415,4 +1417,53 @@ model OrgConfig {
   /// NO `@@index([orgId])`. `orgId` is already @unique here — one config
   /// per operator — and a unique constraint IS an index. A second one on
   /// the same column serves no read and costs every write.
+}
+
+
+/// EVIDENCE ATTACHED TO A REPORT — a photograph of the damage, a scan
+/// of a form, the techlog page somebody wrote on.
+///
+/// THE BYTES ARE NOT HERE. This row is the RECORD of an attachment; the
+/// file lives in object storage under `key`. A photograph is megabytes
+/// and there may be six of them per report, which in a column would
+/// inflate every backup, every SELECT that forgot to narrow, and every
+/// statement crossing the transaction pooler. The logo went in a column
+/// precisely because it is the opposite case — one small image that has
+/// to render inside a printed page.
+///
+/// WHAT MAKES IT EVIDENCE RATHER THAN AN ASSERTION is `sha256`. The
+/// audit chain covers this row, so the chain covers the hash, so a file
+/// swapped in storage after the fact no longer matches what the chain
+/// attests. Without it "the file changed" is unanswerable, and an
+/// attachment nobody can vouch for is not evidence.
+model ReportAttachment {
+  id       String @id @default(uuid())
+  orgId    String
+  reportId String
+
+  /// `<orgId>/<reportId>/<id>` — built by evidenceKey(), never from a
+  /// filename. A filename is attacker-chosen text and `../` in one is
+  /// how a storage path becomes somebody else's.
+  key String @unique
+
+  /// Allowlisted by checkEvidence(). No SVG anywhere in this product.
+  contentType String
+  bytes       Int
+  /// Lowercase hex of the uploaded bytes. See the note above.
+  sha256      String
+
+  /// What the reporter called it, for a human reading the list. Display
+  /// ONLY — nothing is ever built from it, least of all a path.
+  label String?
+
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  org    Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  report SafetyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  /// orgId FIRST, as on every tenant-owned table here: every read is
+  /// scoped to one operator before it is narrowed to one report, so a
+  /// composite in that order serves the query as written.
+  @@index([orgId, reportId])
 }
