@@ -68,6 +68,11 @@ import {
   rate
 } from '../../../../../packages/shared/src/spi.ts';
 import { SAFETY_ROLES } from '../../../../../packages/shared/src/posts.ts';
+import {
+  REACHABLE_NASP_INDICATORS,
+  NASP_CAVEAT,
+  NASP_SOURCE
+} from '../../../../../packages/shared/src/nasp.ts';
 import { isSignedIn, authFetch } from '../../shared/session.js';
 
 const STORE = 'usalamasms.spi';
@@ -399,6 +404,30 @@ export function render(outlet) {
 
         <section class="doc-section" id="new">
           <h2>Add an indicator</h2>
+
+          <div class="card no-print" id="nasp-starters">
+            <h3>Start from what the State already counts</h3>
+            <p class="hint">${NASP_CAVEAT}</p>
+            <div class="chip-row">
+              ${REACHABLE_NASP_INDICATORS.map(
+                (i) => html`
+                  <button type="button" class="btn btn-ghost btn-sm"
+                          data-nasp="${i.measure}"
+                          data-unit="${i.rate?.unit ?? ''}"
+                          data-per="${i.rate?.per ?? ''}">
+                    ${i.measure} <small>· per ${i.per}</small>
+                  </button>
+                `
+              )}
+            </div>
+            <p class="hint">
+              Two of these carry a rate basis the plan states outright — per 100 movements —
+              and those fill it in for you. The rest the plan counts per year or per quarter,
+              which says how often to count and not what to count against, so you choose the
+              exposure. ${NASP_SOURCE}.
+            </p>
+          </div>
+
           <form class="card no-print" id="spi-new" novalidate>
             <label class="field">
               <span class="field-label">What is being measured? *</span>
@@ -777,6 +806,35 @@ export function render(outlet) {
     repaint();
     const next = list.querySelector('[data-remove]');
     if (next) next.focus();
+  });
+
+  /* ============================================================
+     THE NATIONAL INDICATORS, as a starting point rather than a rule.
+
+     An operator that measures what the State measures can hand a
+     regulator a number that lands in the same row as the national one.
+     One that invents its own measure cannot — the number is not wrong,
+     it is simply not comparable to anything.
+
+     PREFILLS ONLY WHAT THE PLAN STATES. Two of these carry a rate
+     basis outright ("per 100 movements") and it is filled in. The rest
+     the plan counts per year or per quarter, which says how often to
+     count rather than what to count against, so the exposure field is
+     left for the operator. Guessing one would be this product putting
+     words in the plan's mouth, and an indicator's whole value is that
+     its denominator is honest. */
+  outlet.querySelector('#nasp-starters')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-nasp]');
+    if (!button) return;
+    const form = outlet.querySelector('#spi-new');
+    form.querySelector('[name="name"]').value = button.getAttribute('data-nasp');
+    const unit = button.getAttribute('data-unit');
+    const per = button.getAttribute('data-per');
+    if (unit) form.querySelector('[name="exposureUnit"]').value = unit;
+    if (per) form.querySelector('[name="per"]').value = per;
+    /* Focus the first field the operator still has to answer, rather
+       than the top of a form that is now partly filled. */
+    (unit ? form.querySelector('[name="target"]') : form.querySelector('[name="exposureUnit"]'))?.focus();
   });
 
   outlet.querySelector('#spi-print').addEventListener('click', () => window.print());

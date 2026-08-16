@@ -57,6 +57,17 @@ export interface NationalIndicator {
   readonly per: string;
   /** The HRC tag this bears on, where one applies. */
   readonly hrc?: string;
+  /**
+   * A RATE BASIS, only where the plan states one.
+   *
+   * The distinction is not cosmetic. "Per 100 movements" is a rate and
+   * this product's indicator model takes it directly. "Per year" and
+   * "per quarter" are PERIODS — they say how often to count, not what
+   * to count against — and an indicator needs both. Inventing an
+   * exposure for those would be this product putting words in the
+   * plan's mouth, so the field is absent and the operator supplies it.
+   */
+  readonly rate?: { readonly unit: string; readonly per: number };
   /** Whether a small operator can produce this from its own record. */
   readonly reachable: boolean;
   /** Said plainly where it is not. */
@@ -81,12 +92,14 @@ export const NASP_INDICATORS: ReadonlyArray<NationalIndicator> = Object.freeze([
     per: "100 movements",
     hrc: "RE",
     reachable: true,
+    rate: Object.freeze({ unit: "movements", per: 100 }),
   }),
   Object.freeze({
     measure: "Rejected take-off",
     per: "100 movements",
     hrc: "RE",
     reachable: true,
+    rate: Object.freeze({ unit: "movements", per: 100 }),
   }),
   Object.freeze({
     measure: "Runway incursion incidents",
