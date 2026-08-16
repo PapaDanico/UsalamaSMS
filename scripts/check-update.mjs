@@ -95,16 +95,39 @@ const patched = sw
 assert(!patched.includes(victim), `could not take ${victim} out of v2's precache manifest`);
 await writeFile(join(V2, 'sw.js'), patched);
 
+/* THE REAL POLICY, READ FROM THE REAL CONFIG.
+
+   The referrer check below is only worth anything if this harness sends
+   what production sends. Hardcoding "no-referrer" here would produce a
+   test that passes forever while netlify.toml quietly said something
+   else — so the value is parsed out of the deployed configuration, and
+   weakening that file turns the BROWSER measurement red. */
+const netlifyToml = await readFile(new URL('../netlify.toml', import.meta.url), 'utf8');
+const REFERRER_POLICY = netlifyToml.match(/Referrer-Policy\s*=\s*"([^"]+)"/)?.[1];
+assert(REFERRER_POLICY, 'could not read Referrer-Policy out of netlify.toml');
+
 let ROOT = V1;
 const gone = [];
+/* Every /api/ request the browser makes, with the Referer it carried. */
+const apiSeen = [];
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, BASE);
+  if (url.pathname.startsWith('/api/')) {
+    apiSeen.push({ path: url.pathname, referer: req.headers.referer ?? '' });
+    res.writeHead(200, {
+      'content-type': 'application/json',
+      'referrer-policy': REFERRER_POLICY
+    });
+    res.end(JSON.stringify({ reset: true, message: 'Password set.' }));
+    return;
+  }
   const path = join(ROOT, url.pathname === '/' ? 'index.html' : url.pathname.slice(1));
   try {
     const body = await readFile(path);
     res.writeHead(200, {
       'content-type': TYPES[extname(path)] ?? 'application/octet-stream',
-      'cache-control': 'no-cache'
+      'cache-control': 'no-cache',
+      'referrer-policy': REFERRER_POLICY
     });
     res.end(body);
   } catch {
@@ -114,7 +137,7 @@ const server = createServer(async (req, res) => {
       res.end('gone');
       return;
     }
-    res.writeHead(200, { 'content-type': 'text/html' });
+    res.writeHead(200, { 'content-type': 'text/html', 'referrer-policy': REFERRER_POLICY });
     res.end(await readFile(join(ROOT, 'index.html')));
   }
 });
@@ -355,6 +378,63 @@ await check('A CREDENTIAL IN A URL IS NEVER WRITTEN TO CACHE STORAGE', async () 
       shellCached,
       'the navigation was not cached under its path either — offline reloads of this ' +
         'route now depend on the network, which is the promise this product is built on',
+    );
+  } finally {
+    await fresh.close();
+  }
+});
+
+await check('AND IT DOES NOT ESCAPE IN A REFERER EITHER', async () => {
+  /* ============================================================
+     THE SECOND HALF OF THE SAME CREDENTIAL, and the reason it needs
+     its own check is that the cache fix does nothing for it.
+
+     `Referrer-Policy: strict-origin-when-cross-origin` — the value
+     this repository shipped, and a sensible default everywhere else —
+     sends the FULL URL on SAME-ORIGIN requests. It only strips the
+     path when crossing origins. So POST /api/v1/auth/reset carried
+
+       Referer: /reset?token=<32 random bytes>
+
+     into the access log of every hop that records one, and so did the
+     module fetch for the screen's own chunk, which happens before any
+     line of application code runs.
+
+     THIS WAS FIRST DISMISSED ON REASONING AND THE REASONING WAS
+     WRONG. The absence of a <meta name="referrer"> was measured and
+     read as "default policy, low risk". The actual header was not
+     looked at until later, and when it was, the token was in it. That
+     is the whole argument for this skill written small: an inference
+     about a header is not a measurement of a header.
+
+     WHAT TO DO WHEN IT FAILS. netlify.toml has been loosened, or a
+     screen has started putting a secret in a URL that this check does
+     not know about. Do not fix it by narrowing the marker.
+     ============================================================ */
+  const SECRET = 'REFERERPROBETOKEN0123456789abcdefghij';
+  const fresh = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const tab = await fresh.newPage();
+  apiSeen.length = 0;
+  try {
+    await tab.goto(`${BASE}/reset?token=${SECRET}`, { waitUntil: 'networkidle' });
+
+    /* The form must be there and must actually submit, or this counts
+       the referers of zero requests and calls it safety. */
+    assert(await tab.locator('#reset-form').count(), 'the reset form did not render');
+    await tab.fill('#reset-password', 'a-long-enough-password');
+    await tab.click('#reset-form button[type=submit]');
+    await tab.waitForTimeout(1200);
+
+    assert(
+      apiSeen.some((r) => r.path === '/api/v1/auth/reset'),
+      'the form never reached the API, so no referer was measured and green means nothing',
+    );
+
+    const leaking = apiSeen.filter((r) => r.referer.includes(SECRET));
+    assert(
+      leaking.length === 0,
+      'the credential in the URL is being sent to the server in a Referer header, where ' +
+        `it lands in the access log: ${leaking.map((r) => `${r.path} <- ${r.referer}`).join(', ')}`,
     );
   } finally {
     await fresh.close();
