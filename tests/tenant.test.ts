@@ -19,6 +19,8 @@ import {
   SEVERITY_KEYS,
   LIKELIHOOD_KEYS,
   MAX_LABEL,
+  ASSIGNABLE_BANDS,
+  POST_CODES,
 } from "../packages/shared/src/tenant";
 import {
   SEVERITY_SCALE,
@@ -179,5 +181,74 @@ describe("the operator's own list is ADDED, never substituted", () => {
   it("returns the shipped list untouched when there is no configuration", () => {
     expect(withTenantOptions(shipped, undefined)).toHaveLength(shipped.length);
     expect(withTenantOptions(shipped, [])).toHaveLength(shipped.length);
+  });
+});
+
+/* =====================================================================
+   WHO MAY DECIDE TOLERABILITY IS THE OPERATOR'S ANSWER, NOT OURS.
+
+   L.N. 32, paragraph 1.2.1(e): a service provider shall "define the
+   levels of management with authority to make decisions regarding
+   safety risk tolerability."
+
+   Found by benchmarking the MAA's Duty Holder construct — the level of
+   the person must match the level of the risk — and then searching our
+   own instrument rather than importing theirs. L.N. 32 contains ZERO
+   occurrences of ALARP or "as low as reasonably practicable": that is
+   UK health-and-safety law absorbed into UK military aviation
+   regulation, and putting it on a Kenyan operator's register would
+   invent a requirement this regulator never made.
+
+   The same insight was already binding here, in one clause, and it is
+   the operator's to discharge.
+   ===================================================================== */
+describe("the levels of management with authority over tolerability", () => {
+  it("keeps a post an operator names against a band it may hold", () => {
+    const cfg = normaliseConfig({
+      decisionLevels: { TOLERABLE: POST_CODES[0], ACCEPTABLE: POST_CODES[1] },
+    });
+    expect(cfg.decisionLevels?.TOLERABLE).toBe(POST_CODES[0]);
+    expect(cfg.decisionLevels?.ACCEPTABLE).toBe(POST_CODES[1]);
+  });
+
+  it("DROPS INTOLERABLE, whoever an operator names against it", () => {
+    /* The reason `risk.accept.intolerable` was deleted from the
+       permission union: Doc 9859's red band is not acceptable with a
+       sufficiently senior signature, it is not acceptable at any level
+       of benefit. A configuration that could name an authority over it
+       is an invitation to believe otherwise — and it would be the
+       flattering kind of wrong, because an operator reading their own
+       settings would conclude somebody can sign. */
+    const cfg = normaliseConfig({
+      decisionLevels: { INTOLERABLE: POST_CODES[0], TOLERABLE: POST_CODES[0] },
+    });
+    expect(cfg.decisionLevels).not.toHaveProperty("INTOLERABLE");
+    expect(cfg.decisionLevels?.TOLERABLE).toBe(POST_CODES[0]);
+  });
+
+  it("never lets INTOLERABLE become assignable by adding a band", () => {
+    /* ASSIGNABLE_BANDS is derived as "every band except the red one"
+       rather than typed as a two-item list, so a future band joins it
+       automatically and the red one still cannot. */
+    expect(ASSIGNABLE_BANDS).not.toContain("INTOLERABLE");
+    expect(ASSIGNABLE_BANDS).toContain("TOLERABLE");
+    expect(ASSIGNABLE_BANDS).toContain("ACCEPTABLE");
+  });
+
+  it("refuses a post code this product does not know", () => {
+    /* An operator renames its posts through postTitles; it does not
+       invent new ones here. A code nothing recognises would name an
+       authority nobody holds. */
+    const cfg = normaliseConfig({ decisionLevels: { TOLERABLE: "CHIEF_OF_VIBES" } });
+    expect(cfg.decisionLevels).toBeUndefined();
+  });
+
+  it("treats absence as undeclared rather than as nobody", () => {
+    /* Every other field here is a preference where absent means "use
+       what the product ships". This one is an obligation, so absent
+       means the operator has not yet discharged it — a different thing
+       from having decided nobody may decide. */
+    expect(normaliseConfig({}).decisionLevels).toBeUndefined();
+    expect(normaliseConfig({ decisionLevels: {} }).decisionLevels).toBeUndefined();
   });
 });

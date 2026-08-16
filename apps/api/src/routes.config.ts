@@ -91,6 +91,9 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
         aerodromes: [...(config.aerodromes ?? [])],
         aircraftTypes: [...(config.aircraftTypes ?? [])],
         reviewDefaultDays: config.reviewDefaultDays ?? null,
+        decisionLevels: config.decisionLevels
+          ? (config.decisionLevels as Prisma.InputJsonValue)
+          : undefined,
       },
       update: {
         /* `null` and not `undefined` on the update path. Prisma reads
@@ -105,6 +108,12 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
         aerodromes: { set: [...(config.aerodromes ?? [])] },
         aircraftTypes: { set: [...(config.aircraftTypes ?? [])] },
         reviewDefaultDays: config.reviewDefaultDays ?? null,
+        /* DbNull rather than undefined, for the reason the label maps
+           give above: an operator clearing the declaration must see it
+           cleared on reload, not silently keep the old one. */
+        decisionLevels: config.decisionLevels
+          ? (config.decisionLevels as Prisma.InputJsonValue)
+          : Prisma.DbNull,
       },
     });
 

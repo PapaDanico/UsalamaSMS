@@ -1391,6 +1391,22 @@ model OrgConfig {
   // The operator's own default review cycle, in days.
   reviewDefaultDays Int?
 
+  /// WHO MAY DECIDE TOLERABILITY, which L.N. 32 makes the operator's
+  /// job rather than this product's.
+  ///
+  /// Paragraph 1.2.1(e) obliges a service provider to "define the
+  /// levels of management with authority to make decisions regarding
+  /// safety risk tolerability". Until this column existed the product
+  /// answered that for every operator through a fixed role permission,
+  /// so an auditor asking to see the operator's own definition had
+  /// nothing to be shown.
+  ///
+  /// Keyed by tolerability band, valued by post code. INTOLERABLE is
+  /// never a key — normaliseConfig drops it — because no level of
+  /// management may accept a red risk and a column that could hold one
+  /// is an invitation to believe otherwise.
+  decisionLevels Json?
+
   /// THE OPERATOR'S MARK, for the documents they hand over.
   ///
   /// A base64 data URI rather than a key into object storage, and that
