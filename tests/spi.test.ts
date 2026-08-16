@@ -34,6 +34,10 @@ import {
   type Indicator,
   type Period,
   periodWindow,
+  retirementAdvice,
+  correlation,
+  isFlat,
+  DUPLICATE_CORRELATION,
 } from "../packages/shared/src/spi";
 
 const periods = (events: number[], exposure = 1000): Period[] =>
@@ -424,6 +428,142 @@ describe("the window a period label covers", () => {
         periodWindow(label) === null,
         `${label}: periodOrder and periodWindow disagree about whether it is dateable`,
       ).toBe(periodOrder(label) === null);
+    }
+  });
+});
+
+/* =====================================================================
+   §8.4 — WHEN AN INDICATOR HAS STOPPED EARNING ITS PLACE.
+
+   CAA-AC-SMS009 §8.4 lists six reasons to continue, discontinue or
+   change an SPI. Two are arithmetic and are raised here; four are
+   judgements about the operation and are deliberately not attempted.
+   ===================================================================== */
+describe("retirement advice, from CAA-AC-SMS009 §8.4", () => {
+  const ind = (id: string, name: string, events: number[]): Indicator => ({
+    id,
+    name,
+    kind: "LOWER_CONSEQUENCE",
+    exposureUnit: "sectors",
+    per: 1000,
+    direction: "LOWER_IS_BETTER",
+    owner: "Safety manager",
+    periods: events.map((e, i) => ({ label: `2026-P${i + 1}`, events: e, exposure: 1000 })),
+  });
+
+  describe("§8.4.1 — an indicator that never moves", () => {
+    it("raises the circular's own example: a line reading zero throughout", () => {
+      const advice = retirementAdvice(ind("a", "Bird strikes", [0, 0, 0, 0, 0, 0]));
+      expect(advice.map((a) => a.id)).toContain("FLAT");
+      expect(advice.find((a) => a.id === "FLAT")!.provision).toBe("CAA-AC-SMS009 §8.4.1");
+    });
+
+    it("stays quiet while there is too little history to call it a pattern", () => {
+      /* FLAT_PERIODS is ours, not the circular's — §8.4.1 says
+         "continually" and names no number. Firing on three identical
+         quarters would fire on every new indicator in its first year. */
+      expect(retirementAdvice(ind("a", "Bird strikes", [0, 0, 0])).length).toBe(0);
+    });
+
+    it("does not call a moving line flat, however slightly it moves", () => {
+      expect(retirementAdvice(ind("a", "Bird strikes", [0, 0, 0, 0, 0, 1])).length).toBe(0);
+    });
+
+    /* isFlat is exported and used by the risk picture as well as by
+       retirementAdvice, so it is tested directly rather than only
+       through its caller — the circular's own examples are zero per
+       cent and one hundred per cent, and both must read as flat. */
+    it("reads the circular's two examples — nought throughout, and full throughout", () => {
+      expect(isFlat([0, 0, 0, 0, 0, 0])).toBe(true);
+      expect(isFlat([100, 100, 100, 100, 100, 100])).toBe(true);
+      expect(isFlat([0, 0, 0, 0, 0, 0.5])).toBe(false);
+      expect(isFlat([0, 0, 0]), "too short to be a pattern").toBe(false);
+    });
+  });
+
+  describe("§8.4.2 — two indicators telling one story", () => {
+    it("raises a duplicate when a sibling tracks it almost exactly", () => {
+      const a = ind("a", "Unstable approaches", [10, 12, 14, 11, 13, 15]);
+      const b = ind("b", "Go-arounds", [20, 24, 28, 22, 26, 30]);
+      const advice = retirementAdvice(a, [b]);
+      const dup = advice.find((x) => x.id === "DUPLICATE");
+      expect(dup, "a perfectly proportional sibling is a duplicate").toBeDefined();
+      expect(dup!.provision).toBe("CAA-AC-SMS009 §8.4.2");
+      expect(dup!.because).toContain("Go-arounds");
+    });
+
+    it("leaves genuinely different lines alone", () => {
+      const a = ind("a", "Unstable approaches", [10, 12, 14, 11, 13, 15]);
+      const b = ind("b", "Ground damage", [30, 4, 19, 2, 27, 6]);
+      expect(correlation([10, 12, 14, 11, 13, 15], [30, 4, 19, 2, 27, 6])!).toBeLessThan(0);
+      expect(retirementAdvice(a, [b]).some((x) => x.id === "DUPLICATE")).toBe(false);
+    });
+
+    /* ================================================================
+       THE ONE THAT MAKES THE THRESHOLD LOAD-BEARING.
+
+       The test above passes against ANY threshold — its two series
+       correlate at -0.20, so nothing between 0 and 1 would flag them.
+       DUPLICATE_CORRELATION could be quietly loosened from 0.95 to 0.5
+       and the suite stayed green, which was measured rather than
+       supposed: the mutation was run and it passed.
+
+       This pair correlates at 0.838 — clearly moving together, and not
+       tightly enough to be one line drawn twice. It is the case the
+       constant exists to exclude, so it pins the constant from below
+       the way the proportional pair above pins it from above.
+       ================================================================ */
+    it("does not call a pair duplicates merely for trending together", () => {
+      const a = ind("a", "Unstable approaches", [10, 12, 14, 11, 13, 15]);
+      const b = ind("b", "Technical delays", [12, 11, 16, 10, 12, 18]);
+      const r = correlation([10, 12, 14, 11, 13, 15], [12, 11, 16, 10, 12, 18])!;
+      expect(r, "the fixture must sit between a loose threshold and the real one")
+        .toBeGreaterThan(0.5);
+      expect(r).toBeLessThan(DUPLICATE_CORRELATION);
+      expect(retirementAdvice(a, [b]).some((x) => x.id === "DUPLICATE")).toBe(false);
+    });
+
+    it("never reports an indicator as a duplicate of itself", () => {
+      const a = ind("a", "Unstable approaches", [10, 12, 14, 11, 13, 15]);
+      expect(retirementAdvice(a, [a]).some((x) => x.id === "DUPLICATE")).toBe(false);
+    });
+
+    /* A flat line correlates with nothing — both denominators vanish.
+       §8.4.1 catches that case first, and correlation must not invent
+       a number for it. */
+    it("returns no correlation for a line that never moves", () => {
+      expect(correlation([1, 1, 1, 1, 1, 1], [2, 4, 6, 8, 10, 12])).toBeNull();
+    });
+
+    it("returns no correlation without enough shared history", () => {
+      expect(correlation([1, 2, 3], [2, 4, 6])).toBeNull();
+    });
+  });
+
+  /* THE FOUR IT MUST NOT ATTEMPT. §8.4.3 to §8.4.6 are judgements about
+     the operation — whether a programme is finished, what matters more
+     now, whether to narrow a measure, whether the objectives moved. A
+     tool guessing at those would invent safety priorities and attribute
+     them to the Authority. */
+  it("offers only the two reasons that are arithmetic", () => {
+    const a = ind("a", "Bird strikes", [0, 0, 0, 0, 0, 0]);
+    const b = ind("b", "Bird strikes duplicate", [0, 0, 0, 0, 0, 0]);
+    const ids = new Set(retirementAdvice(a, [b]).map((x) => x.id));
+    expect([...ids].sort()).toEqual(["FLAT"]);
+    for (const advice of retirementAdvice(a, [b])) {
+      expect(advice.provision).toMatch(/§8\.4\.[12]$/);
+    }
+  });
+
+  /* §8.7: "An SPI being triggered is not necessarily catastrophic or an
+     indication of failure." Advice that instructed rather than suggested
+     would contradict the circular it cites. */
+  it("suggests rather than instructs, and shows its working", () => {
+    for (const advice of retirementAdvice(ind("a", "Bird strikes", [0, 0, 0, 0, 0, 0]))) {
+      expect(advice.consider).toMatch(/whether/i);
+      expect(advice.because.length, "advice with no measurement cannot be argued with")
+        .toBeGreaterThan(40);
+      expect(advice.consider).not.toMatch(/\byou must\b|\bretire this\b|\bdelete\b/i);
     }
   });
 });

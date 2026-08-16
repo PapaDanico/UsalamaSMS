@@ -25,14 +25,38 @@
 //   THE METHOD: the alert level set from the average and the standard
 //            deviation of a preceding baseline, with the three
 //            crossing criteria below, is the basic statistical trending
-//            method that State and industry guidance builds on. THIS
-//            PRODUCT HAS NOT READ THE PRIMARY INSTRUMENT'S WORDING OF
-//            IT. So it is marked `basis: "METHOD"` rather than cited to
-//            a numbered provision, in the same discipline as the
-//            section-level IOSA reference and the jurisdictions whose
-//            deadline was not read: a precise-looking citation to a
-//            document nobody opened is worse than an honest "this is
-//            the standard method, and here is the arithmetic".
+//            method that State and industry guidance builds on.
+//
+//            THIS PARAGRAPH USED TO SAY THE PRIMARY INSTRUMENT'S
+//            WORDING HAD NOT BEEN READ, and to mark the method as
+//            uncited for that reason — the same discipline as the
+//            jurisdictions whose deadline was not read, because a
+//            precise-looking citation to a document nobody opened is
+//            worse than an honest "this is the standard method, and
+//            here is the arithmetic".
+//
+//            IT HAS NOW BEEN READ. KCAA Advisory Circular
+//            CAA-AC-SMS009 (January 2023), paragraph 8.5:
+//
+//              "One method for setting out-of-limits trigger criteria
+//               for SPTs is the use of the population standard
+//               deviation (STDEVP) principle. This method derives the
+//               standard deviation (SD) value based on the preceding
+//               historical data points of a given safety indicator.
+//               The SD value plus the average (mean) value of the
+//               historical data set forms the basic trigger value for
+//               the next monitoring period."
+//
+//            That is this implementation, in the Authority's words,
+//            including the detail the code below already argued for on
+//            statistical grounds and could not previously attribute:
+//            POPULATION standard deviation, not sample. See stdDev.
+//
+//            §8.7 is the sentence a screen showing a breach must not
+//            contradict: "An SPI being triggered is not necessarily
+//            catastrophic or an indication of failure. It is merely a
+//            sign that the activity has moved beyond the predetermined
+//            limit."
 //
 //   OURS:    the six-point baseline floor, and it is labelled as ours
 //            wherever it is shown. See MIN_BASELINE.
@@ -335,6 +359,12 @@ export function mean(xs: readonly number[]): number {
  * quarters that also happened. The choice matters at these sizes: with
  * six points the sample formula is about 10% wider, which moves every
  * alert level outward and makes the tool quieter than it should be.
+ *
+ * THAT REASONING WAS OURS AND IT TURNS OUT TO BE THE AUTHORITY'S RULE.
+ * CAA-AC-SMS009 §8.5 names the method as "the population standard
+ * deviation (STDEVP) principle" — the same choice, stated rather than
+ * argued. The argument above is kept because it explains WHY the rule
+ * is the right one, which a citation alone does not.
  */
 export function stdDev(xs: readonly number[]): number {
   if (!xs.length) throw new RangeError("standard deviation of an empty series");
@@ -612,4 +642,160 @@ export function spiVerdict(indicator: Indicator): SpiVerdict {
     target,
     headline,
   };
+}
+
+/* =====================================================================
+   WHEN AN INDICATOR HAS STOPPED EARNING ITS PLACE.
+
+   CAA-AC-SMS009 §8.4 requires that "the set of SPIs and SPTs selected by
+   an organization should be periodically reviewed to ensure their
+   continued meaningfulness", and lists the reasons to continue,
+   discontinue or change one. Two of those reasons are arithmetic, so
+   the product can raise them instead of waiting for somebody to notice:
+
+     §8.4.1  "SPIs continually report the same value (such as zero per
+              cent or 100 per cent); these SPIs are unlikely to provide
+              meaningful input to senior management decision-making"
+
+     §8.4.2  "SPIs that have similar behaviour and as such are
+              considered a duplication"
+
+   THE REST OF §8.4 IS NOT COMPUTABLE AND IS NOT ATTEMPTED. Whether a
+   target has been met and the programme it measured is finished
+   (§8.4.3), whether another concern now matters more (§8.4.4), whether
+   an indicator should be narrowed to sharpen a signal (§8.4.5), or
+   whether the objectives themselves have moved (§8.4.6) are judgements
+   about the operation. A tool that guessed at them would be inventing
+   safety priorities and attributing them to the Authority.
+
+   THIS IS ADVICE AND NEVER AN ACTION. Nothing here retires anything.
+   §8.7's framing applies with equal force: an indicator that trips a
+   rule is not thereby wrong, it is merely worth a look — and an
+   indicator reading zero every quarter may be the most reassuring line
+   in the pack rather than a dead one, which is exactly the judgement
+   the safety manager is there to make and the software is not.
+   ===================================================================== */
+
+export type RetirementReasonId = "FLAT" | "DUPLICATE";
+
+export interface RetirementAdvice {
+  readonly id: RetirementReasonId;
+  /** The paragraph of CAA-AC-SMS009 this comes from. */
+  readonly provision: string;
+  /** What was measured, so the reader can disagree with it. */
+  readonly because: string;
+  /** What the circular suggests considering. Never an instruction. */
+  readonly consider: string;
+}
+
+/**
+ * How many periods must read identically before §8.4.1 is raised.
+ *
+ * OURS, NOT THE CIRCULAR'S — §8.4.1 says "continually" and names no
+ * number, and this is labelled as our reading wherever it is shown, the
+ * same way MIN_BASELINE is. Six matches the baseline floor: below that
+ * there is not enough history to call anything a pattern, and a rule
+ * that fires on three identical quarters would fire on every new
+ * indicator in its first year.
+ */
+export const FLAT_PERIODS = MIN_BASELINE;
+
+/**
+ * How closely two indicators must track before §8.4.2 is raised.
+ *
+ * OURS. The circular says "similar behaviour" and leaves it there. A
+ * correlation of 0.95 across a shared baseline is tight enough that the
+ * two lines are telling one story; below that they can diverge in the
+ * period that matters, which is the period you would lose by retiring
+ * one of them.
+ */
+export const DUPLICATE_CORRELATION = 0.95;
+
+/** Pearson correlation over paired series. Null when it is undefined. */
+export function correlation(a: readonly number[], b: readonly number[]): number | null {
+  const n = Math.min(a.length, b.length);
+  if (n < MIN_BASELINE) return null;
+  const xs = a.slice(-n);
+  const ys = b.slice(-n);
+  const mx = mean(xs);
+  const my = mean(ys);
+  let num = 0;
+  let dx = 0;
+  let dy = 0;
+  for (let i = 0; i < n; i += 1) {
+    const px = xs[i]! - mx;
+    const py = ys[i]! - my;
+    num += px * py;
+    dx += px * px;
+    dy += py * py;
+  }
+  /* A FLAT SERIES HAS NO CORRELATION, rather than a correlation of
+     zero or one. Both denominators go to zero when a line never moves,
+     and every definition of "how alike are these" is meaningless there
+     — which is why §8.4.1 is a separate rule that catches it first. */
+  if (dx === 0 || dy === 0) return null;
+  return num / Math.sqrt(dx * dy);
+}
+
+/**
+ * §8.4.1 — has this indicator reported the same value throughout?
+ *
+ * Compared exactly rather than within a tolerance. The circular's
+ * examples are zero per cent and one hundred per cent, which are exact
+ * values; an indicator wobbling by a rounding error is still moving,
+ * and calling that flat would retire a line that is doing its job.
+ */
+export function isFlat(series: readonly number[]): boolean {
+  const usable = series.filter((x) => Number.isFinite(x));
+  if (usable.length < FLAT_PERIODS) return false;
+  return usable.every((x) => x === usable[0]);
+}
+
+/**
+ * The §8.4 advice that applies to one indicator, given its siblings.
+ *
+ * `siblings` is every OTHER indicator on the same register — duplication
+ * is a property of a pair, so it cannot be judged from one series. An
+ * empty array is a legitimate answer and means the register holds one
+ * indicator, not that nothing was checked.
+ */
+export function retirementAdvice(
+  indicator: Indicator,
+  siblings: readonly Indicator[] = [],
+): readonly RetirementAdvice[] {
+  const out: RetirementAdvice[] = [];
+  const mine = rates(indicator).filter((x) => Number.isFinite(x));
+
+  if (isFlat(mine)) {
+    out.push({
+      id: "FLAT",
+      provision: "CAA-AC-SMS009 §8.4.1",
+      because:
+        `Every one of the last ${mine.length} periods reported ${mine[0]}. An indicator ` +
+        "that never moves cannot show senior management anything changing.",
+      consider:
+        "Whether this is measuring something that has genuinely held steady — which is " +
+        "worth saying out loud — or whether the measure is too coarse to move. " +
+        "Narrowing it is §8.4.5's suggestion; retiring it is §8.4.1's.",
+    });
+  }
+
+  for (const other of siblings) {
+    if (other.id === indicator.id) continue;
+    const r = correlation(mine, rates(other).filter((x) => Number.isFinite(x)));
+    if (r !== null && r >= DUPLICATE_CORRELATION) {
+      out.push({
+        id: "DUPLICATE",
+        provision: "CAA-AC-SMS009 §8.4.2",
+        because:
+          `This tracks "${other.name}" at ${r.toFixed(2)} across the periods they share. ` +
+          "Two lines with the same shape are one line drawn twice.",
+        consider:
+          "Which of the two the safety office would actually act on, and whether the " +
+          "other is measuring a cause the first only reflects. Keeping both is a " +
+          "decision; keeping both without noticing is not.",
+      });
+    }
+  }
+  return out;
 }
