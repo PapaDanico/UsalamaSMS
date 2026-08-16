@@ -75,7 +75,13 @@ export async function loadOrg(fetcher = fetch) {
     const org = {
       orgName: body.orgName,
       aocNumber: body.aocNumber ?? null,
-      jurisdiction: body.jurisdiction ?? null
+      jurisdiction: body.jurisdiction ?? null,
+      /* CACHED WITH THE REST OF THE IDENTITY, so a pack prints the
+         operator's mark with no signal. The upload screen clears this
+         cache on save — otherwise a newly set logo would not appear on
+         a printed document until the cache expired, and the person who
+         just uploaded it is exactly the person about to print. */
+      logo: body.logo ?? null
     };
     localStorage.setItem(ORG_KEY, JSON.stringify(org));
     return org;
@@ -89,6 +95,18 @@ export function printId(org, what) {
   const printed = new Date().toISOString().slice(0, 10);
   return html`
     <div class="print-id">
+      ${org.logo
+        ? /* THE OPERATOR'S MARK, WHERE THEY HAVE SET ONE. The pack is
+             their document — their assessment, their register — and it
+             went out under UsalamaSMS's identity until now.
+
+             alt is empty ON PURPOSE. The operator's name is the very
+             next line as live text, so a screen reader announcing the
+             logo would say it twice; that is the accessible-name defect
+             a Lighthouse run found on the sibling product's logo. The
+             attribution line below still says what produced it. */
+          html`<img class="print-id__logo" src="${org.logo}" alt="" />`
+        : ''}
       <p class="print-id__org">${org.orgName}</p>
       <p class="print-id__what">${what}</p>
       <p class="print-id__meta">

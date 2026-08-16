@@ -31,6 +31,7 @@ import { can } from "@usalamasms/shared";
    reaches for, and every module added to it is one a reporter carries
    whether or not they ever open a settings screen. */
 import { normaliseConfig } from "../../../packages/shared/src/tenant";
+import { checkLogo } from "../../../packages/shared/src/logo";
 import { prisma, authenticate, appendAudit, tenantWhere } from "./core";
 
 export async function configRoutes(app: FastifyInstance): Promise<void> {
@@ -53,7 +54,15 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
        it and cleared everything are the same thing: they both get what
        the product ships. So the empty config is returned rather than a
        404, and no caller has to distinguish them. */
-    return reply.send({ config: normaliseConfig(row ?? {}) });
+    /* The logo rides ALONGSIDE the config rather than inside it.
+       normaliseConfig() replaces the whole object, so a logo held in
+       there would be wiped by any client that saved a vocabulary
+       without echoing the image back — which is every client that does
+       not know about it yet. */
+    return reply.send({
+      config: normaliseConfig(row ?? {}),
+      logo: row?.logo ?? null,
+    });
   });
 
   app.put("/api/v1/config", limited, async (req, reply) => {
@@ -125,5 +134,94 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
        that sent a sixth severity should see that it was not kept rather
        than render its own copy of what it hoped it had saved. */
     return reply.send({ config });
+  });
+
+  /* =====================================================================
+     THE OPERATOR'S MARK, ON ITS OWN ROUTE.
+
+     Not a field on PUT /config, and that is the point. normaliseConfig
+     replaces the whole object, so a logo carried in there would be
+     erased by any client that saved a vocabulary without echoing the
+     image back — which is every client written before this existed,
+     and the offline queue replaying an older payload. A separate route
+     cannot be collateral damage of an unrelated save.
+
+     SAME AUTHORITY AS THE REST OF THE CONFIG. The mark goes on every
+     document the operator hands a regulator; that is the safety
+     manager's and the accountable executive's to decide, not a
+     reporter's.
+     ===================================================================== */
+  app.put("/api/v1/config/logo", limited, async (req, reply) => {
+    const auth = req.auth!;
+    if (!can(auth.role as never, "config.manage")) {
+      return reply.code(403).send({
+        error: "forbidden",
+        message:
+          "The mark on the operator's documents is held by the safety manager and the " +
+          "accountable executive.",
+      });
+    }
+
+    const supplied = (req.body as { logo?: unknown } | undefined)?.logo;
+
+    /* CLEARING IS AN EXPLICIT null, not an omission. An absent key is a
+       client that does not know about this field; treating that as
+       "remove the logo" would let an old payload strip an operator's
+       branding on its next save, which is the same class of defect as
+       the config wipe this route exists to avoid. */
+    if (supplied === null) {
+      const cleared = await prisma.orgConfig.upsert({
+        where: { orgId: auth.org },
+        create: { orgId: auth.org, aerodromes: [], aircraftTypes: [] },
+        update: { logo: null, logoUpdatedAt: null },
+      });
+      await appendAudit({
+        orgId: auth.org,
+        userId: auth.sub,
+        action: "org.logo.clear",
+        entityType: "OrgConfig",
+        entityId: cleared.id,
+        detail: { cleared: true },
+      });
+      return reply.send({ logo: null });
+    }
+
+    /* THE SERVER CHECKS TOO. The upload screen calls checkLogo() so
+       somebody is told before a slow link carries the bytes, but this
+       route is reachable with curl and a client-side check is a
+       courtesy, never a control. */
+    const verdict = checkLogo(supplied);
+    if (!verdict.ok) {
+      return reply.code(400).send({ error: "rejected", message: verdict.message });
+    }
+
+    const saved = await prisma.orgConfig.upsert({
+      where: { orgId: auth.org },
+      create: {
+        orgId: auth.org,
+        aerodromes: [],
+        aircraftTypes: [],
+        logo: supplied as string,
+        logoUpdatedAt: new Date(),
+      },
+      update: { logo: supplied as string, logoUpdatedAt: new Date() },
+    });
+
+    /* THE IMAGE ITSELF NEVER REACHES THE AUDIT CHAIN. The chain is read
+       by people looking for what changed and when; sixty kilobytes of
+       base64 in a detail column would make every entry around it
+       unreadable, and the bytes are already in the row this entry
+       points at. What changed is that a mark was set, its type, and how
+       big it was. */
+    await appendAudit({
+      orgId: auth.org,
+      userId: auth.sub,
+      action: "org.logo.set",
+      entityType: "OrgConfig",
+      entityId: saved.id,
+      detail: { type: verdict.type, chars: verdict.chars },
+    });
+
+    return reply.send({ logo: supplied });
   });
 }

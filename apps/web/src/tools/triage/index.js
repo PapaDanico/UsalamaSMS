@@ -535,6 +535,35 @@ function bindOnce(outlet) {
     return out;
   }
 
+  /* ============================================================
+     EVIDENCE, LAZILY AND ONLY WHEN OPENED.
+
+     The list is fetched when somebody expands the disclosure rather
+     than for every row on load. A queue of forty reports would
+     otherwise issue forty requests to render a count almost all of
+     which are zero.
+
+     The uploader itself is a dynamic import for the reason every other
+     heavy thing here is: it carries a canvas resizer, and a ramp agent
+     who opens the queue to read a report should not download it.
+     ============================================================ */
+  outlet.addEventListener('toggle', async (event) => {
+    const box = event.target;
+    if (!(box instanceof HTMLElement) || !box.hasAttribute('data-evidence-for')) return;
+    if (!box.open || box.dataset.loaded === 'yes') return;
+    box.dataset.loaded = 'yes';
+    const id = box.getAttribute('data-evidence-for');
+    const slot = box.querySelector('[data-evidence-list]');
+    try {
+      const { mountEvidence } = await import('../../shared/evidence-panel.js');
+      await mountEvidence(slot, id);
+    } catch {
+      slot.innerHTML =
+        '<p class="notice notice--error">The evidence for this report could not be ' +
+        'loaded. Nothing has been changed.</p>';
+    }
+  }, true);
+
   outlet.addEventListener('submit', async (event) => {
     const form = event.target?.closest?.('form[data-classify]');
     if (!form) return;
@@ -983,6 +1012,14 @@ function row(r) {
                     </li>`
                   )}
                 </ul>`
+              : ''}
+            ${r.serverId
+              ? html`<details class="queue__evidence" data-evidence-for="${r.serverId}">
+                  <summary>Evidence</summary>
+                  <div data-evidence-list="${r.serverId}">
+                    <p class="hint">Loading…</p>
+                  </div>
+                </details>`
               : ''}
             <details class="queue__classify">
               <summary>

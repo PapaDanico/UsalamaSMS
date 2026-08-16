@@ -3122,6 +3122,111 @@ try {
     );
   });
 
+  await check('A HEADING IS NOT FLUSH AGAINST THE BLOCK ABOVE IT', async () => {
+    // Shipped, on /today, in the commit that added "What it watches".
+    // `.mat-actions` is a flex row of buttons with a top margin and NO
+    // bottom margin, and `.section-title` has no top margin either — so
+    // the heading rendered at exactly the y the buttons ended. That was
+    // invisible for as long as nothing followed that row.
+    //
+    // I FIRST WROTE THIS AS A NON-OVERLAP CHECK AND IT COULD NOT FAIL.
+    // Restoring the defect and re-running it came back green, because
+    // the boxes never overlapped: the gap was 0px, measured, not
+    // negative. A check asserting the wrong property passes for the
+    // right reason and teaches you nothing, which is the failure mode
+    // this repository treats as worse than having no check.
+    //
+    // So it asserts CLEARANCE, and the threshold is measured rather
+    // than chosen: across nine routes the tightest clearance the design
+    // uses on purpose is 3px, on every eyebrow-above-h1 pair. 1px sits
+    // below all of them and above the defect, which is exactly 0.
+    //
+    // Nothing else could see this. check:css proves every class
+    // resolves to a rule, check:a11y reads contrast and names, and the
+    // unit suite never lays anything out.
+    //
+    // page.goto rather than navigateTo: that helper clicks a link in
+    // the menu panel and `/` is not in it — the lockup is the way home.
+    // A layout assertion has no business depending on how a route is
+    // reachable.
+    // AT TWO WIDTHS, AND THAT IS NOT THOROUGHNESS — it is the only way
+    // this check sees the defect at all. The suite runs at 390px, a
+    // mid-range Android, where the two buttons STACK and the row is
+    // tall enough that the heading below it clears. At 1440 they sit on
+    // one line and the heading lands at exactly the y they end. The
+    // first two versions of this check ran only at 390 and passed with
+    // the defect restored and present in dist — verified in the bundle,
+    // not assumed.
+    //
+    // A layout assertion at one viewport is a layout assertion that
+    // misses the other one.
+    /* A FRESH CONTEXT, BECAUSE THE SUITE IS SIGNED IN BY NOW.
+
+       This is the third thing that made this check pass while the
+       defect was in dist. /today, /picture and /sms render a
+       signed-OUT branch and a signed-IN one, and the emptiness this
+       change is about is on the signed-out half — which the shared
+       page stopped showing several checks ago, when the suite logged
+       in. It examined one heading on /today and reported ok.
+
+       A new context has no session and no service worker, so these
+       routes render for a visitor, which is who they were written
+       for. */
+    const clean = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const view = await clean.newPage();
+    const widths = [390, 1440];
+    for (const width of widths) {
+      await view.setViewportSize({ width, height: 900 });
+      for (const route of ['/', '/today', '/triage', '/picture', '/sms', '/coverage']) {
+      await view.goto(`${BASE}${route}`, { waitUntil: 'networkidle' });
+      const { flush, seen } = await view.evaluate(() => {
+        const out = [];
+        let examined = 0;
+        for (const h of document.querySelectorAll('#main :is(h1, h2, h3)')) {
+          const prev = h.previousElementSibling;
+          if (!prev) continue;
+          const cs = getComputedStyle(prev);
+          // Out-of-flow siblings are SUPPOSED to sit anywhere, and a
+          // hidden one has no box worth comparing. Including them would
+          // make this cry wolf and then get deleted.
+          if (cs.position === 'absolute' || cs.position === 'fixed') continue;
+          if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+          const a = prev.getBoundingClientRect();
+          const b = h.getBoundingClientRect();
+          if (a.height === 0 || b.height === 0) continue;
+          examined++;
+          const gap = b.top - a.bottom;
+          if (gap < 1) {
+            out.push(
+              `"${h.textContent.trim().slice(0, 40)}" has ${Math.round(gap)}px above it ` +
+                `(after ${prev.tagName.toLowerCase()}.${prev.className})`
+            );
+          }
+        }
+        return { flush: out, seen: examined };
+      });
+      /* NO SILENT ZERO. If a route renders no heading with a previous
+         sibling — a 404, a blank outlet, a renamed outlet id — there is
+         nothing to compare and this passes for the worst possible
+         reason. Charter rule 11, and it is not hypothetical here: the
+         first run of this check went green against a page it had not
+         actually loaded. */
+      assert(
+        seen > 0,
+        `${route} at ${width}px: no heading had a comparable previous sibling, so this ` +
+          `check examined nothing. Either the route did not render or #main moved.`
+      );
+      assert(
+        flush.length === 0,
+        `${route} at ${width}px: ${flush.join('; ')}. A heading rendered flush against ` +
+          `the block above it — usually a flex or grid sibling with a top margin and no ` +
+          `bottom one.`
+      );
+      }
+    }
+    await clean.close();
+  });
+
   await check('THE MARK IS VISIBLE AGAINST THE GROUND IT IS ON', async () => {
     // The mark used to be an inline SVG of the quartered shield —
     // terracotta, teal and gold — which reads on any ground because it

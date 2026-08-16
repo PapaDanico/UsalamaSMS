@@ -52,6 +52,7 @@ export const EXPECTED_TABLES: ReadonlyArray<string> = Object.freeze([
   "OrgConfig",
   "PolicyAcknowledgement",
   "RefreshToken",
+  "ReportAttachment",
   "ReportTransition",
   "RiskAssessment",
   "SafetyCommunication",

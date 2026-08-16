@@ -348,6 +348,11 @@ export const SECTIONS = [
          twice in the life of an account. The account area itself links
          to it prominently, which is where somebody looks. */
       { href: '/account/profile', label: 'Your profile' },
+      /* Listed here for the same reason as the profile: the gate that
+         fails on a registered route nobody advertises is the reason
+         this product has no invisible screens. The account area is
+         where somebody actually reaches it. */
+      { href: '/account/logo', label: 'Your operator’s mark' },
       { href: '/#deadlines', label: 'Regulatory basis' }
     ]
   },

@@ -731,6 +731,13 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "/api/v1/reports/:id/disposition",
       "/api/v1/reports/:id/codes",
       "/api/v1/reports/:id/notified",
+      /* Evidence on a report: a photograph of the damage, a scan of a
+         form. Declared under this element because it is part of what a
+         reporting system HOLDS about an occurrence, not a separate
+         capability — and an operator reading /coverage to know what it
+         can evidence needs to see it here. */
+      "/api/v1/reports/:id/attachments",
+      "/api/v1/attachments/:id",
     ],
     has:
       "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +

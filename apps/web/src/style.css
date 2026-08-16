@@ -830,6 +830,89 @@ html { scroll-padding-top: var(--us-chrome); }
   details > summary { display: none !important; }
   .card { box-shadow: none !important; }
 
+  /* A PLACEHOLDER MUST NOT PRINT. THIS ONE IS NOT COSMETIC.
+
+     Printed, the SRA's first field showed "New scheduled service to an
+     unpaved northern strip" and the second "The aircraft, the
+     aerodromes, the people, the procedures...". Both are PLACEHOLDERS.
+     On a screen the grey says so; on paper, handed to somebody who has
+     never seen the application, an empty assessment reads as a
+     completed one describing a route nobody proposed.
+
+     That is a printed safety document asserting something untrue about
+     an operator, which is the one class of defect this product cannot
+     ship. Found by rendering the pack to A4 and reading it.
+
+     Transparent rather than display:none, because a placeholder is not
+     a box — hiding it would collapse nothing and change no layout. */
+  ::placeholder { color: transparent !important; opacity: 0 !important; }
+
+  /* AND AN EMPTY FIELD IS A BLANK, NOT A BOX. A bordered rectangle on
+     paper is something to fill in; this pack is a record of what was
+     decided, not a form to hand back. A rule underneath reads as "this
+     was left blank", which is the honest rendering of an empty field
+     in a document. */
+  .input-field, input[type='text'], input[type='date'], textarea, select {
+    border: 0 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.4) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    min-height: 0 !important;
+    color: #000 !important;
+  }
+
+  /* A STAT RAIL IS A SCREEN DEVICE. ON PAPER IT IS A LIST.
+
+     Rendered to A4 and looked at, which is the only way this was going
+     to show up: .stat-strip is an auto-fit grid at a 9rem minimum, so
+     at 794px it lays four figures across and DROPS THE FIFTH onto a
+     row of its own. That fifth is the provenance — "Safety office" or
+     "This device" — whose label runs to two lines where the others run
+     to one, so a regulator's copy opened with four aligned figures
+     above one hanging off the left margin, looking like a rendering
+     fault rather than a fact.
+
+     Auto-fit is right on a screen, where the count follows the width.
+     On a fixed page there IS no width to follow, and a figure grid
+     buys nothing anyway: paper is read top to bottom, not scanned.
+     So each figure becomes a row — label first, because on paper the
+     question comes before the number — and five of them align the same
+     way four do.
+
+     The provenance row is KEPT rather than hidden. It is the one line
+     that tells a reader whether these entries are held for the
+     operator or only on somebody's handset, which is exactly what an
+     inspector needs to know about a printed register. */
+  .stat-strip {
+    display: block !important;
+    border-top: 1px solid #000 !important;
+    padding-top: 8px !important;
+    margin-top: 12px !important;
+  }
+  .stat {
+    display: flex !important;
+    gap: 10px;
+    align-items: baseline;
+    padding: 2px 0;
+    border-bottom: 1px dotted rgba(0, 0, 0, 0.25);
+    break-inside: avoid;
+  }
+  .stat__label {
+    order: -1;
+    flex: 1 1 auto;
+    margin: 0 !important;
+    color: #000 !important;
+    font-size: 10pt !important;
+  }
+  .stat__value {
+    flex: 0 0 auto;
+    color: #000 !important;
+    font-size: 11pt !important;
+    font-weight: 700;
+  }
+
   /* ============================================================
      THE PRINTED PACK IS THE ARTEFACT THAT REACHES A REGULATOR.
 
@@ -866,6 +949,17 @@ html { scroll-padding-top: var(--us-chrome); }
 
 /* Hidden entirely on screen: this exists for paper. */
 .print-id { display: none; }
+/* CAPPED IN CSS AS WELL AS IN BYTES. checkLogo() holds the FILE small;
+   this holds the RENDERING small, and they are different failures. A
+   correctly-sized 512px mark still prints four inches tall if nothing
+   says otherwise, pushing the document it is heading onto page two. */
+.print-id__logo {
+  display: block;
+  max-height: 18mm;
+  max-width: 60mm;
+  width: auto;
+  margin-bottom: 3mm;
+}
 
 .print-id__org {
   font-family: var(--us-font-display);
@@ -1624,6 +1718,15 @@ html { scroll-padding-top: var(--us-chrome); }
    the body face, because that is prose and mono prose is harder to
    read, not easier. See fonts.css: 6 KB, subset to the characters an
    identifier can contain. */
+/* Evidence shares the classify disclosure's look and NOT its class.
+   A smoke check selects `.queue__classify` to assert the occurrence is
+   coded with its caveat attached; giving the evidence disclosure that
+   same class put it first in the document and the check started
+   measuring the wrong element. Two things that look alike are not
+   therefore the same thing. */
+.queue__evidence { margin-top: var(--us-space-3); }
+.queue__evidence > summary { cursor: pointer; font-weight: 600; }
+
 .queue__code b {
   color: var(--us-text-primary);
   font-weight: 700;
@@ -3166,6 +3269,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* The figure strip under a page head. Four facts a reader can take
    without reading the page, which is what most readers of a
    methodology page actually want. */
+/* "1. 1. System analysis". The <ol> draws its own marker and the item
+   also prints ICAO's step number, which is the authoritative one — Doc
+   9859's numbering, not a position in a list that could be filtered.
+   So the marker goes and the ordinal stays. */
+#sra-steps { list-style: none; padding-left: 0; }
+
 .stat-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));

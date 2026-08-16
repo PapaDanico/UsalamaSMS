@@ -1745,9 +1745,92 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    tests/picture-offer.test.ts, mutation-checked in both directions.
 
    0.2 KB of the 1 KB is spent. The rest is headroom for the same
-   treatment on the remaining signed-out screens, which is the next
-   piece of this work rather than a reason to raise it again. */
-const BUDGET = { entry: 217 * 1024, js: 513 * 1024, css: 63 * 1024 };
+   treatment on the remaining signed-out screens.
+
+   ---------------------------------------------------------------
+   CSS 63 -> 64 KB, AND THIS SPENDS THE HEADROOM ON SOMETHING ELSE.
+
+   The paragraph above says the remaining 0.8 KB was for the signed-out
+   screens and "not a reason to raise it again". It went on the PRINTED
+   PACK instead, so that sentence is worth correcting rather than
+   quietly outliving its accuracy.
+
+   What overtook it: rendering the pack to A4 and reading it. The SRA's
+   first field printed "New scheduled service to an unpaved northern
+   strip" and its second "The aircraft, the aerodromes, the people, the
+   procedures...". Both are PLACEHOLDERS. On screen the grey says so;
+   on paper, handed to somebody who has never seen this application, an
+   empty assessment reads as a completed one describing a route nobody
+   proposed.
+
+   A printed safety document asserting something untrue about an
+   operator is the one class of defect this product cannot ship, and it
+   outranks the tidiness of a spending plan written twenty minutes
+   earlier. The rules bought: placeholders never print, an empty field
+   prints as a rule rather than a box to fill in, a stat rail prints as
+   an aligned list rather than a grid that drops its fifth figure, and
+   the SRA step list stops rendering "1. 1.".
+
+   All of it is inside @media print, so a reporter at a remote strip
+   downloads it and never renders it — the weight is real but it is not
+   on the critical path, and the entry chunk is untouched at 210.4 KB.
+
+   The signed-out treatment still needs its 0.8 KB. That is now a raise
+   to argue for on its own merits rather than one already banked. */
+/* =====================================================================
+   TOTAL JS 513 -> 520 KB: THE OPERATOR'S MARK ON THEIR OWN DOCUMENTS.
+
+   Every pack this product prints — a risk assessment, the register,
+   the indicator table, the SMS record — went out under UsalamaSMS's
+   identity. The document is the OPERATOR'S: their assessment, their
+   risk position, their name on the line to an authority. So they can
+   now put their mark on it.
+
+   THE ENTRY CHUNK IS UNTOUCHED, which is the number that matters and
+   the reason this raise is the total rather than both. 210.6 KB of
+   217, unchanged to the decimal by this feature. The upload screen is
+   lazy — /account/logo, imported on click — so a ramp agent filing a
+   hazard at a remote strip never downloads the canvas resizer, the
+   validator or the form. It is charged to the safety manager who opens
+   a settings screen on an office connection, once.
+
+   WHAT THE WEIGHT IS. A file picker, a canvas pass that downscales to
+   512px on the longest edge, and checkLogo() shared with the route.
+   The canvas pass is doing three jobs at once: it enforces the ceiling
+   BEFORE a slow link carries the bytes, it normalises whatever format
+   was chosen into one the server accepts, and — the one worth the
+   kilobytes — it strips metadata, because a logo exported from a
+   design tool carries author, software and sometimes a file path with
+   somebody's name in it.
+
+   SVG IS REFUSED RATHER THAN RASTERISED, in the client and in the
+   route, for the same reason in both: it is markup that can carry
+   script, and this image renders into the operator's own pages.
+   tests/logo.test.ts mutation-checks that refusal and the anchoring of
+   the data-URI pattern — unanchored, it accepts
+   `javascript:alert(1)//data:image/png;base64,...`.
+   ===================================================================== */
+/* TOTAL JS 520 -> 526 KB: EVIDENCE ON A REPORT.
+
+   A narrative describes a dented cowling. A photograph of the dented
+   cowling is what an investigator can assess.
+
+   ENTRY UNTOUCHED AGAIN at 210.6 of 217 KB, and that is the number this
+   product is sold on. The evidence panel is dynamically imported when
+   somebody OPENS the disclosure on a queue row — a ramp agent who opens
+   the queue to read a report never downloads it, and filing a report
+   never touches it at all.
+
+   THE WEIGHT IS THE CANVAS PASS, and it is the same shape as the logo
+   resizer for the same reasons: it strips EXIF by re-encoding, so GPS,
+   device and timestamp do not travel; it downscales to 1600px so a
+   reporter on one bar is not sending eight megabytes off a sensor; and
+   it enforces the ceiling before the upload rather than after it.
+
+   It does NOT claim to do more. EVIDENCE_CAVEAT is on the control and
+   says the part software cannot do — a face, a registration or a name
+   on a document in the frame survives all of it. */
+const BUDGET = { entry: 217 * 1024, js: 526 * 1024, css: 64 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

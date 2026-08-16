@@ -187,7 +187,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
       const [
         org, users, reports, hazards, riskAssessments, policies, accountabilities,
         appointments, exercises, documents, findings, training, communications, auditLog,
-        spis, spiPeriods, voluntaryScheme, changes, contacts, actions, transitions,
+        spis, spiPeriods, voluntaryScheme, changes, contacts, actions, attachments, transitions,
         policyReads, documentReads, config,
       ] = await Promise.all([
         prisma.org.findUnique({
@@ -245,6 +245,16 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
         prisma.changeAssessment.findMany({ where, take: PROBE, orderBy: [{ assessedOn: "asc" }] }),
         prisma.emergencyContact.findMany({ where, take: PROBE, orderBy: [{ callOrder: "asc" }] }),
         prisma.correctiveAction.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
+        /* THE ATTACHMENT RECORDS, NOT THE FILES. The bytes are in object
+           storage and a JSON export is the wrong container for six
+           megabytes of photograph per report.
+           What an operator's own copy needs is the LEDGER: that a
+           photograph existed against this report, what type and size it
+           was, and its sha256 — so a file recovered from storage later
+           can be shown to be the one the audit chain attested. Without
+           the hash the export would record that evidence existed and
+           give nobody a way to prove any particular file is it. */
+        prisma.reportAttachment.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
         /* The disposition history. `byUserId` names the SAFETY OFFICER
            who moved the report, never the reporter — a transition is an
            office action, and C-01's concern was the person who filed.
@@ -404,6 +414,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
           changes,
           contacts,
           actions,
+          attachments,
           transitions,
           policyReads,
           documentReads,
