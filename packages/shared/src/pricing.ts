@@ -53,6 +53,28 @@ export interface Band {
   readonly who: string;
   /** What is in it beyond everything — used where a band adds something. */
   readonly adds?: string;
+  /**
+   * PER ADDITIONAL AOC, per month, where a band admits more than one.
+   *
+   * THE ONE PLACE COMPLEXITY IS PRICED SEPARATELY FROM FLEET SIZE, and
+   * it is here because fleet size stopped describing the customer.
+   *
+   * A second air operator certificate is not more aircraft. It is a
+   * second set of reporting deadlines, a second accountable executive, a
+   * second safety policy to sign and review, a second audit chain a
+   * regulator can ask to verify, and a second maturity assessment that
+   * has to stand on its own. Ten aircraft under one AOC and ten under
+   * three are the same fleet and nothing like the same operation.
+   *
+   * It used to be free — the fleet band's `adds` line handed multiple
+   * AOCs over at no charge, so the most complex customer in the segment
+   * paid exactly what the simplest one at the same fleet size paid.
+   *
+   * NOT PER SEAT, and it cannot become one: an operator cannot quietly
+   * drop an AOC to save money the way it can decline to license its line
+   * crew. That is the same test every band on this page has to pass.
+   */
+  readonly perExtraAocUsdMonthly?: number;
 }
 
 /* Priced against what the segment can actually pay rather than against
@@ -60,29 +82,54 @@ export interface Band {
    spending $11,000 a year on safety software is not a price objection,
    it is a different company. The top band still undercuts the cheapest
    incumbent's ten-seat price, and the bottom band is inside what an
-   operator already spends on one manual revision. */
+   operator already spends on one manual revision.
+
+   ---------------------------------------------------------------
+   REVISED UPWARD 16 AUGUST 2026, from 49 / 149 / 399.
+
+   The old numbers were set against a product that held reports and
+   classified them. It now carries eleven of Annex 19's twelve elements
+   — the hazard register, the risk picture, the CAPA loop, the SPI set
+   regulation 9(5) requires, the emergency response directory, the
+   maturity assessment, the de-identification pipeline and an audit
+   chain a regulator can verify by content. The price did not move while
+   all of that arrived, so it had drifted from describing the product
+   into describing an early version of it.
+
+   Checked against what the segment is quoted elsewhere, August 2026:
+   Centrik about $920 a month for ten users, Q-Pulse about $720,
+   Baldwin about $640. Those are TEN SEATS. Every band here is the whole
+   operator with unlimited reporters, so the fleet band at $549 is still
+   under the cheapest incumbent's ten-seat price — which is the claim
+   the paragraph above makes and the one that has to stay true.
+
+   The shape of the raise is deliberate: it steepens rather than
+   shifting. Complexity does not scale with fleet size in a straight
+   line, and the single-aircraft band is the one most likely to be an
+   operator choosing between this and nothing at all. */
 export const BANDS: ReadonlyArray<Band> = Object.freeze([
   Object.freeze({
     id: "single",
     name: "Single aircraft",
     fleet: "1 aircraft",
-    usdMonthly: 49,
+    usdMonthly: 79,
     who: "An owner-operator, a flight school with one type, a survey outfit.",
   }),
   Object.freeze({
     id: "small",
     name: "Small operator",
     fleet: "2 to 9 aircraft",
-    usdMonthly: 149,
+    usdMonthly: 239,
     who: "The charter, medevac and survey operators this product was built for.",
   }),
   Object.freeze({
     id: "fleet",
     name: "Fleet",
     fleet: "10 or more aircraft",
-    usdMonthly: 399,
+    usdMonthly: 549,
     who: "A scheduled operator, or a group holding several AOCs.",
-    adds: "Multiple AOCs under one safety office, and the export in a scheduled batch.",
+    adds: "The export in a scheduled batch, and a second AOC priced rather than assumed.",
+    perExtraAocUsdMonthly: 149,
   }),
 ]);
 

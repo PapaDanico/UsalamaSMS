@@ -175,9 +175,31 @@ describe("the line a lapse must never cross", () => {
 
 describe("what an operator may be invoiced for", () => {
   it("derives the band from the fleet rather than storing one", () => {
-    expect(billableBand(1)?.usdMonthly).toBe(49);
-    expect(billableBand(5)?.usdMonthly).toBe(149);
-    expect(billableBand(20)?.usdMonthly).toBe(399);
+    expect(billableBand(1)?.usdMonthly).toBe(79);
+    expect(billableBand(5)?.usdMonthly).toBe(239);
+    expect(billableBand(20)?.usdMonthly).toBe(549);
+  });
+
+  /* THE CLAIM THE PRICING PAGE MAKES ABOUT THE INCUMBENTS, asserted
+     rather than left in prose. The page says the top band undercuts the
+     cheapest incumbent's ten-seat price; Baldwin was quoted at about
+     $640 a month for ten users in August 2026, and every band here is
+     the whole operator with unlimited reporters. If a future raise
+     crosses that line the sentence has to change with it, and this is
+     what makes somebody notice. */
+  it("keeps the top band under the cheapest incumbent's ten-seat price", () => {
+    expect(billableBand(20)!.usdMonthly).toBeLessThan(640);
+  });
+
+  /* Complexity is priced where it actually lives. A second AOC is a
+     second set of deadlines and a second audit chain, and it used to be
+     handed over free in the fleet band's `adds` line — so the most
+     complex customer in the segment paid what the simplest one at the
+     same fleet size paid. */
+  it("prices a second AOC on the only band that admits one", () => {
+    expect(billableBand(20)!.perExtraAocUsdMonthly).toBeGreaterThan(0);
+    expect(billableBand(5)!.perExtraAocUsdMonthly).toBeUndefined();
+    expect(billableBand(1)!.perExtraAocUsdMonthly).toBeUndefined();
   });
 
   /* THE BILLING DEFECT THIS GUARDS. bandForFleet clamps, because the

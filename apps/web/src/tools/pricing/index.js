@@ -136,6 +136,13 @@ export function render(outlet) {
             <p class="hint">$${annualUsd(b)} a year — two months saved on an annual commitment.</p>
             <p class="cov__has">${b.who}</p>
             ${b.adds ? html`<p class="cov__missing">${b.adds}</p>` : ''}
+            ${b.perExtraAocUsdMonthly
+              ? html`<p class="cov__missing">
+                  $${b.perExtraAocUsdMonthly} a month for each AOC beyond the first — a second
+                  certificate is a second set of deadlines, a second accountable executive and a
+                  second audit chain, not more aircraft.
+                </p>`
+              : ''}
           </article>`
         )}
       </div>
