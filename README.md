@@ -146,7 +146,7 @@ npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:assets   # every file served from public/ is declared, with a ceiling
 npm run check:claims   # 96 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
-npm test               # 644 unit tests
+npm test               # 645 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 5 checks across TWO versions — the PWA update path
@@ -158,7 +158,7 @@ npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
 
 `npm run build` runs `check` first. A failing gate builds nothing.
 `npm run smoke` drives the **built** bundle in a real browser at 390&times;844
-— 71 checks, including filing a report with the network cut and
+— 73 checks, including filing a report with the network cut and
 confirming it is in IndexedDB afterwards. A test that passes on source
 and fails on the bundle has never protected anyone.
 
@@ -179,15 +179,22 @@ gzipped, against budgets the build enforces and refuses to raise
 silently. Every route past the first paint is lazily loaded, so the
 entry figure is what a person filing a report at a strip actually pays.
 
-Plus **98 KB of self-hosted type**, latin subset, precached by the
+Plus **67 KB of self-hosted type**, latin subset, precached by the
 service worker so the second load is offline too: DM Sans at 61 KB for
-the interface, and Cormorant Garamond at 37 KB for headings — one
-variable file each, covering 400 to 700. A further 64 KB of latin-ext
-across the two is fetched only if a character needs it. Two families is
-a deliberate 37 KB: the display face is the house identity, and it is
-loaded on the same terms as everything else here rather than from a CDN
-that would cost a DNS lookup, a TLS handshake and a third-party
-dependency on the first paint of a page opened at a remote strip.
+the whole interface — one variable file covering 400 to 700 — and a
+6 KB subset of JetBrains Mono for identifiers, where the difference
+between `1` and `l` is the difference between two people agreeing on a
+hash. A further 30 KB of latin-ext is fetched only if a character needs
+it.
+
+**One family, not two.** The headings were set in Cormorant Garamond
+until it was removed: a serif display over a sans body is what a
+prospectus is set in, and the hierarchy is carried perfectly well by
+weight and tracking. That deleted 71 KB nobody was choosing to pay,
+including the reporter at a remote strip who never reads a heading in a
+serif they waited for. Type is loaded on the same terms as everything
+else here rather than from a CDN that would cost a DNS lookup, a TLS
+handshake and a third-party dependency on the first paint.
 
 Two runtime dependencies earn their weight: Dexie holds the outbox, and
 zod validates on the device with the *same schema the server uses* — a

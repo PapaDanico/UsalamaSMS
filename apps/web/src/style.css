@@ -32,7 +32,11 @@
      report cannot afford, and nobody sets a form field or a column of
      risk indices in one. Headlines and the wordmark carry the identity;
      the interface carries the data. See fonts.css. */
-  --us-font-display: 'Cormorant Garamond', Garamond, 'Times New Roman', Georgia, serif;
+  /* ONE FACE. Kanda sets --ca-font-display: var(--ca-font) and builds
+     its hierarchy from weight alone; this now does the same. The token
+     stays rather than being deleted at every call site, so a second
+     display face — if one is ever licensed — is one line again. */
+  --us-font-display: var(--us-font);
   /* Tabular figures matter here in a way they do not on a marketing
      site: risk indices, SPI values and report references are read in
      columns and compared down the column. */
@@ -88,42 +92,45 @@
   --us-text-sm: 12.5px;
   --us-text-base: 14px;
   --us-text-md: 15.5px;
-  /* THE DISPLAY END CAME DOWN TWICE, AND THE READING END NEITHER TIME.
+  /* THE DISPLAY END IS KANDA'S, VERBATIM, AND THE READING END IS NOT.
 
-     "Reduce the font sizes" is two different requests depending on which
-     end of the ladder it lands on. At the reading end it costs
-     legibility for a reporter squinting at a handset on a windy apron,
-     and buys almost nothing: body copy is already a measure, and
-     shrinking 15px to 14px reclaims a few pixels per line while making
-     every line harder. At the DISPLAY end it costs nothing anybody
-     reads and buys whole screenfuls — a 68px hero heading over three
-     lines is 250px of vertical space spent saying what 52px says.
+     These four rungs are copied from --ca-text-lg through -3xl in the
+     sibling product. That is the instruction — align to Kanda, it is
+     the DNA — and it is also the correction to something this ladder
+     had got wrong on its own terms.
 
-     Three passes, and the ceilings tell the story: 68 -> 52 -> 46 -> 36
-     on the hero rung. First pass took the display end down ~20%, second
-     another ~11%, third — "too too big" — another ~22%.
+     "Reduce the font sizes" was asked several times and answered at
+     BOTH ends, which was one end too many. The reading rungs coming
+     down was right: 2xs through md are 10 to 15.5px, at or under
+     Kanda's own 11 to 17, and a working screen full of labels, hints
+     and figures is denser here than anything Kanda renders. Those stay
+     where they are, and they are what "small fonts" meant.
 
-     THE FLOORS MOVE LESS THAN THE CEILINGS. The floor is what a 360px
-     handset renders, where a heading is already close to the body text
-     and the hierarchy is carried by weight and colour rather than by
-     size; the ceiling is a desktop hero, where the same proportion is
-     three lines of 50px type nobody asked to read. So the range
-     narrows from both ends rather than sliding down.
+     The display rungs coming down was wrong, and rendering the two
+     products side by side is what showed it. Kanda's 3xl reaches 68px
+     against this ladder's 36. Its headlines are LARGE and its body is
+     SMALL, and that contrast is most of what makes a page read as
+     confident. Small body plus small display does not read as
+     restrained; it reads as timid, which is the note the owner has
+     been giving about this product's design.
 
-     ORDERING WAS CHECKED, NOT ASSUMED. Four clamps and five fixed rungs
-     can cross over at a viewport nobody looked at, which would put a
-     section heading below its own body text somewhere between two
-     breakpoints. Evaluated at 320, 375, 800, 1200 and 1440px: md 15.5
-     sits under lg's 16px floor at every one, and each display rung
-     stays above the one below it.
+     So the contrast is Kanda's and the density is Usalama's. Both
+     clamps still hold at every breakpoint — evaluated at 320, 375,
+     800, 1200 and 1440 — and the accessibility sweep over every
+     rendered screen is the check that this stayed legible rather than
+     the claim.
 
-     The four sanctioned off-ladder sizes above are untouched. The
-     accessibility sweep runs over every rendered screen and is the
-     check that this stayed legible rather than the claim. */
-  --us-text-lg: clamp(16px, 1.6vw, 17px);
-  --us-text-xl: clamp(17.5px, 2.0vw, 20.5px);
-  --us-text-2xl: clamp(20px, 2.6vw, 27px);
-  --us-text-3xl: clamp(23.5px, 3.6vw, 36px);
+     THE TOOL SURFACES DO NOT INHERIT THE FULL JUMP, and they get that
+     for free rather than by a new rule: they were already mapped two
+     rungs down the ladder — h1 to xl, h2 to lg, h3 to md — so a
+     working screen now opens at 32px where the landing page opens at
+     68. A 68px h1 above a triage queue is exactly the marketing
+     furniture this pass has been removing. The mapping was written for
+     that reason and it still holds; only the numbers under it moved. */
+  --us-text-lg: clamp(20px, 2.2vw, 24px);
+  --us-text-xl: clamp(24px, 3vw, 32px);
+  --us-text-2xl: clamp(30px, 4.2vw, 46px);
+  --us-text-3xl: clamp(38px, 6vw, 68px);
 
   --us-weight-normal: 400;
   --us-weight-medium: 500;
@@ -260,7 +267,11 @@
      The floor is the floor; it is not the target. */
   --us-tap: 48px;
 
-  --us-topbar: 60px;
+  /* 56, which is Kanda's .nav-bar min-height. This bar is already a
+     port of that rule — sticky, flex, space-between, the same blur and
+     the same border — and three values had drifted: the height, the
+     bar's gap and the gap between links. Copied rather than re-derived. */
+  --us-topbar: 56px;
   /* The sticky chrome: the top bar plus the sync strip, which is also
      sticky and also above the content. Anything scrolled to — an
      anchor, a focused control — has to clear BOTH, and the 88px this
@@ -428,24 +439,25 @@
      --jk-red        -> --us-ochre         Ochre Red, alert only
      --jk-muted      -> --us-ink-600
 
-   TYPOGRAPHY IS PORTED NOW, and it did not used to be. This block used
-   to read: "JK sets its headings in Cormorant Garamond over DM Sans,
-   and that serif IS its identity. Usalama's wordmark is a geometric
-   sans; a Garamond headline above it reads as two companies on one
-   screen." That was a defensible call while Usalama stood alone.
+   TYPOGRAPHY IS ONE FACE, AND THIS BLOCK HAS ARGUED BOTH WAYS.
 
-   It was reversed on the owner's instruction once Usalama became a
-   product under the JK & Associates banner: two products under one
-   banner set in two different faces read as two vendors, which is the
-   larger of the two problems. So --us-font-display is Cormorant
-   Garamond and --us-font stays DM Sans — the same pairing JK uses, and
-   the same one the sibling product carries.
+   It first said JK's Cormorant Garamond should NOT be ported, because
+   a Garamond headline above a geometric-sans wordmark reads as two
+   companies. Then it said the opposite, on the owner's instruction:
+   two products under one banner set in two faces read as two vendors,
+   which is the larger problem.
 
-   The split is not a compromise, it is the point. An old-style serif at
-   13-15px on a mid-range Android in direct sunlight costs legibility a
-   safety report cannot afford, and nobody sets a form field or a column
-   of risk indices in Garamond. Identity on the headlines; data in the
-   face chosen for a ramp at noon.
+   Both were arguing about the wrong axis. The face that matters is the
+   one KANDA uses, the other product under the banner, and Kanda sets
+   `--ca-font-display: var(--ca-font)` — one sans, hierarchy from
+   weight. A serif display over a sans body is an editorial pairing and
+   it made this product read as a brochure with an application inside
+   it.
+
+   So --us-font-display now points at --us-font, the serif is deleted
+   from public/, and headlines are carried by weight and tracking. The
+   colour mapping above is still JK's; the type is now Kanda's, and the
+   two products finally are set in the same thing.
    ============================================================ */
 
 
@@ -453,19 +465,22 @@
 /* ============================================================
    FIGURES — read this before touching numeric type.
 
-   Cormorant Garamond ships OLD-STYLE (text) figures by default: "11"
-   renders as "II", the 3 in "$1.3" drops below the baseline, and the 0
-   in "110+" sits at x-height. That is correct for running prose and
-   actively wrong for data — in the venture tools it made "12–24" read
-   as "I2–24" and financial totals look broken.
+   THIS EXISTS FOR A FACE THAT HAS GONE, and it is kept deliberately.
 
-   LINING is set at the root and inherited, rather than enumerated per
-   selector. An allow-list is the wrong shape here: it silently misses
-   inline-styled and JS-generated markup — which is exactly what happened
-   to the hero stat figures on the first attempt — and every new numeric
-   surface would have to remember to opt in. DM Sans carries only lining
-   figures, so this is a no-op for body copy and corrects Cormorant
-   everywhere it is used, including markup that does not exist yet.
+   Cormorant Garamond shipped OLD-STYLE (text) figures: "11" rendered
+   as "II", the 3 in "$1.3" dropped below the baseline. That was the
+   reason for the declaration below, and that face has been removed.
+
+   LINING IS STILL SET AT THE ROOT, because the declaration is a no-op
+   for DM Sans — which carries only lining figures — and it costs
+   nothing to leave a guarantee in place for a face nobody has chosen
+   yet. An allow-list would be the wrong shape either way: it silently
+   misses inline-styled and JS-generated markup, which is exactly what
+   happened to the hero stat figures on the first attempt.
+
+   What is NOT true any more is that this is load-bearing. If it is
+   ever removed, nothing changes today — and the next display face is
+   the thing that would find out.
    ============================================================ */
 body { font-variant-numeric: lining-nums; }
 
@@ -503,15 +518,43 @@ body {
    pulled tighter than the same face at 1.3rem, where negative tracking just
    makes it muddy. Line-height tightens as size grows for the same reason.
    text-wrap:balance stops a headline stranding one word on its own line. */
-/* Headings carry the identity. The tracking is looser and the sizes a
-   step larger than the sans they replaced: Cormorant has a much smaller
-   x-height than DM Sans, so type set to the same numbers reads smaller
-   and tighter than it measures. The negative letter-spacing that suited
-   a geometric sans closes an old-style serif up until it looks cramped,
-   so it is nearly neutral now. */
-h1, h2, h3, h4 { font-family: var(--us-font-display); font-weight: 600; margin: 0 0 .4em; text-wrap: balance; }
-h1 { font-size: var(--us-text-3xl);  line-height: 1.08; letter-spacing: -.008em; }
-h2 { font-size: var(--us-text-2xl);  line-height: 1.14; letter-spacing: -.004em; }
+/* =====================================================================
+   ONE TYPEFACE, AND THE HIERARCHY IS BUILT FROM WEIGHT AND SIZE.
+
+   These headings were Cormorant Garamond, an old-style serif, over a
+   DM Sans body. That pairing is an EDITORIAL convention — it is what a
+   magazine, a prospectus or a consultancy report is set in, and it is
+   why this product read as a brochure with an application inside it
+   rather than as an application. A single sans differentiated by
+   weight is the PRODUCT convention, and the difference is not taste:
+   it is what a reader has been trained by every other instrument they
+   use to expect.
+
+   The tool surfaces already knew this. `[data-surface='tool']` has
+   overridden the display face back to DM Sans since the working
+   screens were tightened, which means the product was already running
+   two typographic identities and calling one of them the identity.
+   This settles it the other way: the identity is DM Sans, and the tool
+   surface override is now saying nothing new.
+
+   IT IS ALSO 71 KB OFF THE WIRE. cormorant-garamond-latin.woff2 and
+   its -ext are 71 of the 184 KB of fonts in public/, carried by every
+   person on every cold start — including the reporter at a remote
+   strip on one bar of signal, who is the person this product's whole
+   budget discipline exists for, and who never reads a heading in a
+   serif they waited for. A typeface removed is weight nobody pays.
+
+   WEIGHT AND TRACKING DO THE WORK THE SERIF WAS DOING. 700 rather than
+   600, line-height 1.08, and --us-tracking-tight, which is already
+   -0.028em. A sans at display size with neutral tracking reads as
+   large body copy; closed up and set bold it reads as a headline. That
+   is the whole mechanism, and it is the reason the previous comment
+   here was about x-heights — the correction it described was a
+   correction FOR the serif, and it goes with the serif.
+   ===================================================================== */
+h1, h2, h3, h4 { font-family: var(--us-font-display); font-weight: 700; margin: 0 0 .4em; text-wrap: balance; }
+h1 { font-size: var(--us-text-3xl);  line-height: 1.08; letter-spacing: var(--us-tracking-tight); }
+h2 { font-size: var(--us-text-2xl);  line-height: 1.12; letter-spacing: var(--us-tracking-tight); }
 /* Component heading rules below are written :is(h2, h3, h4) rather than
    pinned to one tag. Appearance belongs to the component; the LEVEL
    belongs to the document, and the two were fused here — a footer
@@ -630,7 +673,11 @@ html { scroll-padding-top: var(--us-chrome); }
 .btn-ghost:hover { border-color: var(--us-teal); color: var(--us-teal); }
 .btn-ghost:disabled { border-color: var(--us-border); color: var(--us-ink-600); cursor: not-allowed; transform: none; }
 .btn-sm { padding: .55rem 1rem; font-size: var(--us-text-sm); }
-.nav-links { display: flex; align-items: center; gap: 1.3rem; }
+/* 4px, Kanda's --ca-space-1. The links are inline-flex boxes with 12px
+   of their own inside padding and a hover background, so the separation
+   is the padding rather than the gap; 20.8px on top of that spread
+   seven links across the whole bar. */
+.nav-links { display: flex; align-items: center; gap: var(--us-space-1); }
 /* :not(.btn) is load-bearing, not tidiness. The nav carries one button —
    the "Start free" CTA, which appears on all 28 pages and is the most
    clicked element on the site — and `.nav-links a` (0,1,1) outranks
@@ -639,8 +686,43 @@ html { scroll-padding-top: var(--us-chrome); }
    The same applies to the :hover rule below, which was pushing it to
    1.87:1. A button dropped into the nav later should look like a button,
    not like a nav link that happens to have a background. */
-.nav-links a:not(.btn) { color: var(--us-charcoal); font-weight: 600; font-size: var(--us-text-base); transition: color var(--us-dur-fast) var(--us-ease); }
-.nav-links a:not(.btn):hover { color: var(--us-teal); text-decoration: none; }
+/* ---------------------------------------------------------------------
+   THE HEADER LINKS, TO KANDA'S SPEC.
+
+   Measured side by side at 1440: Kanda's `.nav-link` is 13.5px at
+   weight 500 in --ca-text-secondary, inside a 34px target with a hover
+   background. This product's were 14px at weight 600 in near-black
+   with no target box.
+
+   All three differences push the same way. Weight 600 in the darkest
+   ink at the largest of the three candidate sizes is a header that
+   competes with the page under it — seven links reading as loudly as
+   the heading they sit above. Kanda's reads as chrome, which is what a
+   nav is: present, findable, and not the thing you are looking at.
+
+   THE TARGET IS THE THIRD CHANGE AND IT IS NOT COSMETIC. These were
+   22px tall, under WCAG 2.2 SC 2.5.8's 24px floor for a standalone
+   target, and passing only because the gate exempts a link inside a
+   sentence. A header link is not inside a sentence. 34px is Kanda's
+   number and it clears the floor with room.
+   --------------------------------------------------------------------- */
+.nav-links a:not(.btn) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding-inline: var(--us-space-3);
+  border-radius: var(--us-radius-sm);
+  color: var(--us-text-secondary);
+  font-weight: var(--us-weight-medium);
+  font-size: var(--us-text-sm);
+  transition: color var(--us-dur-fast) var(--us-ease),
+    background var(--us-dur-fast) var(--us-ease);
+}
+.nav-links a:not(.btn):hover {
+  color: var(--us-text-primary);
+  background: var(--us-surface-muted);
+  text-decoration: none;
+}
 .nav-links a:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 4px; border-radius: 3px; }
 @media (max-width: 980px) {
   .dropdown-menu { position: static; opacity: 1; visibility: visible; transform: none; box-shadow: none; border: 0; background: transparent; padding: 0 0 0 1rem; min-width: 0; }
@@ -1067,6 +1149,68 @@ html { scroll-padding-top: var(--us-chrome); }
   background: var(--us-surface-muted);
   color: var(--us-text-tertiary);
   transition: background var(--us-dur) var(--us-ease), color var(--us-dur) var(--us-ease);
+}
+
+/* ---------------------------------------------------------------------
+   THE WORKSPACE LABEL, in the half of the strip that was empty.
+
+   `margin-left: auto` pushes it to the far end, so the strip reads as
+   one line with two jobs: what is waiting to send on the left, whose
+   system this is on the right. That is the space this bar has always
+   had and never used — at 1440 the sync sentence occupies about a
+   third of it and the rest was ground.
+
+   It is the tenant context sitting around the navigation rather than
+   inside a page, which is the point: a name that appears in one panel
+   stops orienting somebody the moment they open another screen.
+
+   HIDDEN, NOT COLLAPSED, when signed out. [hidden] with display:none
+   rather than an empty span, so the strip's flex layout does not keep
+   a gap for a label that is not there.
+   --------------------------------------------------------------------- */
+.workspace {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--us-space-2);
+  min-width: 0;
+}
+
+.workspace[hidden] { display: none; }
+
+/* Capped by height, not width: an operator's mark is whatever aspect
+   they uploaded, and a fixed width would squash a wide wordmark. */
+.workspace__mark {
+  height: 18px;
+  width: auto;
+  max-width: 96px;
+  object-fit: contain;
+  flex: none;
+}
+
+.workspace__name {
+  font-weight: var(--us-weight-semi);
+  color: var(--us-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The jurisdiction is the quietest thing on the strip and the first to
+   go: on a handset the unsent count is what the strip exists for, and
+   an operator on their own device already knows which authority they
+   answer to. */
+.workspace__where {
+  font-size: var(--us-text-2xs);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+  flex: none;
+}
+
+@media (max-width: 599px) {
+  .workspace__where { display: none; }
+  .workspace__name { max-width: 9rem; }
 }
 
 .sync-strip__dot {
@@ -2439,6 +2583,29 @@ html { scroll-padding-top: var(--us-chrome); }
    inside a card that is already narrower, where it simply never binds. */
 .page :is(p, li) { max-width: 68ch; }
 
+/* AND A LIST ITEM IS NOT ALWAYS A SENTENCE.
+
+   `li` was included above because a bulleted list is prose, and it is.
+   But this product also builds components out of list items, and the
+   rule above cannot tell them apart — so the reporting queue, which is
+   a <ul> of <li> report cards, was capped at 68 CHARACTERS. Measured
+   at 1440: the filter above it took 1152px and the rows under it took
+   680, on the screen this product exists for. Nobody chose that, and
+   it is invisible in the stylesheet because neither rule is wrong on
+   its own.
+
+   THE CLASS IS THE TEST, and it holds because of how this codebase is
+   written rather than by luck: prose lists are authored as bare <li>,
+   and every classed one — .queue__item, .fact, .account-card,
+   .picture-bar, .mat-bar, .next-item, .numbered__item, .trust-item,
+   .queue__code — is a component with its own layout. A component that
+   wants a measure sets one; a sentence inside a component is a <p> and
+   still gets it from the rule above.
+
+   [class] rather than :where([class]) on purpose: :where contributes
+   no specificity, so it would lose to the rule it is correcting. */
+.page li[class] { max-width: none; }
+
 /* A .wrap INSIDE .page is a container inside a container, and after
    --us-page went past --us-container-wide it became the binding one —
    so /toolkits/register and /sms sat at 1088px while /triage beside
@@ -2478,7 +2645,7 @@ html { scroll-padding-top: var(--us-chrome); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--us-space-4);
+  gap: var(--us-space-3);
   min-height: var(--us-topbar);
   padding: var(--us-space-2) clamp(var(--us-space-4), 4vw, var(--us-space-8));
   padding-top: max(var(--us-space-2), env(safe-area-inset-top));
@@ -2547,7 +2714,107 @@ html { scroll-padding-top: var(--us-chrome); }
 
 .dropdown-menu[hidden] { display: none; }
 
+/* ---------------------------------------------------------------------
+   TWO COLUMNS, BECAUSE ONE DOES NOT FIT.
+
+   Measured at 1440x900 with the menu open: the panel is 586 wide and
+   816 tall inside an 856px gap, and it SCROLLS. Every destination this
+   product has, with its one-line hint, is in there — and the reader
+   sees about two-thirds of it and has to discover the rest by
+   scrolling a menu, which is the one interaction nobody performs
+   speculatively. The rule above already records that a sixth item in a
+   group made "Questions" unreachable on a handset; this is the same
+   failure on the screen with the MOST room.
+
+   Kanda's menu holds twelve destinations with the same one-line
+   treatment and needs no scroll, because it is two columns.
+
+   A GRID, AND `columns` WAS TRIED FIRST AND IS WRONG HERE.
+
+   Multi-column is the tidier answer on paper: it flows the groups and
+   rebalances itself when a destination is added, where a grid places
+   them in the order they are written. It also SILENTLY DELETED A GROUP
+   from this panel, and the only reason that is recorded rather than
+   shipped is that the menu was screenshotted rather than measured.
+
+   The mechanism: this panel has a max-height, because it is
+   position:fixed and anything taller hangs below the fold. Constrain
+   the height of a multi-column box and the overflow does not go DOWN,
+   it goes SIDEWAYS into further columns — so "Reference" and its five
+   destinations were laid out in a third column past the panel's right
+   edge, clipped, with `overflow-y: auto` unable to reach them because
+   the overflow was horizontal. The panel reported no scrollbar and
+   looked complete.
+
+   That is the failure this rule's own neighbour already warns about,
+   arriving by a new route: the menu loses its last items, silently, and
+   nothing tells anybody. A grid overflows downward, which is the axis
+   the scroll is on.
+
+   ONLY ABOVE 900px. Below it there is no second column to have, and
+   the handset already has the scroll behaviour it needs.
+   --------------------------------------------------------------------- */
+@media (min-width: 900px) {
+  .dropdown-menu {
+    /* Both bounds, and the max is the one doing the work. A panel with
+       only a floor grows to whatever its longest hint wants — measured
+       at 1190px, which is 82% of a 1440 screen and reads as a page
+       rather than a menu. 56rem gives two columns of about 420px,
+       which is the measure these one-line hints actually need. */
+    min-width: min(44rem, calc(100vw - 2 * var(--us-space-6)));
+    max-width: min(56rem, calc(100vw - 2 * var(--us-space-6)));
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--us-space-5) var(--us-space-6);
+    align-content: start;
+    padding: var(--us-space-4);
+  }
+  /* The separator is a rule between groups in one flow. In a grid the
+     first group of the second column would wear one at the top of the
+     panel, which reads as a stray line rather than a separator, so it
+     goes and the grid's own gap does the spacing. */
+  .dropdown-menu .nav-group + .nav-group {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  /* DENSER, BECAUSE A MENU IS SCANNED. The 12px of vertical padding on
+     each item is a touch target on a handset, where it is correct and
+     stays; on a pointer device it is 17 items' worth of air in a panel
+     that has to fit above the fold. At 12px the grid needed 1072px
+     against 814 available and scrolled by a third.
+
+     The target does not fall below the WCAG 2.2 floor: the item is a
+     block, so its height is the type plus the summary plus this — 44px
+     at the smallest, and check:a11y measures every one of them on the
+     rendered page rather than trusting the arithmetic here. */
+  .dropdown-menu .nav-item { padding: var(--us-space-2) var(--us-space-3); }
+  .dropdown-menu .nav-group__title,
+  .dropdown-menu .nav-group__purpose { padding-inline: var(--us-space-3); }
+  .dropdown-menu .nav-group__purpose { margin-bottom: var(--us-space-1); }
+}
+
 .nav-group + .nav-group { margin-top: var(--us-space-3); padding-top: var(--us-space-3); border-top: 1px solid var(--us-border); }
+
+/* WHAT THE GROUP IS FOR, under what it is called. Kanda sets a section
+   eyebrow over a one-line purpose, and it is the line that turns a list
+   of headings into a map — you can tell whether a group is yours
+   without reading the four destinations inside it. Written empty by
+   main.js and filled from menu-hints.js, on the same terms as the item
+   summaries: help text is not navigation, and it is not on the
+   critical path. */
+.nav-group__purpose {
+  margin: 0 0 var(--us-space-2);
+  padding: 0 var(--us-space-4);
+  font-size: var(--us-text-xs);
+  line-height: var(--us-leading-snug);
+  color: var(--us-text-tertiary);
+}
+/* Empty until the hints land, and an empty paragraph with a bottom
+   margin is a gap that appears and then fills — the reflow the
+   summaries are written empty to avoid. */
+.nav-group__purpose:empty { display: none; }
 
 .nav-group__title {
   margin: 0 0 var(--us-space-1);
@@ -2654,6 +2921,112 @@ html { scroll-padding-top: var(--us-chrome); }
    about 2.6:1, and the eyebrow is gold. The accessibility sweep over
    twenty-one screens is what decides whether this is right, and it was
    run against this gradient rather than around it. */
+/* ---------------------------------------------------------------------
+   THE HERO'S SECOND COLUMN, which until now did not exist.
+
+   `.wrap` inside the hero held one flow of content in a reading
+   measure, so at 1440 the right half of the most valuable slot on the
+   front door was ground. This makes the hero a two-column grid above
+   900px and puts the reporting clock in the half that was empty —
+   Kanda's move, and the reason its landing page reads as a working
+   product rather than a description of one.
+
+   THE PANEL IS ROW 2 ON A HANDSET, not hidden. It is real regulatory
+   content, not decoration; below 900px the grid collapses and it sits
+   under the buttons where a reader reaches it by scrolling rather than
+   by not being shown it.
+   --------------------------------------------------------------------- */
+@media (min-width: 900px) {
+  .band-dark--hero .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
+    /* COLUMN GAP ONLY. Written as a single `gap` it applied to rows
+       too, and every child of the hero is its own grid row — so the
+       mark, the eyebrow, the heading, the tagline, the lede and the
+       buttons were pushed 64px apart and the hero grew to twice its
+       height. The elements keep the vertical rhythm their own rules
+       give them. */
+    gap: 0 clamp(var(--us-space-8), 5vw, var(--us-space-16));
+    align-content: start;
+    align-items: start;
+  }
+  /* Everything that is not the panel stays in column one. Listed by
+     what it is rather than by nth-child, so inserting a line into the
+     hero does not silently move something into the panel's column. */
+  .band-dark--hero .wrap > :not(.hero-clock) { grid-column: 1; }
+  .band-dark--hero .hero-clock {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    margin: 0;
+  }
+}
+
+.hero-clock {
+  margin: var(--us-space-8) 0 0;
+  padding: var(--us-space-5);
+  border: 1px solid rgb(var(--us-sand-rgb) / 0.18);
+  border-radius: var(--us-radius-lg);
+  background: rgb(var(--us-sand-rgb) / 0.05);
+}
+
+.hero-clock__title {
+  margin: 0 0 var(--us-space-4);
+  font-size: var(--us-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-gold);
+}
+
+.hero-clock__list { list-style: none; margin: 0; padding: 0; }
+
+.hero-clock__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px var(--us-space-3);
+  padding: var(--us-space-3) 0;
+  border-top: 1px solid rgb(var(--us-sand-rgb) / 0.12);
+  font-size: var(--us-text-sm);
+}
+.hero-clock__row:first-child { border-top: 0; padding-top: 0; }
+
+.hero-clock__who {
+  color: var(--us-sand);
+  font-weight: var(--us-weight-semi);
+  min-width: 0;
+}
+
+/* The figure, and it aligns down the column — tabular because these
+   are numbers somebody compares rather than reads. */
+.hero-clock__when {
+  color: var(--us-sand);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+.hero-clock__when b { color: var(--us-gold); font-size: var(--us-text-md); }
+
+.hero-clock__from {
+  grid-column: 1 / -1;
+  font-size: var(--us-text-2xs);
+  color: rgb(var(--us-sand-rgb) / 0.66);
+}
+
+/* A STANDALONE TARGET, not a link inside a sentence, so WCAG 2.2
+   SC 2.5.8's 24px floor applies to it and the inline exception does
+   not. It rendered at 18px tall and the gate caught it. Padded rather
+   than enlarged: the type stays quiet and the hit area is the thing
+   that grows. */
+.hero-clock__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-top: var(--us-space-3);
+  font-size: var(--us-text-xs);
+  color: rgb(var(--us-sand-rgb) / 0.86);
+}
+.hero-clock__more:hover { color: var(--us-gold); }
+
 .band-dark--hero {
   background:
     linear-gradient(180deg, #0f1430 0%, #171a38 46%, #3a2247 74%, #7d3a29 100%);
@@ -2740,7 +3113,7 @@ html { scroll-padding-top: var(--us-chrome); }
    AN INSTRUMENT IS NOT A DOCUMENT.
 
    Everything above is the editorial treatment: a 52px display heading
-   over a generous measure, set in Cormorant Garamond, with a panel
+   over a generous measure, with a panel
    breathing 40px at desktop. That is right for /about and /pricing,
    where somebody is deciding whether to trust a practice, and it is the
    treatment the identity was built for.
@@ -2783,12 +3156,13 @@ html { scroll-padding-top: var(--us-chrome); }
 [data-surface='tool'] h1 { font-size: var(--us-text-xl); line-height: 1.2; }
 [data-surface='tool'] h2 { font-size: var(--us-text-lg); line-height: 1.25; }
 [data-surface='tool'] h3 { font-size: var(--us-text-md); }
+[data-surface='tool'] .section-title { font-size: var(--us-text-md); }
 
-/* THE OPTICAL CORRECTION IS UNDONE HERE, and it has to be. The 1.15
-   multiplier on .page-head h2 exists because Cormorant's x-height is
-   smaller than DM Sans's at the same pixel size; applied to DM Sans it
-   is simply 15% too big. A correction for a typeface, left on after the
-   typeface changed, is the drift this stylesheet keeps catching. */
+/* A PAGE HEAD'S h2 IS A SUBTITLE, not the start of a section, so it
+   sits a rung below the h2 that is. This rule used to exist to undo a
+   1.15 x-height multiplier that corrected an old-style serif against
+   DM Sans; the serif has gone and so has the multiplier, and what is
+   left is the size choice on its own merits. */
 [data-surface='tool'] .page-head h2 { font-size: var(--us-text-md); }
 
 /* Rhythm. ~60px reclaimed per screen — a whole extra row of the queue
@@ -2832,22 +3206,344 @@ html { scroll-padding-top: var(--us-chrome); }
   border-color: var(--us-border-strong);
 }
 [data-surface='tool'] .queue__item { padding: var(--us-space-3) var(--us-space-4); }
+
+/* =====================================================================
+   THE INSTRUMENT LANGUAGE — what makes a working screen read as
+   equipment rather than as a web page with a form on it.
+
+   THE COMPLAINT WAS "GENERIC, FLAT AND DISORGANISED", and driving the
+   tool screens at 1440 rather than reading this file showed all three
+   as one fault with three faces:
+
+   - GENERIC. Every container on every screen is the same object: a
+     1px border, an 12-18px radius, white on sand. The table of
+     contents, the entry form, the caveat, an element of Annex 19 and
+     an empty state are drawn identically, so none of them says what
+     it is.
+   - FLAT. There is exactly one plane. Depth was already correctly
+     removed from tool surfaces — a shadow under a queue row is depth
+     doing no work — but nothing replaced it, so the hierarchy that
+     shadow was carrying badly is now not carried at all.
+   - DISORGANISED. Sections are separated by margin alone, which at a
+     glance is indistinguishable from the margin between two cards
+     inside one section. There is no visible edge to a region.
+
+   The answers are geometry, ground and rule, in that order. None of
+   them is a component: they are the tokens and the primitives every
+   screen already uses, so a screen written last month gets them
+   without being rewritten. THAT IS THE POINT — a language that has to
+   be applied per screen is a style guide, and a style guide is what
+   drifts.
+
+   ---------------------------------------------------------------
+   THE READING END IS UNTOUCHED. Every rule below is inside
+   [data-surface='tool']. / , /pricing, /about and the rest keep the
+   radius, the shadow and the display face they were designed with;
+   this is a second register for the fourteen screens somebody works
+   in, not a redesign of the product's voice.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   GEOMETRY — 3px, and it is a token override rather than a rewrite.
+
+   An 18px radius is a consumer radius. It is right on a pricing card,
+   which is an object being offered; it is wrong on a risk register,
+   which is an instrument being read. Precision instruments have
+   corners: a 3px relief is the radius of something machined rather
+   than something moulded, and at a glance it is the single largest
+   contributor to "this is equipment".
+
+   REDEFINING THE TOKENS RATHER THAN THE COMPONENTS is what makes this
+   twelve lines instead of two hundred. Every card, input, select,
+   panel, well and figure in this stylesheet already draws its corner
+   from --us-radius-*; scoping new values to the surface reaches all
+   of them at once, including any component written after this rule.
+   The alternative — a per-component override list — is a list that is
+   correct on the day it is written and wrong on the day somebody adds
+   a component, and the wrongness is invisible.
+
+   --us-radius-pill IS DELIBERATELY NOT OVERRIDDEN. A pill is a shape
+   that carries meaning: a badge is round-ended because it is a token,
+   and squaring it makes it a box like everything else on the screen.
+   The one radius that is doing semantic work keeps its value.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] {
+  --us-radius-sm: 3px;
+  --us-radius-md: 3px;
+  --us-radius-lg: 4px;
+  --us-radius-xl: 4px;
+}
+
+/* ---------------------------------------------------------------------
+   GROUND — three planes, named by depth rather than by colour.
+
+   Elevation on this surface is TONE, not shadow. Paper sits above
+   sand; a well sits below it. That gives a working screen the three
+   levels it needs — the page, the thing on the page, the thing set
+   into the thing — with no lift, no blur and nothing that moves.
+
+   The border does not go away, because a hairline IS the instrument
+   convention rather than a compromise with it: panel edges on real
+   equipment are engraved lines, not drop shadows. It gets quieter —
+   --us-border rather than --us-border-strong — so the tone difference
+   is doing the work and the line is confirming it.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .card,
+[data-surface='tool'] .queue__item,
+[data-surface='tool'] .account-card {
+  box-shadow: none;
+}
+
+/* A well: set INTO the page rather than onto it. The empty state, the
+   read-only figure and the note all belong here, and none of them
+   should be drawn as a card the way they are now — a card is something
+   you act on. */
+[data-surface='tool'] .fact {
+  background: var(--us-surface-sunk);
+  border-color: var(--us-border);
+}
+
+/* ---------------------------------------------------------------------
+   RULE — the visible edge of a region, which is the whole of the
+   "disorganised" complaint.
+
+   A tool screen is a stack of sections and its only separator is
+   margin, so at a glance the gap between two SECTIONS reads exactly
+   like the gap between two cards inside one. A hairline that runs the
+   full content width says "a new region starts here" in a way vertical
+   space cannot, because vertical space is also what everything else
+   uses.
+
+   :not(:first-child) because the first heading on a screen already has
+   the page head above it, and a rule under a rule is a border.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .panel > h2:not(:first-child),
+[data-surface='tool'] .panel > section > h2:not(:first-child) {
+  padding-top: var(--us-space-5);
+  border-top: 1px solid var(--us-border);
+}
+
+/* ---------------------------------------------------------------------
+   FIGURES ALIGN, IDENTIFIERS ARE MONOSPACED.
+
+   Proportional digits are correct in a sentence and wrong in a column:
+   a 1 is narrower than a 0, so a column of counts is a ragged column
+   and the eye cannot compare two rows without reading them. Every
+   place in this product where a number sits above or beside another
+   number gets tabular figures.
+
+   It is a LIST rather than a blanket rule on the surface, and that is
+   deliberate: tabular figures in running prose are worse than
+   proportional ones — "12 elements" in a paragraph is set with gaps
+   around the 1. Numbers that align get it; numbers that read do not.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] :is(td, th, .queue__deadline, .stat__value, output, time) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* An identifier is not a word: a report reference, a hash, a CICTT
+   code and an element number of Annex 19 are all things you compare
+   character by character rather than read. Mono says that, and it says
+   it before anybody has read the label. */
+[data-surface='tool'] :is(code, .ident) {
+  font-family: var(--us-font-mono);
+  font-size: 0.92em;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------
+   THE BAND IS A HEADER ON A WORKING SCREEN, NOT A HERO.
+
+   .band-dark is JK's ink band and it is the product's face. On / and
+   /pricing it should be exactly what it is: two radial washes over
+   charcoal, a heading with room around it, an argument for reading on.
+
+   Fourteen screens somebody WORKS in inherited it unchanged, and
+   driving /toolkits/register at 1440 is the whole finding: three
+   hundred pixels of gradient, a four-line lede and a marketing eyebrow
+   sit above the form an operator opened the page to fill in. It is not
+   that the band is ugly. It is that a landing page's furniture on an
+   instrument is the single loudest "generic" signal the product sends
+   — the screen announces itself instead of getting to work.
+
+   So on a tool surface it becomes what an instrument header is:
+
+   - ONE WASH RATHER THAN TWO, quieter, low and wide. Enough that the
+     strip is not a flat black bar — the complaint was flatness and
+     removing the gradient entirely would answer it in the wrong
+     direction — and not enough to read as a sunset.
+   - A GOLD HAIRLINE ON THE BOTTOM EDGE. This is the accent doing
+     structural work rather than decorative work, which is the whole
+     argument of this pass: it separates the header from the working
+     ground, it is the one warm line on the screen, and a 1px rule is
+     what a machined panel edge looks like. It costs nothing and it is
+     the detail that reads as expensive.
+   - THE LEDE SHORTENED TO ITS JOB. 62ch at reading size, not a
+     4-line paragraph at hero size. Somebody on this screen has
+     already chosen it.
+
+   THE MARK, THE WORDMARK AND THE COLOURS ARE UNTOUCHED. This is the
+   same band with the marketing removed, not a different band — a
+   product whose working screens look unrelated to its front door is
+   the failure this is avoiding, not the one it is causing.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .band-dark {
+  padding-block: var(--us-space-5) var(--us-space-4);
+  background:
+    radial-gradient(1100px 320px at 10% 0%, rgb(var(--us-teal-rgb) / 0.22) 0%, transparent 66%),
+    var(--us-charcoal);
+  border-bottom: 1px solid rgb(var(--us-gold-rgb) / 0.4);
+}
+
+[data-surface='tool'] .band-dark .lede {
+  font-size: var(--us-text-base);
+  max-width: 62ch;
+}
+
+/* The rail is the base of the header now, so its own top rule is a
+   second line where one is enough. */
+[data-surface='tool'] .stat-strip {
+  margin-top: var(--us-space-5);
+  padding-top: var(--us-space-4);
+}
+
+/* ---------------------------------------------------------------------
+   A FORM ON A TOOL SURFACE IS A DOCUMENT WITH A HEAD, not a stack of
+   controls.
+
+   The entry form on /toolkits/register is eight label-and-box pairs
+   run together with no head, no grouping and a rhythm that visibly
+   breaks: `.field` carries a flat 26px bottom margin, so a field
+   ending in a bordered input and a field ending in three lines of
+   small grey hint are separated by the same measurement and read as
+   different distances. Rendered, the gap after the "Controls" hint is
+   plainly tighter than the gap after the "Severity" select, and the
+   column looks unaligned for a reason nobody can point at.
+
+   Two corrections, both structural rather than cosmetic:
+
+   - THE HEAD GETS A RULE. The same hairline that separates regions
+     separates a form's title from its fields, so "Add an entry" reads
+     as the name of the thing below it rather than as the first line
+     of it. One device, used consistently, is what stops a screen
+     looking assembled.
+   - A FIELD WITH A HINT GETS ITS OWN ALLOWANCE. 26px after a box and
+     26px after small grey text are not the same optical distance, and
+     the fix is to measure from what the eye sees rather than from the
+     box model. This is the one place in this pass where a number is
+     chosen by looking; it is chosen by looking at the RENDERED column
+     rather than at the stylesheet, which is the difference that
+     matters.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] form.card > :is(h2, h3):first-child {
+  margin-bottom: var(--us-space-4);
+  padding-bottom: var(--us-space-3);
+  border-bottom: 1px solid var(--us-border);
+}
+
+[data-surface='tool'] form .field { margin-bottom: var(--us-space-5); }
+[data-surface='tool'] form .field:has(.field-hint) { margin-bottom: var(--us-space-6); }
+
+/* ---------------------------------------------------------------------
+   ONE OPENING, TWO MARKUPS — the architectural half of "disorganised".
+
+   A tool screen in this product opens one of two ways, and which one
+   it gets is a fact about the week it was written rather than a
+   decision anybody made:
+
+     .band-dark   /today /coverage /toolkits/* /sms /methodology …
+     .page-head   /report /triage /picture /account/* …
+
+   Driven back to back they look like two products. The band screens
+   open on ink with an eyebrow, a title and a figure rail; the
+   page-head screens open on sand with a title and a paragraph. Same
+   header above them, same footer below, and nothing in between that
+   says they belong together.
+
+   REWRITING FOURTEEN SCREENS TO ONE MARKUP IS THE WRONG FIX, and it
+   is worth saying why rather than just not doing it. The difference
+   is not arbitrary: /report deliberately has no band, because the
+   band's markup and its rail are weight a reporter at a remote strip
+   downloads before they can file, and the entry budget is the
+   offline-filing promise. A screen with no figures should not carry a
+   figure rail to look consistent.
+
+   So the two openings STAY, and they are made to terminate the same
+   way. The gold hairline is the product's edge on a working screen;
+   whichever opening a screen has, it ends on that line, and the eye
+   reads the two as one device seen twice rather than as two devices.
+   A shared detail is what makes a system, and it survives a screen
+   being written next month by somebody who picks either markup.
+
+   Its margin-bottom is set further up, with the rest of the rhythm.
+   This rule is only the edge.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .page-head {
+  padding-bottom: var(--us-space-4);
+  border-bottom: 1px solid rgb(var(--us-gold-rgb) / 0.4);
+}
+
+/* ---------------------------------------------------------------------
+   AN EMPTY STATE IS A THING ON THE SCREEN, not the absence of one.
+
+   /triage with nothing filed and /toolkits/register with nothing on it
+   both render one grey sentence floating on the ground, centred, in a
+   column eleven hundred pixels wide. That is the flat complaint in its
+   purest form: the most common state a new operator sees, and it is
+   drawn as leftover text.
+
+   It is also where the two screens diverged. `.empty-state` exists and
+   is used by /toolkits/spi, /toolkits/sra, /sms, /glossary and the
+   not-found page — and /triage wrote its own with `.lede`, so the one
+   screen an operator opens most had a different empty state from
+   everything else for no reason. That is now the shared one.
+
+   The treatment is a WELL: sunk ground, hairline edge, the sentence
+   set at reading size in a measure that can be read rather than
+   scanned. Set into the page, because nothing is on it — a raised
+   card would be an object presented, and there is no object.
+
+   THE READING SURFACE KEEPS THE CENTRED VERSION. The not-found page
+   is a message rather than a state of a working screen, and centred
+   is right for a message.
+
+   IT SETS NO WIDTH OF ITS OWN, and that is the point rather than an
+   omission. Measuring /triage at 1440 found four blocks in one column
+   at 1152, 680, 1152 and 620 pixels — every one of them chosen by a
+   different rule, none of them chosen together. A ragged left column
+   where the raggedness means nothing IS the "disorganised" complaint,
+   and it is invisible in the stylesheet because no single rule is
+   wrong.
+
+   So a tool column carries exactly TWO widths, and both of them mean
+   something: the working width for a control or a data object,
+   and `.page :is(p, li)`'s 68ch measure for anything that is prose.
+   This is prose, so it takes the measure that is already there rather
+   than a second one of its own — which is how 620 appeared beside
+   680 in the first place.
+
+   The lede is set to the body size here for the same reason. 68ch of
+   --us-text-lg is 748px and 68ch of --us-text-base is 680px, so a
+   status line under a heading landed 68px wider than the notice above
+   it — typographically defensible, and still a third width in a
+   column that should have two. On a working screen the lede says
+   "1 report on this device", which is a status rather than a deck.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .panel > .lede { font-size: var(--us-text-base); }
+[data-surface='tool'] .empty-state {
+  padding: var(--us-space-8) var(--us-space-6);
+  background: var(--us-surface-sunk);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-md);
+  text-align: left;
+  font-size: var(--us-text-base);
+}
+
 .panel + .panel { padding-top: 0; }
 .page-head { margin-bottom: var(--us-space-6); }
 .page-head h1 { margin: 0 0 var(--us-space-2); }
 .page-head p { margin: 0; max-width: 62ch; color: var(--us-ink-600); }
-/* OPTICALLY CORRECTED, not arbitrarily enlarged. This is a heading, so
-   it renders in the display face — and Cormorant Garamond has a much
-   smaller x-height than DM Sans, so at the same 17px it read SMALLER
-   than the 15px body text sitting directly beneath it. A section
-   heading that is out-read by its own paragraph inverts the hierarchy
-   it exists to create.
-
-   Tied to the token with a multiplier rather than hardcoded, so the
-   scale stays single-source: change --us-text-md and this moves with
-   it. The 1.15 is the ratio that puts the two x-heights level; it is a
-   property of this typeface pairing, which is why it lives on the rule
-   that uses the display face rather than in the scale itself. */
 /* THE PRICE IS THE POINT OF THE CARD AND WAS THE SMALLEST THING ON IT.
 
    It rendered through `.cov__has` — the coverage list's treatment, at
@@ -2877,8 +3573,31 @@ html { scroll-padding-top: var(--us-chrome); }
    rung the ladder already has for exactly this, it clamps down to 20px
    on a narrow screen, and naming it costs twelve bytes LESS than
    computing an off-ladder size from a smaller one. */
+/* A PANEL LABEL, NOT DISPLAY TYPE, and the difference only became
+   visible when the ladder moved. This was --us-text-lg back when lg was
+   16-17px, which was the right size for "Add an entry" over a form and
+   for a footer column heading. lg is now Kanda's 20-24px, and the same
+   token rendered "WHEN SOMETHING HAPPENS" as three lines of 24px
+   uppercase in a footer column — a heading four times the weight of the
+   links under it.
+
+   Naming a rung is right; naming the rung that happened to be the size
+   you wanted is what breaks when the scale is retuned. This one is
+   pinned to the reading end, where a label belongs.
+
+   AND THE BARE RULE DOES NOT WIN ANYWHERE IT IS USED, which two
+   rounds of measuring is what established. A .section-title is an
+   <h2>, and every context it appears in styles h2 by element:
+   `[data-surface='tool'] h2` and `.footer :is(h2, h3, h4)` are both
+   0,1,1 against this rule's 0,1,0. The first attempt at this fix
+   changed the token here and moved nothing on the page.
+
+   So the bare rule is the default for a .section-title somewhere new,
+   and the two contextual rules below are what actually applies today.
+   Asking the browser which rules matched — rather than reading the
+   sheet and reasoning about specificity — is what found it. */
 .section-title {
-  font-size: var(--us-text-lg);
+  font-size: var(--us-text-md);
   letter-spacing: -.01em;
   margin: 0 0 var(--us-space-3);
 }
@@ -3178,6 +3897,63 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .doc__body { min-width: 0; max-width: 68ch; }
 
+/* ---------------------------------------------------------------------
+   A TOOLKIT IS NOT A DOCUMENT, AND ELEVEN SCREENS SAY IT IS.
+
+   `.doc` is the document template: a contents list in a 15rem rail and
+   a body set to a reading measure regardless of how wide the shell is.
+   That is exactly right for /about, /glossary and /templates, which are
+   pages somebody reads.
+
+   The risk register, the indicators, the SRA and the maturity
+   assessment are built from the same template, and they are not pages
+   somebody reads. Measured at 1440, every one of them: a 1216px shell,
+   a 240px rail, a 944px column — and a body that stops at 680 and
+   leaves 264 pixels of it empty, on every screen, permanently. The
+   register's entry form is in the CONTENTS SLOT, 320px wide, while its
+   record list sits at a prose measure beside it.
+
+   It is the same fault the reporting queue had, from a different rule:
+   a measure meant for sentences imposed on a working surface. And it
+   is invisible in the stylesheet, because .doc__body's 68ch is correct
+   — for the thing .doc was written for.
+
+   THE TEST IS WHETHER THE SCREEN HAS A FORM ON IT. A page you read has
+   no form; a page you work has one, wherever on it the form sits — in
+   the body on /toolkits/spi and /toolkits/sra, in the contents slot on
+   /toolkits/register. Screens with no form anywhere — /about,
+   /coverage, /glossary, /templates — keep the measure and are
+   untouched, because their dead column is not dead space, it is the
+   space a line stops at.
+
+   THE MEASURE MOVES TO THE PROSE RATHER THAN BEING REMOVED. `.page
+   :is(p, li)` already holds paragraphs to 68ch wherever they land, so
+   a widened body does not produce a 944px line of text — it produces a
+   944px record list with 680px paragraphs inside it, which is the
+   thing that was wanted.
+
+   AND A FORM KEEPS A FORM'S WIDTH. Removing the cap without this makes
+   every input on /toolkits/spi 944 pixels wide, which is not an
+   improvement — it is the same mistake pointed the other way. A form
+   is read one field per line and takes --us-container, the token that
+   already means "a column somebody fills in".
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .doc:has(form) .doc__body { max-width: none; }
+[data-surface='tool'] .doc__body form { max-width: var(--us-container); }
+/* A callout is prose in a box. The box has to stop where the prose
+   does, or it is an empty frame around a short paragraph. */
+[data-surface='tool'] .doc__body .note { max-width: 68ch; }
+
+@media (min-width: 900px) {
+  /* A CONTENTS SLOT HOLDING A FORM IS NOT A CONTENTS SLOT. 15rem is the
+     width of a list of links; the register puts its whole entry form
+     there, and 240px is not a column anybody fills in — the selects
+     wrapped and the hints ran to four lines. */
+  [data-surface='tool'] .doc:has(> aside.toc form) {
+    grid-template-columns: 24rem minmax(0, 1fr);
+  }
+}
+
 /* THE CALLOUT HAD NO RULE OF ITS OWN. `.note` was styled only inside
    `.band-dark`, so everywhere else it was a bare paragraph whose lead-in
    <b> ran straight into the sentence: "The usual mistakeReading the
@@ -3289,13 +4065,47 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    as a flat run of dt/dd pairs. */
 .stat { min-width: 0; }
 
+/* ---------------------------------------------------------------------
+   GOLD MEANS SOMETHING NEEDS YOU. It does not mean "this is a number".
+
+   Every figure in this rail was gold, on every screen, which is the
+   most expensive kind of nothing: a register with nothing overdue and
+   a register with three reviews past their date were the same colour,
+   so the colour carried no information and the eye learned to skip it.
+   Rendered at 1440 that is four gold zeroes and a gold sentence —
+   loud, and about nothing.
+
+   So the default figure is the ground's own light tone, and gold is
+   spent on the one figure that means somebody has work: an alerting
+   indicator, an intolerable risk still open, a review date gone by.
+   On a healthy screen there is no gold in the rail at all, and that
+   absence is the reading.
+
+   THE TONE IS COMPUTED AT THE CALL SITE, from the same number the cell
+   is showing — `data-tone=${overdue ? 'alert' : ''}` — never typed.
+   A tone somebody set by hand is a tone that stays alert after the
+   work is done.
+   --------------------------------------------------------------------- */
 .stat__value {
   font-size: var(--us-text-xl);
   font-weight: var(--us-weight-bold);
   letter-spacing: -.02em;
   line-height: 1.1;
-  color: var(--us-gold);
+  color: rgb(var(--us-sand-rgb) / 0.95);
   font-variant-numeric: tabular-nums;
+}
+
+.stat[data-tone='alert'] .stat__value { color: var(--us-gold); }
+
+/* A WORD IS NOT A FIGURE, and setting one at figure size in a rail of
+   figures is why "This device" read as a fifth statistic. Provenance,
+   a date and a duration are answers to a different question than a
+   count is; they keep the slot and lose the emphasis. */
+.stat[data-tone='note'] .stat__value {
+  font-size: var(--us-text-md);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: rgb(var(--us-sand-rgb) / 0.88);
 }
 
 .stat__label {
@@ -3571,6 +4381,53 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    `break-word` because only `anywhere` also shrinks the card's
    min-content width, which is what was actually forcing the page. */
 .reg-entry { break-inside: avoid; }
+
+/* ---------------------------------------------------------------------
+   SEVERITY IN FORM, NOT ONLY IN COLOUR.
+
+   Three entries on a register — one intolerable and unaccepted, one
+   tolerable, one acceptable — rendered as three identical white cards
+   with a small coloured pill inside each. The band was carried by the
+   pill's fill and by nothing else, so telling the intolerable one from
+   the acceptable one meant reading a 12px chip on every row.
+
+   That fails twice. It fails a safety manager scanning a register of
+   forty entries for the ones that need them, which is the only reason
+   this screen is opened. And it fails anybody who cannot separate the
+   red from the green, because colour is then the sole channel —
+   the same rule the status badges already answer by carrying a word
+   and a glyph rather than a hue.
+
+   THE RAIL IS THE PRODUCT'S OWN DEVICE, not a new one. `.queue__item`
+   already puts sync state on the leading edge for exactly this reason:
+   at a glance down a scrolling list, an edge reads and a badge in the
+   corner does not. The register now says its band the same way, so the
+   two lists an operator moves between are one language.
+
+   THE BAND IS THE ONE THAT GOVERNS — `residual ?? initial`, the same
+   value the escalation rule and the acceptance permission are computed
+   from. A rail drawn from the initial band on an entry whose controls
+   have brought it down would be a red edge on a green risk, which is
+   worse than no rail.
+
+   THE CHIP STAYS. The rail is a second channel, not a replacement:
+   it carries "how bad" and the chip carries the number and the word.
+   --------------------------------------------------------------------- */
+.reg-entry {
+  position: relative;
+  overflow: hidden;
+}
+
+.reg-entry[data-tolerability]::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--us-border-strong);
+}
+.reg-entry[data-tolerability='INTOLERABLE']::before { background: var(--us-risk-intolerable); }
+.reg-entry[data-tolerability='TOLERABLE']::before { background: var(--us-risk-tolerable); }
+.reg-entry[data-tolerability='ACCEPTABLE']::before { background: var(--us-risk-acceptable); }
 .reg-entry,
 .reg-entry h3,
 .cov__has,
@@ -3614,15 +4471,67 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .reg-entry__flag { font-size: var(--us-text-xs); color: var(--us-ochre-text); }
 
 .reg-entry__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--us-space-3);
   margin: var(--us-space-3) 0 0;
   padding-top: var(--us-space-3);
   border-top: 1px solid var(--us-border);
-  font-size: var(--us-text-xs);
+}
+
+/* ---------------------------------------------------------------------
+   A RECORD'S FACTS, EACH SAYING WHICH KIND IT IS.
+
+   Kanda's compliance calendar gives every instrument a metadata strip
+   where each fact carries its own marker — the date, the renewal
+   cadence and whether it is payable are three different KINDS of thing
+   and read as three. This register ran them together: "Accountable
+   Executive · review by 2026-11-14 · entered directly", one grey line,
+   and the reader has to know the schema to parse it. On a register an
+   inspector reads, which field is which is the question.
+
+   Labels rather than icons, and that is the honest choice here rather
+   than a compromise. This product has a glyph gate and a deliberately
+   small set; three new pictograms would each need a meaning somebody
+   learns, where "Owner" needs none. It also prints — a register goes to
+   a safety meeting on paper, and a labelled fact survives a monochrome
+   photocopy where a 12px icon does not.
+
+   `<dl>` because that is what this is: three terms and their values.
+   The wrapper div per pair is what keeps them associated when the strip
+   wraps to a second line — without it a dt can end a row and its dd
+   start the next one.
+   --------------------------------------------------------------------- */
+.rec-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-3) var(--us-space-6);
+}
+
+.rec-meta__item { min-width: 0; }
+
+.rec-meta__label {
+  font-size: var(--us-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
   color: var(--us-text-tertiary);
+}
+
+.rec-meta__value {
+  margin: 2px 0 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-primary);
+}
+
+/* A date is compared, not read. */
+.rec-meta__value--figure { font-variant-numeric: tabular-nums; }
+
+/* THE DESTRUCTIVE ACTION IS NOT A FACT. "Remove" sat inside the strip
+   above, which gave the one irreversible control on the row the same
+   weight and the same position as the owner's name. It gets its own
+   line, at the end, aligned away from the reading edge. */
+.reg-entry__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: var(--us-space-3) 0 0;
 }
 
 /* What is here and what is not, in the SAME weight, so the page cannot
@@ -3679,6 +4588,73 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* One option per row. Five maturity descriptors side by side would be
    five columns of eight words on the handset this is designed for. */
 .mat-scale { display: grid; gap: var(--us-space-2); }
+
+/* =====================================================================
+   PROGRESS — where you are in a long instrument, and how far is left.
+
+   Ported from Kanda's `.progress`, which sets a two-part head over a
+   4px track: what you are answering on the left, "Question 1 of 32" on
+   the right, and a fill that moves. It is the whole of that product's
+   wayfinding on a thirty-two question diagnostic, and it is the reason
+   a long questionnaire there does not feel long.
+
+   This product's maturity assessment is twelve elements, each with a
+   five-point scale, an evidence field and a suitability judgement — the
+   longest thing anybody fills in here, and until now it opened as a
+   wall with no indication of its length or of how much was done. The
+   figure was available further down the page, in the result panel,
+   which is the one place somebody deep in the form is not looking.
+
+   THE NUMBER IS COMPUTED FROM THE ANSWERS, never held. Same rule as
+   every other count in this product: a progress bar with its own idea
+   of how far along you are is a progress bar that disagrees with the
+   form under it, and it disagrees silently.
+
+   `<progress>` IS NOT USED, deliberately. Its bar is not stylable to
+   this track in every engine and its implicit label reads as a
+   download. This is a div pair with role="progressbar" and the three
+   aria-value attributes, which is what a screen reader needs, plus a
+   text head that says the same thing in words for everyone else.
+   ===================================================================== */
+.progress { margin: 0 0 var(--us-space-5); }
+
+.progress__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--us-space-3);
+  margin-bottom: var(--us-space-2);
+  font-size: var(--us-text-xs);
+  color: var(--us-text-tertiary);
+}
+
+.progress__count { font-variant-numeric: tabular-nums; }
+
+.progress__track {
+  height: 4px;
+  border-radius: var(--us-radius-pill);
+  background: var(--us-surface-sunk);
+  border: 1px solid var(--us-border);
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  border-radius: var(--us-radius-pill);
+  background: var(--us-teal);
+  transition: width var(--us-dur-slow) var(--us-ease-out);
+}
+
+/* THE FILL IS TEAL UNTIL IT IS FULL, AND THEN IT IS NOT GOLD EITHER.
+   Gold means somebody has work, and a finished assessment is the
+   opposite of that. Complete reads as the acceptable band, which is
+   the colour this product already uses for a risk that has been
+   brought down. */
+.progress[data-complete='true'] .progress__fill { background: var(--us-risk-acceptable); }
+
+@media (prefers-reduced-motion: reduce) {
+  .progress__fill { transition: none; }
+}
 
 .mat-option {
   display: flex;
@@ -3801,7 +4777,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    surface restates it, once, for everything it contains — the same
    pattern .band-dark already uses two screens up. */
 .footer { color: rgb(var(--us-sand-rgb) / 0.78); }
-.footer .section-title { color: #fff; }
+/* See the note on .section-title: an element selector in each
+   context outranks the class, so the size is set here too. */
+.footer .section-title { color: #fff; font-size: var(--us-text-sm); }
 .footer .footer-note,
 
 .footer .us-lockup,

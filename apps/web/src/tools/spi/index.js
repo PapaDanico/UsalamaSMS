@@ -555,11 +555,11 @@ export function render(outlet) {
         <dt class="stat__value">${withLevels}</dt>
         <dd class="stat__label">With alert levels</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="${alerting ? 'alert' : ''}">
         <dt class="stat__value">${alerting}</dt>
         <dd class="stat__label">Alerting now</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="note">
         <dt class="stat__value">${source === 'server' ? 'Safety office' : 'This device'}</dt>
         <dd class="stat__label">
           ${source === 'server'

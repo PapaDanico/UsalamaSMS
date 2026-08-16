@@ -157,8 +157,8 @@ describe('the information architecture', () => {
   /* WHICH SURFACE A SCREEN DECLARES ITSELF TO BE.
    *
    * The router stamps data-surface on the root and style.css answers it
-   * — tool screens get 27px sans headings and tighter panels, document
-   * pages keep the 52px Cormorant hero. The default is 'document',
+   * — tool screens get 27px headings and tighter panels, document
+   * pages keep the 52px hero. The default is 'document',
    * chosen so a screen that forgets to declare itself gets the
    * editorial treatment: wrong in a way somebody notices, rather than
    * wrong in a way that quietly under-sets a landing page.
@@ -234,6 +234,36 @@ describe('the information architecture', () => {
           true
         );
       }
+    }
+  });
+
+  it('gives every header section a purpose, for the same reason it gives every item a hint', () => {
+    /* The menu now sets a one-line purpose under each group heading —
+       Kanda's pattern, and the line that turns a list of headings into
+       a map. main.js writes the element empty and fills it from
+       menu-hints.js, exactly as it does the item summaries, so a
+       section with no purpose renders a BLANK LINE under its title:
+       the same defect as an item with no hint, one level up, and
+       invisible in either file on its own.
+
+       Matched on the section id rather than the title, because the id
+       is what main.js stamps into data-group and therefore what the
+       fill actually keys off. Matching titles would pass while the
+       rendered menu stayed empty. */
+    const ids = [...sitemap.matchAll(/id: '([^']+)',\n    title: '[^']*',\n    working: true/g)].map(
+      (m) => m[1]!
+    );
+    expect(ids.length, 'no working section ids were read out of sitemap.js').toBeGreaterThan(3);
+
+    const block = /export const GROUP_PURPOSE = \{([\s\S]*?)\n\};/.exec(hints)?.[1];
+    expect(block, 'GROUP_PURPOSE was not found in menu-hints.js').toBeTruthy();
+    const purposed = new Set([...block!.matchAll(/^\s*(\w+):/gm)].map((m) => m[1]!));
+
+    for (const id of ids) {
+      expect(
+        purposed.has(id),
+        `section "${id}" is in the menu with no purpose in GROUP_PURPOSE`
+      ).toBe(true);
     }
   });
 

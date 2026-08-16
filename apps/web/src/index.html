@@ -46,11 +46,11 @@
          preloading it would cost every cold start for the few reports
          that carry one. -->
     <link rel="preload" href="/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <!-- And the display face, because the first thing on every screen is
-         an h1 set in it — a headline that swaps from the fallback serif
-         to Cormorant a beat after paint is the most visible reflow the
-         page has. -->
-    <link rel="preload" href="/fonts/cormorant-garamond-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- One file is the whole interface. There was a second preload
+         here for a serif display face; the product now sets every
+         heading in this one, so the h1 at the top of every screen is
+         covered by the line above and there is nothing else to wait
+         for. -->
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
     <style>
@@ -161,6 +161,13 @@
       >
         <span class="sync-strip__dot" aria-hidden="true"></span>
         <span id="sync-text">Checking for unsent reports…</span>
+
+        <!-- WHOSE WORKSPACE THIS IS. Written empty and filled by
+             main.js once a session exists, from the operator record the
+             printed pack already loads. Empty until then, and on every
+             signed-out screen, because a strip that says nothing is
+             better than one that says "no operator". -->
+        <span class="workspace" id="workspace" hidden></span>
       </div>
 
       <!-- The router writes here. -->

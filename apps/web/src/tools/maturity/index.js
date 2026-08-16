@@ -167,6 +167,49 @@ function save(state) {
   }
 }
 
+/* TWELVE, COUNTED. Charter rule 10 — a number about the product is
+   computed from the product. Typing 12 here would survive exactly
+   until somebody split an element, and the bar would then read
+   "12 of 12" with one still blank. */
+const ELEMENT_COUNT = SMS_COMPONENTS.reduce((n, c) => n + c.elements.length, 0);
+
+/**
+ * HOW FAR THROUGH THE TWELVE, at the top of the form rather than in the
+ * result panel further down.
+ *
+ * Kanda's pattern: a two-part head over a track — what you are doing on
+ * the left, the count on the right — and it is the reason a
+ * thirty-two question diagnostic there does not feel long. This is the
+ * longest thing anybody fills in here and it opened as a wall with no
+ * indication of its length.
+ *
+ * COMPUTED FROM THE ANSWERS ON EVERY PAINT, never stored. A progress
+ * bar holding its own idea of how far along you are is a bar that
+ * disagrees with the form under it, silently.
+ */
+function Progress(answers, total) {
+  const done = Object.keys(answers).length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  return html`
+    <div class="progress" data-complete="${done >= total && total > 0 ? 'true' : 'false'}">
+      <p class="progress__head">
+        <span>${done >= total && total > 0 ? 'Every element graded' : 'Grading the twelve elements'}</span>
+        <span class="progress__count">${done} of ${total}</span>
+      </p>
+      <div
+        class="progress__track"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="${total}"
+        aria-valuenow="${done}"
+        aria-label="Elements graded"
+      >
+        <div class="progress__fill" style="width: ${pct}%"></div>
+      </div>
+    </div>
+  `;
+}
+
 function Element(element, answers, suitability, references) {
   const current = answers[element.id];
   const suit = suitability[element.id];
@@ -582,6 +625,8 @@ export function render(outlet) {
           </p>
         </section>
 
+        <div id="mat-progress">${Progress(answers, ELEMENT_COUNT)}</div>
+
         ${SMS_COMPONENTS.map(
           (component) => html`<section class="doc-section" id="component-${component.id}">
             <h2>${component.id}. ${component.name}</h2>
@@ -604,12 +649,20 @@ export function render(outlet) {
       ...(scale ? { scale } : {})
     });
 
+  const progress = outlet.querySelector('#mat-progress');
+
   const repaint = () => {
     body.innerHTML = Result(
       scoreAssessment(answers, 1, suitability),
       scale,
       currentPlan()
     ).toString();
+    /* The bar is recomputed from the same `answers` the result is, on
+       the same event, so the two cannot disagree about how much is
+       done. Repainted as its own node rather than with the form: the
+       form holds the radio somebody just pressed and the text field
+       they may be tabbing out of. */
+    progress.innerHTML = Progress(answers, ELEMENT_COUNT).toString();
   };
 
   form.addEventListener('change', (event) => {

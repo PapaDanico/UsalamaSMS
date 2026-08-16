@@ -36,7 +36,7 @@ import { Lockup } from './components/Logo.js';
 import { router } from './shared/router.js';
 import { registerServiceWorker, listenForFlushRequests } from './shared/register-sw.js';
 import { syncStatus, flushOutbox } from './shared/offline.ts';
-import { resumeSession } from './shared/session.js';
+import { resumeSession, isSignedIn } from './shared/session.js';
 import {
   MOR_OBLIGATIONS,
   isProvisional
@@ -123,8 +123,9 @@ const menuToggle = document.getElementById('menu-toggle');
    already started moving a thumb towards; an empty span reserves
    nothing visually and gives fill() somewhere to write. */
 menuPanel.innerHTML = WORKING_SECTIONS.map(
-  (section) => html`<div class="nav-group">
+  (section) => html`<div class="nav-group" data-group="${section.id}">
       <p class="nav-group__title">${section.title}</p>
+      <p class="nav-group__purpose"></p>
       ${section.items.map(
         (d) => html`<a class="nav-item" href="${d.href}">
           <span class="nav-item-title">${d.label}</span>
@@ -141,7 +142,7 @@ menuPanel.innerHTML = WORKING_SECTIONS.map(
 let hints;
 function loadHints() {
   hints ??= import('./shared/menu-hints.js')
-    .then(({ MENU_HINTS }) => {
+    .then(({ MENU_HINTS, GROUP_PURPOSE }) => {
       /* Keyed off the anchor's own href rather than a data- attribute
          repeating it. Writing data-hint-for onto fifteen items put the
          href in the entry chunk twice, which is weight spent to avoid
@@ -150,6 +151,13 @@ function loadHints() {
       for (const a of menuPanel.querySelectorAll('a.nav-item')) {
         const text = MENU_HINTS[a.getAttribute('href')];
         if (text) a.querySelector('.nav-item-summary').textContent = text;
+      }
+      /* The group's own line, keyed off the id the section already
+         carries — same rule as above, and the id is four characters
+         where the title is a sentence. */
+      for (const g of menuPanel.querySelectorAll('.nav-group')) {
+        const text = GROUP_PURPOSE[g.dataset.group];
+        if (text) g.querySelector('.nav-group__purpose').textContent = text;
       }
     })
     .catch(() => {
@@ -489,6 +497,69 @@ window.addEventListener('popstate', markCurrentNav);
 document.addEventListener('click', () => queueMicrotask(markCurrentNav));
 markCurrentNav();
 
+/* --------------------------- The workspace --------------------------- */
+
+/* ======================================================================
+   WHOSE WORKSPACE THIS IS, IN THE CHROME RATHER THAN IN THE CONTENT.
+
+   Every screen in this product carried UsalamaSMS's identity and never
+   the operator's, on both sides of signing in. A safety manager at one
+   operator and a safety manager at another saw the same header over
+   their own data — which is a tenanted product presenting itself as a
+   single-tenant one, and the thing an operator notices when they are
+   deciding whether this is THEIR system or somebody's website they type
+   into.
+
+   The tenant context belongs around the NAVIGATION rather than inside
+   the page: a name that appears in one panel and not in the chrome
+   stops orienting somebody the moment they move to another screen. So
+   it goes in the strip that is already sticky under the header on every
+   route.
+
+   IT REUSES THE STRIP RATHER THAN ADDING A BAR. That strip exists
+   because the unsent count must never be behind a tap; it is one line
+   of chrome already paid for, and the operator's mark and name fit in
+   the space to its right that was empty on every screen. Adding a
+   second bar would spend a row of vertical on every route to say
+   something this one can say for nothing.
+
+   LOADED LAZILY, AND NOT AT ALL WHEN SIGNED OUT. loadOrg lives in
+   print-id.js, outside the entry chunk, because the printed pack needed
+   the same record. A reporter at a strip filing anonymously never
+   fetches it and never pays for it — which is the same rule the menu
+   hints follow, for the same person.
+
+   THE MARK IS THE OPERATOR'S OWN, where they have uploaded one. alt is
+   empty deliberately: the operator's name is the very next element as
+   live text, and a screen reader announcing both says it twice.
+   ====================================================================== */
+const workspace = document.getElementById('workspace');
+
+async function paintWorkspace() {
+  if (!workspace) return;
+  if (!isSignedIn()) {
+    workspace.hidden = true;
+    workspace.innerHTML = '';
+    return;
+  }
+  try {
+    const { loadOrg } = await import('./shared/print-id.js');
+    const org = await loadOrg();
+    if (!org?.orgName) return;
+    workspace.innerHTML = html`
+      ${org.logo ? html`<img class="workspace__mark" src="${org.logo}" alt="" />` : ''}
+      <span class="workspace__name">${org.orgName}</span>
+      ${org.jurisdiction ? html`<span class="workspace__where">${org.jurisdiction}</span>` : ''}
+    `.toString();
+    workspace.hidden = false;
+  } catch {
+    /* Silent, and safe to be. This is an identity label on a strip
+       whose actual job — the unsent count — is unaffected. Reporting a
+       failure here would put an error in front of somebody whose
+       reporting is working. */
+  }
+}
+
 /* ---------------------------- Sync strip ---------------------------- */
 
 const strip = document.getElementById('sync-strip');
@@ -554,12 +625,28 @@ window.addEventListener('online', () => void renderSyncState());
 window.addEventListener('offline', () => void renderSyncState());
 window.addEventListener('usalamasms:session-changed', () => void renderSyncState());
 
+/* THE WORKSPACE FOLLOWS THE SESSION, ON THE EVENT THE SESSION ALREADY
+   FIRES. Signing in and signing out are the only two things that change
+   whose workspace this is, and both dispatch this. A route hook would
+   be the wrong shape twice over: this router has none, and navigating
+   between two screens of the same operator is not a change of operator
+   — it would repaint on every link for nothing. */
+window.addEventListener('usalamasms:session-changed', () => void paintWorkspace());
+
 /* Turn the stored refresh token back into a usable access token, then
    send anything that was waiting. Silent on failure — offline and
    expired are both normal, and both are already described by the strip
    rather than by an alert. */
+/* AFTER resumeSession RESOLVES, not before. On a reload that holds a
+   refresh token, isSignedIn() is false until the token is exchanged —
+   painting first would settle the strip on "no operator" and leave it
+   there, because the exchange fires no session-changed event when it
+   is simply restoring what was already true. */
 void resumeSession()
-  .then((ok) => (ok ? flushOutbox() : null))
+  .then((ok) => {
+    void paintWorkspace();
+    return ok ? flushOutbox() : null;
+  })
   .then(() => renderSyncState());
 
 /* Refresh the strip after a submission, without the form needing to

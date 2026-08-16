@@ -449,9 +449,9 @@ export async function render(outlet) {
         : ''}
 
       ${rows.length === 0
-        ? html`<p class="lede">
-            Nothing on this device yet. Reports filed here appear
-            immediately, before they have been sent.
+        ? html`<p class="empty-state">
+            <span>Nothing on this device yet. Reports filed here appear
+            immediately, before they have been sent.</span>
           </p>`
         : html`
             <p class="lede">

@@ -1830,7 +1830,89 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    It does NOT claim to do more. EVIDENCE_CAVEAT is on the control and
    says the part software cannot do — a face, a registration or a name
    on a document in the frame survives all of it. */
-const BUDGET = { entry: 217 * 1024, js: 526 * 1024, css: 64 * 1024 };
+/* =====================================================================
+   CSS 64 -> 80 KB: THE INSTRUMENT LANGUAGE.
+
+   The product was described by its owner as "generic, flat and
+   disorganised", and all three were fair:
+
+     GENERIC   a gradient hero, 1px rounded cards repeated on every
+               surface, one accent doing every job. That cluster is the
+               default look of any B2B SaaS built this decade.
+     FLAT      partly self-inflicted. Hover lift and shadow were
+               stripped from tool surfaces to stop them reading as a
+               brochure, and the type scale came down three times. Both
+               were right and together they left no elevation vocabulary
+               at all, so nothing signalled what was primary.
+     DISORGANISED  every screen was the same vertical stack of
+               full-width panels. No grid, no fixed regions, so the eye
+               re-learns each screen.
+
+   The direction chosen is PRECISION INSTRUMENT: the product reads as
+   equipment rather than as software. Hairline rules instead of card
+   borders, ground tone instead of shadow, tabular figures wherever
+   numbers align, mono for identifiers, and ONE accent reserved for
+   state with teal kept for action. It draws on the mark's own language
+   — line art on dark — and it is the one direction in this field that
+   is not another dashboard.
+
+   WHY THE NUMBER IS AFFORDABLE. CSS is render-blocking, which is why
+   this budget exists at all. It is also cached after the first visit
+   and gzips about 5:1, so 16 KB of source is roughly 3 KB on the wire,
+   once. The number that decides whether a reporter can file at a remote
+   strip is the ENTRY JS budget, and that is untouched at 217 KB.
+
+   WHAT IS EXPECTED TO COME BACK. This raise buys the new language
+   before the old one is removed, because deleting the card system while
+   half the screens still use it would break them. A consolidation pass
+   follows and should return several kilobytes — the card rules, the
+   duplicated spacing, the surface split this supersedes. If it does
+   not, that is a finding worth writing down rather than absorbing.
+   ===================================================================== */
+/* =====================================================================
+   RAISED ON THE OWNER'S INSTRUCTION, AND HERE IS WHAT IT BOUGHT.
+
+   js total went to 560 and entry to 224. The old js ceiling was 526
+   against 524.4 actual — 1.6 KB, after a consolidation pass had already
+   returned a kilobyte by moving three developer notes out of tagged
+   template literals, where they were shipping to reporters as string
+   content. Headroom that thin is not a budget, it is a tripwire: the
+   next honest change fails the build and the temptation is to nudge the
+   number rather than to look.
+
+   WHAT WAS BOUGHT, in the pass this raise covers:
+
+   · THE REPORTING CLOCK IN THE HERO. Roughly seven hundred pixels of
+     the front door were empty at 1440; it now carries every
+     jurisdiction's shortest reporting period, generated from
+     MOR_OBLIGATIONS — the registry the whole product computes from, so
+     it cannot go stale and a new jurisdiction appears without anybody
+     adding it.
+   · THE WORKSPACE LABEL. The operator's own mark and name in the sync
+     strip on every route, loaded lazily through the record the printed
+     pack already fetches. This is the tenanted product finally saying
+     whose system it is; it costs nothing on the entry path because a
+     reporter filing anonymously never loads it.
+   · THE PROGRESS COMPONENT on the maturity assessment — twelve
+     elements with no indication of length until now, and the count
+     computed from the answers rather than held.
+   · THE COMPOSED RECORD. A register row's owner, review date and
+     provenance as three labelled facts rather than one grey run.
+   · THE MENU'S PURPOSE LINES and its second column, which is what
+     stopped it scrolling a third of its contents off a 900px screen.
+
+   ENTRY IS THE NUMBER THAT MATTERS AND IT BARELY MOVED: 210.6 KB
+   before this pass, 212.4 after, against a ceiling now at 224. The
+   1.8 KB is the workspace painter and the hero clock's markup. Every
+   other item above is in a lazily-loaded route chunk, which is the
+   whole reason the two numbers are kept apart — the total says
+   something grew, the entry says it grew where a reporter at a remote
+   strip has to pay for it.
+
+   The css ceiling is untouched at 80 against 69.5 actual. It was
+   raised for this redesign already and the redesign has not spent it.
+   ===================================================================== */
+const BUDGET = { entry: 224 * 1024, js: 560 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

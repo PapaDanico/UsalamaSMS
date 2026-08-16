@@ -45,8 +45,6 @@ const PUBLIC = resolve(ROOT, 'apps/web/public');
 const DECLARED = new Map([
   ['fonts/dm-sans-latin.woff2', [64, 'Body face, Latin. Subset; the largest single asset and worth it — a report form in Times New Roman reads as a broken page, and this is precached so it is paid once.']],
   ['fonts/dm-sans-latin-ext.woff2', [33, 'Body face, Latin Extended. Kenyan and East African names carry diacritics this subset covers and the base one does not.']],
-  ['fonts/cormorant-garamond-latin.woff2', [39, 'Display face, Latin. Headings only.']],
-  ['fonts/cormorant-garamond-latin-ext.woff2', [35, 'Display face, Latin Extended.']],
   ['fonts/jetbrains-mono-identifiers.woff2', [7, 'IDENTIFIERS ONLY, and the subset is the whole argument. --us-font-mono was a system stack — ui-monospace, SFMono-Regular, Menlo, Consolas — so an audit-chain hash rendered in a different face on a manager’s Mac and a ramp agent’s Android, which is exactly the data where character shape carries the meaning. A full Latin cut of this face is ~55 KB; subset to digits, A–Z, a–z and the punctuation an identifier uses, it is 6 KB, and it still disambiguates 0/O and 1/l/I, which is the only reason it is here. NOT FOR NUMBERS: figures already align through font-variant-numeric on the body face at zero bytes, and mono digits are wider and lighter than DM Sans’s, so setting a risk matrix in them would read as weaker rather than more precise.']],
 
   /* EVERY ICON IS A CROP OF docs/brand/lockup-wide.jpg, and there is

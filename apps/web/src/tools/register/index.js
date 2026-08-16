@@ -213,7 +213,8 @@ function Row(entry) {
   const residual = band(entry.residualSeverity, entry.residualLikelihood);
   const shown = residual ?? initial;
 
-  return html`<article class="card cov reg-entry" data-id="${entry.id}">
+  return html`<article class="card cov reg-entry" data-id="${entry.id}"
+    data-tolerability="${shown?.t ?? ''}">
     <div class="cov__head">
       <h3>${entry.hazard}</h3>
       <span class="badge" data-status="${BADGE[entry.status] ?? 'OFFLINE'}">
@@ -271,12 +272,24 @@ function Row(entry) {
         </p>`
       : ''}
 
-    <p class="reg-entry__meta">
-      <span>${entry.owner || 'No owner'}</span>
-      <span>review by ${entry.reviewBy || 'no date'}</span>
-      <span class="reg-entry__nores"
-        >${entry.source === 'REPORT' ? 'raised from a report' : 'entered directly'}</span
-      >
+    <dl class="reg-entry__meta rec-meta">
+      <div class="rec-meta__item">
+        <dt class="rec-meta__label">Owner</dt>
+        <dd class="rec-meta__value">${entry.owner || 'No owner'}</dd>
+      </div>
+      <div class="rec-meta__item">
+        <dt class="rec-meta__label">Review by</dt>
+        <dd class="rec-meta__value rec-meta__value--figure">${entry.reviewBy || 'No date'}</dd>
+      </div>
+      <div class="rec-meta__item">
+        <dt class="rec-meta__label">Source</dt>
+        <dd class="rec-meta__value">
+          ${entry.source === 'REPORT' ? 'Raised from a report' : 'Entered directly'}
+        </dd>
+      </div>
+    </dl>
+
+    <p class="reg-entry__actions">
       <button type="button" class="btn btn-ghost btn-sm" data-remove="${entry.id}">Remove</button>
     </p>
 
@@ -495,19 +508,19 @@ export function render(outlet) {
         <dt class="stat__value">${h.total}</dt>
         <dd class="stat__label">Entries</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="${h.intolerableOpen ? 'alert' : ''}">
         <dt class="stat__value">${h.intolerableOpen}</dt>
         <dd class="stat__label">Intolerable and not accepted</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="${h.overdue ? 'alert' : ''}">
         <dt class="stat__value">${h.overdue}</dt>
         <dd class="stat__label">Past their review date</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="${h.unowned ? 'alert' : ''}">
         <dt class="stat__value">${h.unowned}</dt>
         <dd class="stat__label">With no owner</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="note">
         <dt class="stat__value">${source === 'server' ? 'Safety office' : 'This device'}</dt>
         <dd class="stat__label">
           ${source === 'server'
