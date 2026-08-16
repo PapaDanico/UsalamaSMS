@@ -303,23 +303,30 @@ assert(
 );
 
 /* ============================================================
-   THE PRODUCT MUST NOT CLAIM TO BE A WHOLE SMS.
+   THE PRODUCT MUST NOT CLAIM TO BE A WHOLE SMS — WHICH IS STILL TRUE
+   AT ELEVEN OF TWELVE, AND FOR A BETTER REASON THAN IT USED TO BE.
 
-   An independent audit put it plainly: ICAO Annex 19 defines twelve
-   elements and this product substantially covers one and a half —
-   hazard identification through reporting, and risk classification. It
-   ASSESSES all twelve, which is a different thing from managing them.
-   Three surfaces said "UsalamaSMS is a safety management system".
+   This rule was written when the product covered one and a half
+   elements and three surfaces said "UsalamaSMS is a safety management
+   system" anyway. That was charter rule 7 failing on the one surface
+   where it costs most: an operator deciding whether its regulatory
+   position is covered.
 
-   That is the exact failure charter rule 7 exists to prevent: a claim
-   on a surface a customer reads, kept by no mechanism. Worse than
-   usual here, because the customer is an operator deciding whether its
-   regulatory position is covered — and a safety product that lets
-   somebody believe that has done the opposite of its job.
+   Coverage has since moved to ten built and two partial. The
+   arithmetic no longer embarrasses the sentence — and the sentence is
+   still wrong, on the standard's own terms. Annex 19 makes the SMS the
+   OPERATOR'S system: a signed policy, an accountable executive who is
+   actually accountable, a just culture people believe in. No vendor
+   ships those. Software can hold the record of them and compute what
+   follows; it cannot be them.
 
-   So the copy now names the layer it is, and a section lists what an
-   operator still needs and will not find. This assertion stops the
-   shorter, better-sounding sentence from coming back.
+   So the rule stays, and what changed is what the page must say in its
+   place. It used to have to list what an operator would NOT find here,
+   and that list went stale in the worst direction — nine of its ten
+   entries were built and shipping while the page still sent prospects
+   away to buy them. What it must do now is NAME THE PARTIAL ELEMENTS,
+   and which ones those are is read out of COVERAGE rather than typed
+   here, so an element that slips to PARTIAL cannot go unmentioned.
    ============================================================ */
 const pages = read('apps/web/src/content/pages.js');
 const home = read('apps/web/src/tools/home/index.js');
@@ -327,15 +334,54 @@ const overclaim = /\bis a safety management system\b/i;
 assert(
   'the product does not claim to BE a safety management system',
   !overclaim.test(pages) && !overclaim.test(home),
-  'a surface claims this product is a safety management system; it is the reporting ' +
-    'and risk-classification layer of one, and Annex 19 defines eleven more elements'
+  'a surface claims this product IS a safety management system. Annex 19 makes that the ' +
+    "operator's own system — a signed policy, a genuinely accountable executive, a just " +
+    'culture. This runs eleven of its twelve elements and cannot be it'
+);
+
+/* The ids COVERAGE marks partial, discovered rather than recited.
+
+   Read here rather than reusing the `coverageSource` binding further
+   down this file: that one is declared after this block, so referring
+   to it from here is a temporal dead zone and takes the whole gate out
+   with a ReferenceError — which is a check that fails for a reason
+   unrelated to what it checks, and reads to the next person as the
+   claim being wrong. */
+const coverageDecl = read('packages/shared/src/maturity.ts');
+/* `id` and `state` are NOT adjacent — most entries carry a comment
+   between them explaining the grade, which is the most useful prose in
+   that file and must not have to move to satisfy a regular expression.
+   So the split is on the entry boundary and each entry is read whole.
+
+   The first attempt required them adjacent, matched nothing, and the
+   assertion below it passed over an empty list — a gate naming zero
+   elements agrees that all zero of them are named. The guard is what
+   turned that into a failure instead of a green tick. */
+const partialIds = coverageDecl
+  .split(/\n  \{\n/)
+  .filter((entry) => /state:\s*"PARTIAL"/.test(entry))
+  .map((entry) => entry.match(/id:\s*"([\d.]+)"/)?.[1])
+  .filter(Boolean);
+assert(
+  'the partial elements were discovered out of the coverage table',
+  partialIds.length > 0 &&
+    partialIds.length === (coverageDecl.match(/state:\s*"PARTIAL"/g) ?? []).length,
+  `found ${partialIds.length} partial ids against ` +
+    `${(coverageDecl.match(/state:\s*"PARTIAL"/g) ?? []).length} PARTIAL states — ` +
+    'this check would pass by naming nothing'
+);
+const unnamed = partialIds.filter((id) => !pages.includes(`(${id})`));
+assert(
+  'the About page names every element that is only partial',
+  unnamed.length === 0,
+  `${unnamed.join(', ')} is PARTIAL in the coverage table and unnamed on /about. An ` +
+    'operator reading "eleven of twelve" is entitled to know which two are half of one'
 );
 assert(
-  'and it says what an operator still needs elsewhere',
-  /What it is not, and what you still need/.test(pages) &&
-    /risk register/.test(pages) &&
-    /safety performance indicators/i.test(pages),
-  'the About page must list the elements this product does not cover'
+  'and it still says what no software can supply',
+  /no software can/i.test(pages),
+  'the About page must say which part of an SMS this cannot be — the commitment behind ' +
+    'the signature, not the record of it'
 );
 
 const charter = read('docs/DIAGNOSTIC-CHARTER.md');
@@ -579,6 +625,65 @@ assert(
   coverageStated === coverageFigure,
   `README says ${coverageStated} of 12, the table computes ${coverageFigure} ` +
     `(${coverageBuilt} built + ${coveragePartial} partial at half credit)`
+);
+
+/* ---------------- The same figure, on the page a CUSTOMER reads ----
+
+   THE HOLE THIS CLOSES, AND IT WAS OPEN LONG ENOUGH TO MATTER. The
+   assertion above ties the README to the table. The README is read by
+   whoever works on this repository. /about is read by whoever is
+   deciding whether to pay for it, and nothing checked it at all.
+
+   So it drifted, in the direction nobody watches for. While COVERAGE
+   moved to ten built and two partial, /about went on saying the product
+   "substantially covers ONE AND A HALF of them" and listed ten things an
+   operator "still needs, and will not find here" — nine of which were
+   built and shipping. A prospect was being told to go and buy nine
+   products they already had.
+
+   The page even claimed the two figures "cannot drift apart", which was
+   the only sentence on it doing no work: nothing enforced that, and they
+   had. That is charter rule 10 exactly — a number typed rather than
+   computed — landing on the one surface where being wrong costs a sale
+   instead of a code review.
+
+   BOTH FORMS ARE CHECKED, because prose has two ways to say eleven. A
+   gate that only reads the numeral is satisfied by a lede that spells
+   it out and says something else. */
+const aboutSource = read('apps/web/src/content/pages.js');
+const WORD = [
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six',
+  'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve',
+];
+
+const numeric = [...aboutSource.matchAll(/([\d.]+) of 12\b/g)].map((m) => Number(m[1]));
+const spelled = [...aboutSource.matchAll(/\b([a-z]+) of (?:the |ICAO[^]{0,24})?twelve elements/gi)]
+  .map((m) => m[1].toLowerCase());
+
+/* Rule-11 guard. An empty set satisfies "every claim agrees" perfectly,
+   so the gate has to find claims before it is entitled to pass them. */
+assert(
+  'the customer-facing coverage claims were found at all',
+  numeric.length + spelled.length >= 2,
+  `read ${numeric.length} numeric and ${spelled.length} spelled-out coverage claims out of ` +
+    'apps/web/src/content/pages.js — this check would pass by finding nothing'
+);
+
+assert(
+  'every numeric coverage claim a customer reads matches the coverage table',
+  numeric.every((n) => n === coverageFigure),
+  `apps/web/src/content/pages.js states ${[...new Set(numeric)].join(', ')} of 12; the table ` +
+    `computes ${coverageFigure} (${coverageBuilt} built + ${coveragePartial} partial at half credit)`
+);
+
+assert(
+  'every spelled-out coverage claim a customer reads matches it too',
+  spelled.every((w) => w === WORD[coverageFigure]),
+  `apps/web/src/content/pages.js spells the figure "${[...new Set(spelled)].join('", "')}" ` +
+    `where the table computes ${coverageFigure}` +
+    (Number.isInteger(coverageFigure)
+      ? ` — write "${WORD[coverageFigure]}"`
+      : ' — a half figure has no word form, so use the numeral')
 );
 
 /* This gate's own total is only known once every assertion has run, so

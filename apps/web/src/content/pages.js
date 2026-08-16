@@ -26,11 +26,12 @@
 
 export const ABOUT = {
   eyebrow: 'About us',
-  title: 'Safety reporting for the operators the incumbents priced out',
-  lede: `The reporting and risk-classification layer of an SMS, built for the
-         3-to-15 aircraft operator in East and Central Africa — the one running an
-         SMS on paper because the software market starts above what the operation
-         earns. It is not a complete SMS, and it says which parts it is not.`,
+  title: 'The whole safety management system, for the operators the incumbents priced out',
+  lede: `Eleven of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
+         operator in East and Central Africa — the one running an SMS on paper
+         because the software market starts above what the operation earns. The
+         two that are partial are named, on this page and on the coverage page,
+         and the figure is computed from the same declaration the product runs on.`,
   sections: [
     {
       id: 'publisher',
@@ -52,17 +53,21 @@ export const ABOUT = {
       id: 'what',
       title: 'What this is',
       body: `
-        <p>UsalamaSMS is the <strong>reporting and risk-classification layer of
-        an SMS</strong>, not a whole one — and the distinction matters enough to
-        make on the first screen rather than in a footnote. What it does is take
-        a frontline report, classify it, give it the regulatory clock its
-        jurisdiction actually sets, put it against the ICAO Doc 9859 scale, and
-        hold it on a record an auditor can verify. It is built around one
-        observation about small operators, which
-        is that the binding constraint is not analysis but <em>report
-        volume</em> — an SMS with no reports is a folder, and every hour of
-        friction between a person on a ramp and a filed report costs more than
-        any feature downstream can recover.</p>
+        <p>UsalamaSMS runs <strong>eleven of the twelve elements ICAO Annex 19
+        defines</strong> — the safety policy and the accountabilities under it,
+        the appointments, the emergency response plan, hazard identification,
+        risk assessment, the performance indicators, management of change,
+        internal audit and its corrective actions, and the communication loop
+        back to the people who file. It takes a frontline report, classifies
+        it, gives it the regulatory clock its jurisdiction actually sets, puts
+        it against the ICAO Doc 9859 scale, and holds it on a record an auditor
+        can verify.</p>
+
+        <p>It is built around one observation about small operators, which is
+        that the binding constraint is not analysis but <em>report volume</em> —
+        an SMS with no reports is a folder, and every hour of friction between a
+        person on a ramp and a filed report costs more than any feature
+        downstream can recover.</p>
 
         <p>So the product is organised around that constraint rather than around
         the feature list. Filing takes three fields and works with the radio
@@ -102,43 +107,56 @@ export const ABOUT = {
 
         <p>Alongside it: Doc 9859 (Safety Management Manual, fourth edition) for
         the risk classification, and each jurisdiction's own mandatory
-        occurrence reporting instrument for the deadline. Kenya's is KCAA
-        Advisory Circular CAA-AC-SMS004A, which sets <strong>24 hours from
-        awareness</strong> — not the 72 hours that the ICAO-common figure would
-        suggest, and not from the occurrence.</p>`
+        occurrence reporting instrument for the deadline. Kenya's is the Civil
+        Aviation (Safety Management) Regulations, <strong>L.N. 32 of
+        2026</strong>, and regulation 12(1) does not set one deadline — it sets
+        three, by class: <strong>24 hours for an accident, 48 for a serious
+        incident, 72 for an incident</strong> or other reportable occurrence.
+        None of them is the 72 hours widely quoted as an ICAO figure, which is
+        the European Union's, from Regulation (EU) No 376/2014.</p>
+
+        <p>That distinction is the reason the deadline here is computed on every
+        read from the classification and the date, rather than stored or
+        remembered. An operator working from a single remembered number is
+        early on two classes and late on none — or late on one and does not
+        know it.</p>`
     },
     {
       id: 'notyet',
-      title: 'What it is not, and what you still need',
+      title: 'What is still partial, and what no software can do for you',
       body: `
         <p>ICAO Annex 19 defines a safety management system as four components
-        and twelve elements. This product substantially covers <strong>one and a
-        half of them</strong>: hazard identification through reporting, and risk
-        classification. It also assesses all twelve, which is a different thing
-        from managing them.</p>
+        and twelve elements. This product runs <strong>11 of 12</strong>: ten
+        built, and two partial.</p>
 
-        <p>An operator adopting it still needs, and will not find here: a signed
-        safety policy and accountability structure; an appointed safety manager
-        with documented authority; an emergency response plan and its exercises;
-        a controlled SMS manual; a risk register with mitigations tracked to
-        closure; safety performance indicators with targets and alert levels; a
-        management-of-change process; internal audit and corrective action; SMS
-        training records; and a safety communication loop back to the people who
-        file reports.</p>
+        <p><strong>The two partial ones, named rather than averaged away.</strong>
+        <em>SMS documentation (1.5)</em> holds controlled documents, their
+        revisions and who has acknowledged which — it does not author your
+        manual. <em>Training and education (4.1)</em> holds the training matrix,
+        currencies and expiry — it does not deliver the training or issue the
+        certificate.</p>
 
         <p><a href="/coverage">The coverage page</a> states every element, its
-        status, and what is missing from it — computed from the same declaration
-        the figure above comes from, so the two cannot drift apart.</p>
+        status, and what is missing from it. Both figures are computed from the
+        same declaration the product runs on, and the build fails if this page
+        and that computation disagree — which is not a promise about diligence,
+        it is a check that has been made to fail on purpose.</p>
 
-        <p>Several of those are on the way and some are closer than they look —
-        the data model already carries hazards, risk assessments and performance
-        indicators. But a page that let an operator believe its regulatory
-        position was covered by an app that files reports would be doing the
-        opposite of what a safety product is for. The
-        <a href="/toolkits/maturity">maturity assessment</a> is the honest
-        instrument here: it will tell you where the other ten and a half
-        elements stand in your operation, including the ones no software can
-        stand in for.</p>`
+        <p><strong>What no software can stand in for</strong> is the part that
+        was always the point. A safety policy has to be signed by somebody who
+        can move money and change a schedule. An accountable executive has to
+        actually be accountable. A just-culture undertaking is worth what the
+        organisation behind it is worth, and a reporting system nobody trusts
+        produces silence whatever the software does. This product holds the
+        record of those things and computes what follows from them; it cannot
+        supply the commitment they represent, and an operator that adopts it
+        expecting otherwise has bought a filing cabinet.</p>
+
+        <p>The <a href="/toolkits/maturity">maturity assessment</a> is the
+        instrument for that question. It grades your operation rather than this
+        product, and it will tell you where the commitment stands — including
+        the places where the honest answer is that the software is ahead of the
+        organisation using it.</p>`
     },
     {
       id: 'position',
