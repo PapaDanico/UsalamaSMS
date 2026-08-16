@@ -32,7 +32,11 @@
      report cannot afford, and nobody sets a form field or a column of
      risk indices in one. Headlines and the wordmark carry the identity;
      the interface carries the data. See fonts.css. */
-  --us-font-display: 'Cormorant Garamond', Garamond, 'Times New Roman', Georgia, serif;
+  /* ONE FACE. Kanda sets --ca-font-display: var(--ca-font) and builds
+     its hierarchy from weight alone; this now does the same. The token
+     stays rather than being deleted at every call site, so a second
+     display face — if one is ever licensed — is one line again. */
+  --us-font-display: var(--us-font);
   /* Tabular figures matter here in a way they do not on a marketing
      site: risk indices, SPI values and report references are read in
      columns and compared down the column. */
@@ -428,24 +432,25 @@
      --jk-red        -> --us-ochre         Ochre Red, alert only
      --jk-muted      -> --us-ink-600
 
-   TYPOGRAPHY IS PORTED NOW, and it did not used to be. This block used
-   to read: "JK sets its headings in Cormorant Garamond over DM Sans,
-   and that serif IS its identity. Usalama's wordmark is a geometric
-   sans; a Garamond headline above it reads as two companies on one
-   screen." That was a defensible call while Usalama stood alone.
+   TYPOGRAPHY IS ONE FACE, AND THIS BLOCK HAS ARGUED BOTH WAYS.
 
-   It was reversed on the owner's instruction once Usalama became a
-   product under the JK & Associates banner: two products under one
-   banner set in two different faces read as two vendors, which is the
-   larger of the two problems. So --us-font-display is Cormorant
-   Garamond and --us-font stays DM Sans — the same pairing JK uses, and
-   the same one the sibling product carries.
+   It first said JK's Cormorant Garamond should NOT be ported, because
+   a Garamond headline above a geometric-sans wordmark reads as two
+   companies. Then it said the opposite, on the owner's instruction:
+   two products under one banner set in two faces read as two vendors,
+   which is the larger problem.
 
-   The split is not a compromise, it is the point. An old-style serif at
-   13-15px on a mid-range Android in direct sunlight costs legibility a
-   safety report cannot afford, and nobody sets a form field or a column
-   of risk indices in Garamond. Identity on the headlines; data in the
-   face chosen for a ramp at noon.
+   Both were arguing about the wrong axis. The face that matters is the
+   one KANDA uses, the other product under the banner, and Kanda sets
+   `--ca-font-display: var(--ca-font)` — one sans, hierarchy from
+   weight. A serif display over a sans body is an editorial pairing and
+   it made this product read as a brochure with an application inside
+   it.
+
+   So --us-font-display now points at --us-font, the serif is deleted
+   from public/, and headlines are carried by weight and tracking. The
+   colour mapping above is still JK's; the type is now Kanda's, and the
+   two products finally are set in the same thing.
    ============================================================ */
 
 
@@ -453,19 +458,22 @@
 /* ============================================================
    FIGURES — read this before touching numeric type.
 
-   Cormorant Garamond ships OLD-STYLE (text) figures by default: "11"
-   renders as "II", the 3 in "$1.3" drops below the baseline, and the 0
-   in "110+" sits at x-height. That is correct for running prose and
-   actively wrong for data — in the venture tools it made "12–24" read
-   as "I2–24" and financial totals look broken.
+   THIS EXISTS FOR A FACE THAT HAS GONE, and it is kept deliberately.
 
-   LINING is set at the root and inherited, rather than enumerated per
-   selector. An allow-list is the wrong shape here: it silently misses
-   inline-styled and JS-generated markup — which is exactly what happened
-   to the hero stat figures on the first attempt — and every new numeric
-   surface would have to remember to opt in. DM Sans carries only lining
-   figures, so this is a no-op for body copy and corrects Cormorant
-   everywhere it is used, including markup that does not exist yet.
+   Cormorant Garamond shipped OLD-STYLE (text) figures: "11" rendered
+   as "II", the 3 in "$1.3" dropped below the baseline. That was the
+   reason for the declaration below, and that face has been removed.
+
+   LINING IS STILL SET AT THE ROOT, because the declaration is a no-op
+   for DM Sans — which carries only lining figures — and it costs
+   nothing to leave a guarantee in place for a face nobody has chosen
+   yet. An allow-list would be the wrong shape either way: it silently
+   misses inline-styled and JS-generated markup, which is exactly what
+   happened to the hero stat figures on the first attempt.
+
+   What is NOT true any more is that this is load-bearing. If it is
+   ever removed, nothing changes today — and the next display face is
+   the thing that would find out.
    ============================================================ */
 body { font-variant-numeric: lining-nums; }
 
@@ -503,15 +511,43 @@ body {
    pulled tighter than the same face at 1.3rem, where negative tracking just
    makes it muddy. Line-height tightens as size grows for the same reason.
    text-wrap:balance stops a headline stranding one word on its own line. */
-/* Headings carry the identity. The tracking is looser and the sizes a
-   step larger than the sans they replaced: Cormorant has a much smaller
-   x-height than DM Sans, so type set to the same numbers reads smaller
-   and tighter than it measures. The negative letter-spacing that suited
-   a geometric sans closes an old-style serif up until it looks cramped,
-   so it is nearly neutral now. */
-h1, h2, h3, h4 { font-family: var(--us-font-display); font-weight: 600; margin: 0 0 .4em; text-wrap: balance; }
-h1 { font-size: var(--us-text-3xl);  line-height: 1.08; letter-spacing: -.008em; }
-h2 { font-size: var(--us-text-2xl);  line-height: 1.14; letter-spacing: -.004em; }
+/* =====================================================================
+   ONE TYPEFACE, AND THE HIERARCHY IS BUILT FROM WEIGHT AND SIZE.
+
+   These headings were Cormorant Garamond, an old-style serif, over a
+   DM Sans body. That pairing is an EDITORIAL convention — it is what a
+   magazine, a prospectus or a consultancy report is set in, and it is
+   why this product read as a brochure with an application inside it
+   rather than as an application. A single sans differentiated by
+   weight is the PRODUCT convention, and the difference is not taste:
+   it is what a reader has been trained by every other instrument they
+   use to expect.
+
+   The tool surfaces already knew this. `[data-surface='tool']` has
+   overridden the display face back to DM Sans since the working
+   screens were tightened, which means the product was already running
+   two typographic identities and calling one of them the identity.
+   This settles it the other way: the identity is DM Sans, and the tool
+   surface override is now saying nothing new.
+
+   IT IS ALSO 71 KB OFF THE WIRE. cormorant-garamond-latin.woff2 and
+   its -ext are 71 of the 184 KB of fonts in public/, carried by every
+   person on every cold start — including the reporter at a remote
+   strip on one bar of signal, who is the person this product's whole
+   budget discipline exists for, and who never reads a heading in a
+   serif they waited for. A typeface removed is weight nobody pays.
+
+   WEIGHT AND TRACKING DO THE WORK THE SERIF WAS DOING. 700 rather than
+   600, line-height 1.08, and --us-tracking-tight, which is already
+   -0.028em. A sans at display size with neutral tracking reads as
+   large body copy; closed up and set bold it reads as a headline. That
+   is the whole mechanism, and it is the reason the previous comment
+   here was about x-heights — the correction it described was a
+   correction FOR the serif, and it goes with the serif.
+   ===================================================================== */
+h1, h2, h3, h4 { font-family: var(--us-font-display); font-weight: 700; margin: 0 0 .4em; text-wrap: balance; }
+h1 { font-size: var(--us-text-3xl);  line-height: 1.08; letter-spacing: var(--us-tracking-tight); }
+h2 { font-size: var(--us-text-2xl);  line-height: 1.12; letter-spacing: var(--us-tracking-tight); }
 /* Component heading rules below are written :is(h2, h3, h4) rather than
    pinned to one tag. Appearance belongs to the component; the LEVEL
    belongs to the document, and the two were fused here — a footer
@@ -2763,7 +2799,7 @@ html { scroll-padding-top: var(--us-chrome); }
    AN INSTRUMENT IS NOT A DOCUMENT.
 
    Everything above is the editorial treatment: a 52px display heading
-   over a generous measure, set in Cormorant Garamond, with a panel
+   over a generous measure, with a panel
    breathing 40px at desktop. That is right for /about and /pricing,
    where somebody is deciding whether to trust a practice, and it is the
    treatment the identity was built for.
@@ -2807,11 +2843,11 @@ html { scroll-padding-top: var(--us-chrome); }
 [data-surface='tool'] h2 { font-size: var(--us-text-lg); line-height: 1.25; }
 [data-surface='tool'] h3 { font-size: var(--us-text-md); }
 
-/* THE OPTICAL CORRECTION IS UNDONE HERE, and it has to be. The 1.15
-   multiplier on .page-head h2 exists because Cormorant's x-height is
-   smaller than DM Sans's at the same pixel size; applied to DM Sans it
-   is simply 15% too big. A correction for a typeface, left on after the
-   typeface changed, is the drift this stylesheet keeps catching. */
+/* A PAGE HEAD'S h2 IS A SUBTITLE, not the start of a section, so it
+   sits a rung below the h2 that is. This rule used to exist to undo a
+   1.15 x-height multiplier that corrected an old-style serif against
+   DM Sans; the serif has gone and so has the multiplier, and what is
+   left is the size choice on its own merits. */
 [data-surface='tool'] .page-head h2 { font-size: var(--us-text-md); }
 
 /* Rhythm. ~60px reclaimed per screen — a whole extra row of the queue
@@ -3193,18 +3229,6 @@ html { scroll-padding-top: var(--us-chrome); }
 .page-head { margin-bottom: var(--us-space-6); }
 .page-head h1 { margin: 0 0 var(--us-space-2); }
 .page-head p { margin: 0; max-width: 62ch; color: var(--us-ink-600); }
-/* OPTICALLY CORRECTED, not arbitrarily enlarged. This is a heading, so
-   it renders in the display face — and Cormorant Garamond has a much
-   smaller x-height than DM Sans, so at the same 17px it read SMALLER
-   than the 15px body text sitting directly beneath it. A section
-   heading that is out-read by its own paragraph inverts the hierarchy
-   it exists to create.
-
-   Tied to the token with a multiplier rather than hardcoded, so the
-   scale stays single-source: change --us-text-md and this moves with
-   it. The 1.15 is the ratio that puts the two x-heights level; it is a
-   property of this typeface pairing, which is why it lives on the rule
-   that uses the display face rather than in the scale itself. */
 /* THE PRICE IS THE POINT OF THE CARD AND WAS THE SMALLEST THING ON IT.
 
    It rendered through `.cov__has` — the coverage list's treatment, at

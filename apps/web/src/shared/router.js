@@ -271,7 +271,7 @@ class Router {
      *
      * The product has two audiences on one type scale and they want
      * opposite things. A prospective operator reading /about or
-     * /pricing is being persuaded, and a 52px Cormorant heading over a
+     * /pricing is being persuaded, and a 52px headline over a
      * generous measure is the right instrument for that. A safety
      * manager working the triage queue is not being persuaded — they
      * are looking for a row — and the same heading spends 150px of

@@ -157,8 +157,8 @@ describe('the information architecture', () => {
   /* WHICH SURFACE A SCREEN DECLARES ITSELF TO BE.
    *
    * The router stamps data-surface on the root and style.css answers it
-   * — tool screens get 27px sans headings and tighter panels, document
-   * pages keep the 52px Cormorant hero. The default is 'document',
+   * — tool screens get 27px headings and tighter panels, document
+   * pages keep the 52px hero. The default is 'document',
    * chosen so a screen that forgets to declare itself gets the
    * editorial treatment: wrong in a way somebody notices, rather than
    * wrong in a way that quietly under-sets a landing page.
