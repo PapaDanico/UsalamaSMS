@@ -23,6 +23,11 @@
    LAZY. A reference page is not the first screen.
    ============================================================ */
 
+/* A filter rather than a scroll. Sixty terms is four thousand pixels,
+   and somebody arriving here arrived because they read one acronym in a
+   report and wanted it expanded. Client-side and instant: there is
+   nothing to fetch, the whole list is already on the page. */
+
 import { html } from '../../shared/html.js';
 import {
   SMS_ACRONYMS,
@@ -142,11 +147,6 @@ export function render(outlet) {
 
         <section class="doc-section" id="acronyms">
           <h2>Abbreviations</h2>
-          <!-- A filter rather than a scroll. Sixty terms is four
-               thousand pixels, and somebody arriving here arrived
-               because they read one acronym in a report and wanted it
-               expanded. Client-side and instant: there is nothing to
-               fetch, the whole list is already on the page. -->
           <div class="field filter-field">
             <label class="field-label" for="glossary-filter">Filter</label>
             <input

@@ -1869,7 +1869,50 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    duplicated spacing, the surface split this supersedes. If it does
    not, that is a finding worth writing down rather than absorbing.
    ===================================================================== */
-const BUDGET = { entry: 217 * 1024, js: 526 * 1024, css: 80 * 1024 };
+/* =====================================================================
+   RAISED ON THE OWNER'S INSTRUCTION, AND HERE IS WHAT IT BOUGHT.
+
+   js total went to 560 and entry to 224. The old js ceiling was 526
+   against 524.4 actual — 1.6 KB, after a consolidation pass had already
+   returned a kilobyte by moving three developer notes out of tagged
+   template literals, where they were shipping to reporters as string
+   content. Headroom that thin is not a budget, it is a tripwire: the
+   next honest change fails the build and the temptation is to nudge the
+   number rather than to look.
+
+   WHAT WAS BOUGHT, in the pass this raise covers:
+
+   · THE REPORTING CLOCK IN THE HERO. Roughly seven hundred pixels of
+     the front door were empty at 1440; it now carries every
+     jurisdiction's shortest reporting period, generated from
+     MOR_OBLIGATIONS — the registry the whole product computes from, so
+     it cannot go stale and a new jurisdiction appears without anybody
+     adding it.
+   · THE WORKSPACE LABEL. The operator's own mark and name in the sync
+     strip on every route, loaded lazily through the record the printed
+     pack already fetches. This is the tenanted product finally saying
+     whose system it is; it costs nothing on the entry path because a
+     reporter filing anonymously never loads it.
+   · THE PROGRESS COMPONENT on the maturity assessment — twelve
+     elements with no indication of length until now, and the count
+     computed from the answers rather than held.
+   · THE COMPOSED RECORD. A register row's owner, review date and
+     provenance as three labelled facts rather than one grey run.
+   · THE MENU'S PURPOSE LINES and its second column, which is what
+     stopped it scrolling a third of its contents off a 900px screen.
+
+   ENTRY IS THE NUMBER THAT MATTERS AND IT BARELY MOVED: 210.6 KB
+   before this pass, 212.4 after, against a ceiling now at 224. The
+   1.8 KB is the workspace painter and the hero clock's markup. Every
+   other item above is in a lazily-loaded route chunk, which is the
+   whole reason the two numbers are kept apart — the total says
+   something grew, the entry says it grew where a reporter at a remote
+   strip has to pay for it.
+
+   The css ceiling is untouched at 80 against 69.5 actual. It was
+   raised for this redesign already and the redesign has not spent it.
+   ===================================================================== */
+const BUDGET = { entry: 224 * 1024, js: 560 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

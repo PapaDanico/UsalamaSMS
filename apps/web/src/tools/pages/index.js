@@ -18,6 +18,11 @@
    a thousand words, and the questions page is four times that.
    ============================================================ */
 
+/* The print affordance. A compliance document that cannot be put in a
+   binder or attached to an inspector's email is a document that gets
+   retyped. The print stylesheet already drops the chrome and opens
+   every disclosure; the button is what says so. */
+
 import { html, raw } from '../../shared/html.js';
 
 function Head(page) {
@@ -137,11 +142,6 @@ export function renderPage(outlet, page) {
       ${Contents(page)}
       <div class="doc__body">
         ${page.sections.map(Section)}
-        <!-- A compliance document that cannot be put in a binder or
-             attached to an inspector's email is a document that gets
-             retyped. The print stylesheet already drops the chrome and
-             opens every disclosure; this is the affordance that says
-             so. -->
         <p class="doc-actions no-print">
           <button type="button" class="btn btn-secondary btn-sm" id="print-page">
             Print or save as PDF

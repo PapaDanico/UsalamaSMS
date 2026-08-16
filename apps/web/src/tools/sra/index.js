@@ -23,6 +23,11 @@
    the page says so rather than implying a shared record.
    ============================================================ */
 
+/* The entry form is no-print, for the register's reason: what goes to
+   the meeting is the assessment — the change, the hazards, the bands
+   and the verdict. A blank entry form printed above them is two pages
+   of nothing before the reader reaches anything that was assessed. */
+
 import { html, raw } from '../../shared/html.js';
 import { attachPrintId } from '../../shared/print-id.js';
 import { Select, wireSelects } from '../../components/Select.js';
@@ -207,11 +212,6 @@ export function render(outlet) {
             from the same Doc 9859 scale the matrix uses and is never stored.
           </p>
 
-          <!-- no-print, for the register's reason: what goes to the
-               meeting is the assessment — the change, the hazards, the
-               bands and the verdict. A blank entry form printed above
-               them is two pages of nothing before the reader reaches
-               anything that was assessed. -->
           <form class="card no-print" id="sra-hazard" novalidate>
             <label class="field">
               <span class="field-label">The hazard *</span>
