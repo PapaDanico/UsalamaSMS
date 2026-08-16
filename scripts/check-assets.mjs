@@ -301,6 +301,95 @@ for (const rel of DECLARED.keys()) {
   }
 }
 
+/* ============================================================
+   THE SHARE CARD IS STILL SET IN THE FACES THE SITE SHIPS.
+
+   THIS IS A REAL DEFECT THAT SHIPPED, not a precaution. og-card.jpg was
+   rendered by hand in DM Sans and committed as a finished JPEG. The type
+   system then moved to Plus Jakarta Sans and Roboto and DELETED both
+   dm-sans woff2 files — and the card kept the old face. Every gate
+   stayed green, because a JPEG with no generator has nothing that can
+   notice it has stopped being true. The first thing anybody saw when the
+   link was shared was set in a typeface the product no longer had.
+
+   scripts/make-og-card.mjs is now its source, and this is what makes
+   re-running it mandatory: the generator stamps a hash of its INPUTS —
+   both font files, the mark, the copy, the markup — and this recomputes
+   that hash and fails when it disagrees. Change the type system, or the
+   slogan, and the build stops until the card is re-rendered.
+
+   IT HASHES INPUTS, NOT THE JPEG. Two Chromium builds encode identical
+   pixels to different bytes, so comparing output would be a gate that
+   goes red for reasons that have nothing to do with the card. That is
+   the kind of check somebody deletes in six months, taking the real
+   protection with it.
+   ============================================================ */
+{
+  const stampPath = join(ROOT, 'scripts/og-card.stamp');
+  if (!existsSync(stampPath)) {
+    problems.push(
+      '  scripts/og-card.stamp is missing, so nothing proves og-card.jpg was rendered ' +
+        'from the faces this site ships. Run `npm run og-card`.',
+    );
+  } else {
+    const recorded = readFileSync(stampPath, 'utf8').trim();
+    const { stampFor } = await import('./make-og-card.mjs?check=1');
+    const actual = stampFor();
+    if (recorded !== actual) {
+      problems.push(
+        `  og-card.jpg is stale. Its inputs hash to ${actual.slice(0, 12)} and the ` +
+          `stamp records ${recorded.slice(0, 12)} — a font, the mark, the slogan or the ` +
+          'layout changed and the card was not re-rendered, so a shared link shows the ' +
+          'old one. Run `npm run og-card`.',
+      );
+    }
+  }
+}
+
+/* ============================================================
+   EVERY ASSET THE BUILT PAGE POINTS AT IS ACTUALLY IN THE BUILD.
+
+   THE DEFECT. index.html preloaded /fonts/dm-sans-latin.woff2 after DM
+   Sans had been replaced and both dm-sans files deleted in the same
+   change. Every gate stayed green, and so did a runtime check that
+   counted failed requests — because netlify.toml carries one rewrite,
+   `/*` -> `/index.html` at status 200. NOTHING 404s on this site. A
+   missing font returns the entire HTML document to something expecting
+   a typeface, at status 200, and a cold start over a bad link pays for
+   the whole page a second time to throw it away.
+
+   That is why this is a STATIC check against dist rather than a network
+   one. A dangling reference is a fact about the build, and asking the
+   server about it only ever gets the rewrite's answer.
+   ============================================================ */
+{
+  const built = join(ROOT, 'dist/index.html');
+  if (existsSync(built)) {
+    const html = readFileSync(built, 'utf8');
+    /* Root-relative URLs with a file extension: the ones the rewrite
+       swallows. Relative and absolute-origin URLs are out of scope —
+       Vite rewrites the first and the CSP already governs the second. */
+    const refs = [...html.matchAll(/(?:href|src)="(\/[^"?#]+\.[a-z0-9]{2,5})(?:[?#][^"]*)?"/gi)]
+      .map((m) => m[1]);
+    const dangling = [...new Set(refs)].filter((r) => !existsSync(join(ROOT, 'dist', r)));
+    if (dangling.length) {
+      problems.push(
+        `  dist/index.html references ${dangling.length} file(s) that are not in the ` +
+          `build: ${dangling.join(', ')}. The /* -> /index.html rewrite means these do ` +
+          'NOT 404 — each one serves the whole HTML page at status 200 to something ' +
+          'expecting a font, an icon or a stylesheet.',
+      );
+    }
+    if (refs.length < 3) {
+      problems.push(
+        `  only ${refs.length} root-relative asset reference(s) were found in ` +
+          'dist/index.html, which is too few for this page — the extractor above has ' +
+          'stopped matching and is checking nothing.',
+      );
+    }
+  }
+}
+
 if (total > TOTAL_BUDGET_KB) {
   problems.push(
     `  public/ totals ${total.toFixed(1)} KB against a ${TOTAL_BUDGET_KB} KB budget. ` +

@@ -254,6 +254,37 @@ try {
     }
   });
 
+  /* AND WHETHER THE ONES IT DOES MAKE ARRIVE — WHICH IS NOT A QUESTION
+     ABOUT STATUS CODES HERE, AND THAT IS THE WHOLE POINT.
+
+     index.html preloaded /fonts/dm-sans-latin.woff2 for a while after
+     that face was replaced and both dm-sans files were deleted in the
+     same change. The first version of this check counted responses with
+     a status of 400 or more, and it PASSED with the dead preload
+     restored — measured, not assumed.
+
+     netlify.toml carries one rewrite, `/*` -> `/index.html` at status
+     200, so `pathname.startsWith('/')` matches every request that is
+     not a real file. A missing font does not 404 on this server or on
+     the deployed site. It returns the entire HTML document, with status
+     200, to something that asked for a typeface. That is worse than a
+     404 — a cold start over a bad link pays for the whole page a second
+     time and discards it — and it is invisible to any check that reads
+     the status.
+
+     So the test is the CONTENT TYPE against what the browser asked for.
+     A font, stylesheet, script or image that comes back as text/html
+     has been swallowed by the SPA rewrite. */
+  const swallowed = [];
+  page.on('response', (res) => {
+    const kind = res.request().resourceType();
+    if (!['font', 'stylesheet', 'script', 'image'].includes(kind)) return;
+    const type = res.headers()['content-type'] ?? '';
+    if (res.status() >= 400 || type.startsWith('text/html')) {
+      swallowed.push(`${kind} ${res.url().replace(BASE, '')} -> ${res.status()} ${type}`);
+    }
+  });
+
   await page.goto(BASE, { waitUntil: 'networkidle' });
 
   await check('the app renders', async () => {
@@ -466,6 +497,15 @@ try {
     assert(
       offOrigin.length === 0,
       `${offOrigin.length} off-origin request(s) during load: ${offOrigin.join(', ')}`
+    );
+
+    assert(
+      swallowed.length === 0,
+      `${swallowed.length} asset request(s) were answered with the HTML page instead of ` +
+        `the asset: ${swallowed.join(', ')}. A reference in index.html points at a file ` +
+        'that is not in the build, and the /* -> /index.html rewrite returns the whole ' +
+        'document at status 200 rather than failing, so a cold start pays for the page ' +
+        'twice and nothing reports it.'
     );
   });
 
@@ -3110,6 +3150,94 @@ try {
     }
     await page.goto(cameFrom, { waitUntil: 'networkidle' });
     assert(problems.length === 0, problems.join(' · '));
+  });
+
+  await check('A STICKY CONTENTS LIST NEVER COVERS THE WORKING COLUMN', async () => {
+    /* THE DEFECT, AND THE PREVIOUS CHECK CAUSED IT.
+
+       `.doc` is a two-column grid: a 15rem contents rail, then the body
+       pinned to the last column. The contents list has no placement of
+       its own — it lands in the rail by being the first auto-placed
+       child. Adding ToolNav to the top of every toolkit took that slot,
+       so `.toc` was pushed into the SECOND column, on top of the body:
+
+         /about          rail nav.toc      body 288..832    correct
+         /toolkits/spi   rail nav.toolnav  toc 288..1004, body 288..1004
+
+       `.toc` is `position: sticky`, so the contents card pinned itself
+       over the working column and the form scrolled underneath it. On
+       /toolkits/spi that drew "When it alerts" through the indicator
+       starters — both unreadable. Four toolkits, every width from 900px
+       up, on the deployed site.
+
+       IT IS CHECKED WITH THE PAGE SCROLLED, and that is the whole
+       reason this exists. A sweep of four toolkits across thirteen
+       widths found nothing, because it measured at scrollY=0 and a
+       sticky element cannot overlap anything until you scroll past its
+       container. Measuring the wrong moment is measuring nothing.
+
+       The width matters too: the rail only exists at 900px and up, so
+       at 390px there is no defect to find. */
+    const cameFromSticky = page.url();
+    const before = page.viewportSize();
+    await page.setViewportSize({ width: 1024, height: 900 });
+    const collisions = [];
+    let railsSeen = 0;
+
+    for (const route of ['/toolkits/sra', '/toolkits/register', '/toolkits/spi', '/toolkits/maturity']) {
+      await page.goto(BASE + route, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(400);
+      const height = await page.evaluate(() => document.documentElement.scrollHeight);
+      const sawRail = await page.evaluate(() => {
+        const t = document.querySelector('.toc');
+        return !!t && getComputedStyle(t).position === 'sticky';
+      });
+      if (sawRail) railsSeen += 1;
+
+      for (let y = 0; y < height; y += 400) {
+        await page.evaluate((to) => window.scrollTo(0, to), y);
+        await page.waitForTimeout(60);
+        const hit = await page.evaluate(() => {
+          const seen = (el) => {
+            if (!el) return false;
+            const s = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return !!el.offsetParent && s.visibility !== 'hidden' && s.opacity !== '0'
+              && r.width > 0 && r.height > 0;
+          };
+          const toc = document.querySelector('.toc');
+          const body = document.querySelector('.doc__body');
+          if (!seen(toc) || !seen(body)) return null;
+          const a = toc.getBoundingClientRect();
+          const b = body.getBoundingClientRect();
+          const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          const yy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          return x > 2 && yy > 2 ? `${Math.round(x)}x${Math.round(yy)}px` : null;
+        });
+        if (hit) {
+          collisions.push(`${route} at scrollY=${y}: ${hit}`);
+          break;
+        }
+      }
+    }
+
+    await page.setViewportSize(before);
+    await page.goto(cameFromSticky, { waitUntil: 'networkidle' });
+
+    /* Without this the check passes on a page that stopped rendering a
+       contents list at all, which is a different defect wearing this
+       one's green tick. */
+    assert(
+      railsSeen === 4,
+      `only ${railsSeen} of 4 toolkits render a sticky contents list at 1024px, so this ` +
+        'measured fewer screens than it claims to cover'
+    );
+    assert(
+      collisions.length === 0,
+      `the contents list overlaps the working column on ${collisions.length} toolkit(s): ` +
+        `${collisions.join('; ')}. Something took the grid rail the contents list is ` +
+        'auto-placed into, so a sticky card is pinned over the form.'
+    );
   });
 
   await check('EVERY DESTINATION IN THE MENU CAN ACTUALLY BE REACHED', async () => {
