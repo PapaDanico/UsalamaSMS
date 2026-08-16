@@ -158,12 +158,37 @@ describe.skipIf(!hasDatabase)("row-level security posture", () => {
   it("keeps every tenant-owned table scoped by an orgId column", async () => {
     // The posture only means anything because tenancy is enforced in
     // SQL. A tenant-owned table with no orgId cannot be.
+    //
+    // THREE EXEMPTIONS, AND EACH IS STRUCTURAL RATHER THAN GRANTED.
+    // `Org` IS the tenant. `RefreshToken` and `PasswordReset` are
+    // CREDENTIAL tables: every row is found by a unique hash of a
+    // secret, which resolves to exactly one user and therefore to
+    // exactly one org, and neither is ever listed or filtered by
+    // tenant. An orgId on them would be a denormalised copy no query
+    // narrows by — a column that looks like a control and enforces
+    // nothing, which is worse than its absence.
+    //
+    // The exemption is bounded below rather than left to grow: the
+    // assertion after this one fails if the list ever reaches a
+    // quarter of the schema, at which point it has stopped being a set
+    // of exceptions and become a way of passing.
+    const EXEMPT = ["_prisma_migrations", "Org", "RefreshToken", "PasswordReset"];
+    const total = await prisma().$queryRawUnsafe<Array<{ n: bigint }>>(
+      `SELECT count(*) AS n FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
+    );
+    expect(
+      EXEMPT.length * 4,
+      `${EXEMPT.length} of ${total[0]!.n} tables are exempt from tenant scoping — at that ` +
+        "ratio this check passes by exempting whatever it would otherwise fail on",
+    ).toBeLessThan(Number(total[0]!.n));
+
     const withoutOrg = await prisma().$queryRawUnsafe<Array<{ table_name: string }>>(
       `SELECT t.table_name
          FROM information_schema.tables t
         WHERE t.table_schema = 'public'
           AND t.table_type = 'BASE TABLE'
-          AND t.table_name NOT IN ('_prisma_migrations', 'Org', 'RefreshToken')
+          AND t.table_name NOT IN ('_prisma_migrations', 'Org', 'RefreshToken', 'PasswordReset')
           AND NOT EXISTS (
                 SELECT 1 FROM information_schema.columns c
                  WHERE c.table_schema = 'public'

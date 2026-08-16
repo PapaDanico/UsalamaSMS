@@ -302,6 +302,9 @@ function bindClassifier(outlet) {
                       ? html`<span class="calc__caveat">
                           (the instrument names the period and not what starts it &mdash;
                           awareness is the reading applied here)</span>`
+                      : ''}${obligation.clockStartInstrument
+                      ? html`<span class="calc__caveat">
+                          (${obligation.clockStartInstrument})</span>`
                       : ''} ·`}
               ${obligation.authority}${isProvisional(jurisdiction)
                 ? html` · <span class="tag tag--provisional">provisional</span>`

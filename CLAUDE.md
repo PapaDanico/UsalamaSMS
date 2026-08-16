@@ -58,8 +58,26 @@ Supabase extension created it. It has been deleted, along with
 `SUPABASE_ANON_KEY`, which was exposed the same way and equally unused.
 
 **Deleting it is not rotating it**, and no MCP tool can rotate it — that
-is a Supabase dashboard action and it is still outstanding. Anyone who
-read the value holds a token they can sign at will.
+is a Supabase dashboard action. Until it happened, anyone who had read
+the value held a token they could sign at will.
+
+**It was rotated on 16 August 2026**, by the owner, in the dashboard.
+Every token signed with the old secret is now worthless, which closes
+the exposure rather than merely hiding it.
+
+Nothing in this product broke, and that was checked rather than hoped:
+`SUPABASE_JWT_SECRET` appears in no source file, the API signs its own
+access tokens with an unrelated `JWT_SECRET` (`apps/api/src/core.ts`),
+and the one Supabase credential any code reads —
+`SUPABASE_SERVICE_ROLE_KEY`, in `routes.attachments.ts` — was unset, so
+there was no live key to invalidate.
+
+That last one is a trap for whoever sets it. A **legacy** `service_role`
+key IS a JWT signed with that secret, so pasting one and then rotating
+again would silently kill evidence upload. This project is already on
+the new API key system — the legacy anon key reports `disabled: true` —
+so use an `sb_secret_…` key, which is issued independently of the JWT
+secret and survives its rotation.
 
 ### So the grants were revoked, which closes it without the rotation
 

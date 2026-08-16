@@ -30,7 +30,26 @@
   [headers.values]
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
     X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
+    # NO-REFERRER, AND `strict-origin-when-cross-origin` WAS LEAKING A
+    # CREDENTIAL. That policy sends the FULL URL on SAME-ORIGIN requests
+    # — it only strips the path when crossing origins — and a
+    # password-reset link is /reset?token=<32 random bytes>. Measured
+    # rather than reasoned about: a real browser submitting the reset
+    # form sent
+    #
+    #   Referer: /reset?token=REFERER-PROBE-TOKEN-0123456789abcdefghij
+    #
+    # to POST /api/v1/auth/reset, which puts a live credential in the
+    # access log of every hop that records one. The module fetch for the
+    # screen's own chunk carries it too, and that fires before any line
+    # of application code runs — so no amount of care inside the screen
+    # could have closed it.
+    #
+    # `no-referrer` costs this product nothing. The CSP one line above
+    # already forbids off-origin requests, there is no analytics, and
+    # authentication is a Bearer token rather than anything that reads
+    # Referer. Nothing in the app was using the header for anything.
+    Referrer-Policy = "no-referrer"
     X-Frame-Options = "DENY"
     # Added when usalamasms.com became the official origin. Until there
     # was a domain of the product's own there was nothing to pin: a

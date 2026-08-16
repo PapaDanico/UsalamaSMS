@@ -110,16 +110,54 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(cacheFirst(request));
 });
 
+/* ==========================================================
+   A NAVIGATION IS CACHED UNDER ITS PATH, NEVER ITS QUERY STRING.
+
+   THE DEFECT THIS FIXES WAS INVISIBLE IN BOTH FILES THAT CAUSED IT.
+   `cache.put(request, …)` keys on the FULL URL, and a navigation to
+   /reset?token=<32 random bytes> is a same-origin GET like any other —
+   so the worker wrote the live password-reset credential into Cache
+   Storage, on disk, where it outlived the tab, the session and the
+   browser.
+
+   tools/login/reset-panel.js says of that token, in its own comment,
+   that it "is not written to storage, not put in the session, and not
+   logged". That was true of every line in that file and false of the
+   running system, which is the whole shape of the problem: sw.js was
+   right about caching a shell, reset-panel.js was right about holding a
+   secret, and neither one mentions the other.
+
+   MEASURED RATHER THAN REASONED ABOUT: the real dist, the real worker,
+   a real Chromium, a navigation to /reset?token=…, and then the browser
+   asked what it had stored. It answered with the token.
+
+   WHY NORMALISING THE KEY RATHER THAN SKIPPING THE CACHE. Every
+   navigation in this single-page app returns the identical index.html —
+   the router resolves the path after the shell boots, which the comment
+   below has said since the offline fallback was fixed. So the query
+   string was never carrying information the cache needed, and dropping
+   it costs nothing. Refusing to cache navigations at all would also fix
+   it, and would make every repeat visit wait on the network — on the
+   links this product exists for, that is a worse trade than the one it
+   is paying for.
+   ========================================================== */
+function cacheKeyFor(request) {
+  if (request.mode !== 'navigate') return request;
+  const url = new URL(request.url);
+  return new Request(url.origin + url.pathname);
+}
+
 /** Shell: cache first, network as filler, offline page as last resort. */
 async function cacheFirst(request) {
-  const cached = await caches.match(request);
+  const key = cacheKeyFor(request);
+  const cached = await caches.match(key);
   if (cached) return cached;
 
   try {
     const response = await fetch(request);
     if (response.ok && response.type === 'basic') {
       const cache = await caches.open(SHELL_CACHE);
-      cache.put(request, response.clone());
+      cache.put(key, response.clone());
     }
     return response;
   } catch {

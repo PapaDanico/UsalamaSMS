@@ -35,6 +35,11 @@
       route's own chunk. It is also the honest shape — signing up
       is a different job from signing in, and /pricing can link
       straight to it.
+
+   6. THE SAME SHAPE, AND THE SAME REASON. A person who cannot sign
+      in cannot be shown a panel that only loads for people who can,
+      and the reset form has no business in the eager chunk either.
+      One anchor here; the form is a destination.
    ============================================================ */
 /* ============================================================
    Sign in.
@@ -206,6 +211,10 @@ function renderForm(outlet) {
         <button type="submit" class="btn btn-primary btn-block">Sign in</button>
         <p class="field-error" id="login-status" role="status" aria-live="polite"></p>
       </form>
+
+      <p class="hint">
+        <a href="/reset">I have forgotten my password</a>
+      </p>
 
       <p class="hint">
         <a href="/signup">My operator does not have an account yet</a>

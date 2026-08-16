@@ -630,13 +630,41 @@ describe("Kenya's three reporting periods", () => {
     expect(MOR_OBLIGATIONS.KE.governedByUnread).toBeUndefined();
   });
 
-  it("says the instrument does not state what starts the clock", () => {
-    /* Regulation 12(1) says "within 24 hours" and never says from what.
-       Awareness is our reading, kept because it is the only anchor a
-       person can act on — and flagged so the product can say so rather
-       than presenting it as quoted. */
-    expect(MOR_OBLIGATIONS.KE.clockStartUnstated).toBe(true);
+  it("cites where the clock start is stated, now that somebody has read it", () => {
+    /* THIS TEST USED TO ASSERT THE OPPOSITE, and the change is the
+       point. Regulation 12(1) says "within 24 hours" and never says
+       from what, so awareness was the product's own reading and every
+       screen said so.
+
+       CAA-AC-SMS004A paragraph 3.3.6.1, Note 1 states it: the period
+       runs from when the incident took place "or from the time when the
+       reporter determined that there was, or could have been, a
+       potentially hazardous or unsafe condition". The Authority's
+       words, not ours.
+
+       So the row names the source instead of confessing an inference —
+       and the deadline's citation is untouched, because the deadline
+       still comes from the regulation and only the anchor comes from
+       the circular. */
     expect(MOR_OBLIGATIONS.KE.clockStart).toBe("AWARENESS");
+    expect(MOR_OBLIGATIONS.KE.clockStartInstrument).toMatch(/CAA-AC-SMS004A/);
+    expect(MOR_OBLIGATIONS.KE.clockStartInstrument).toMatch(/3\.3\.6\.1/);
+    /* The deadline is still L.N. 32's. If this ever starts naming the
+       circular, a period has been attributed to the wrong instrument. */
+    expect(MOR_OBLIGATIONS.KE.instrument).toMatch(/L\.N\. 32/);
+    expect(MOR_OBLIGATIONS.KE.instrument).not.toMatch(/SMS004A/);
+  });
+
+  it("never claims a clock start is both unstated and cited", () => {
+    /* The two fields answer the same question and contradict each
+       other. A row carrying both would render "not stated by the
+       instrument" directly beside the instrument that states it. */
+    for (const [code, o] of Object.entries(MOR_OBLIGATIONS)) {
+      expect(
+        Boolean(o.clockStartUnstated && o.clockStartInstrument),
+        `${code} says the clock start is unstated AND names where it is stated`,
+      ).toBe(false);
+    }
   });
 
   it("leaves ICAO with no fixed period and no per-class table", () => {

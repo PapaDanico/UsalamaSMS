@@ -358,6 +358,19 @@ export const SECTIONS = [
          weight in the entry chunk charged to every reporter who already
          has one. A footer is where a site index belongs. */
       { href: '/signup', label: 'Create an Operator Account' },
+      /* AND THE WAY BACK IN, which matters more here than the footer
+         placement of most entries.
+
+         The account screen links to it, and the account screen is the
+         one place a person who cannot sign in has already been and
+         failed. The footer renders on every screen, so somebody who
+         gave up, closed the tab and came back to /pricing a week later
+         still finds it — which is the actual shape of being locked out.
+
+         Not in the header for the reason /signup is not: the header
+         carries what somebody SIGNED IN uses the product to do, and
+         this is for the person who is not. */
+      { href: '/reset', label: 'Forgotten Password' },
       /* IN THE FOOTER, NOT THE HEADER, for the same reason /signup is:
          the header carries the operator's SEQUENCE — what somebody
          signed in uses the product to do — and a profile link there is

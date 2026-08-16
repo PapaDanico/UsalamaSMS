@@ -133,6 +133,23 @@ export interface ReportingObligation {
    * the same failure as a silent figure.
    */
   readonly clockStartUnstated?: boolean;
+  /**
+   * WHERE THE CLOCK START IS STATED, when it is not the row's own
+   * instrument.
+   *
+   * A deadline and the moment it runs from are two facts and they do
+   * not have to come from the same document. Kenya is the case: L.N. 32
+   * regulation 12(1) sets 24/48/72 and is silent on the anchor, while
+   * Advisory Circular CAA-AC-SMS004A states the anchor and repeats the
+   * same table.
+   *
+   * Held separately rather than folded into `instrument` because a
+   * combined citation would put words in L.N. 32's mouth. Mutually
+   * exclusive with `clockStartUnstated` — if the source is named, it is
+   * by definition no longer unstated, and the test suite asserts that
+   * no row sets both.
+   */
+  readonly clockStartInstrument?: string;
   /** The instrument. A deadline without a citation is an opinion. */
   readonly instrument: string;
   /**
@@ -278,10 +295,43 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
        related occurrences." */
     hoursByClass: { ACCIDENT: 24, SERIOUS_INCIDENT: 48, INCIDENT: 72 },
     clockStart: "AWARENESS",
-    /* The instrument states a period and not what starts it. See the
-       field's own documentation — awareness is our reading, and the
-       product says so rather than presenting it as quoted. */
-    clockStartUnstated: true,
+    /* ================================================================
+       IT USED TO BE OUR READING. IT IS NOW THE AUTHORITY'S WORDS.
+
+       This carried `clockStartUnstated: true` and a note saying that
+       L.N. 32 states a period and never says what starts it, so
+       awareness was the product's own inference and the screens said
+       so. That was honest and it was the best available answer until
+       somebody read the governing Advisory Circular.
+
+       CAA-AC-SMS004A (January 2023), paragraph 3.3.6.1, Note 1:
+
+         "The reporting period is normally understood to start from
+          when the incident took place or from the time when the
+          reporter determined that there was, or could have been, a
+          potentially hazardous or unsafe condition."
+
+       So the Authority does state it, in the instrument sitting above
+       this row rather than in the row's own. Awareness is not our
+       inference; it is the second limb of the Authority's sentence,
+       and the first limb collapses into it — for an occurrence
+       somebody knew about as it happened, "when it took place" and
+       "when the reporter determined" are the same moment. There is no
+       case where the awareness anchor is later than the AC allows.
+
+       THE AC PREDATES L.N. 32 AND IS STILL THE REFERENCE. Its own
+       deadline table — incident 72 hours, serious incident 48,
+       accident 24 — is the same table regulation 12(1) later enacted,
+       so it is confirmatory rather than superseded, and the owner's
+       instruction was to use it on that basis.
+
+       The two facts now come from two instruments, which is why the
+       clock start carries its own citation rather than borrowing the
+       deadline's. Conflating them would attribute a sentence to L.N. 32
+       that L.N. 32 does not contain — the exact misattribution the
+       header of this file exists to complain about. */
+    clockStartInstrument:
+      "KCAA Advisory Circular CAA-AC-SMS004A (January 2023), paragraph 3.3.6.1, Note 1",
     instrument:
       "Civil Aviation (Safety Management) Regulations, 2025 (L.N. 32 of 2026, " +
       "Kenya Gazette Supplement No. 43, 3 March 2026), regulation 12(1)",
