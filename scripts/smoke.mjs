@@ -2854,12 +2854,29 @@ try {
       `an incident was not offered as reportable under a regulation that names it: "${incident}"`
     );
 
-    // And the clock-start caveat, because the instrument names a period
-    // and never says what starts it. Awareness is our reading and the
-    // screen must not present it as the regulation's word.
+    /* AND THE ANCHOR MUST BE ACCOUNTED FOR — one of two ways, never
+       neither.
+
+       The rule has not changed: this screen must not present "from
+       becoming aware" as though the regulation said it. What has
+       changed is what satisfies the rule. It used to be satisfiable
+       only by the caveat, because awareness was the product's own
+       reading of an instrument that names a period and not what starts
+       it. CAA-AC-SMS004A paragraph 3.3.6.1 Note 1 does state it, so a
+       CITATION now satisfies the same rule and satisfies it better —
+       the caveat says "we inferred this", the citation says who said
+       it.
+
+       Both are accepted and the disjunction is the assertion. A bare
+       "72 hours from becoming aware" with neither still fails, which is
+       the defect this was written for; mutation-checked by removing
+       clockStartInstrument from the row and confirming it goes red. */
+    const anchorCaveat = /names the period and not what starts it/i.test(incident);
+    const anchorCited = /CAA-AC-SMS004A/.test(incident);
     assert(
-      /names the period and not what starts it/i.test(incident),
-      `the classifier states an unstated clock start as fact: "${incident}"`
+      anchorCaveat || anchorCited,
+      'the classifier states a clock start as bare fact — it must either flag the reading ' +
+        `as ours or name the instrument that states it: "${incident}"`
     );
   });
 

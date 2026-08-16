@@ -160,6 +160,9 @@ function Obligations() {
             <td data-label="Clock starts">
               ${o.clockStart === 'AWARENESS' ? 'awareness' : 'occurrence'}
               ${o.clockStartUnstated ? html`<span class="field-note">not stated by the instrument</span>` : ''}
+              ${o.clockStartInstrument
+                ? html`<span class="field-note">stated by ${o.clockStartInstrument}</span>`
+                : ''}
             </td>
             <td class="num" data-label="Due">
               ${due ? fmt(due) : html`<span class="cell-none">without delay</span>`}

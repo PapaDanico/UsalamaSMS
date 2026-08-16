@@ -313,6 +313,13 @@ function Deadlines() {
                       run out before anybody knows it happened.
                     </span>`
                   : ''}
+                ${o.clockStartInstrument
+                  ? html`<span class="cite__governs">
+                      The regulation names the periods and not what starts them. What starts
+                      them is stated separately, by ${o.clockStartInstrument} &mdash; so the
+                      anchor here is quoted rather than inferred.
+                    </span>`
+                  : ''}
                 ${o.governedByUnread
                   ? html`<span class="cite__governs">
                       Now governed by ${o.governedByUnread}, not yet read against this
