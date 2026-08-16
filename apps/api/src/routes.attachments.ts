@@ -100,7 +100,25 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
         createdAt: true,
       },
     });
-    return reply.send({ attachments: rows, max: EVIDENCE_MAX_FILES });
+    /* WHETHER THIS DEPLOY CAN ACCEPT ONE, told on the way IN rather
+       than discovered on the way out.
+
+       The list read works whether or not storage is configured — there
+       is nothing to fetch from a bucket to answer "what is attached" —
+       so the panel used to render a file input on every deploy and only
+       learn the truth after somebody had chosen a photograph, waited
+       for it to be re-encoded and uploaded, and got a 503 back. The
+       refusal was correct and the sequence was cruel: it spent a
+       reporter's time and a reporter's data to say something the server
+       knew before they started.
+
+       So the capability is part of the resource. A client that cannot
+       be offered an upload is told before it offers one. */
+    return reply.send({
+      attachments: rows,
+      max: EVIDENCE_MAX_FILES,
+      storage: storageReady().ok,
+    });
   });
 
   /* ----------------------------- upload ----------------------------- */

@@ -82,6 +82,10 @@ function toBase64(buffer) {
 }
 
 export async function mountEvidence(slot, reportId) {
+  /* Whether this deploy can accept a file at all, answered by the list
+     read rather than discovered by a failed upload. See the route. */
+  let canAttach = true;
+
   const paint = (items, note = '') => {
     slot.innerHTML = html`
       ${items.length
@@ -102,16 +106,23 @@ export async function mountEvidence(slot, reportId) {
           </ul>`
         : html`<p class="hint">Nothing attached to this report yet.</p>`}
 
-      <label class="field">
-        <span class="field-label">Attach a photograph or a scanned form</span>
-        <input type="file" class="input-field" data-evidence-file
-               accept="image/jpeg,image/png,image/webp,application/pdf" />
-        <span class="field-hint">${EVIDENCE_CAVEAT}</span>
-      </label>
+      ${canAttach
+        ? html`<label class="field">
+            <span class="field-label">Attach a photograph or a scanned form</span>
+            <input type="file" class="input-field" data-evidence-file
+                   accept="image/jpeg,image/png,image/webp,application/pdf" />
+            <span class="field-hint">${EVIDENCE_CAVEAT}</span>
+          </label>`
+        : html`<p class="notice">
+            <strong>This deployment cannot store files yet.</strong>
+            Evidence storage is not configured, so the control to attach one is not
+            shown — offering it would spend your time and your data on an upload the
+            server would refuse. Everything else about this report works normally.
+          </p>`}
       <p class="hint" data-evidence-status role="status">${note}</p>
     `.toString();
 
-    slot.querySelector('[data-evidence-file]').addEventListener('change', onChoose);
+    slot.querySelector('[data-evidence-file]')?.addEventListener('change', onChoose);
     for (const b of slot.querySelectorAll('[data-evidence-get]')) {
       b.addEventListener('click', onDownload);
     }
@@ -226,6 +237,11 @@ export async function mountEvidence(slot, reportId) {
     const res = await authFetch(`/api/v1/reports/${reportId}/attachments`);
     if (!res.ok) throw new Error('unreadable');
     const body = await res.json();
+    /* Defaults to TRUE when the field is absent, so a client running
+       against an older API keeps the control rather than losing it to a
+       missing key — the failure then is the old one, which is worse but
+       is not a regression this code introduced. */
+    canAttach = body.storage !== false;
     paint(body.attachments ?? [], note);
   }
 
