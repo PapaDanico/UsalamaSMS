@@ -4326,6 +4326,73 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    five columns of eight words on the handset this is designed for. */
 .mat-scale { display: grid; gap: var(--us-space-2); }
 
+/* =====================================================================
+   PROGRESS — where you are in a long instrument, and how far is left.
+
+   Ported from Kanda's `.progress`, which sets a two-part head over a
+   4px track: what you are answering on the left, "Question 1 of 32" on
+   the right, and a fill that moves. It is the whole of that product's
+   wayfinding on a thirty-two question diagnostic, and it is the reason
+   a long questionnaire there does not feel long.
+
+   This product's maturity assessment is twelve elements, each with a
+   five-point scale, an evidence field and a suitability judgement — the
+   longest thing anybody fills in here, and until now it opened as a
+   wall with no indication of its length or of how much was done. The
+   figure was available further down the page, in the result panel,
+   which is the one place somebody deep in the form is not looking.
+
+   THE NUMBER IS COMPUTED FROM THE ANSWERS, never held. Same rule as
+   every other count in this product: a progress bar with its own idea
+   of how far along you are is a progress bar that disagrees with the
+   form under it, and it disagrees silently.
+
+   `<progress>` IS NOT USED, deliberately. Its bar is not stylable to
+   this track in every engine and its implicit label reads as a
+   download. This is a div pair with role="progressbar" and the three
+   aria-value attributes, which is what a screen reader needs, plus a
+   text head that says the same thing in words for everyone else.
+   ===================================================================== */
+.progress { margin: 0 0 var(--us-space-5); }
+
+.progress__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--us-space-3);
+  margin-bottom: var(--us-space-2);
+  font-size: var(--us-text-xs);
+  color: var(--us-text-tertiary);
+}
+
+.progress__count { font-variant-numeric: tabular-nums; }
+
+.progress__track {
+  height: 4px;
+  border-radius: var(--us-radius-pill);
+  background: var(--us-surface-sunk);
+  border: 1px solid var(--us-border);
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  border-radius: var(--us-radius-pill);
+  background: var(--us-teal);
+  transition: width var(--us-dur-slow) var(--us-ease-out);
+}
+
+/* THE FILL IS TEAL UNTIL IT IS FULL, AND THEN IT IS NOT GOLD EITHER.
+   Gold means somebody has work, and a finished assessment is the
+   opposite of that. Complete reads as the acceptable band, which is
+   the colour this product already uses for a risk that has been
+   brought down. */
+.progress[data-complete='true'] .progress__fill { background: var(--us-risk-acceptable); }
+
+@media (prefers-reduced-motion: reduce) {
+  .progress__fill { transition: none; }
+}
+
 .mat-option {
   display: flex;
   align-items: flex-start;

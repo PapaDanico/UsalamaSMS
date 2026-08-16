@@ -1540,6 +1540,55 @@ try {
       { timeout: 5000 }
     );
 
+    /* ==============================================================
+       THE PROGRESS BAR COUNTS THE SAME ANSWERS THE SCORE DOES.
+
+       Twelve elements, each with a five-point scale, an evidence field
+       and a suitability judgement, is the longest thing anybody fills
+       in here, and it opened as a wall with no indication of its
+       length or of how far along you were. The figure existed — in the
+       result panel, further down, which is the one place somebody deep
+       in the form is not looking.
+
+       Two elements are answered above, so the bar must read two. That
+       catches both ways this can go wrong and they are different
+       failures: a bar that stops repainting reads zero while the score
+       reads 2.0, and a TOTAL that was typed rather than counted reads
+       the wrong denominator the day an element is split. Charter rule
+       10 — the twelve is reduced out of SMS_COMPONENTS, and the
+       denominator asserted here is read from the same module the
+       screen is built from rather than typed into this file.
+       ============================================================== */
+    /* UNIQUE, because every element id appears twice in that module —
+       once on the element and once on the plan step that fixes it —
+       and a raw match count reads 24 elements where there are 12. */
+    const total = new Set(MATURITY.match(/id: "\d+\.\d+"/g) ?? []).size;
+    assert(total > 6, `only ${total} element ids were parsed out of the maturity module`);
+
+    const bar = await page.evaluate(() => {
+      const el = document.querySelector('.progress');
+      if (!el) return null;
+      const track = el.querySelector('.progress__track');
+      return {
+        now: track?.getAttribute('aria-valuenow'),
+        max: track?.getAttribute('aria-valuemax'),
+        text: el.querySelector('.progress__head')?.textContent?.replace(/\s+/g, ' ').trim()
+      };
+    });
+    assert(bar, 'the maturity assessment renders no progress bar');
+    assert(
+      bar.now === '2',
+      `the bar says ${bar.now} elements graded with two answered — it is not repainting`
+    );
+    assert(
+      bar.max === String(total),
+      `the bar counts out of ${bar.max} against ${total} elements in the module`
+    );
+    assert(
+      new RegExp(`2 of ${total}`).test(bar.text ?? ''),
+      `the bar's own words read "${bar.text}"`
+    );
+
     await page.reload({ waitUntil: 'networkidle' });
     assert(
       await page.locator('input[name="el-1.1"][value="3"]').isChecked(),
