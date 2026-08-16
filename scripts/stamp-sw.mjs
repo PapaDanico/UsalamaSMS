@@ -1810,7 +1810,27 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    the data-URI pattern — unanchored, it accepts
    `javascript:alert(1)//data:image/png;base64,...`.
    ===================================================================== */
-const BUDGET = { entry: 217 * 1024, js: 520 * 1024, css: 64 * 1024 };
+/* TOTAL JS 520 -> 526 KB: EVIDENCE ON A REPORT.
+
+   A narrative describes a dented cowling. A photograph of the dented
+   cowling is what an investigator can assess.
+
+   ENTRY UNTOUCHED AGAIN at 210.6 of 217 KB, and that is the number this
+   product is sold on. The evidence panel is dynamically imported when
+   somebody OPENS the disclosure on a queue row — a ramp agent who opens
+   the queue to read a report never downloads it, and filing a report
+   never touches it at all.
+
+   THE WEIGHT IS THE CANVAS PASS, and it is the same shape as the logo
+   resizer for the same reasons: it strips EXIF by re-encoding, so GPS,
+   device and timestamp do not travel; it downscales to 1600px so a
+   reporter on one bar is not sending eight megabytes off a sensor; and
+   it enforces the ceiling before the upload rather than after it.
+
+   It does NOT claim to do more. EVIDENCE_CAVEAT is on the control and
+   says the part software cannot do — a face, a registration or a name
+   on a document in the frame survives all of it. */
+const BUDGET = { entry: 217 * 1024, js: 526 * 1024, css: 64 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

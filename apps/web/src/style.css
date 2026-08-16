@@ -1718,6 +1718,15 @@ html { scroll-padding-top: var(--us-chrome); }
    the body face, because that is prose and mono prose is harder to
    read, not easier. See fonts.css: 6 KB, subset to the characters an
    identifier can contain. */
+/* Evidence shares the classify disclosure's look and NOT its class.
+   A smoke check selects `.queue__classify` to assert the occurrence is
+   coded with its caveat attached; giving the evidence disclosure that
+   same class put it first in the document and the check started
+   measuring the wrong element. Two things that look alike are not
+   therefore the same thing. */
+.queue__evidence { margin-top: var(--us-space-3); }
+.queue__evidence > summary { cursor: pointer; font-weight: 600; }
+
 .queue__code b {
   color: var(--us-text-primary);
   font-weight: 700;
