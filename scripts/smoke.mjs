@@ -277,7 +277,8 @@ try {
        handset.
 
        TWO — the new one, and the reason this check measures rather than
-       inspects. DM Sans ships as a VARIABLE face covering 400 to 700.
+       inspects. Both faces ship VARIABLE — Roboto 400-700, Plus Jakarta
+       Sans 400-800.
        Declare a single `font-weight: 400` on it and the browser still
        serves every rule that asks for bold: it SYNTHESISES one by
        smearing the regular. It looks approximately right, it survives
@@ -286,40 +287,143 @@ try {
        byte-identical copies of this same file for exactly that reason —
        four names read as four faces to everyone who looked.
 
-       A synthesised bold gives itself away in the widths: with only a
-       400 face, 400 and 500 render identically and 600 and 700 render
-       identically, because synthesis has one setting. A real axis moves
-       at every stop. So the assertion is STRICTLY increasing, which no
-       synthesis can satisfy. */
+       A synthesised bold gives itself away in the widths, and the
+       ASSERTION HERE WAS WRONG ABOUT HOW. It demanded a strictly
+       increasing width at every stop, reasoning that a real axis "moves
+       at every stop" and synthesis has one setting. The first half is
+       true; the second half does not follow, and Roboto is the
+       counter-example. Measured against this build, the string below at
+       40px:
+
+         weight      400    500    600    700    800
+         real axis   470    474    473    479    479 (clamped to 700)
+         synthesised 470    470    470    470    470
+
+       The axis IS instanced — every adjacent pair differs — and the
+       design's advance width simply DIPS by 1px between 500 and 600.
+       Nothing is wrong with the font; the assertion pinned a property
+       the format never promised, so a legitimate face change turned it
+       red on a green build. That is "assert the property, not the
+       number" in its other form: monotonicity was a coincidence of the
+       previous face, not the rule.
+
+       What synthesis actually does is collapse the range ENTIRELY —
+       every stop renders at the 400 width. That row was measured by
+       declaring `font-weight: 400` and rebuilding, not assumed. So the
+       rule is that ADJACENT STOPS DIFFER, which no synthesis can
+       satisfy and no legitimate variable design can break, plus one
+       direction assertion across the declared range so a face that
+       jittered without ever getting bolder still fails.
+
+       BOTH FACES CARRY WIDTHS NOW. This measured only Roboto while its
+       own heading said "both", so the display axis — the one under
+       every h1, and the only one that reaches 800 — had nothing behind
+       it but a `loaded` check. */
     const type = await page.evaluate(async () => {
       await document.fonts.ready;
       const loaded = [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family);
       const el = document.createElement('span');
       el.style.cssText =
-        'position:absolute;visibility:hidden;white-space:nowrap;font-size:40px;font-family:"DM Sans"';
+        'position:absolute;visibility:hidden;white-space:nowrap;font-size:40px';
       el.textContent = 'Hazard identification 0123';
       document.body.appendChild(el);
-      const widths = {};
-      for (const w of [400, 500, 600, 700]) {
-        el.style.fontWeight = String(w);
-        widths[w] = el.getBoundingClientRect().width;
-      }
+      const widthsFor = (family, stops) => {
+        el.style.fontFamily = `"${family}"`;
+        const w = {};
+        for (const g of stops) {
+          el.style.fontWeight = String(g);
+          w[g] = el.getBoundingClientRect().width;
+        }
+        return w;
+      };
+      // The stops each face actually DECLARES. Probing 800 on a face
+      // declared 400-700 measures the clamp, not the axis, and two
+      // clamped stops are legitimately equal — which would fail the
+      // adjacent-pairs rule for a reason that is not a defect.
+      const widths = widthsFor('Roboto', [400, 500, 600, 700]);
+      const displayWidths = widthsFor('Plus Jakarta Sans', [400, 500, 600, 700, 800]);
       el.style.fontFamily = 'no-such-family-xyz';
       el.style.fontWeight = '400';
       const fallback = el.getBoundingClientRect().width;
       el.remove();
-      return { loaded, widths, fallback, body: getComputedStyle(document.body).fontFamily };
+      const h = document.querySelector('h1');
+      return {
+        loaded,
+        widths,
+        displayWidths,
+        fallback,
+        body: getComputedStyle(document.body).fontFamily,
+        heading: h ? getComputedStyle(h).fontFamily : '(no h1 on this screen)',
+      };
     });
 
+    /* BOTH FACES, because the system has two and a check that only
+       looked at the body one would pass while every heading on the site
+       rendered in the fallback. That is not hypothetical either: the
+       display face WAS silently cancelled on every tool screen by a
+       `[data-surface='tool']` rule that set font-family back to the body
+       token — written when the two tokens were the same value, so the
+       declaration was a no-op that became a defect the moment they
+       differed. It was found by asking the browser which rules matched
+       an h1; this is what would have found it without asking. */
     assert(
-      type.loaded.includes('DM Sans'),
-      'no DM Sans face reported as loaded, so the page is rendering in the system ' +
+      type.loaded.includes('Roboto'),
+      'no Roboto face reported as loaded, so body copy is rendering in the system ' +
         `fallback while claiming ${type.body.split(',')[0]}. Faces loaded: ` +
         `${type.loaded.length ? [...new Set(type.loaded)].join(', ') : 'none'}`
     );
     assert(
-      /^"?DM Sans"?/.test(type.body.trim()),
-      `the body is set in ${type.body.split(',')[0]} rather than the house face`
+      type.loaded.includes('Plus Jakarta Sans'),
+      'no Plus Jakarta Sans face reported as loaded, so every heading is rendering in ' +
+        `another face. Faces loaded: ${[...new Set(type.loaded)].join(', ') || 'none'}`
+    );
+    assert(
+      /^"?Roboto"?/.test(type.body.trim()),
+      `the body is set in ${type.body.split(',')[0]} rather than the body face`
+    );
+    assert(
+      /^"?Plus Jakarta Sans"?/.test(type.heading.trim()),
+      `an h1 is set in ${type.heading.split(',')[0]} rather than the display face`
+    );
+
+    /* ================================================================
+       AND ON A TOOL SURFACE, which is where the defect actually was and
+       where this check could not see it.
+
+       The assertion above runs on whatever screen the suite is sitting
+       on, and that is a DOCUMENT surface. The rule that cancelled the
+       display face was scoped to `[data-surface='tool']` — so restoring
+       the defect and re-running left this check green, which was
+       measured rather than assumed: the mutation was performed and it
+       passed.
+
+       A comment two paragraphs up claimed this check would have caught
+       it. That was wrong until this block existed. Tool screens are
+       most of the product, so a type system verified only on the
+       marketing surfaces is verified where it matters least.
+       ================================================================ */
+    const cameFromType = page.url();
+    await page.goto(BASE + '/toolkits/sra', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(400);
+    const toolType = await page.evaluate(async () => {
+      await document.fonts.ready;
+      const h = document.querySelector('h1');
+      return {
+        surface: document.documentElement.getAttribute('data-surface'),
+        heading: h ? getComputedStyle(h).fontFamily : '(no h1)',
+      };
+    });
+    await page.goto(cameFromType, { waitUntil: 'networkidle' });
+
+    assert(
+      toolType.surface === 'tool',
+      `/toolkits/sra reports data-surface="${toolType.surface}", so this measured the ` +
+        'wrong kind of screen and proves nothing about the one it was written for'
+    );
+    assert(
+      /^"?Plus Jakarta Sans"?/.test(toolType.heading.trim()),
+      `a heading on a TOOL screen is set in ${toolType.heading.split(',')[0]} rather than ` +
+        'the display face. A surface rule is overriding --us-font-display'
     );
     assert(
       type.widths[400] !== type.fallback,
@@ -327,15 +431,29 @@ try {
         'face is declared and not actually being used'
     );
 
-    const stops = [400, 500, 600, 700];
-    for (let i = 1; i < stops.length; i += 1) {
-      const prev = stops[i - 1];
-      const here = stops[i];
+    for (const [face, widths] of [
+      ['Roboto', type.widths],
+      ['Plus Jakarta Sans', type.displayWidths],
+    ]) {
+      const stops = Object.keys(widths).map(Number).sort((a, b) => a - b);
+      const shown = stops.map((s) => `${s}:${widths[s]}px`).join(' ');
+      for (let i = 1; i < stops.length; i += 1) {
+        const prev = stops[i - 1];
+        const here = stops[i];
+        assert(
+          widths[here] !== widths[prev],
+          `${face} at weight ${here} renders exactly ${widths[here]}px, the same as ${prev}. ` +
+            'Identical widths mean the variable axis is not being instanced and the browser ' +
+            `is serving one master for both, which is a smeared regular wearing the metrics ` +
+            `of one. Measured: ${shown}`
+        );
+      }
+      const lightest = stops[0];
+      const heaviest = stops[stops.length - 1];
       assert(
-        type.widths[here] > type.widths[prev],
-        `weight ${here} renders ${type.widths[here]}px against ${prev}'s ${type.widths[prev]}px. ` +
-          'Equal or narrower means the variable axis is not being instanced and the ' +
-          'browser is synthesising, which is a smeared regular wearing the metrics of one.'
+        widths[heaviest] > widths[lightest],
+        `${face} at weight ${heaviest} renders ${widths[heaviest]}px, no wider than ${lightest}'s ` +
+          `${widths[lightest]}px. The axis moves but never gets bolder. Measured: ${shown}`
       );
     }
 
@@ -2926,6 +3044,72 @@ try {
       !/\d{4}-\d{2}-\d{2}/.test(refusal),
       `a date was printed alongside the refusal: "${refusal.trim()}"`
     );
+  });
+
+  await check('EVERY TOOLKIT OFFERS A WAY BACK WITHOUT SCROLLING FOR IT', async () => {
+    /* ================================================================
+       THE DEFECT, MEASURED. The only VISIBLE link to the toolkits index
+       sat in the footer of each toolkit screen:
+
+         /toolkits/sra        2,643px      /toolkits/spi       2,771px
+         /toolkits/register   1,836px      /toolkits/maturity  9,893px
+
+       Eleven screens of scrolling to leave the maturity assessment,
+       and on /toolkits/spi nothing marked which toolkit you were on —
+       aria-current was in the document and zero nodes carrying it were
+       rendered, so a screen reader was told and a sighted safety
+       manager was not.
+
+       VISIBILITY, NOT COORDINATES. Two earlier probes missed all of it
+       by counting nodes that matched a selector and filtering on
+       bounding boxes, which let a collapsed menu panel count as
+       on-screen. This asks offsetParent, visibility, opacity and box
+       size — whether the thing is actually rendered — because that is
+       the question a person is asking.
+
+       WHAT TO DO WHEN IT FAILS. A toolkit has stopped rendering
+       ToolNav, or the nav has moved below the first screen. Put it
+       back at the top; do not raise the threshold. The number is
+       generous already — a first viewport is 900px here and the bar
+       sits under 500. */
+    const TOOLKITS = [
+      '/toolkits/sra',
+      '/toolkits/register',
+      '/toolkits/spi',
+      '/toolkits/maturity',
+    ];
+    const cameFrom = page.url();
+    const problems = [];
+    for (const route of TOOLKITS) {
+      await page.goto(BASE + route, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(400);
+      const m = await page.evaluate(() => {
+        const vis = (el) => {
+          const r = el.getBoundingClientRect();
+          const st = getComputedStyle(el);
+          return (
+            el.offsetParent !== null &&
+            st.visibility !== 'hidden' &&
+            st.opacity !== '0' &&
+            r.width > 0 &&
+            r.height > 0
+          );
+        };
+        const backs = [...document.querySelectorAll('a[href="/toolkits"]')]
+          .filter(vis)
+          .map((a) => Math.round(a.getBoundingClientRect().top + window.scrollY))
+          .sort((x, y) => x - y);
+        const here = [...document.querySelectorAll('.toolnav__item.is-here')].filter(vis);
+        return { first: backs[0] ?? null, here: here.length, label: here[0]?.textContent.trim() };
+      });
+      if (m.first === null) problems.push(`${route} has no visible link back to /toolkits at all`);
+      else if (m.first > 900) problems.push(`${route} hides the way back ${m.first}px down`);
+      if (m.here !== 1) {
+        problems.push(`${route} marks ${m.here} toolkits as current; exactly one must be`);
+      }
+    }
+    await page.goto(cameFrom, { waitUntil: 'networkidle' });
+    assert(problems.length === 0, problems.join(' · '));
   });
 
   await check('EVERY DESTINATION IN THE MENU CAN ACTUALLY BE REACHED', async () => {

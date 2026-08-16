@@ -56,6 +56,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import { ToolNav } from '../../shared/tool-nav.js';
 import { attachPrintId } from '../../shared/print-id.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
@@ -373,6 +374,7 @@ export function render(outlet) {
     </section>
 
     <div class="panel wrap doc">
+      ${ToolNav('/toolkits/spi')}
       <nav class="toc" aria-labelledby="toc-title">
         <h2 class="section-title" id="toc-title">When it alerts</h2>
         <ol>

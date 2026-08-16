@@ -65,6 +65,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import { ToolNav } from '../../shared/tool-nav.js';
 import { attachPrintId } from '../../shared/print-id.js';
 import { isSignedIn, authFetch } from '../../shared/session.js';
 import { Select, wireSelects } from '../../components/Select.js';
@@ -377,6 +378,7 @@ export function render(outlet) {
     </section>
 
     <div class="panel wrap doc">
+      ${ToolNav('/toolkits/register')}
       <aside class="toc mat-result no-print">
         <h2 class="section-title">Add an entry</h2>
         ${fromReportId

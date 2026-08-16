@@ -15,6 +15,67 @@
          the top of the app, and a dark bar above a light app reads as a
          browser that failed to hide rather than as a designed edge. -->
     <meta name="theme-color" content="#f5f0e8" />
+
+    <!-- ================================================================
+         WHAT A SHARED LINK CARRIES.
+
+         Pasting usalamasms.com into WhatsApp, LinkedIn or Slack produced
+         a bare title and nothing else. Measured on the built file: zero
+         og: tags, zero twitter: tags, and no description at all — so a
+         scraper found the title element and had nothing to draw a card
+         with. For a product being sent to subject matter experts to
+         evaluate, that is the first impression and it was blank.
+
+         ABSOLUTE URLS, because a scraper does not resolve relative ones
+         against the page it fetched in every implementation, and the
+         ones that get it wrong show no image rather than a broken one.
+
+         ONE CARD FOR EVERY ROUTE, deliberately. This is a single-page
+         app and a scraper does not run JavaScript, so per-route tags
+         would need prerendering — a build-time change for a gain that
+         matters on one URL. The root is what gets shared; the rest is
+         honest as long as the card describes the product rather than a
+         screen.
+
+         THE IMAGE IS NOT PRECACHED. scripts/stamp-sw.mjs excludes it by
+         name. It is fetched by scrapers and never by the app, so
+         precaching it would charge a ramp agent 62 KB on install for a
+         file they will never see. That exclusion is the whole reason it
+         is affordable, and it is checked.
+         ================================================================ -->
+    <meta
+      name="description"
+      content="Eleven of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
+               operator in East and Central Africa. Files with the radio off, computes every
+               reporting deadline, and holds a record an auditor can verify."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="UsalamaSMS" />
+    <meta property="og:url" content="https://usalamasms.com/" />
+    <meta property="og:title" content="UsalamaSMS — Safety intelligence for African skies" />
+    <meta
+      property="og:description"
+      content="Eleven of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
+               operator in East and Central Africa. Files with the radio off, computes every
+               reporting deadline, and holds a record an auditor can verify."
+    />
+    <meta property="og:image" content="https://usalamasms.com/og-card.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="UsalamaSMS — the whole safety management system, for operators the incumbents
+               priced out."
+    />
+    <meta property="og:locale" content="en_KE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="UsalamaSMS — Safety intelligence for African skies" />
+    <meta
+      name="twitter:description"
+      content="Eleven of ICAO Annex 19's twelve elements, for the 3-to-15 aircraft operator in
+               East and Central Africa."
+    />
+    <meta name="twitter:image" content="https://usalamasms.com/og-card.jpg" />
     <meta name="color-scheme" content="light" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />

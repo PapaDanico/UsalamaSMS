@@ -15,28 +15,37 @@
 
 :root {
   /* ---- Type ------------------------------------------------ */
-  /* DM Sans — the face the JK & Associates platform is set in, and the
-     one the sibling product already ships. Usalama was on Inter, chosen
-     before there was a house face to align with; two products under one
-     corporate banner set in two different sans read as two vendors.
+  /* ROBOTO, on the owner's design system, for all UI copy. It replaces
+     DM Sans, which was ported from the JK platform so that two products
+     under one banner did not read as two vendors — a sound argument,
+     superseded by a stated system rather than overruled by taste.
 
-     Still a stand-in for the licensed geometric sans, self-hosted so
-     the CSP can forbid every off-origin request. No call site names a
-     family directly — when the licensed face arrives, replace the
-     @font-face sources in fonts.css and nothing else. */
-  --us-font: 'DM Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+     Self-hosted so the CSP can forbid every off-origin request. No call
+     site names a family directly: both faces are reached through these
+     two tokens, which is what made this change a token edit rather than
+     a sweep. */
+  --us-font: 'Roboto', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'Helvetica Neue', Arial, sans-serif;
-  /* The JK & Associates identity is a Garamond. It is the DISPLAY face
-     here and not the body face: an old-style serif at 13–15px on a
-     mid-range Android in direct sunlight costs legibility a safety
-     report cannot afford, and nobody sets a form field or a column of
-     risk indices in one. Headlines and the wordmark carry the identity;
-     the interface carries the data. See fonts.css. */
-  /* ONE FACE. Kanda sets --ca-font-display: var(--ca-font) and builds
-     its hierarchy from weight alone; this now does the same. The token
-     stays rather than being deleted at every call site, so a second
-     display face — if one is ever licensed — is one line again. */
-  --us-font-display: var(--us-font);
+  /* PLUS JAKARTA SANS, on h1-h4 and key figures.
+
+     THE TOKEN EARNED ITS KEEP. It has pointed at --us-font since the
+     Garamond was removed, kept deliberately "so a second display face —
+     if one is ever licensed — is one line again". This is that line:
+     every heading rule already reads this token, so a second face cost
+     one declaration rather than a sweep across nineteen screens.
+
+     A DIFFERENT ARGUMENT FROM THE SERIF IT ONCE HELD. That one was an
+     old-style Garamond and it was removed because a serif at 13-15px on
+     a mid-range Android in sunlight costs legibility a safety report
+     cannot afford. This is a geometric sans at heading sizes only; the
+     body face still carries every form field and every column of risk
+     indices, which is where that objection actually bit. */
+  --us-font-display: 'Plus Jakarta Sans', var(--us-font);
+  /* Tight, on the system's instruction. A display face set at 38-68px
+     tracks loose by default because its metrics are drawn for text
+     sizes; -0.02em is the correction, and it is a token so the headline
+     rules cannot each pick their own. */
+  --us-tracking-display: -0.02em;
   /* Tabular figures matter here in a way they do not on a marketing
      site: risk indices, SPI values and report references are read in
      columns and compared down the column. */
@@ -127,10 +136,28 @@
      68. A 68px h1 above a triage queue is exactly the marketing
      furniture this pass has been removing. The mapping was written for
      that reason and it still holds; only the numbers under it moved. */
-  --us-text-lg: clamp(20px, 2.2vw, 24px);
-  --us-text-xl: clamp(24px, 3vw, 32px);
-  --us-text-2xl: clamp(30px, 4.2vw, 46px);
-  --us-text-3xl: clamp(38px, 6vw, 68px);
+  /* THE DISPLAY RUNGS CAME DOWN AND THE READING RUNGS DID NOT, which is
+     the same split the spacing scale makes and for the same reason.
+
+     20-24 / 24-32 / 30-46 / 38-68  ->  18-21 / 21-27 / 27-40 / 34-58,
+     about 12% off the top. A heading is a label on a region; it has to
+     win against the copy under it, and beyond that every extra pixel is
+     scroll a safety manager pays for on a screen they are trying to
+     compare things across.
+
+     --us-text-base and --us-text-md are UNTOUCHED at 14 and 15.5px.
+     Those are what a reporter reads on a handset on a windy apron, they
+     are not what makes a screen feel loose, and check:a11y over
+     twenty-six rendered screens is what holds that line.
+
+     Also a correction for the face. Plus Jakarta Sans has a larger
+     x-height than the DM Sans this scale was tuned against, so the same
+     nominal size reads bigger — part of this reduction is keeping the
+     APPARENT size where it was rather than shrinking it. */
+  --us-text-lg: clamp(18px, 1.9vw, 21px);
+  --us-text-xl: clamp(21px, 2.6vw, 27px);
+  --us-text-2xl: clamp(27px, 3.6vw, 40px);
+  --us-text-3xl: clamp(34px, 5.2vw, 58px);
 
   --us-weight-normal: 400;
   --us-weight-medium: 500;
@@ -151,11 +178,29 @@
   --us-space-3: 12px;
   --us-space-4: 16px;
   --us-space-5: 20px;
-  --us-space-6: 24px;
-  --us-space-8: 32px;
-  --us-space-10: 40px;
-  --us-space-12: 48px;
-  --us-space-16: 64px;
+  /* THE LARGE STEPS CAME DOWN, AND THE SMALL ONES DID NOT.
+
+     The instruction was reduced spacing for better readability, and
+     those are only the same thing at one end of the scale. Steps 1-5
+     set the distance between a label and its field, a checkbox and its
+     hit area, a chip and the chip beside it — squeezing those costs a
+     thumb in gloves its target, which is the one interaction this
+     product cannot afford to make harder.
+
+     Steps 6-16 are section padding and band height. Those were tuned
+     for a marketing page and they push a working screen apart, so a
+     safety manager scrolls between things they are trying to compare.
+     Reading is easier when related things are closer, and these are the
+     steps that decide what counts as related.
+
+     24/32/40/48/64 -> 20/28/34/40/52, about 15% at the top of the
+     scale. Measured after: the maturity assessment lost roughly a
+     screen and a half of height without a single element moving. */
+  --us-space-6: 20px;
+  --us-space-8: 28px;
+  --us-space-10: 34px;
+  --us-space-12: 40px;
+  --us-space-16: 52px;
 
   /* ---- Radius ---------------------------------------------- */
   --us-radius-sm: 8px;
@@ -556,7 +601,16 @@ body {
    here was about x-heights — the correction it described was a
    correction FOR the serif, and it goes with the serif.
    ===================================================================== */
-h1, h2, h3, h4 { font-family: var(--us-font-display); font-weight: 700; margin: 0 0 .4em; text-wrap: balance; }
+h1, h2, h3, h4 {
+  font-family: var(--us-font-display);
+  font-weight: 700;
+  letter-spacing: var(--us-tracking-display);
+  /* .4em -> .32em. Part of the spacing pass: a heading sits closer
+     to what it introduces, which is what makes it read as a label
+     for that block rather than as a divider between two. */
+  margin: 0 0 .32em;
+  text-wrap: balance;
+}
 h1 { font-size: var(--us-text-3xl);  line-height: 1.08; letter-spacing: var(--us-tracking-tight); }
 h2 { font-size: var(--us-text-2xl);  line-height: 1.12; letter-spacing: var(--us-tracking-tight); }
 /* Component heading rules below are written :is(h2, h3, h4) rather than
@@ -3213,10 +3267,27 @@ html { scroll-padding-top: var(--us-chrome); }
    all twenty-four rendered screens and is what holds that line.
    ===================================================================== */
 
-/* 27 / 21 / 17 rather than 52 / 37 / 21, and in the body face. A tool's
-   heading is a label on a region, not an argument for reading on. */
+/* 27 / 21 / 17 rather than 52 / 37 / 21. A tool's heading is a label on
+   a region, not an argument for reading on — so the SIZE drops here and
+   that is the part of this rule worth keeping.
+
+   IT USED TO SET THE BODY FACE TOO, and that line said "and in the body
+   face" as though it were a decision. It could not have been one:
+   --us-font-display aliased --us-font at the time, so the declaration
+   was a no-op describing an intent nothing enforced. The moment a real
+   display face arrived it stopped being a no-op and started CANCELLING
+   it — on every tool screen, which is most of the product, silently.
+
+   Found by asking the browser which rules matched an h1 rather than by
+   reading either file: the computed family came back Roboto and the
+   tracking came back -0.011em, and this selector was the third and
+   winning entry in the list.
+
+   The owner's design system puts the display face on h1-h4 with no
+   tool exception, so the family declaration is gone and the size
+   distinction stays. Tracking still tightens, because -0.02em is drawn
+   for a 46px headline and a 27px one wants less. */
 [data-surface='tool'] :is(h1, h2, h3, h4) {
-  font-family: var(--us-font);
   letter-spacing: var(--us-tracking-snug);
 }
 [data-surface='tool'] h1 { font-size: var(--us-text-xl); line-height: 1.2; }
@@ -5332,4 +5403,64 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .notice--handoff .handoff__said:empty {
   display: none;
+}
+
+/* ---- toolkit wayfinding -------------------------------------------
+   The row that answers "how do I get back". See shared/tool-nav.js for
+   the measurements that produced it — the short version is that the
+   only visible way out of the maturity assessment was 9,893px down.
+
+   Sits in the working column rather than the dark band, because it is
+   navigation the reader uses repeatedly and the band is the screen
+   introducing itself once. */
+.toolnav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-3) var(--us-space-4);
+  padding-block: var(--us-space-4);
+  border-bottom: 1px solid var(--us-line);
+  margin-bottom: var(--us-space-6);
+}
+
+.toolnav__back {
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-medium);
+  color: var(--us-teal-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.toolnav__back:hover { text-decoration: underline; }
+
+.toolnav__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toolnav__item {
+  display: inline-block;
+  padding: var(--us-space-1) var(--us-space-3);
+  border: 1px solid var(--us-line-strong);
+  border-radius: var(--us-radius-pill);
+  font-size: var(--us-text-sm);
+  color: var(--us-charcoal);
+  text-decoration: none;
+  background: var(--us-paper);
+}
+.toolnav__item:hover { border-color: var(--us-teal); }
+
+/* THE "YOU ARE HERE" THAT WAS MISSING. aria-current was already on the
+   page and painted nothing, so a screen reader knew and a safety
+   manager did not. Contrast, not colour alone — the filled pill reads
+   as current without depending on hue. */
+.toolnav__item.is-here {
+  background: var(--us-charcoal);
+  border-color: var(--us-charcoal);
+  color: var(--us-paper);
+  font-weight: var(--us-weight-medium);
+  cursor: default;
 }

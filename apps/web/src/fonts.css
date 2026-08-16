@@ -1,11 +1,63 @@
 /* ============================================================
    Typefaces.
 
-   DM SANS, which is the face the JK & Associates platform is set in and
-   the one its sibling product already ships. Usalama was on Inter — a
-   reasonable stand-in chosen before there was a house face to align
-   with, and wrong once there was: two products under one corporate
-   banner, set in two different sans, read as two vendors.
+   THREE FACES, EACH WITH ONE JOB, on the owner's design system:
+
+     Display — Plus Jakarta Sans, on h1-h4 and key figures, tracking
+               -0.02em.
+     Body    — Roboto, on all UI copy. The default on `body`.
+     Data    — JetBrains Mono, on every number and identifier, always
+               with tabular-nums.
+
+   IT WAS ONE FACE — DM Sans, ported from the JK platform so that two
+   products under one banner did not read as two vendors. That argument
+   was sound and the owner has replaced it with a stated system; the
+   history is kept below because the LESSONS are still live.
+
+   AND IT IS LIGHTER, which is the part worth measuring. DM Sans shipped
+   latin at 61.3 KB and latin-ext at 30.6 KB. Two faces now cost 26.7
+   and 42.1 on the common path:
+
+     before   98.1 KB of fonts precached
+     after    75.1 KB of fonts precached
+
+   TWO FAMILIES FOR LESS THAN ONE, because both are variable latin
+   subsets and DM Sans's cut was unusually heavy.
+
+   ------------------------------------------------------------
+   LATIN-EXT IS SHIPPED AND NOT PRECACHED, and that is a correction.
+
+   This file used to say the extended file "is fetched only when a
+   character needs it, so it costs nothing on the common path". That is
+   what unicode-range promises and it was FALSE IN THIS PRODUCT: the
+   service worker precaches by extension, so dm-sans-latin-ext.woff2 was
+   downloaded on install by everyone, 30.6 KB of Eastern European
+   glyphs, before a reporter could file anything. Precaching defeated
+   the laziness the sentence depended on.
+
+   So the extended cuts are excluded from PRECACHE in
+   scripts/stamp-sw.mjs, by the same mechanism and for the same reason
+   as the share card. They are still served, so a name with a diacritic
+   renders in the right face rather than falling back mid-word — it just
+   costs the person who has one, rather than everybody.
+
+   ------------------------------------------------------------
+   THE WEIGHT RANGE IS DECLARED, NOT ASSUMED. `font-weight: 400 700`
+   tells the browser to instance the wght axis. Declare a single weight
+   on a variable file and every rule that asks for 700 gets a
+   SYNTHESISED bold — smeared, wrong metrics, and it looks close enough
+   in a screenshot to survive review. scripts/check-brand.mjs measures
+   real 400 and 700 widths and fails when they match. Jakarta's axis
+   runs to 800 and is declared as it is rather than clamped to Roboto's.
+
+   SELF-HOSTED AND SAME-ORIGIN, which is the mechanism rather than a
+   preference. netlify.toml's CSP sets `font-src 'self'` with no CDN
+   exception, so a font served from anywhere else fails to load rather
+   than quietly working — this product promises a safety narrative
+   reaches the safety office and nobody else, and a font request is a
+   request. The design system says next/font/google; this is a Vite app
+   and the equivalent is what that does under the hood — fetched at
+   build time, served from our own origin, never from a CDN.
 
    THIS FILE DECLARED NOTHING FOR THE WHOLE LIFE OF THE PROJECT, once.
    It was fourteen lines of comment explaining that the woff2 files were
@@ -17,61 +69,51 @@
    sans — so the substitution was invisible here and obvious on a
    handset. The lesson is kept because it is the reason this file has a
    gate behind it now.
-
-   ONE VARIABLE FILE, 400 to 700 CONTINUOUS. Four static weights were
-   four downloads for four fixed stops; the variable latin subset is
-   62 KB against 96 KB and covers every weight in between. The sibling
-   product shipped four @font-face rules pointing at four BYTE-IDENTICAL
-   copies of this same variable file — 148 KB fetched to deliver 37 KB,
-   because nobody checked that four names meant four faces. Naming the
-   axis range once is what stops that.
-
-   THE WEIGHT RANGE IS DECLARED, NOT ASSUMED. `font-weight: 400 700`
-   tells the browser to instance the wght axis. Declare a single weight
-   on a variable file and every rule that asks for 700 gets a
-   SYNTHESISED bold — smeared, wrong metrics, and it looks close enough
-   in a screenshot to survive review. scripts/check-brand.mjs measures
-   real 400 and 700 widths and fails when they match.
-
-   LATIN AND LATIN-EXT, split by unicode-range. The extended file is
-   fetched only when a character needs it, so it costs nothing on the
-   common path and prevents the alternative: one accented glyph in a
-   name falling back to the system sans mid-word.
-
-   SELF-HOSTED AND SAME-ORIGIN, which is the mechanism rather than a
-   preference. netlify.toml's CSP sets `font-src 'self'` with no CDN
-   exception, so a font served from anywhere else fails to load rather
-   than quietly working — this product promises a safety narrative
-   reaches the safety office and nobody else, and a font request is a
-   request.
-
-   DM Sans remains a STAND-IN for the licensed geometric sans, recorded
-   in docs/05-SWITCHES.md. When that family arrives, replace the two
-   sources below and nothing else: no call site names a family directly;
-   every rule reads --us-font.
    ============================================================ */
 
 @font-face {
-  font-family: 'DM Sans';
+  font-family: 'Plus Jakarta Sans';
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 400 800;
   /* `swap`, deliberately. `block` hides text for up to three seconds on
      a cold load over a bad link, and this app's first screen is a form
      somebody is trying to fill in beside an aircraft. Text they can read
      in the fallback beats no text in the right face. */
   font-display: swap;
-  src: url('/fonts/dm-sans-latin.woff2') format('woff2');
+  src: url('/fonts/jakarta-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
     U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
     U+FEFF, U+FFFD;
 }
 
 @font-face {
-  font-family: 'DM Sans';
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/jakarta-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Roboto';
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/dm-sans-latin-ext.woff2') format('woff2');
+  src: url('/fonts/roboto-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/roboto-latin-ext.woff2') format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
     U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
     U+2113, U+2C60-2C7F, U+A720-A7FF;

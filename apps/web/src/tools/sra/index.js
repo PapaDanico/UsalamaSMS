@@ -29,6 +29,7 @@
    of nothing before the reader reaches anything that was assessed. */
 
 import { html, raw } from '../../shared/html.js';
+import { ToolNav } from '../../shared/tool-nav.js';
 import { attachPrintId } from '../../shared/print-id.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
@@ -175,6 +176,7 @@ export function render(outlet) {
     </section>
 
     <div class="panel wrap doc">
+      ${ToolNav('/toolkits/sra')}
       <nav class="toc" aria-labelledby="toc-title">
         <h2 class="section-title" id="toc-title">The five steps</h2>
         <ol id="sra-steps"></ol>
