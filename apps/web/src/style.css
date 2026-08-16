@@ -4471,15 +4471,67 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .reg-entry__flag { font-size: var(--us-text-xs); color: var(--us-ochre-text); }
 
 .reg-entry__meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--us-space-3);
   margin: var(--us-space-3) 0 0;
   padding-top: var(--us-space-3);
   border-top: 1px solid var(--us-border);
-  font-size: var(--us-text-xs);
+}
+
+/* ---------------------------------------------------------------------
+   A RECORD'S FACTS, EACH SAYING WHICH KIND IT IS.
+
+   Kanda's compliance calendar gives every instrument a metadata strip
+   where each fact carries its own marker — the date, the renewal
+   cadence and whether it is payable are three different KINDS of thing
+   and read as three. This register ran them together: "Accountable
+   Executive · review by 2026-11-14 · entered directly", one grey line,
+   and the reader has to know the schema to parse it. On a register an
+   inspector reads, which field is which is the question.
+
+   Labels rather than icons, and that is the honest choice here rather
+   than a compromise. This product has a glyph gate and a deliberately
+   small set; three new pictograms would each need a meaning somebody
+   learns, where "Owner" needs none. It also prints — a register goes to
+   a safety meeting on paper, and a labelled fact survives a monochrome
+   photocopy where a 12px icon does not.
+
+   `<dl>` because that is what this is: three terms and their values.
+   The wrapper div per pair is what keeps them associated when the strip
+   wraps to a second line — without it a dt can end a row and its dd
+   start the next one.
+   --------------------------------------------------------------------- */
+.rec-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-3) var(--us-space-6);
+}
+
+.rec-meta__item { min-width: 0; }
+
+.rec-meta__label {
+  font-size: var(--us-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
   color: var(--us-text-tertiary);
+}
+
+.rec-meta__value {
+  margin: 2px 0 0;
+  font-size: var(--us-text-sm);
+  color: var(--us-text-primary);
+}
+
+/* A date is compared, not read. */
+.rec-meta__value--figure { font-variant-numeric: tabular-nums; }
+
+/* THE DESTRUCTIVE ACTION IS NOT A FACT. "Remove" sat inside the strip
+   above, which gave the one irreversible control on the row the same
+   weight and the same position as the owner's name. It gets its own
+   line, at the end, aligned away from the reading edge. */
+.reg-entry__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: var(--us-space-3) 0 0;
 }
 
 /* What is here and what is not, in the SAME weight, so the page cannot
