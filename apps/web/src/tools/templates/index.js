@@ -28,6 +28,26 @@
 
 import { html } from '../../shared/html.js';
 import { TEMPLATES, elementsWithTemplate } from '../../../../../packages/shared/src/templates.ts';
+/* THE AUTHORITY'S OWN GUIDANCE, kept in its own module and rendered in
+   its own section. templates.ts opens by saying its contents are not
+   Kenyan law, which was honest and was the best shelf available; these
+   nine are the shelf that makes that caveat unnecessary. Filing them
+   together would flatten the distinction between a template an
+   operator may copy and a circular an operator is measured against. */
+/* THE CIRCULAR TABLE'S SCROLL CONTAINER CARRIES tabindex AND A NAME,
+   and the other tables on this site do not need either. Theirs contain
+   links, so a keyboard already reaches inside and scrolls them. This
+   one is entirely text, which makes it a region a mouse can scroll and
+   a keyboard cannot — axe reports scrollable-region-focusable, and it
+   is right rather than pedantic: the reader most likely to be working
+   through a regulator's index by keyboard is the one who cannot use a
+   trackpad to drag it sideways.
+
+   Written here rather than beside the markup because an HTML comment
+   inside a tagged template literal is string content: no minifier
+   removes it and every reporter downloads it. CLAUDE.md records three
+   separate occasions that cost this repository real bytes. */
+import { CIRCULARS, CIRCULARS_CAVEAT } from '../../../../../packages/shared/src/circulars.ts';
 import { SMS_ELEMENTS } from '../../../../../packages/shared/src/maturity.ts';
 
 const ELEMENT_IDS = SMS_ELEMENTS.map((e) => e.id);
@@ -60,6 +80,10 @@ export function render(outlet) {
             <dd class="stat__label">Elements with a template behind them</dd>
           </div>
           <div class="stat">
+            <dt class="stat__value">${CIRCULARS.length}</dt>
+            <dd class="stat__label">KCAA circulars read</dd>
+          </div>
+          <div class="stat">
             <dt class="stat__value">0</dt>
             <dd class="stat__label">Copies held here, deliberately</dd>
           </div>
@@ -72,6 +96,7 @@ export function render(outlet) {
         <h2 class="section-title" id="toc-title">On this page</h2>
         <ol>
           <li><a href="#first">Read this first</a></li>
+          <li><a href="#circulars">The Authority's Advisory Circulars</a></li>
           ${TEMPLATES.map((t) => html`<li><a href="#${t.id}">${t.title}</a></li>`)}
         </ol>
       </nav>
@@ -99,8 +124,50 @@ export function render(outlet) {
           </p>
         </section>
 
+        <section class="doc-section" id="circulars">
+          <h2>The Authority's Advisory Circulars</h2>
+          <p class="hint">${CIRCULARS_CAVEAT}</p>
+          <div class="table-scroll" tabindex="0" role="region"
+               aria-label="KCAA Advisory Circulars">
+          <table>
+            <caption class="visually-hidden">
+              KCAA Advisory Circulars, their reference and issue date, the Annex 19
+              elements they bear on, what this product holds against each, and what
+              remains the operator's own work.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Circular</th>
+                <th scope="col">Elements</th>
+                <th scope="col">What we hold</th>
+                <th scope="col">What is still yours</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${CIRCULARS.map(
+                (c) => html`<tr>
+                  <th scope="row">
+                    <span class="tag">${c.reference}</span>
+                    <span class="cell-none">${c.title}</span>
+                    <span class="cell-none">
+                      Issued ${new Date(c.issued).toLocaleDateString('en-GB', {
+                        month: 'long',
+                        year: 'numeric'
+                      })}${c.issuedDateDisputed ? ' \u00b7 date disputed on the document itself' : ''}
+                    </span>
+                  </th>
+                  <td>${c.elements === 'ALL' ? 'All twelve' : c.elements.join(', ')}</td>
+                  <td>${c.weHold}</td>
+                  <td>${c.youStillNeed}</td>
+                </tr>`
+              )}
+            </tbody>
+          </table>
+          </div>
+        </section>
+
         <section class="doc-section">
-          <h2>The documents</h2>
+          <h2>Templates from other authorities</h2>
           ${TEMPLATES.map(
             (template) => html`<article class="card cov" id="${template.id}">
               <div class="cov__head">
