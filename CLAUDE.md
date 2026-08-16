@@ -9,8 +9,8 @@ wrong. Everything else lives in `docs/` — start with
 ## RLS carries ONE restrictive deny-all per table, and that is the posture
 
 Every table in `public` has `rowsecurity = true` and exactly one policy:
-`deny_all_not_owner`, **RESTRICTIVE**, `USING (false)`. Nothing is
-granted to anybody. That is the security posture:
+`deny_all_not_owner`, **RESTRICTIVE**, `USING (false)`. That is the
+security posture:
 
 - nothing in this product uses `supabase-js`, `createClient()` or
   PostgREST. The Supabase **anon/publishable key is deliberately absent
@@ -19,7 +19,53 @@ granted to anybody. That is the security posture:
   which connects as the database owner and enforces tenancy in SQL
   (`orgId` on every tenant-owned table, indexed first);
 - **RLS does not apply to a table's owner**, so the API is unaffected.
-  Everybody else reads nothing.
+
+### What the deny-all does and does not restrain
+
+This section used to say "nothing is granted to anybody", and that was
+never true. Measured against production on 16 August 2026:
+
+| role | `rolbypassrls` | grants in `public` |
+|---|---|---|
+| `anon` | false | 196 |
+| `authenticated` | false | 196 |
+| `service_role` | **true** | 196 |
+| `postgres` | true | 196 |
+
+Supabase issues those grants when a project is created; nobody here
+removed them. So the deny-all is not a second lock behind an empty
+grant table — **it is the only lock**, and it is load-bearing.
+
+Against `anon` and `authenticated` it holds completely: neither can
+bypass RLS, so a RESTRICTIVE `USING (false)` denies them every row no
+matter what they hold. That part of the posture is real.
+
+**`service_role` bypasses RLS, so the policy cannot touch it.** A token
+signed with the project's JWT secret and carrying `"role":
+"service_role"` reads and writes every table in `public`, and no policy
+in this database will stop it. The only control on that path is the
+secrecy of the JWT secret.
+
+That control had failed. `SUPABASE_JWT_SECRET` sat in the Netlify
+environment with `is_secret: false` — readable in cleartext by anything
+with read access to the project, scoped to builds and post-processing,
+from 11 August. Nothing in this codebase ever read it; the Netlify
+Supabase extension created it. It has been deleted, along with
+`SUPABASE_ANON_KEY`, which was exposed the same way and equally unused.
+
+**Deleting it is not rotating it.** Anyone who read the value still
+holds a forgeable `service_role` credential until the secret is rotated
+in the Supabase dashboard, which no MCP tool can do. Until then, treat
+the database as reachable by anyone who had read access to the Netlify
+project during that window.
+
+If you want the deny-all to be a genuine second lock rather than the
+only one, the change is `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM
+anon, authenticated, service_role`. Nothing in this product would
+notice — the API connects as the owner, and evidence storage uses the
+`storage` schema rather than `public`. It would, however, break the
+Supabase dashboard's table editor, which is why it is written here as a
+decision rather than taken as a cleanup.
 
 ### It used to be "zero policies", and that is why it changed
 
