@@ -155,6 +155,16 @@ export const ACCOUNT_DESTINATIONS: ReadonlyArray<AccountDestination> = Object.fr
     needs: null,
     group: "Your account",
   },
+  {
+    href: "/account/logo",
+    label: "Your operator's mark",
+    hint: "The logo on every pack this operator prints for a regulator.",
+    /* Same authority as the rest of the operator's configuration: what
+       goes on a document handed to an authority is the safety
+       manager's, not a reporter's. */
+    needs: "config.manage",
+    group: "Your account",
+  },
 ]);
 
 /**

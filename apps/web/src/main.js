@@ -326,6 +326,13 @@ router
     (el) => import('./tools/login/profile.js').then((m) => m.render(el)),
     { title: 'Your profile', surface: 'tool' }
   )
+  /* Lazy for the same reason, and more so: this one carries a canvas
+     resizer that only ever runs when somebody uploads a mark. */
+  .register(
+    '/account/logo',
+    (el) => import('./tools/login/logo-panel.js').then((m) => m.render(el)),
+    { title: 'Your operator’s mark', surface: 'tool' }
+  )
   /* LAZY, all of them. A ramp agent filing a hazard at a remote strip
      opens none of these, and every kilobyte here would otherwise be
      charged to the screen they do open — which loads over the link that

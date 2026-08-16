@@ -1777,7 +1777,40 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    The signed-out treatment still needs its 0.8 KB. That is now a raise
    to argue for on its own merits rather than one already banked. */
-const BUDGET = { entry: 217 * 1024, js: 513 * 1024, css: 64 * 1024 };
+/* =====================================================================
+   TOTAL JS 513 -> 520 KB: THE OPERATOR'S MARK ON THEIR OWN DOCUMENTS.
+
+   Every pack this product prints — a risk assessment, the register,
+   the indicator table, the SMS record — went out under UsalamaSMS's
+   identity. The document is the OPERATOR'S: their assessment, their
+   risk position, their name on the line to an authority. So they can
+   now put their mark on it.
+
+   THE ENTRY CHUNK IS UNTOUCHED, which is the number that matters and
+   the reason this raise is the total rather than both. 210.6 KB of
+   217, unchanged to the decimal by this feature. The upload screen is
+   lazy — /account/logo, imported on click — so a ramp agent filing a
+   hazard at a remote strip never downloads the canvas resizer, the
+   validator or the form. It is charged to the safety manager who opens
+   a settings screen on an office connection, once.
+
+   WHAT THE WEIGHT IS. A file picker, a canvas pass that downscales to
+   512px on the longest edge, and checkLogo() shared with the route.
+   The canvas pass is doing three jobs at once: it enforces the ceiling
+   BEFORE a slow link carries the bytes, it normalises whatever format
+   was chosen into one the server accepts, and — the one worth the
+   kilobytes — it strips metadata, because a logo exported from a
+   design tool carries author, software and sometimes a file path with
+   somebody's name in it.
+
+   SVG IS REFUSED RATHER THAN RASTERISED, in the client and in the
+   route, for the same reason in both: it is markup that can carry
+   script, and this image renders into the operator's own pages.
+   tests/logo.test.ts mutation-checks that refusal and the anchoring of
+   the data-URI pattern — unanchored, it accepts
+   `javascript:alert(1)//data:image/png;base64,...`.
+   ===================================================================== */
+const BUDGET = { entry: 217 * 1024, js: 520 * 1024, css: 64 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

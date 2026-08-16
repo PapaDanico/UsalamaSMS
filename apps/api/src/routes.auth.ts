@@ -562,7 +562,18 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const [org, user] = await Promise.all([
       prisma.org.findUnique({
         where: { id: req.auth!.org },
-        select: { name: true, aocNumber: true, jurisdiction: true },
+        select: {
+          name: true,
+          aocNumber: true,
+          jurisdiction: true,
+          /* THE LOGO COMES BACK ON /me, not from /config, and that is a
+             performance decision rather than a modelling one. The print
+             block reads its identity from here already; putting the
+             mark anywhere else means every printed pack issues a second
+             request while a print dialog is opening, and a print dialog
+             does not wait. */
+          config: { select: { logo: true } },
+        },
       }),
       /* WHO THE PERSON IS, not only which tenant they are in. The
          account area could not say "you are signed in as" without this
@@ -589,6 +600,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       orgName: org?.name ?? null,
       aocNumber: org?.aocNumber ?? null,
       jurisdiction: org?.jurisdiction ?? null,
+      logo: org?.config?.logo ?? null,
       /* THE PERMISSIONS THEMSELVES, and this is what stops the account
          area becoming a second copy of the matrix.
 

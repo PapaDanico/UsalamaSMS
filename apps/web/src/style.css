@@ -949,6 +949,17 @@ html { scroll-padding-top: var(--us-chrome); }
 
 /* Hidden entirely on screen: this exists for paper. */
 .print-id { display: none; }
+/* CAPPED IN CSS AS WELL AS IN BYTES. checkLogo() holds the FILE small;
+   this holds the RENDERING small, and they are different failures. A
+   correctly-sized 512px mark still prints four inches tall if nothing
+   says otherwise, pushing the document it is heading onto page two. */
+.print-id__logo {
+  display: block;
+  max-height: 18mm;
+  max-width: 60mm;
+  width: auto;
+  margin-bottom: 3mm;
+}
 
 .print-id__org {
   font-family: var(--us-font-display);
