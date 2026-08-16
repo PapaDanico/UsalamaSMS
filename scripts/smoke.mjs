@@ -287,24 +287,61 @@ try {
        byte-identical copies of this same file for exactly that reason —
        four names read as four faces to everyone who looked.
 
-       A synthesised bold gives itself away in the widths: with only a
-       400 face, 400 and 500 render identically and 600 and 700 render
-       identically, because synthesis has one setting. A real axis moves
-       at every stop. So the assertion is STRICTLY increasing, which no
-       synthesis can satisfy. */
+       A synthesised bold gives itself away in the widths, and the
+       ASSERTION HERE WAS WRONG ABOUT HOW. It demanded a strictly
+       increasing width at every stop, reasoning that a real axis "moves
+       at every stop" and synthesis has one setting. The first half is
+       true; the second half does not follow, and Roboto is the
+       counter-example. Measured against this build, the string below at
+       40px:
+
+         weight      400    500    600    700    800
+         real axis   470    474    473    479    479 (clamped to 700)
+         synthesised 470    470    470    470    470
+
+       The axis IS instanced — every adjacent pair differs — and the
+       design's advance width simply DIPS by 1px between 500 and 600.
+       Nothing is wrong with the font; the assertion pinned a property
+       the format never promised, so a legitimate face change turned it
+       red on a green build. That is "assert the property, not the
+       number" in its other form: monotonicity was a coincidence of the
+       previous face, not the rule.
+
+       What synthesis actually does is collapse the range ENTIRELY —
+       every stop renders at the 400 width. That row was measured by
+       declaring `font-weight: 400` and rebuilding, not assumed. So the
+       rule is that ADJACENT STOPS DIFFER, which no synthesis can
+       satisfy and no legitimate variable design can break, plus one
+       direction assertion across the declared range so a face that
+       jittered without ever getting bolder still fails.
+
+       BOTH FACES CARRY WIDTHS NOW. This measured only Roboto while its
+       own heading said "both", so the display axis — the one under
+       every h1, and the only one that reaches 800 — had nothing behind
+       it but a `loaded` check. */
     const type = await page.evaluate(async () => {
       await document.fonts.ready;
       const loaded = [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family);
       const el = document.createElement('span');
       el.style.cssText =
-        'position:absolute;visibility:hidden;white-space:nowrap;font-size:40px;font-family:"Roboto"';
+        'position:absolute;visibility:hidden;white-space:nowrap;font-size:40px';
       el.textContent = 'Hazard identification 0123';
       document.body.appendChild(el);
-      const widths = {};
-      for (const w of [400, 500, 600, 700]) {
-        el.style.fontWeight = String(w);
-        widths[w] = el.getBoundingClientRect().width;
-      }
+      const widthsFor = (family, stops) => {
+        el.style.fontFamily = `"${family}"`;
+        const w = {};
+        for (const g of stops) {
+          el.style.fontWeight = String(g);
+          w[g] = el.getBoundingClientRect().width;
+        }
+        return w;
+      };
+      // The stops each face actually DECLARES. Probing 800 on a face
+      // declared 400-700 measures the clamp, not the axis, and two
+      // clamped stops are legitimately equal — which would fail the
+      // adjacent-pairs rule for a reason that is not a defect.
+      const widths = widthsFor('Roboto', [400, 500, 600, 700]);
+      const displayWidths = widthsFor('Plus Jakarta Sans', [400, 500, 600, 700, 800]);
       el.style.fontFamily = 'no-such-family-xyz';
       el.style.fontWeight = '400';
       const fallback = el.getBoundingClientRect().width;
@@ -313,6 +350,7 @@ try {
       return {
         loaded,
         widths,
+        displayWidths,
         fallback,
         body: getComputedStyle(document.body).fontFamily,
         heading: h ? getComputedStyle(h).fontFamily : '(no h1 on this screen)',
@@ -393,15 +431,29 @@ try {
         'face is declared and not actually being used'
     );
 
-    const stops = [400, 500, 600, 700];
-    for (let i = 1; i < stops.length; i += 1) {
-      const prev = stops[i - 1];
-      const here = stops[i];
+    for (const [face, widths] of [
+      ['Roboto', type.widths],
+      ['Plus Jakarta Sans', type.displayWidths],
+    ]) {
+      const stops = Object.keys(widths).map(Number).sort((a, b) => a - b);
+      const shown = stops.map((s) => `${s}:${widths[s]}px`).join(' ');
+      for (let i = 1; i < stops.length; i += 1) {
+        const prev = stops[i - 1];
+        const here = stops[i];
+        assert(
+          widths[here] !== widths[prev],
+          `${face} at weight ${here} renders exactly ${widths[here]}px, the same as ${prev}. ` +
+            'Identical widths mean the variable axis is not being instanced and the browser ' +
+            `is serving one master for both, which is a smeared regular wearing the metrics ` +
+            `of one. Measured: ${shown}`
+        );
+      }
+      const lightest = stops[0];
+      const heaviest = stops[stops.length - 1];
       assert(
-        type.widths[here] > type.widths[prev],
-        `weight ${here} renders ${type.widths[here]}px against ${prev}'s ${type.widths[prev]}px. ` +
-          'Equal or narrower means the variable axis is not being instanced and the ' +
-          'browser is synthesising, which is a smeared regular wearing the metrics of one.'
+        widths[heaviest] > widths[lightest],
+        `${face} at weight ${heaviest} renders ${widths[heaviest]}px, no wider than ${lightest}'s ` +
+          `${widths[lightest]}px. The axis moves but never gets bolder. Measured: ${shown}`
       );
     }
 
