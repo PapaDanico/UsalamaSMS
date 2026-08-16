@@ -67,11 +67,11 @@ export function render(outlet) {
             <dt class="stat__value">${summary.built}</dt>
             <dd class="stat__label">Built</dd>
           </div>
-          <div class="stat">
+          <div class="stat" data-tone="${summary.partial ? 'alert' : ''}">
             <dt class="stat__value">${summary.partial}</dt>
             <dd class="stat__label">Partial</dd>
           </div>
-          <div class="stat">
+          <div class="stat" data-tone="${summary.assessedOnly + summary.notBuilt ? 'alert' : ''}">
             <dt class="stat__value">${summary.assessedOnly + summary.notBuilt}</dt>
             <dd class="stat__label">Assessed only, or not built</dd>
           </div>

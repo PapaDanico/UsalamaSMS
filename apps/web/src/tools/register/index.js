@@ -495,19 +495,19 @@ export function render(outlet) {
         <dt class="stat__value">${h.total}</dt>
         <dd class="stat__label">Entries</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="${h.intolerableOpen ? 'alert' : ''}">
         <dt class="stat__value">${h.intolerableOpen}</dt>
         <dd class="stat__label">Intolerable and not accepted</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="${h.overdue ? 'alert' : ''}">
         <dt class="stat__value">${h.overdue}</dt>
         <dd class="stat__label">Past their review date</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="${h.unowned ? 'alert' : ''}">
         <dt class="stat__value">${h.unowned}</dt>
         <dd class="stat__label">With no owner</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="note">
         <dt class="stat__value">${source === 'server' ? 'Safety office' : 'This device'}</dt>
         <dd class="stat__label">
           ${source === 'server'

@@ -2439,6 +2439,29 @@ html { scroll-padding-top: var(--us-chrome); }
    inside a card that is already narrower, where it simply never binds. */
 .page :is(p, li) { max-width: 68ch; }
 
+/* AND A LIST ITEM IS NOT ALWAYS A SENTENCE.
+
+   `li` was included above because a bulleted list is prose, and it is.
+   But this product also builds components out of list items, and the
+   rule above cannot tell them apart — so the reporting queue, which is
+   a <ul> of <li> report cards, was capped at 68 CHARACTERS. Measured
+   at 1440: the filter above it took 1152px and the rows under it took
+   680, on the screen this product exists for. Nobody chose that, and
+   it is invisible in the stylesheet because neither rule is wrong on
+   its own.
+
+   THE CLASS IS THE TEST, and it holds because of how this codebase is
+   written rather than by luck: prose lists are authored as bare <li>,
+   and every classed one — .queue__item, .fact, .account-card,
+   .picture-bar, .mat-bar, .next-item, .numbered__item, .trust-item,
+   .queue__code — is a component with its own layout. A component that
+   wants a measure sets one; a sentence inside a component is a <p> and
+   still gets it from the rule above.
+
+   [class] rather than :where([class]) on purpose: :where contributes
+   no specificity, so it would lose to the rule it is correcting. */
+.page li[class] { max-width: none; }
+
 /* A .wrap INSIDE .page is a container inside a container, and after
    --us-page went past --us-container-wide it became the binding one —
    so /toolkits/register and /sms sat at 1088px while /triage beside
@@ -2832,6 +2855,340 @@ html { scroll-padding-top: var(--us-chrome); }
   border-color: var(--us-border-strong);
 }
 [data-surface='tool'] .queue__item { padding: var(--us-space-3) var(--us-space-4); }
+
+/* =====================================================================
+   THE INSTRUMENT LANGUAGE — what makes a working screen read as
+   equipment rather than as a web page with a form on it.
+
+   THE COMPLAINT WAS "GENERIC, FLAT AND DISORGANISED", and driving the
+   tool screens at 1440 rather than reading this file showed all three
+   as one fault with three faces:
+
+   - GENERIC. Every container on every screen is the same object: a
+     1px border, an 12-18px radius, white on sand. The table of
+     contents, the entry form, the caveat, an element of Annex 19 and
+     an empty state are drawn identically, so none of them says what
+     it is.
+   - FLAT. There is exactly one plane. Depth was already correctly
+     removed from tool surfaces — a shadow under a queue row is depth
+     doing no work — but nothing replaced it, so the hierarchy that
+     shadow was carrying badly is now not carried at all.
+   - DISORGANISED. Sections are separated by margin alone, which at a
+     glance is indistinguishable from the margin between two cards
+     inside one section. There is no visible edge to a region.
+
+   The answers are geometry, ground and rule, in that order. None of
+   them is a component: they are the tokens and the primitives every
+   screen already uses, so a screen written last month gets them
+   without being rewritten. THAT IS THE POINT — a language that has to
+   be applied per screen is a style guide, and a style guide is what
+   drifts.
+
+   ---------------------------------------------------------------
+   THE READING END IS UNTOUCHED. Every rule below is inside
+   [data-surface='tool']. / , /pricing, /about and the rest keep the
+   radius, the shadow and the display face they were designed with;
+   this is a second register for the fourteen screens somebody works
+   in, not a redesign of the product's voice.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   GEOMETRY — 3px, and it is a token override rather than a rewrite.
+
+   An 18px radius is a consumer radius. It is right on a pricing card,
+   which is an object being offered; it is wrong on a risk register,
+   which is an instrument being read. Precision instruments have
+   corners: a 3px relief is the radius of something machined rather
+   than something moulded, and at a glance it is the single largest
+   contributor to "this is equipment".
+
+   REDEFINING THE TOKENS RATHER THAN THE COMPONENTS is what makes this
+   twelve lines instead of two hundred. Every card, input, select,
+   panel, well and figure in this stylesheet already draws its corner
+   from --us-radius-*; scoping new values to the surface reaches all
+   of them at once, including any component written after this rule.
+   The alternative — a per-component override list — is a list that is
+   correct on the day it is written and wrong on the day somebody adds
+   a component, and the wrongness is invisible.
+
+   --us-radius-pill IS DELIBERATELY NOT OVERRIDDEN. A pill is a shape
+   that carries meaning: a badge is round-ended because it is a token,
+   and squaring it makes it a box like everything else on the screen.
+   The one radius that is doing semantic work keeps its value.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] {
+  --us-radius-sm: 3px;
+  --us-radius-md: 3px;
+  --us-radius-lg: 4px;
+  --us-radius-xl: 4px;
+}
+
+/* ---------------------------------------------------------------------
+   GROUND — three planes, named by depth rather than by colour.
+
+   Elevation on this surface is TONE, not shadow. Paper sits above
+   sand; a well sits below it. That gives a working screen the three
+   levels it needs — the page, the thing on the page, the thing set
+   into the thing — with no lift, no blur and nothing that moves.
+
+   The border does not go away, because a hairline IS the instrument
+   convention rather than a compromise with it: panel edges on real
+   equipment are engraved lines, not drop shadows. It gets quieter —
+   --us-border rather than --us-border-strong — so the tone difference
+   is doing the work and the line is confirming it.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .card,
+[data-surface='tool'] .queue__item,
+[data-surface='tool'] .account-card {
+  box-shadow: none;
+}
+
+/* A well: set INTO the page rather than onto it. The empty state, the
+   read-only figure and the note all belong here, and none of them
+   should be drawn as a card the way they are now — a card is something
+   you act on. */
+[data-surface='tool'] .fact {
+  background: var(--us-surface-sunk);
+  border-color: var(--us-border);
+}
+
+/* ---------------------------------------------------------------------
+   RULE — the visible edge of a region, which is the whole of the
+   "disorganised" complaint.
+
+   A tool screen is a stack of sections and its only separator is
+   margin, so at a glance the gap between two SECTIONS reads exactly
+   like the gap between two cards inside one. A hairline that runs the
+   full content width says "a new region starts here" in a way vertical
+   space cannot, because vertical space is also what everything else
+   uses.
+
+   :not(:first-child) because the first heading on a screen already has
+   the page head above it, and a rule under a rule is a border.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .panel > h2:not(:first-child),
+[data-surface='tool'] .panel > section > h2:not(:first-child) {
+  padding-top: var(--us-space-5);
+  border-top: 1px solid var(--us-border);
+}
+
+/* ---------------------------------------------------------------------
+   FIGURES ALIGN, IDENTIFIERS ARE MONOSPACED.
+
+   Proportional digits are correct in a sentence and wrong in a column:
+   a 1 is narrower than a 0, so a column of counts is a ragged column
+   and the eye cannot compare two rows without reading them. Every
+   place in this product where a number sits above or beside another
+   number gets tabular figures.
+
+   It is a LIST rather than a blanket rule on the surface, and that is
+   deliberate: tabular figures in running prose are worse than
+   proportional ones — "12 elements" in a paragraph is set with gaps
+   around the 1. Numbers that align get it; numbers that read do not.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] :is(td, th, .queue__deadline, .stat__value, output, time) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* An identifier is not a word: a report reference, a hash, a CICTT
+   code and an element number of Annex 19 are all things you compare
+   character by character rather than read. Mono says that, and it says
+   it before anybody has read the label. */
+[data-surface='tool'] :is(code, .ident) {
+  font-family: var(--us-font-mono);
+  font-size: 0.92em;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------
+   THE BAND IS A HEADER ON A WORKING SCREEN, NOT A HERO.
+
+   .band-dark is JK's ink band and it is the product's face. On / and
+   /pricing it should be exactly what it is: two radial washes over
+   charcoal, a heading with room around it, an argument for reading on.
+
+   Fourteen screens somebody WORKS in inherited it unchanged, and
+   driving /toolkits/register at 1440 is the whole finding: three
+   hundred pixels of gradient, a four-line lede and a marketing eyebrow
+   sit above the form an operator opened the page to fill in. It is not
+   that the band is ugly. It is that a landing page's furniture on an
+   instrument is the single loudest "generic" signal the product sends
+   — the screen announces itself instead of getting to work.
+
+   So on a tool surface it becomes what an instrument header is:
+
+   - ONE WASH RATHER THAN TWO, quieter, low and wide. Enough that the
+     strip is not a flat black bar — the complaint was flatness and
+     removing the gradient entirely would answer it in the wrong
+     direction — and not enough to read as a sunset.
+   - A GOLD HAIRLINE ON THE BOTTOM EDGE. This is the accent doing
+     structural work rather than decorative work, which is the whole
+     argument of this pass: it separates the header from the working
+     ground, it is the one warm line on the screen, and a 1px rule is
+     what a machined panel edge looks like. It costs nothing and it is
+     the detail that reads as expensive.
+   - THE LEDE SHORTENED TO ITS JOB. 62ch at reading size, not a
+     4-line paragraph at hero size. Somebody on this screen has
+     already chosen it.
+
+   THE MARK, THE WORDMARK AND THE COLOURS ARE UNTOUCHED. This is the
+   same band with the marketing removed, not a different band — a
+   product whose working screens look unrelated to its front door is
+   the failure this is avoiding, not the one it is causing.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .band-dark {
+  padding-block: var(--us-space-5) var(--us-space-4);
+  background:
+    radial-gradient(1100px 320px at 10% 0%, rgb(var(--us-teal-rgb) / 0.22) 0%, transparent 66%),
+    var(--us-charcoal);
+  border-bottom: 1px solid rgb(var(--us-gold-rgb) / 0.4);
+}
+
+[data-surface='tool'] .band-dark .lede {
+  font-size: var(--us-text-base);
+  max-width: 62ch;
+}
+
+/* The rail is the base of the header now, so its own top rule is a
+   second line where one is enough. */
+[data-surface='tool'] .stat-strip {
+  margin-top: var(--us-space-5);
+  padding-top: var(--us-space-4);
+}
+
+/* ---------------------------------------------------------------------
+   A FORM ON A TOOL SURFACE IS A DOCUMENT WITH A HEAD, not a stack of
+   controls.
+
+   The entry form on /toolkits/register is eight label-and-box pairs
+   run together with no head, no grouping and a rhythm that visibly
+   breaks: `.field` carries a flat 26px bottom margin, so a field
+   ending in a bordered input and a field ending in three lines of
+   small grey hint are separated by the same measurement and read as
+   different distances. Rendered, the gap after the "Controls" hint is
+   plainly tighter than the gap after the "Severity" select, and the
+   column looks unaligned for a reason nobody can point at.
+
+   Two corrections, both structural rather than cosmetic:
+
+   - THE HEAD GETS A RULE. The same hairline that separates regions
+     separates a form's title from its fields, so "Add an entry" reads
+     as the name of the thing below it rather than as the first line
+     of it. One device, used consistently, is what stops a screen
+     looking assembled.
+   - A FIELD WITH A HINT GETS ITS OWN ALLOWANCE. 26px after a box and
+     26px after small grey text are not the same optical distance, and
+     the fix is to measure from what the eye sees rather than from the
+     box model. This is the one place in this pass where a number is
+     chosen by looking; it is chosen by looking at the RENDERED column
+     rather than at the stylesheet, which is the difference that
+     matters.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] form.card > :is(h2, h3):first-child {
+  margin-bottom: var(--us-space-4);
+  padding-bottom: var(--us-space-3);
+  border-bottom: 1px solid var(--us-border);
+}
+
+[data-surface='tool'] form .field { margin-bottom: var(--us-space-5); }
+[data-surface='tool'] form .field:has(.field-hint) { margin-bottom: var(--us-space-6); }
+
+/* ---------------------------------------------------------------------
+   ONE OPENING, TWO MARKUPS — the architectural half of "disorganised".
+
+   A tool screen in this product opens one of two ways, and which one
+   it gets is a fact about the week it was written rather than a
+   decision anybody made:
+
+     .band-dark   /today /coverage /toolkits/* /sms /methodology …
+     .page-head   /report /triage /picture /account/* …
+
+   Driven back to back they look like two products. The band screens
+   open on ink with an eyebrow, a title and a figure rail; the
+   page-head screens open on sand with a title and a paragraph. Same
+   header above them, same footer below, and nothing in between that
+   says they belong together.
+
+   REWRITING FOURTEEN SCREENS TO ONE MARKUP IS THE WRONG FIX, and it
+   is worth saying why rather than just not doing it. The difference
+   is not arbitrary: /report deliberately has no band, because the
+   band's markup and its rail are weight a reporter at a remote strip
+   downloads before they can file, and the entry budget is the
+   offline-filing promise. A screen with no figures should not carry a
+   figure rail to look consistent.
+
+   So the two openings STAY, and they are made to terminate the same
+   way. The gold hairline is the product's edge on a working screen;
+   whichever opening a screen has, it ends on that line, and the eye
+   reads the two as one device seen twice rather than as two devices.
+   A shared detail is what makes a system, and it survives a screen
+   being written next month by somebody who picks either markup.
+
+   Its margin-bottom is set further up, with the rest of the rhythm.
+   This rule is only the edge.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .page-head {
+  padding-bottom: var(--us-space-4);
+  border-bottom: 1px solid rgb(var(--us-gold-rgb) / 0.4);
+}
+
+/* ---------------------------------------------------------------------
+   AN EMPTY STATE IS A THING ON THE SCREEN, not the absence of one.
+
+   /triage with nothing filed and /toolkits/register with nothing on it
+   both render one grey sentence floating on the ground, centred, in a
+   column eleven hundred pixels wide. That is the flat complaint in its
+   purest form: the most common state a new operator sees, and it is
+   drawn as leftover text.
+
+   It is also where the two screens diverged. `.empty-state` exists and
+   is used by /toolkits/spi, /toolkits/sra, /sms, /glossary and the
+   not-found page — and /triage wrote its own with `.lede`, so the one
+   screen an operator opens most had a different empty state from
+   everything else for no reason. That is now the shared one.
+
+   The treatment is a WELL: sunk ground, hairline edge, the sentence
+   set at reading size in a measure that can be read rather than
+   scanned. Set into the page, because nothing is on it — a raised
+   card would be an object presented, and there is no object.
+
+   THE READING SURFACE KEEPS THE CENTRED VERSION. The not-found page
+   is a message rather than a state of a working screen, and centred
+   is right for a message.
+
+   IT SETS NO WIDTH OF ITS OWN, and that is the point rather than an
+   omission. Measuring /triage at 1440 found four blocks in one column
+   at 1152, 680, 1152 and 620 pixels — every one of them chosen by a
+   different rule, none of them chosen together. A ragged left column
+   where the raggedness means nothing IS the "disorganised" complaint,
+   and it is invisible in the stylesheet because no single rule is
+   wrong.
+
+   So a tool column carries exactly TWO widths, and both of them mean
+   something: the working width for a control or a data object,
+   and `.page :is(p, li)`'s 68ch measure for anything that is prose.
+   This is prose, so it takes the measure that is already there rather
+   than a second one of its own — which is how 620 appeared beside
+   680 in the first place.
+
+   The lede is set to the body size here for the same reason. 68ch of
+   --us-text-lg is 748px and 68ch of --us-text-base is 680px, so a
+   status line under a heading landed 68px wider than the notice above
+   it — typographically defensible, and still a third width in a
+   column that should have two. On a working screen the lede says
+   "1 report on this device", which is a status rather than a deck.
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .panel > .lede { font-size: var(--us-text-base); }
+[data-surface='tool'] .empty-state {
+  padding: var(--us-space-8) var(--us-space-6);
+  background: var(--us-surface-sunk);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-md);
+  text-align: left;
+  font-size: var(--us-text-base);
+}
+
 .panel + .panel { padding-top: 0; }
 .page-head { margin-bottom: var(--us-space-6); }
 .page-head h1 { margin: 0 0 var(--us-space-2); }
@@ -3289,13 +3646,47 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    as a flat run of dt/dd pairs. */
 .stat { min-width: 0; }
 
+/* ---------------------------------------------------------------------
+   GOLD MEANS SOMETHING NEEDS YOU. It does not mean "this is a number".
+
+   Every figure in this rail was gold, on every screen, which is the
+   most expensive kind of nothing: a register with nothing overdue and
+   a register with three reviews past their date were the same colour,
+   so the colour carried no information and the eye learned to skip it.
+   Rendered at 1440 that is four gold zeroes and a gold sentence —
+   loud, and about nothing.
+
+   So the default figure is the ground's own light tone, and gold is
+   spent on the one figure that means somebody has work: an alerting
+   indicator, an intolerable risk still open, a review date gone by.
+   On a healthy screen there is no gold in the rail at all, and that
+   absence is the reading.
+
+   THE TONE IS COMPUTED AT THE CALL SITE, from the same number the cell
+   is showing — `data-tone=${overdue ? 'alert' : ''}` — never typed.
+   A tone somebody set by hand is a tone that stays alert after the
+   work is done.
+   --------------------------------------------------------------------- */
 .stat__value {
   font-size: var(--us-text-xl);
   font-weight: var(--us-weight-bold);
   letter-spacing: -.02em;
   line-height: 1.1;
-  color: var(--us-gold);
+  color: rgb(var(--us-sand-rgb) / 0.95);
   font-variant-numeric: tabular-nums;
+}
+
+.stat[data-tone='alert'] .stat__value { color: var(--us-gold); }
+
+/* A WORD IS NOT A FIGURE, and setting one at figure size in a rail of
+   figures is why "This device" read as a fifth statistic. Provenance,
+   a date and a duration are answers to a different question than a
+   count is; they keep the slot and lose the emphasis. */
+.stat[data-tone='note'] .stat__value {
+  font-size: var(--us-text-md);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: rgb(var(--us-sand-rgb) / 0.88);
 }
 
 .stat__label {

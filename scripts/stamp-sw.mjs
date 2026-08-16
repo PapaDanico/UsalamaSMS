@@ -1830,7 +1830,46 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    It does NOT claim to do more. EVIDENCE_CAVEAT is on the control and
    says the part software cannot do — a face, a registration or a name
    on a document in the frame survives all of it. */
-const BUDGET = { entry: 217 * 1024, js: 526 * 1024, css: 64 * 1024 };
+/* =====================================================================
+   CSS 64 -> 80 KB: THE INSTRUMENT LANGUAGE.
+
+   The product was described by its owner as "generic, flat and
+   disorganised", and all three were fair:
+
+     GENERIC   a gradient hero, 1px rounded cards repeated on every
+               surface, one accent doing every job. That cluster is the
+               default look of any B2B SaaS built this decade.
+     FLAT      partly self-inflicted. Hover lift and shadow were
+               stripped from tool surfaces to stop them reading as a
+               brochure, and the type scale came down three times. Both
+               were right and together they left no elevation vocabulary
+               at all, so nothing signalled what was primary.
+     DISORGANISED  every screen was the same vertical stack of
+               full-width panels. No grid, no fixed regions, so the eye
+               re-learns each screen.
+
+   The direction chosen is PRECISION INSTRUMENT: the product reads as
+   equipment rather than as software. Hairline rules instead of card
+   borders, ground tone instead of shadow, tabular figures wherever
+   numbers align, mono for identifiers, and ONE accent reserved for
+   state with teal kept for action. It draws on the mark's own language
+   — line art on dark — and it is the one direction in this field that
+   is not another dashboard.
+
+   WHY THE NUMBER IS AFFORDABLE. CSS is render-blocking, which is why
+   this budget exists at all. It is also cached after the first visit
+   and gzips about 5:1, so 16 KB of source is roughly 3 KB on the wire,
+   once. The number that decides whether a reporter can file at a remote
+   strip is the ENTRY JS budget, and that is untouched at 217 KB.
+
+   WHAT IS EXPECTED TO COME BACK. This raise buys the new language
+   before the old one is removed, because deleting the card system while
+   half the screens still use it would break them. A consolidation pass
+   follows and should return several kilobytes — the card rules, the
+   duplicated spacing, the surface split this supersedes. If it does
+   not, that is a finding worth writing down rather than absorbing.
+   ===================================================================== */
+const BUDGET = { entry: 217 * 1024, js: 526 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

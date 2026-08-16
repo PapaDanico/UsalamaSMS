@@ -4443,6 +4443,276 @@ try {
     );
   });
 
+  await check('GOLD IN A FIGURE RAIL MEANS WORK, AND NOTHING ELSE DOES', async () => {
+    /* ==================================================================
+       THE ACCENT IS A CHANNEL, AND A CHANNEL THAT IS ALWAYS ON CARRIES
+       NOTHING.
+
+       Every .stat__value on every screen was --us-gold, so a register
+       with nothing overdue and a register with three reviews past
+       their date rendered the same rail in the same colour. Four gold
+       zeroes and a gold sentence. The colour was decoration, and the
+       eye learns within a day to stop reading decoration — which is
+       precisely the moment the ONE figure that needs attention stops
+       being seen.
+
+       So gold now marks a figure that means somebody has work, and
+       this holds that meaning against three ways it could quietly come
+       undone:
+
+       - a rail where a ZERO is gold. That is the "always on" defect
+         restored, and it is the one that was actually shipped;
+       - a rail where a WORD is gold. "This device" and "Safety office"
+         are provenance, not counts, and at figure size in gold they
+         read as a fifth statistic — which is how the defect looked to
+         somebody driving /toolkits/register at 1440;
+       - a tone somebody TYPED. data-tone is computed from the same
+         number the cell displays, so if a rail carries gold that its
+         own figure does not justify, the two have drifted apart.
+
+       IT DRIVES THE SCREENS RATHER THAN READING THE STYLESHEET. The
+       tone is set in the template and the colour is set in the
+       cascade; only the rendered pixel knows whether they agree, and
+       every layout defect this repository has found in the last week
+       was invisible in source and obvious in a screenshot.
+       ================================================================== */
+    const GOLD = 'rgb(212, 171, 67)'; // --us-gold, as the browser reports it
+
+    /* Every signed-out route that renders a rail. Signed-out on
+       purpose: the figures are all zero there, which is exactly the
+       state the "always gold" defect made unreadable. */
+    const routes = [
+      '/coverage',
+      '/toolkits/register',
+      '/toolkits/sra',
+      '/toolkits/spi',
+      '/toolkits/maturity',
+      '/methodology',
+      '/templates',
+      '/glossary'
+    ];
+
+    const offences = [];
+    let cells = 0;
+    let rails = 0;
+
+    for (const route of routes) {
+      await navigateTo(page, route);
+      await page.waitForTimeout(120);
+
+      const found = await page.evaluate(() => {
+        const out = [];
+        for (const stat of document.querySelectorAll('.stat')) {
+          const valueEl = stat.querySelector('.stat__value');
+          if (!valueEl) continue;
+          out.push({
+            text: valueEl.textContent.trim(),
+            label: stat.querySelector('.stat__label')?.textContent?.trim() ?? '',
+            colour: getComputedStyle(valueEl).color,
+            tone: stat.getAttribute('data-tone') ?? ''
+          });
+        }
+        return { cells: out, rails: document.querySelectorAll('.stat-strip').length };
+      });
+
+      rails += found.rails;
+
+      for (const cell of found.cells) {
+        cells += 1;
+        if (cell.colour !== GOLD) continue;
+
+        /* A count, possibly written as a fraction — "10", "3/8". The
+           figure that decides is the FIRST one: 0/8 is no work done,
+           not eight things waiting. */
+        const first = /^-?\d+/.exec(cell.text);
+        if (!first) {
+          offences.push(
+            `${route}: "${cell.text}" (${cell.label}) is gold, and it is not a figure`
+          );
+        } else if (Number(first[0]) === 0) {
+          offences.push(
+            `${route}: "${cell.text}" (${cell.label}) is gold while its figure is zero`
+          );
+        }
+      }
+    }
+
+    /* Charter rule 11, twice over. A selector that matches nothing
+       proves nothing, and this gate has two ways to match nothing:
+       the rails could stop rendering, or .stat__value could be
+       renamed. Both would leave the loop reporting a clean run. */
+    assert(rails >= 6, `only ${rails} figure rail(s) rendered across ${routes.length} routes`);
+    assert(cells >= 20, `only ${cells} figure cell(s) found; the rails render more than that`);
+
+    assert(
+      offences.length === 0,
+      `${offences.length} figure(s) coloured gold without meaning it:\n         ` +
+        offences.join('\n         ')
+    );
+  });
+
+  await check('A DATA OBJECT IS NOT CAPPED AT A READING MEASURE', async () => {
+    /* ==================================================================
+       THE REPORTING QUEUE WAS 59% OF THE COLUMN IT SAT IN, and the
+       reason is a rule that is correct.
+
+       `.page :is(p, li) { max-width: 68ch }` imposes a reading measure
+       on paragraphs and lists, which is right: a line longer than
+       about seventy characters is uncomfortable to read. This product
+       also BUILDS COMPONENTS out of list items — the reporting queue
+       is a <ul> of <li> report cards — and that rule cannot tell a
+       sentence from a card.
+
+       So on the screen this product exists for, measured at 1440: the
+       filter control took 1152px and the report rows under it took
+       680. A ragged column, on the most-used surface, from two rules
+       that are each individually right. Nothing in the stylesheet
+       looks wrong; only the rendered page does.
+
+       THIS GATE MEASURES RATHER THAN READS, because that is the only
+       way this class of defect is visible at all. It asserts the
+       narrow claim that actually matters — a card in a list fills the
+       list — rather than a general one about column widths, which
+       would fail the first time a screen legitimately wanted a narrow
+       form beside a wide table.
+       ================================================================== */
+    const routes = ['/triage', '/picture', '/toolkits/maturity', '/toolkits/register'];
+
+    /* AT A DESKTOP WIDTH, because that is the only width where the
+       defect exists. The suite drives a 390px handset, where a 68ch
+       cap is 680px against a 358px column and therefore binds on
+       nothing — the queue looked perfect and was wrong by 472px on
+       the safety officer's laptop. A gate run only at the width where
+       the defect cannot appear is a gate that cannot fail. */
+    const handset = page.viewportSize();
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    /* THE QUEUE MUST HAVE A ROW IN IT, and this gate puts one there
+       rather than inheriting one from an earlier check. A gate whose
+       subject depends on what ran before it is a gate that starts
+       passing vacuously the day somebody reorders the file — and the
+       seenQueue assertion below would then be the thing that fails,
+       which is the correct outcome but a confusing way to learn it. */
+    await navigateTo(page, '/report');
+    await page.selectOption('select[name="type"]', 'HAZARD');
+    await page.fill('input[name=title]', 'Column width check — bird activity, runway 06');
+    await page.fill(
+      'textarea[name=narrative]',
+      'Filed by the column-discipline gate so the reporting queue has a row to measure.'
+    );
+    await page.click('button[type=submit]');
+    await page.waitForFunction(
+      () => document.querySelector('#report-status')?.textContent?.trim().length > 0,
+      undefined,
+      { timeout: 5000 }
+    );
+
+    const offences = [];
+    let measured = 0;
+    let seenQueue = false;
+
+    for (const route of routes) {
+      await navigateTo(page, route);
+      await page.waitForTimeout(250);
+
+      const found = await page.evaluate(() => {
+        const out = [];
+        for (const list of document.querySelectorAll('#main ul, #main ol')) {
+          const box = list.getBoundingClientRect();
+          if (box.width < 1) continue;
+
+          for (const el of list.children) {
+            if (el.tagName !== 'LI' || !el.className) continue;
+            const item = el.getBoundingClientRect();
+            if (item.width < 1) continue;
+
+            /* THE CAP ITSELF IS THE TEST, not the width it produces.
+               An earlier version of this check compared each item to
+               its list and flagged anything narrower, and that was a
+               different question wearing this one's name: a grid cell
+               that does not stretch, a chip that sizes to its content
+               and a flex item in a wrapped row are all narrower than
+               their list, all on purpose, and all reported. Four of
+               them, on a screen with no defect on it.
+
+               A max-width is the only way a list item ends up capped,
+               so a computed max-width of `none` is proof this item is
+               not the thing being looked for — whatever else its
+               layout is doing.
+
+               EVERY ITEM IS RETURNED AND THE CAP IS CARRIED WITH IT,
+               rather than filtered out here. The guards below count
+               what was LOOKED AT; filtering at the source would leave
+               them counting only offences, so a clean run would look
+               exactly like a run that inspected nothing. */
+            out.push({
+              cls: el.className,
+              cap: getComputedStyle(el).maxWidth,
+              item: Math.round(item.width),
+              list: Math.round(box.width)
+            });
+          }
+        }
+        return out;
+      });
+
+      for (const row of found) {
+        measured += 1;
+        if (String(row.cls).includes('queue__item')) seenQueue = true;
+
+        /* THE CAP MUST BE THE THING THAT IS BINDING. A max-width wider
+           than the column it sits in reduces nothing, and an item can
+           be narrower than its list for reasons that have nothing to
+           do with a cap — a grid cell that does not stretch was four
+           of those, reported against a screen with no defect on it.
+
+           So: the cap has to be narrower than the list, AND the item
+           has to have come out AT the cap — not merely under it.
+           "Under it" was the second wrong version of this test, and it
+           still reported those grid cells: 266px is under a 544px cap
+           and has nothing to do with it. Equality is what makes the
+           cap the cause rather than a bystander. */
+        const capPx = Number.parseFloat(row.cap);
+        if (!Number.isFinite(capPx)) continue;
+        /* 8px of slack for a border or a scrollbar. The defect this
+           catches was 472px short, so the threshold is nowhere near
+           the thing being measured — a gate whose margin is close to
+           its signal is a gate that fails on a font update. */
+        if (capPx < row.list - 8 && Math.abs(row.item - capPx) <= 1) {
+          offences.push(
+            `${route}: .${String(row.cls).split(' ')[0]} is ${row.item}px inside a ` +
+              `${row.list}px list, capped at max-width ${row.cap}`
+          );
+        }
+      }
+    }
+
+    /* BEFORE THE ASSERTIONS, not after. A failing assert throws, so a
+       restore written below them never runs on the one path where it
+       matters — and every later check in this file would then be
+       driving a 1440px desktop it never asked for, quietly, with the
+       real failure blamed on whatever broke next. */
+    await page.setViewportSize(handset);
+
+    /* Charter rule 11, and NAMING THE QUEUE rather than counting.
+       A count is satisfied by three cells on a screen nobody cares
+       about; this gate exists because the reporting queue was capped,
+       so the reporting queue is what it has to have measured. If the
+       row filed earlier in this run stopped reaching /triage, that is
+       itself worth failing on. */
+    assert(measured >= 3, `only ${measured} classed list item(s) were inspected`);
+    assert(
+      seenQueue,
+      'no .queue__item was measured — the queue this gate was written for did not render'
+    );
+
+    assert(
+      offences.length === 0,
+      `${offences.length} data object(s) capped at a reading measure:\n         ` +
+        offences.join('\n         ')
+    );
+  });
+
   await check('no uncaught page errors across the whole run', async () => {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
   });

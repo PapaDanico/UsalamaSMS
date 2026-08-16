@@ -330,7 +330,7 @@ export function render(outlet) {
         <dt class="stat__value">${verdict.hazards}</dt>
         <dd class="stat__label">Hazards identified</dd>
       </div>
-      <div class="stat">
+      <div class="stat" data-tone="${verdict.intolerableRemaining ? 'alert' : ''}">
         <dt class="stat__value">${verdict.intolerableRemaining}</dt>
         <dd class="stat__label">Still intolerable</dd>
       </div>
