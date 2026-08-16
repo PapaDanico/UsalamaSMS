@@ -333,7 +333,14 @@ for (const rel of DECLARED.keys()) {
     );
   } else {
     const recorded = readFileSync(stampPath, 'utf8').trim();
-    const { stampFor } = await import('./make-og-card.mjs?check=1');
+    /* og-card-content.mjs, NOT make-og-card.mjs. This check runs inside
+       `npm run build`, which is the command Netlify executes on every
+       deploy, and the renderer imports `playwright` at module scope —
+       so importing it here put a browser-automation package on the
+       deploy path, which has no browsers and no reason to launch one.
+       The content module imports node:fs and node:crypto and nothing
+       else. */
+    const { stampFor } = await import('./og-card-content.mjs');
     const actual = stampFor();
     if (recorded !== actual) {
       problems.push(
