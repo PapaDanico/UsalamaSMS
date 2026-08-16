@@ -1166,6 +1166,58 @@ try {
     await page.waitForFunction(
       () => document.querySelector('#sync-strip')?.dataset.state === 'synced', undefined, { timeout: 5000 });
 
+    /* ==============================================================
+       WHOSE WORKSPACE THIS IS, IN THE CHROME.
+
+       Every screen carried UsalamaSMS's identity and never the
+       operator's, signed in or out — a tenanted product presenting
+       itself as a single-tenant one. The tenant label belongs around
+       the NAVIGATION rather than inside a page, because a name that
+       appears in one panel stops orienting somebody the moment they
+       open another screen.
+
+       Checked HERE rather than in a check of its own, because this is
+       the only place in the suite with a session, and a workspace
+       label is a thing that only exists when there is one. The org
+       record is seeded into the cache loadOrg() reads first, which is
+       the same key the printed pack uses — that keeps this a test of
+       the CHROME rather than a second test of /auth/me.
+       ============================================================== */
+    await page.evaluate(() =>
+      localStorage.setItem(
+        'usalamasms.org',
+        JSON.stringify({ orgName: 'Kenya Coast Aviation', jurisdiction: 'KE', logo: null })
+      )
+    );
+    /* The event the session already fires, dispatched here because the
+       sign-in above happened before the record was cached. */
+    await page.evaluate(() =>
+      window.dispatchEvent(new CustomEvent('usalamasms:session-changed'))
+    );
+    await page.waitForFunction(
+      () => document.querySelector('#workspace')?.hidden === false,
+      undefined,
+      { timeout: 5000 }
+    );
+    const ws = await page.locator('#workspace').textContent();
+    assert(
+      /Kenya Coast Aviation/.test(ws ?? ''),
+      `the workspace label reads "${ws?.trim()}" — the operator is not named in the chrome`
+    );
+
+    /* AND IT GOES WHEN THE SESSION DOES. A tenant label left behind
+       after sign-out names an operator whose data is no longer on
+       screen, which is worse than naming nobody. */
+    await page.evaluate(() => {
+      localStorage.removeItem('usalamasms.refresh');
+      window.dispatchEvent(new CustomEvent('usalamasms:session-changed'));
+    });
+    await page.waitForFunction(
+      () => document.querySelector('#workspace')?.hidden === true,
+      undefined,
+      { timeout: 5000 }
+    );
+
     await page.unroute('**/api/v1/auth/login');
     await page.unroute('**/api/v1/sync/batch');
   });

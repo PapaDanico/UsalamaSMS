@@ -267,7 +267,11 @@
      The floor is the floor; it is not the target. */
   --us-tap: 48px;
 
-  --us-topbar: 60px;
+  /* 56, which is Kanda's .nav-bar min-height. This bar is already a
+     port of that rule — sticky, flex, space-between, the same blur and
+     the same border — and three values had drifted: the height, the
+     bar's gap and the gap between links. Copied rather than re-derived. */
+  --us-topbar: 56px;
   /* The sticky chrome: the top bar plus the sync strip, which is also
      sticky and also above the content. Anything scrolled to — an
      anchor, a focused control — has to clear BOTH, and the 88px this
@@ -669,7 +673,11 @@ html { scroll-padding-top: var(--us-chrome); }
 .btn-ghost:hover { border-color: var(--us-teal); color: var(--us-teal); }
 .btn-ghost:disabled { border-color: var(--us-border); color: var(--us-ink-600); cursor: not-allowed; transform: none; }
 .btn-sm { padding: .55rem 1rem; font-size: var(--us-text-sm); }
-.nav-links { display: flex; align-items: center; gap: 1.3rem; }
+/* 4px, Kanda's --ca-space-1. The links are inline-flex boxes with 12px
+   of their own inside padding and a hover background, so the separation
+   is the padding rather than the gap; 20.8px on top of that spread
+   seven links across the whole bar. */
+.nav-links { display: flex; align-items: center; gap: var(--us-space-1); }
 /* :not(.btn) is load-bearing, not tidiness. The nav carries one button —
    the "Start free" CTA, which appears on all 28 pages and is the most
    clicked element on the site — and `.nav-links a` (0,1,1) outranks
@@ -678,8 +686,43 @@ html { scroll-padding-top: var(--us-chrome); }
    The same applies to the :hover rule below, which was pushing it to
    1.87:1. A button dropped into the nav later should look like a button,
    not like a nav link that happens to have a background. */
-.nav-links a:not(.btn) { color: var(--us-charcoal); font-weight: 600; font-size: var(--us-text-base); transition: color var(--us-dur-fast) var(--us-ease); }
-.nav-links a:not(.btn):hover { color: var(--us-teal); text-decoration: none; }
+/* ---------------------------------------------------------------------
+   THE HEADER LINKS, TO KANDA'S SPEC.
+
+   Measured side by side at 1440: Kanda's `.nav-link` is 13.5px at
+   weight 500 in --ca-text-secondary, inside a 34px target with a hover
+   background. This product's were 14px at weight 600 in near-black
+   with no target box.
+
+   All three differences push the same way. Weight 600 in the darkest
+   ink at the largest of the three candidate sizes is a header that
+   competes with the page under it — seven links reading as loudly as
+   the heading they sit above. Kanda's reads as chrome, which is what a
+   nav is: present, findable, and not the thing you are looking at.
+
+   THE TARGET IS THE THIRD CHANGE AND IT IS NOT COSMETIC. These were
+   22px tall, under WCAG 2.2 SC 2.5.8's 24px floor for a standalone
+   target, and passing only because the gate exempts a link inside a
+   sentence. A header link is not inside a sentence. 34px is Kanda's
+   number and it clears the floor with room.
+   --------------------------------------------------------------------- */
+.nav-links a:not(.btn) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding-inline: var(--us-space-3);
+  border-radius: var(--us-radius-sm);
+  color: var(--us-text-secondary);
+  font-weight: var(--us-weight-medium);
+  font-size: var(--us-text-sm);
+  transition: color var(--us-dur-fast) var(--us-ease),
+    background var(--us-dur-fast) var(--us-ease);
+}
+.nav-links a:not(.btn):hover {
+  color: var(--us-text-primary);
+  background: var(--us-surface-muted);
+  text-decoration: none;
+}
 .nav-links a:focus-visible { outline: 2px solid var(--us-teal); outline-offset: 4px; border-radius: 3px; }
 @media (max-width: 980px) {
   .dropdown-menu { position: static; opacity: 1; visibility: visible; transform: none; box-shadow: none; border: 0; background: transparent; padding: 0 0 0 1rem; min-width: 0; }
@@ -1106,6 +1149,68 @@ html { scroll-padding-top: var(--us-chrome); }
   background: var(--us-surface-muted);
   color: var(--us-text-tertiary);
   transition: background var(--us-dur) var(--us-ease), color var(--us-dur) var(--us-ease);
+}
+
+/* ---------------------------------------------------------------------
+   THE WORKSPACE LABEL, in the half of the strip that was empty.
+
+   `margin-left: auto` pushes it to the far end, so the strip reads as
+   one line with two jobs: what is waiting to send on the left, whose
+   system this is on the right. That is the space this bar has always
+   had and never used — at 1440 the sync sentence occupies about a
+   third of it and the rest was ground.
+
+   It is the tenant context sitting around the navigation rather than
+   inside a page, which is the point: a name that appears in one panel
+   stops orienting somebody the moment they open another screen.
+
+   HIDDEN, NOT COLLAPSED, when signed out. [hidden] with display:none
+   rather than an empty span, so the strip's flex layout does not keep
+   a gap for a label that is not there.
+   --------------------------------------------------------------------- */
+.workspace {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--us-space-2);
+  min-width: 0;
+}
+
+.workspace[hidden] { display: none; }
+
+/* Capped by height, not width: an operator's mark is whatever aspect
+   they uploaded, and a fixed width would squash a wide wordmark. */
+.workspace__mark {
+  height: 18px;
+  width: auto;
+  max-width: 96px;
+  object-fit: contain;
+  flex: none;
+}
+
+.workspace__name {
+  font-weight: var(--us-weight-semi);
+  color: var(--us-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The jurisdiction is the quietest thing on the strip and the first to
+   go: on a handset the unsent count is what the strip exists for, and
+   an operator on their own device already knows which authority they
+   answer to. */
+.workspace__where {
+  font-size: var(--us-text-2xs);
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+  flex: none;
+}
+
+@media (max-width: 599px) {
+  .workspace__where { display: none; }
+  .workspace__name { max-width: 9rem; }
 }
 
 .sync-strip__dot {
@@ -2540,7 +2645,7 @@ html { scroll-padding-top: var(--us-chrome); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--us-space-4);
+  gap: var(--us-space-3);
   min-height: var(--us-topbar);
   padding: var(--us-space-2) clamp(var(--us-space-4), 4vw, var(--us-space-8));
   padding-top: max(var(--us-space-2), env(safe-area-inset-top));
@@ -2816,6 +2921,112 @@ html { scroll-padding-top: var(--us-chrome); }
    about 2.6:1, and the eyebrow is gold. The accessibility sweep over
    twenty-one screens is what decides whether this is right, and it was
    run against this gradient rather than around it. */
+/* ---------------------------------------------------------------------
+   THE HERO'S SECOND COLUMN, which until now did not exist.
+
+   `.wrap` inside the hero held one flow of content in a reading
+   measure, so at 1440 the right half of the most valuable slot on the
+   front door was ground. This makes the hero a two-column grid above
+   900px and puts the reporting clock in the half that was empty —
+   Kanda's move, and the reason its landing page reads as a working
+   product rather than a description of one.
+
+   THE PANEL IS ROW 2 ON A HANDSET, not hidden. It is real regulatory
+   content, not decoration; below 900px the grid collapses and it sits
+   under the buttons where a reader reaches it by scrolling rather than
+   by not being shown it.
+   --------------------------------------------------------------------- */
+@media (min-width: 900px) {
+  .band-dark--hero .wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
+    /* COLUMN GAP ONLY. Written as a single `gap` it applied to rows
+       too, and every child of the hero is its own grid row — so the
+       mark, the eyebrow, the heading, the tagline, the lede and the
+       buttons were pushed 64px apart and the hero grew to twice its
+       height. The elements keep the vertical rhythm their own rules
+       give them. */
+    gap: 0 clamp(var(--us-space-8), 5vw, var(--us-space-16));
+    align-content: start;
+    align-items: start;
+  }
+  /* Everything that is not the panel stays in column one. Listed by
+     what it is rather than by nth-child, so inserting a line into the
+     hero does not silently move something into the panel's column. */
+  .band-dark--hero .wrap > :not(.hero-clock) { grid-column: 1; }
+  .band-dark--hero .hero-clock {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    margin: 0;
+  }
+}
+
+.hero-clock {
+  margin: var(--us-space-8) 0 0;
+  padding: var(--us-space-5);
+  border: 1px solid rgb(var(--us-sand-rgb) / 0.18);
+  border-radius: var(--us-radius-lg);
+  background: rgb(var(--us-sand-rgb) / 0.05);
+}
+
+.hero-clock__title {
+  margin: 0 0 var(--us-space-4);
+  font-size: var(--us-text-2xs);
+  font-weight: 700;
+  letter-spacing: var(--us-tracking-wide);
+  text-transform: uppercase;
+  color: var(--us-gold);
+}
+
+.hero-clock__list { list-style: none; margin: 0; padding: 0; }
+
+.hero-clock__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px var(--us-space-3);
+  padding: var(--us-space-3) 0;
+  border-top: 1px solid rgb(var(--us-sand-rgb) / 0.12);
+  font-size: var(--us-text-sm);
+}
+.hero-clock__row:first-child { border-top: 0; padding-top: 0; }
+
+.hero-clock__who {
+  color: var(--us-sand);
+  font-weight: var(--us-weight-semi);
+  min-width: 0;
+}
+
+/* The figure, and it aligns down the column — tabular because these
+   are numbers somebody compares rather than reads. */
+.hero-clock__when {
+  color: var(--us-sand);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+.hero-clock__when b { color: var(--us-gold); font-size: var(--us-text-md); }
+
+.hero-clock__from {
+  grid-column: 1 / -1;
+  font-size: var(--us-text-2xs);
+  color: rgb(var(--us-sand-rgb) / 0.66);
+}
+
+/* A STANDALONE TARGET, not a link inside a sentence, so WCAG 2.2
+   SC 2.5.8's 24px floor applies to it and the inline exception does
+   not. It rendered at 18px tall and the gate caught it. Padded rather
+   than enlarged: the type stays quiet and the hit area is the thing
+   that grows. */
+.hero-clock__more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-top: var(--us-space-3);
+  font-size: var(--us-text-xs);
+  color: rgb(var(--us-sand-rgb) / 0.86);
+}
+.hero-clock__more:hover { color: var(--us-gold); }
+
 .band-dark--hero {
   background:
     linear-gradient(180deg, #0f1430 0%, #171a38 46%, #3a2247 74%, #7d3a29 100%);

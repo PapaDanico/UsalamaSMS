@@ -113,6 +113,68 @@ const STEPS = [
    comment, so every word ships to a handset on a rural link. Written
    here it costs nothing. It went in as HTML first and put the entry
    chunk 1.1 KB over budget, which is the only reason anybody noticed. */
+/* ======================================================================
+   THE REPORTING CLOCK, IN THE HERO — the product demonstrating itself
+   rather than describing itself.
+
+   Driven at 1440, the right half of this hero was EMPTY. The mark, the
+   heading, the lede and the two buttons all sit in a 62-character
+   measure on the left and roughly seven hundred pixels of the most
+   valuable space on the front door were ground.
+
+   Kanda fills the same slot with THE REGULATORY CLOCK: three real
+   instruments, their status and their dates, live on the landing page.
+   The effect is not decorative — a visitor sees the product working
+   before they have clicked anything, which is a different claim from a
+   paragraph saying that it works.
+
+   THE FIGURES ARE THE SAME ONES THE PRODUCT RUNS ON. MOR_OBLIGATIONS
+   is the registry every countdown in this application is computed
+   from, and the deadline table further down this page is generated
+   from it too. So this panel cannot drift from the product: there is
+   nothing here to update when a period changes, and a jurisdiction
+   added to the registry appears in the hero without anybody
+   remembering to add it.
+
+   THE SHORTEST PERIOD, where an instrument sets several by class. That
+   is the honest summary of a multi-class rule in one line — the number
+   that runs out first is the one an operator has to plan against, and
+   the full table below carries every class.
+   ====================================================================== */
+function Clock() {
+  const codes = Object.keys(MOR_OBLIGATIONS);
+  return html`
+    <aside class="hero-clock" aria-labelledby="hero-clock-title">
+      <p class="hero-clock__title" id="hero-clock-title">The reporting clock</p>
+      <ul class="hero-clock__list" role="list">
+        ${codes.map((code) => {
+          const o = MOR_OBLIGATIONS[code];
+          const shortest = o.hoursByClass
+            ? Math.min(...Object.values(o.hoursByClass))
+            : o.hours;
+          return html`<li class="hero-clock__row">
+            <span class="hero-clock__who">
+              ${o.authority}
+              ${isProvisional(code)
+                ? html`<span class="tag tag--provisional">Provisional</span>`
+                : ''}
+            </span>
+            <span class="hero-clock__when">
+              ${shortest === null
+                ? 'Without delay'
+                : html`<b>${shortest}</b> ${shortest === 1 ? 'hour' : 'hours'}`}
+            </span>
+            <span class="hero-clock__from">
+              from ${o.clockStart === 'AWARENESS' ? 'awareness' : 'the occurrence'}
+            </span>
+          </li>`;
+        })}
+      </ul>
+      <a class="hero-clock__more" href="#deadlines">Every period, and the instrument behind it</a>
+    </aside>
+  `;
+}
+
 function Hero() {
   return html`
     <section class="band-dark band-dark--hero">
@@ -134,6 +196,8 @@ function Hero() {
           <a class="btn btn-primary" href="/report">File a report</a>
           <a class="btn btn-ghost-lt" href="/toolkits/maturity">See where your SMS stands</a>
         </div>
+
+        ${Clock()}
 
         <ul class="trust-strip">
           ${TRUST.map(

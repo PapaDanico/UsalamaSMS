@@ -161,6 +161,13 @@
       >
         <span class="sync-strip__dot" aria-hidden="true"></span>
         <span id="sync-text">Checking for unsent reports…</span>
+
+        <!-- WHOSE WORKSPACE THIS IS. Written empty and filled by
+             main.js once a session exists, from the operator record the
+             printed pack already loads. Empty until then, and on every
+             signed-out screen, because a strip that says nothing is
+             better than one that says "no operator". -->
+        <span class="workspace" id="workspace" hidden></span>
       </div>
 
       <!-- The router writes here. -->
