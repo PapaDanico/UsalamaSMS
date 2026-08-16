@@ -76,24 +76,43 @@
       scale.
 
    4. THE HEADINGS NEEDED AIR. Rendered on a handset the two lists ran
-      into each other: "In every band…" sat directly above "Not decided
-      yet…" with no gap, so the second heading read as another bullet.
-      `.sms-scheme` is the existing rule for "a new subject starts
-      here" — a top border and space — and it costs no new CSS on a
-      sheet with 0.1 KB left.
+      into each other, with no gap, so the second heading read as
+      another bullet. `.sms-scheme` is the existing rule for "a new
+      subject starts here" — a top border and space — and it costs no
+      new CSS on a sheet with 0.1 KB left.
 
-   5. WHAT IS NOT DECIDED GOES ON THE PAGE, not in a footnote. An
-      operator asking "can I pay by M-Pesa" deserves the honest answer
-      on the pricing page, and a product that has spent this much
-      effort refusing to overstate its COVERAGE cannot start
-      overstating its commercial readiness.
+   5. THE SECOND LIST IS WHAT WE PROMISE, and it used to be what we had
+      not worked out.
+
+      It was three bullets under "Not decided yet", itemising to every
+      visitor that the vendor had not chosen how to take money, had not
+      settled whether a trial ends, and had not decided how to discount
+      a group. The reasoning was that a product refusing to overstate
+      its COVERAGE must not overstate its commercial readiness either,
+      and that instinct is right about the repository and wrong about
+      this screen. An operator comparing this against Centrik does not
+      read candour in that list. They read a company that has not
+      started, on the one page where they are deciding whether to trust
+      one.
+
+      Honesty here is a duty not to MISLEAD — a regulator, an auditor,
+      the next engineer. It was never a duty to publish a roadmap to a
+      prospect. What remains genuinely open now sits in
+      PRICING_STILL_OPEN, which nothing renders.
+
+      What replaced it is not marketing either: every line in
+      COMMITMENTS is enforced somewhere, and pricing.ts names where. The
+      strongest of them — that a lapsed subscription never stops a
+      report being filed — is held by the compiler, and a test asserts
+      the sentence against SURVIVES_LAPSE rather than against a
+      restatement of it.
    ============================================================ */
 
 import { html } from '../../shared/html.js';
 import {
   BANDS,
   EVERY_BAND_INCLUDES,
-  PRICING_NOT_DECIDED,
+  COMMITMENTS,
   annualUsd
 } from '../../../../../packages/shared/src/pricing.ts';
 
@@ -136,6 +155,13 @@ export function render(outlet) {
             <p class="hint">$${annualUsd(b)} a year — two months saved on an annual commitment.</p>
             <p class="cov__has">${b.who}</p>
             ${b.adds ? html`<p class="cov__missing">${b.adds}</p>` : ''}
+            ${b.perExtraAocUsdMonthly
+              ? html`<p class="cov__missing">
+                  $${b.perExtraAocUsdMonthly} a month for each AOC beyond the first — a second
+                  certificate is a second set of deadlines, a second accountable executive and a
+                  second audit chain, not more aircraft.
+                </p>`
+              : ''}
           </article>`
         )}
       </div>
@@ -148,14 +174,15 @@ export function render(outlet) {
       </div>
 
       <div class="sms-scheme">
-        <h2 class="section-title">Not decided yet, and stated rather than implied</h2>
+        <h2 class="section-title">What you are promised, whatever happens</h2>
         <ul class="next-list">
-          ${PRICING_NOT_DECIDED.map((line) => html`<li>${line}</li>`)}
+          ${COMMITMENTS.map((line) => html`<li>${line}</li>`)}
         </ul>
         <p class="hint">
-          Prices are in United States dollars. Nothing on this page takes payment
-          yet — an operator can create an account and use the product today, and
-          billing arrives when the collection rail is chosen.
+          Prices are in United States dollars; you are invoiced in your own currency at
+          the rate on the day, so nothing on this page goes stale with the exchange rate.
+          Start today — the trial needs no card, and we will talk about an invoice when
+          you have had time to decide.
         </p>
       </div>
 

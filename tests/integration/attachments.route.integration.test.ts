@@ -284,6 +284,22 @@ describe.skipIf(!hasDatabase)("evidence on a report, through the real route", ()
     expect(Buffer.from(res.rawPayload).equals(bytes)).toBe(true);
   });
 
+  it("tells the client whether this deploy can accept a file, on the way in", async () => {
+    /* The list read works with or without storage configured, so before
+       this the panel rendered a file input on every deploy and only
+       learned the truth after somebody had chosen a photograph, waited
+       for it to re-encode and upload, and got a 503. Correct refusal,
+       cruel sequence: it spent a reporter's time and data to say
+       something the server knew before they started. */
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/reports/${reportId}/attachments`,
+      headers: { authorization: `Bearer ${tokenFor(managerId, orgId, "SAFETY_MANAGER")}` },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().storage).toBe(true);
+  });
+
   it("needs a token — a browser navigating to the path gets nothing", async () => {
     /* The reason the panel cannot use a plain link, asserted where the
        behaviour lives. scripts/smoke.mjs asserts the other half: that

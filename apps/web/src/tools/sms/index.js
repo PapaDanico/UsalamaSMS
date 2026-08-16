@@ -57,8 +57,10 @@ import {
   severityScaleFor,
   likelihoodScaleFor,
   postsFor,
-  MAX_LABEL
+  MAX_LABEL,
+  ASSIGNABLE_BANDS,
 } from '../../../../../packages/shared/src/tenant.ts';
+import { SAFETY_ROLES } from '../../../../../packages/shared/src/posts.ts';
 
 /* Which element each surface belongs to, so the screen is assembled
    from the framework rather than from a list somebody typed in this
@@ -1081,6 +1083,37 @@ export async function render(outlet) {
             value="${cfg.reviewDefaultDays ?? ''}" placeholder="e.g. 180" />
         </label>
 
+        <fieldset class="field">
+          <legend class="field-label">Who may decide risk tolerability</legend>
+          <p class="field-hint">
+            L.N. 32 of 2026, paragraph 1.2.1(e), requires you to
+            <b>define the levels of management with authority to make decisions regarding
+            safety risk tolerability</b>. It is your declaration, not ours &mdash; until you
+            make it, this product has been answering for you.
+          </p>
+          ${ASSIGNABLE_BANDS.map(
+            (band) => html`
+              <label class="field">
+                <span class="field-label">${band === 'TOLERABLE' ? 'Tolerable' : 'Acceptable'} risk</span>
+                <select class="input-field" name="tol-${band}">
+                  <option value="">Not yet declared</option>
+                  ${SAFETY_ROLES.map(
+                    (r) => html`<option value="${r.code}"
+                      ${cfg.decisionLevels?.[band] === r.code ? raw('selected') : ''}
+                      >${label(cfg.postTitles?.[r.code]) || r.label}</option>`
+                  )}
+                </select>
+              </label>
+            `
+          )}
+          <p class="field-hint">
+            There is no row for an <b>intolerable</b> risk, and there never will be. Doc 9859&rsquo;s
+            red band is not acceptable with a sufficiently senior signature &mdash; it is not
+            acceptable at any level of benefit, so the controls have to change rather than the
+            signature. A field naming somebody with authority over it would teach the opposite.
+          </p>
+        </fieldset>
+
         <p class="note">
           <b>What this screen cannot change, and why</b>
           The reporting deadlines come from the instrument for your State and are computed
@@ -1285,7 +1318,15 @@ export async function render(outlet) {
         postTitles: pick('post'),
         aerodromes: lines('aerodromes'),
         aircraftTypes: lines('aircraftTypes'),
-        reviewDefaultDays: Number.isFinite(days) && days > 0 ? days : undefined
+        reviewDefaultDays: Number.isFinite(days) && days > 0 ? days : undefined,
+        /* Only the bands a post may hold are even read from the form —
+           there is no control for INTOLERABLE, and normaliseConfig
+           drops it server-side regardless. Two independent refusals for
+           one rule, deliberately: the screen is a courtesy and the
+           server is the control. */
+        decisionLevels: Object.fromEntries(
+          ASSIGNABLE_BANDS.map((b) => [b, form.elements[`tol-${b}`]?.value]).filter(([, v]) => v)
+        )
       };
 
       try {

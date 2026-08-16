@@ -84,7 +84,7 @@
 import { html, raw } from '../../shared/html.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
-  AERODROMES, AIRCRAFT_TYPES, REPORT_TYPES, HRC_CATEGORIES,
+  AERODROMES, AIRCRAFT_TYPES, REPORT_TYPES, HRC_CATEGORIES, HRC_GROUPS,
   FLIGHT_PHASES, JURISDICTION_OPTIONS, toOptions, OTHER
 } from '../../../../../packages/shared/src/taxonomy.ts';
 import { submitReportOffline } from '../../shared/offline.ts';
@@ -246,24 +246,28 @@ export function render(outlet) {
           placeholder: 'Choose an authority'
         })}
 
-        <fieldset>
-          <legend>Does this relate to any of these?</legend>
-          <div class="chip-row">
-            ${HRC_CATEGORIES.map(
-              (c) => html`
-                <label class="chip">
-                  <input
-                    type="checkbox"
-                    name="hrcTags"
-                    value="${c.code}"
-                    ${(draft.hrcTags ?? []).includes(c.code) ? raw('checked') : ''}
-                  class="input-field"/>
-                  <span>${c.label}</span>
-                </label>
-              `
-            )}
-          </div>
-        </fieldset>
+        ${HRC_GROUPS.map(
+          (group) => html`
+            <fieldset>
+              <legend>${group}</legend>
+              <div class="chip-row">
+                ${HRC_CATEGORIES.filter((c) => c.group === group).map(
+                  (c) => html`
+                    <label class="chip">
+                      <input
+                        type="checkbox"
+                        name="hrcTags"
+                        value="${c.code}"
+                        ${(draft.hrcTags ?? []).includes(c.code) ? raw('checked') : ''}
+                      class="input-field"/>
+                      <span>${c.label}</span>
+                    </label>
+                  `
+                )}
+              </div>
+            </fieldset>
+          `
+        )}
       </details>
 
       </div>

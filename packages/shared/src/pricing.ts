@@ -53,6 +53,28 @@ export interface Band {
   readonly who: string;
   /** What is in it beyond everything — used where a band adds something. */
   readonly adds?: string;
+  /**
+   * PER ADDITIONAL AOC, per month, where a band admits more than one.
+   *
+   * THE ONE PLACE COMPLEXITY IS PRICED SEPARATELY FROM FLEET SIZE, and
+   * it is here because fleet size stopped describing the customer.
+   *
+   * A second air operator certificate is not more aircraft. It is a
+   * second set of reporting deadlines, a second accountable executive, a
+   * second safety policy to sign and review, a second audit chain a
+   * regulator can ask to verify, and a second maturity assessment that
+   * has to stand on its own. Ten aircraft under one AOC and ten under
+   * three are the same fleet and nothing like the same operation.
+   *
+   * It used to be free — the fleet band's `adds` line handed multiple
+   * AOCs over at no charge, so the most complex customer in the segment
+   * paid exactly what the simplest one at the same fleet size paid.
+   *
+   * NOT PER SEAT, and it cannot become one: an operator cannot quietly
+   * drop an AOC to save money the way it can decline to license its line
+   * crew. That is the same test every band on this page has to pass.
+   */
+  readonly perExtraAocUsdMonthly?: number;
 }
 
 /* Priced against what the segment can actually pay rather than against
@@ -60,29 +82,54 @@ export interface Band {
    spending $11,000 a year on safety software is not a price objection,
    it is a different company. The top band still undercuts the cheapest
    incumbent's ten-seat price, and the bottom band is inside what an
-   operator already spends on one manual revision. */
+   operator already spends on one manual revision.
+
+   ---------------------------------------------------------------
+   REVISED UPWARD 16 AUGUST 2026, from 49 / 149 / 399.
+
+   The old numbers were set against a product that held reports and
+   classified them. It now carries eleven of Annex 19's twelve elements
+   — the hazard register, the risk picture, the CAPA loop, the SPI set
+   regulation 9(5) requires, the emergency response directory, the
+   maturity assessment, the de-identification pipeline and an audit
+   chain a regulator can verify by content. The price did not move while
+   all of that arrived, so it had drifted from describing the product
+   into describing an early version of it.
+
+   Checked against what the segment is quoted elsewhere, August 2026:
+   Centrik about $920 a month for ten users, Q-Pulse about $720,
+   Baldwin about $640. Those are TEN SEATS. Every band here is the whole
+   operator with unlimited reporters, so the fleet band at $549 is still
+   under the cheapest incumbent's ten-seat price — which is the claim
+   the paragraph above makes and the one that has to stay true.
+
+   The shape of the raise is deliberate: it steepens rather than
+   shifting. Complexity does not scale with fleet size in a straight
+   line, and the single-aircraft band is the one most likely to be an
+   operator choosing between this and nothing at all. */
 export const BANDS: ReadonlyArray<Band> = Object.freeze([
   Object.freeze({
     id: "single",
     name: "Single aircraft",
     fleet: "1 aircraft",
-    usdMonthly: 49,
+    usdMonthly: 79,
     who: "An owner-operator, a flight school with one type, a survey outfit.",
   }),
   Object.freeze({
     id: "small",
     name: "Small operator",
     fleet: "2 to 9 aircraft",
-    usdMonthly: 149,
+    usdMonthly: 239,
     who: "The charter, medevac and survey operators this product was built for.",
   }),
   Object.freeze({
     id: "fleet",
     name: "Fleet",
     fleet: "10 or more aircraft",
-    usdMonthly: 399,
+    usdMonthly: 549,
     who: "A scheduled operator, or a group holding several AOCs.",
-    adds: "Multiple AOCs under one safety office, and the export in a scheduled batch.",
+    adds: "The export in a scheduled batch, and a second AOC priced rather than assumed.",
+    perExtraAocUsdMonthly: 149,
   }),
 ]);
 
@@ -141,8 +188,56 @@ export function annualUsd(band: Band): number {
    credentials, which is the same class of blocker as the SMS sender ID:
    a person's job, and one that must not travel through a chat log.
    ===================================================================== */
-export const PRICING_NOT_DECIDED: ReadonlyArray<string> = Object.freeze([
-  "The collection rail — M-Pesa, card, or invoice — and therefore the shilling price.",
-  "Whether a trial has an end date or a report limit. It will not have a report limit.",
-  "Discounting for a group holding several AOCs beyond the fleet band.",
+/**
+ * WHAT AN OPERATOR IS PROMISED, on the screen where they decide.
+ *
+ * THIS USED TO BE A LIST OF WHAT WE HAD NOT WORKED OUT. Three bullets,
+ * rendered to every visitor, itemising that the vendor had not chosen
+ * how to take money, had not settled whether a trial ends, and had not
+ * decided how to discount a group. Every word of it was true, and
+ * putting it on the pricing page was a mistake: an operator comparing
+ * this against Centrik does not read candour there, they read a company
+ * that has not started. The honest internal position belongs in the
+ * repository, not on the buying screen.
+ *
+ * EVERY LINE BELOW IS ENFORCED SOMEWHERE, and that is the rule for
+ * adding one. This product's whole argument is that a claim on a screen
+ * should be a claim a test can fail on — the coverage page names what
+ * it does not do, the deadline table cites its instrument, and a
+ * promise about billing is no different. Where the enforcement lives:
+ *
+ *   · unlimited reporters — `Band` has no seat field to hold a limit;
+ *   · filing survives lapse — SURVIVES_LAPSE in subscription.ts, held
+ *     by the compiler through Record<Capability, boolean>;
+ *   · the record stays exportable — the same table, same enforcement;
+ *   · no element behind a tier — EVERY_BAND_INCLUDES, above;
+ *   · sixty days — TRIAL_DAYS, and tests/subscription.test.ts asserts
+ *     the promise against the constant rather than against a number
+ *     somebody retyped here.
+ */
+export const COMMITMENTS: ReadonlyArray<string> = Object.freeze([
+  "Sixty days to try it, with no card and no limit on what you file — long enough to " +
+    "take one hazard the whole way round the loop, which is the only way to judge an SMS.",
+  "Your people file for free, always. There is no seat to buy, so there is no version " +
+    "of this where leaving the line crew out saves you money.",
+  "If a subscription ever lapses, your people can still file and you can still export " +
+    "your entire record. The safety office tools pause; the reporting never does.",
+  "The record is yours on the way out as well as the way in — every report, hazard, " +
+    "assessment and action, exportable at any time, in a format you can read without us.",
+  "Every Annex 19 element this product covers is on every band. Nothing regulatory sits " +
+    "behind a higher tier.",
+]);
+
+/**
+ * STILL OPEN, and deliberately not rendered anywhere.
+ *
+ * The honesty this repository runs on is about not misleading a reader
+ * — a regulator, an auditor, the next engineer. It was never a duty to
+ * publish a roadmap to a prospect. These are commercial decisions with
+ * a date on them, and they belong here where the next person to touch
+ * pricing will find them.
+ */
+export const PRICING_STILL_OPEN: ReadonlyArray<string> = Object.freeze([
+  "The collection rail, and therefore the shilling price. Nothing on the site takes " +
+    "money yet; an operator starts a trial and is invoiced when the rail exists.",
 ]);

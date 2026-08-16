@@ -66,7 +66,7 @@
    more field that seemed harmless.
    ===================================================================== */
 
-import { SEVERITY_SCALE, LIKELIHOOD_SCALE, type Severity, type Likelihood } from "./risk";
+import { SEVERITY_SCALE, LIKELIHOOD_SCALE, type Severity, type Likelihood, type Tolerability } from "./risk";
 import { SAFETY_ROLES } from "./posts";
 
 /** Bounds, so a tenant cannot write an unbounded document. */
@@ -96,6 +96,46 @@ export interface TenantConfig {
   readonly aircraftTypes?: ReadonlyArray<string>;
   /** The operator's own default review cycle, in days. */
   readonly reviewDefaultDays?: number;
+  /**
+   * WHICH POST MAY DECIDE A GIVEN TOLERABILITY BAND.
+   *
+   * The one field here that is not a preference. L.N. 32, paragraph
+   * 1.2.1(e), obliges a service provider to "define the levels of
+   * management with authority to make decisions regarding safety risk
+   * tolerability" — so this is an OBLIGATION the operator discharges,
+   * and the reason it belongs in tenant configuration rather than in
+   * permissions.ts is that the regulation assigns the decision to them
+   * and not to us.
+   *
+   * Until this existed the product answered it for every operator
+   * through a fixed role permission. That answer was defensible and it
+   * was still the wrong party's answer: an auditor asking to see the
+   * operator's own definition had nothing to be shown, because the
+   * operator had never made one.
+   *
+   * NAMED AFTER THE LEVELS, NOT AFTER THE BAND, and a build gate is
+   * why. It was `tolerabilityAuthority` first, and check-claims refused
+   * it: no tenant-configurable field may be named after a tolerability
+   * band, a deadline, an element or a chain, because an operator who
+   * can edit what those MEAN has bought a compliance tool that cannot
+   * be relied on for compliance.
+   *
+   * The gate was right and the name was wrong. L.N. 32's own subject is
+   * "the LEVELS OF MANAGEMENT with authority to make decisions
+   * regarding safety risk tolerability" — the thing an operator
+   * declares is the levels. The band is what the levels have authority
+   * over, and it stays Doc 9859's. Renaming to the instrument's own
+   * noun made the field more accurate, not merely permitted.
+   *
+   * INTOLERABLE IS NEVER A KEY. normaliseConfig drops it, and the
+   * reason is the same one that deleted `risk.accept.intolerable` from
+   * the permission union: Doc 9859's red band is not "acceptable with
+   * a sufficiently senior signature", it is not acceptable at any
+   * level of benefit. A field that could name somebody with authority
+   * over it is an invitation to believe otherwise, and this product
+   * has already removed one of those.
+   */
+  readonly decisionLevels?: Readonly<Partial<Record<Tolerability, string>>>;
 }
 
 /**
@@ -150,6 +190,33 @@ function cleanList(raw: unknown): ReadonlyArray<string> | undefined {
  * not this build's — so it is either a typo or an attempt to add a
  * point to the scale, and neither should round-trip.
  */
+/**
+ * The bands a post may be named against — TOLERABLE and ACCEPTABLE,
+ * and never INTOLERABLE.
+ *
+ * Derived as "every band except the red one" rather than typed as a
+ * two-item list, so adding a band to the scale cannot silently leave
+ * this one behind.
+ */
+export const ASSIGNABLE_BANDS: ReadonlyArray<Tolerability> = Object.freeze(
+  (["INTOLERABLE", "TOLERABLE", "ACCEPTABLE"] as const).filter((b) => b !== "INTOLERABLE"),
+);
+
+/** Keeps the bands a post may hold, against the posts that exist. */
+function cleanAuthority(raw: unknown): TenantConfig["decisionLevels"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const out: Partial<Record<Tolerability, string>> = {};
+  for (const band of ASSIGNABLE_BANDS) {
+    const post = r[band];
+    /* The post must be one this product knows. An operator renames its
+       posts through `postTitles`; it does not invent new ones here, and
+       a code nothing recognises would name an authority nobody holds. */
+    if (typeof post === "string" && POST_CODES.includes(post)) out[band] = post;
+  }
+  return Object.keys(out).length ? Object.freeze(out) : undefined;
+}
+
 export function normaliseConfig(raw: unknown): TenantConfig {
   if (!raw || typeof raw !== "object") return {};
   const r = raw as Record<string, unknown>;
@@ -165,6 +232,7 @@ export function normaliseConfig(raw: unknown): TenantConfig {
        cycle marks everything overdue on creation; a ten-year one is a
        review that never happens, dressed as one that does. */
     reviewDefaultDays: Number.isFinite(days) && days >= 1 && days <= 1825 ? Math.round(days) : undefined,
+    decisionLevels: cleanAuthority(r.decisionLevels),
   };
 }
 

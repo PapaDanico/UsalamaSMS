@@ -3,11 +3,36 @@
 // over a list.
 //
 // WHY THIS EXISTS, and it is a fresh scar. Every table in `public` has
-// row security enabled and zero policies. That is not an unfinished
-// migration — it is the security model, documented in CLAUDE.md:
-// nothing in this product uses PostgREST, the anon key is deliberately
-// absent from the codebase, and with no policies and no Data API grants
-// the `anon` and `authenticated` roles can reach nothing at all.
+// row security enabled and exactly one RESTRICTIVE deny-all policy.
+// (This comment said "zero policies" for longer than that was true —
+// the restrictive policy replaced the empty set in August 2026, and the
+// reasoning is in CLAUDE.md.) That is not an unfinished migration — it
+// is the security model, documented in CLAUDE.md:
+// nothing in this product uses PostgREST and the anon key is
+// deliberately absent from the codebase.
+//
+// ONE CLAIM THAT USED TO SIT HERE WAS FALSE, and it mattered. This
+// comment said there were "no Data API grants". There are: measured on
+// production, `anon`, `authenticated` and `service_role` each hold 196
+// table grants in `public`, issued by Supabase at project creation and
+// never removed. So the deny-all is not a second lock behind an empty
+// grant table — it IS the lock.
+//
+// It held against `anon` and `authenticated`, which cannot bypass RLS.
+// It did NOT hold against `service_role`, which carries `rolbypassrls`:
+// granted SELECT on `SafetyReport` alone, that role read all seven real
+// production reports straight through the RESTRICTIVE deny-all. Proved
+// against production, then reverted.
+//
+// So the grants were revoked from all three roles — BYPASSRLS bypasses
+// policies, not privileges — and `public` now shows zero grant rows for
+// them while the owner keeps its 196. CLAUDE.md holds the statements
+// and the reasoning.
+//
+// Nothing below can assert any of that: these tests run against a local
+// Postgres that has no Supabase roles at all, so a grant assertion here
+// would pass by measuring an empty set — a check that cannot fail. It
+// is written down instead of gated, deliberately, and named as such.
 //
 // The migration that established it named its ten tables one by one.
 // Postgres creates a new table with row security OFF. So when eight
