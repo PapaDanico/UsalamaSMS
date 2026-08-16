@@ -44,20 +44,32 @@ export const OTHER = "__OTHER__";
 /**
  * Aerodromes, by ICAO code.
  *
- * SCOPED TO THE STATE OF REGISTRY, which is Kenya for now. The list
- * once reached across the East African corridor — Entebbe, Dar es
- * Salaam, Kilimanjaro, Zanzibar, Kigali and further — on the reasoning
- * that a Kenyan operator flies there. It does, and the escape hatch
- * carries it: the aerodromes that get a code in the dropdown are the
- * ones whose reporting this product actually maintains a standard for,
- * and a list that reaches past that implies a coverage that is not
- * there.
+ * KENYA IN DEPTH, THEN THE EAST AFRICAN COMMUNITY AND SOMALIA.
  *
- * A Kenyan operator filing about a sector into Entebbe uses "Somewhere
- * else…" and types it. That is one aerodrome in free text rather than
- * a dropdown entry implying the product knows Uganda's obligations.
- * Restoring a field is one line, and should follow a customer rather
- * than precede one.
+ * This list was scoped to Kenya alone, twice: once when it was written,
+ * and once when a wider version was deliberately cut back. The argument
+ * for cutting it was that a dropdown entry for Entebbe implies the
+ * product knows Uganda's obligations, and that a list reaching past
+ * what this product maintains a standard for claims a coverage it does
+ * not have.
+ *
+ * That argument was right about the danger and wrong about this field.
+ * WHERE something happened and WHOSE RULES govern it are separate
+ * questions, and the report form asks them separately — this list fills
+ * `location`, while "Which authority does this operation answer to?"
+ * comes from JURISDICTION_OPTIONS and still admits only what
+ * regulations.ts can actually compute. The implication the old note
+ * feared has nowhere to attach.
+ *
+ * What the narrow list did cost is the reason dropdowns exist at all.
+ * Every regional sector fell into the free-text escape hatch, so an
+ * operator flying Nairobi–Entebbe–Kigali could not count occurrences by
+ * place; no indicator keyed to an aerodrome and no line of the risk
+ * picture could see them. That is the GROUP BY problem this whole
+ * module is written against, applied to most of the route network.
+ *
+ * The escape hatch stays, and still carries the strip with no ICAO code
+ * at all — which in this segment is most of them.
  */
 export const AERODROMES = [
   { code: 'HKJK', label: 'Nairobi / Jomo Kenyatta (HKJK)', country: 'KE' },
@@ -88,7 +100,65 @@ export const AERODROMES = [
   { code: 'HKLK', label: 'Lokichogio (HKLK)', country: 'KE' },
   { code: 'HKKT', label: 'Kitale (HKKT)', country: 'KE' },
   { code: 'HKNY', label: 'Nanyuki (HKNY)', country: 'KE' },
-  { code: 'HKAM', label: 'Amboseli (HKAM)', country: 'KE' }
+  { code: 'HKAM', label: 'Amboseli (HKAM)', country: 'KE' },
+
+  /* ==================================================================
+     THE EAST AFRICAN COMMUNITY, AND SOMALIA.
+
+     The note above this list argued that a Kenyan operator filing about
+     a sector into Entebbe should type it, because a dropdown entry
+     implies the product knows Uganda's obligations. That reasoning was
+     sound about ONE thing and wrong about the field it was applied to.
+
+     WHERE AN OCCURRENCE HAPPENED AND WHOSE RULES GOVERN IT ARE TWO
+     SEPARATE QUESTIONS, and this form already asks them separately —
+     `location` here, and "Which authority does this operation answer
+     to?" from JURISDICTION_OPTIONS. An aerodrome in this list makes no
+     claim about deadlines; the jurisdiction field does, and it still
+     covers what regulations.ts can actually compute. So the coupling
+     the old note feared does not exist in the markup.
+
+     What the old arrangement DID cost is the thing dropdowns exist for.
+     Every EAC sector landed in the free-text escape hatch, so an
+     operator flying Nairobi–Entebbe–Kigali could not count events by
+     place, and neither the risk picture nor an indicator keyed to an
+     aerodrome could see them. Untaggable is uncountable — the same
+     defect the ground-operations categories had.
+
+     Somalia is included because it acceded to the EAC, and because the
+     Kenyan charter and survey operators this product is built for fly
+     there constantly.
+
+     EVERY CODE BELOW WAS VERIFIED, not recalled, and the check earned
+     its keep: Juba is HJJJ and recall said HSSJ; Bosaso is HCMF and
+     recall said HCMV. Two wrong ICAO codes in an aviation product is
+     precisely the class of error this repository refuses to ship.
+     Verify against the current AIP before a customer's compliance
+     depends on any of them.
+     ================================================================== */
+  { code: 'HUEN', label: 'Entebbe (HUEN)', country: 'UG' },
+
+  { code: 'HTDA', label: 'Dar es Salaam / Julius Nyerere (HTDA)', country: 'TZ' },
+  { code: 'HTKJ', label: 'Kilimanjaro (HTKJ)', country: 'TZ' },
+  { code: 'HTZA', label: 'Zanzibar / Abeid Amani Karume (HTZA)', country: 'TZ' },
+  { code: 'HTMW', label: 'Mwanza (HTMW)', country: 'TZ' },
+  { code: 'HTAR', label: 'Arusha (HTAR)', country: 'TZ' },
+
+  { code: 'HRYR', label: 'Kigali (HRYR)', country: 'RW' },
+
+  { code: 'HBBA', label: 'Bujumbura (HBBA)', country: 'BI' },
+
+  { code: 'HJJJ', label: 'Juba (HJJJ)', country: 'SS' },
+
+  { code: 'FZAA', label: "Kinshasa / N'Djili (FZAA)", country: 'CD' },
+  { code: 'FZNA', label: 'Goma (FZNA)', country: 'CD' },
+  { code: 'FZQA', label: 'Lubumbashi (FZQA)', country: 'CD' },
+
+  { code: 'HCMM', label: 'Mogadishu / Aden Adde (HCMM)', country: 'SO' },
+  { code: 'HCMH', label: 'Hargeisa / Egal (HCMH)', country: 'SO' },
+  { code: 'HCMI', label: 'Berbera (HCMI)', country: 'SO' },
+  { code: 'HCMK', label: 'Kismayo (HCMK)', country: 'SO' },
+  { code: 'HCMF', label: 'Bosaso (HCMF)', country: 'SO' }
 ];
 
 /**
