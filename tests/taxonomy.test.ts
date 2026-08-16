@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CreateReportSchema, isValidLocation, isValidAircraftType } from "../packages/shared/src/index";
-import { HRC_CATEGORIES, HRC_GROUPS, NASP_HIGH_RISK, cicttFor } from "../packages/shared/src/taxonomy";
+import { HRC_CATEGORIES, HRC_GROUPS, NASP_HIGH_RISK, cicttFor, AERODROMES } from "../packages/shared/src/taxonomy";
 import { OCCURRENCE_CATEGORIES } from "../packages/shared/src/cictt";
 
 const base = {
@@ -129,5 +129,65 @@ describe("the occurrence vocabulary is one vocabulary", () => {
     for (const c of HRC_CATEGORIES) {
       expect(HRC_GROUPS, `${c.code} sits in a group the form never renders`).toContain(c.group);
     }
+  });
+});
+
+
+/* =====================================================================
+   THE ROUTE NETWORK, NOT JUST THE STATE OF REGISTRY.
+
+   The list was Kenya-only, so every regional sector fell into the
+   free-text escape hatch and could not be counted by place. Untaggable
+   is uncountable — the same defect the ground-operations categories
+   had, applied to most of the network an operator actually flies.
+
+   THE CODES WERE VERIFIED RATHER THAN RECALLED, and the check earned
+   its keep twice: Juba is HJJJ where recall said HSSJ, and Bosaso is
+   HCMF where recall said HCMV. Two wrong ICAO codes shipped in an
+   aviation product is the class of error this repository exists to
+   refuse, so the shape is gated even though the VALUES can only be
+   confirmed against an AIP by a person.
+   ===================================================================== */
+describe("the aerodromes an operator can actually pick", () => {
+  it("gives every entry a well-formed, unique ICAO code", () => {
+    const codes = AERODROMES.map((a) => a.code);
+    expect(new Set(codes).size, "a duplicate code makes two places one row").toBe(codes.length);
+    for (const a of AERODROMES) {
+      expect(a.code, `${a.label} is not a four-letter ICAO code`).toMatch(/^[A-Z]{4}$/);
+      /* The code belongs in the label too — a safety manager reading a
+         printed register needs it without a lookup. */
+      expect(a.label, `${a.code} is missing from its own label`).toContain(a.code);
+      expect(a.country, `${a.code} has no country`).toMatch(/^[A-Z]{2}$/);
+    }
+  });
+
+  it("reaches the East African Community and Somalia, not just Kenya", () => {
+    const states = new Set(AERODROMES.map((a) => a.country));
+    /* Somalia acceded to the EAC, and the charter and survey operators
+       this product is built for fly there constantly. */
+    for (const s of ["KE", "UG", "TZ", "RW", "BI", "SS", "CD", "SO"]) {
+      expect(states, `no aerodrome in ${s}`).toContain(s);
+    }
+  });
+
+  it("keeps Kenya the deepest, because that is the State of registry", () => {
+    /* Reaching the region must not come at the cost of the home
+       network: a Kenyan operator files far more sectors inside Kenya
+       than outside it, and the northern fields are the ones with no
+       alternative. */
+    const byState: Record<string, number> = {};
+    for (const a of AERODROMES) byState[a.country] = (byState[a.country] ?? 0) + 1;
+    const deepest = Object.entries(byState).sort((x, y) => y[1] - x[1])[0];
+    expect(deepest?.[0]).toBe("KE");
+  });
+
+  it("carries the two codes recall got wrong", () => {
+    /* Named rather than counted. A count is satisfied by any thirty-five
+       entries; these two are the evidence that verification happened. */
+    const codes = AERODROMES.map((a) => a.code);
+    expect(codes).toContain("HJJJ");
+    expect(codes).not.toContain("HSSJ");
+    expect(codes).toContain("HCMF");
+    expect(codes).not.toContain("HCMV");
   });
 });
