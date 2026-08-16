@@ -830,6 +830,56 @@ html { scroll-padding-top: var(--us-chrome); }
   details > summary { display: none !important; }
   .card { box-shadow: none !important; }
 
+  /* A STAT RAIL IS A SCREEN DEVICE. ON PAPER IT IS A LIST.
+
+     Rendered to A4 and looked at, which is the only way this was going
+     to show up: .stat-strip is an auto-fit grid at a 9rem minimum, so
+     at 794px it lays four figures across and DROPS THE FIFTH onto a
+     row of its own. That fifth is the provenance — "Safety office" or
+     "This device" — whose label runs to two lines where the others run
+     to one, so a regulator's copy opened with four aligned figures
+     above one hanging off the left margin, looking like a rendering
+     fault rather than a fact.
+
+     Auto-fit is right on a screen, where the count follows the width.
+     On a fixed page there IS no width to follow, and a figure grid
+     buys nothing anyway: paper is read top to bottom, not scanned.
+     So each figure becomes a row — label first, because on paper the
+     question comes before the number — and five of them align the same
+     way four do.
+
+     The provenance row is KEPT rather than hidden. It is the one line
+     that tells a reader whether these entries are held for the
+     operator or only on somebody's handset, which is exactly what an
+     inspector needs to know about a printed register. */
+  .stat-strip {
+    display: block !important;
+    border-top: 1px solid #000 !important;
+    padding-top: 8px !important;
+    margin-top: 12px !important;
+  }
+  .stat {
+    display: flex !important;
+    gap: 10px;
+    align-items: baseline;
+    padding: 2px 0;
+    border-bottom: 1px dotted rgba(0, 0, 0, 0.25);
+    break-inside: avoid;
+  }
+  .stat__label {
+    order: -1;
+    flex: 1 1 auto;
+    margin: 0 !important;
+    color: #000 !important;
+    font-size: 10pt !important;
+  }
+  .stat__value {
+    flex: 0 0 auto;
+    color: #000 !important;
+    font-size: 11pt !important;
+    font-weight: 700;
+  }
+
   /* ============================================================
      THE PRINTED PACK IS THE ARTEFACT THAT REACHES A REGULATOR.
 
