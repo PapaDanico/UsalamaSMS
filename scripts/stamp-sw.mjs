@@ -1745,9 +1745,39 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    tests/picture-offer.test.ts, mutation-checked in both directions.
 
    0.2 KB of the 1 KB is spent. The rest is headroom for the same
-   treatment on the remaining signed-out screens, which is the next
-   piece of this work rather than a reason to raise it again. */
-const BUDGET = { entry: 217 * 1024, js: 513 * 1024, css: 63 * 1024 };
+   treatment on the remaining signed-out screens.
+
+   ---------------------------------------------------------------
+   CSS 63 -> 64 KB, AND THIS SPENDS THE HEADROOM ON SOMETHING ELSE.
+
+   The paragraph above says the remaining 0.8 KB was for the signed-out
+   screens and "not a reason to raise it again". It went on the PRINTED
+   PACK instead, so that sentence is worth correcting rather than
+   quietly outliving its accuracy.
+
+   What overtook it: rendering the pack to A4 and reading it. The SRA's
+   first field printed "New scheduled service to an unpaved northern
+   strip" and its second "The aircraft, the aerodromes, the people, the
+   procedures...". Both are PLACEHOLDERS. On screen the grey says so;
+   on paper, handed to somebody who has never seen this application, an
+   empty assessment reads as a completed one describing a route nobody
+   proposed.
+
+   A printed safety document asserting something untrue about an
+   operator is the one class of defect this product cannot ship, and it
+   outranks the tidiness of a spending plan written twenty minutes
+   earlier. The rules bought: placeholders never print, an empty field
+   prints as a rule rather than a box to fill in, a stat rail prints as
+   an aligned list rather than a grid that drops its fifth figure, and
+   the SRA step list stops rendering "1. 1.".
+
+   All of it is inside @media print, so a reporter at a remote strip
+   downloads it and never renders it — the weight is real but it is not
+   on the critical path, and the entry chunk is untouched at 210.4 KB.
+
+   The signed-out treatment still needs its 0.8 KB. That is now a raise
+   to argue for on its own merits rather than one already banked. */
+const BUDGET = { entry: 217 * 1024, js: 513 * 1024, css: 64 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

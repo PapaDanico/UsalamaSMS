@@ -830,6 +830,39 @@ html { scroll-padding-top: var(--us-chrome); }
   details > summary { display: none !important; }
   .card { box-shadow: none !important; }
 
+  /* A PLACEHOLDER MUST NOT PRINT. THIS ONE IS NOT COSMETIC.
+
+     Printed, the SRA's first field showed "New scheduled service to an
+     unpaved northern strip" and the second "The aircraft, the
+     aerodromes, the people, the procedures...". Both are PLACEHOLDERS.
+     On a screen the grey says so; on paper, handed to somebody who has
+     never seen the application, an empty assessment reads as a
+     completed one describing a route nobody proposed.
+
+     That is a printed safety document asserting something untrue about
+     an operator, which is the one class of defect this product cannot
+     ship. Found by rendering the pack to A4 and reading it.
+
+     Transparent rather than display:none, because a placeholder is not
+     a box — hiding it would collapse nothing and change no layout. */
+  ::placeholder { color: transparent !important; opacity: 0 !important; }
+
+  /* AND AN EMPTY FIELD IS A BLANK, NOT A BOX. A bordered rectangle on
+     paper is something to fill in; this pack is a record of what was
+     decided, not a form to hand back. A rule underneath reads as "this
+     was left blank", which is the honest rendering of an empty field
+     in a document. */
+  .input-field, input[type='text'], input[type='date'], textarea, select {
+    border: 0 !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.4) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    min-height: 0 !important;
+    color: #000 !important;
+  }
+
   /* A STAT RAIL IS A SCREEN DEVICE. ON PAPER IT IS A LIST.
 
      Rendered to A4 and looked at, which is the only way this was going
@@ -3216,6 +3249,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* The figure strip under a page head. Four facts a reader can take
    without reading the page, which is what most readers of a
    methodology page actually want. */
+/* "1. 1. System analysis". The <ol> draws its own marker and the item
+   also prints ICAO's step number, which is the authoritative one — Doc
+   9859's numbering, not a position in a list that could be filtered.
+   So the marker goes and the ordinal stays. */
+#sra-steps { list-style: none; padding-left: 0; }
+
 .stat-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
