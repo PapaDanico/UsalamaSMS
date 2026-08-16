@@ -51,6 +51,15 @@ import {
   prisma, ENV, hmac, verifyPassword, issueAccessToken, issueRefreshToken,
   appendAuditTx, authenticate, requirePermission,
 } from "./core";
+/* By path rather than through the barrel, for the reason reset.ts
+   states in its own header: the report form imports the barrel, so
+   anything re-exported from it is downloaded by a ramp agent before
+   they can file. */
+import {
+  ForgotSchema, ResetSchema, RESET_TTL_MINUTES, MIN_PASSWORD_LENGTH,
+  RESET_REQUESTED_ANSWER, RESET_REFUSED_ANSWER,
+} from "../../../packages/shared/src/reset";
+import { mailConfigFromEnv, sendPasswordReset } from "./mail";
 import argon2 from "argon2";
 import { randomBytes } from "node:crypto";
 
@@ -339,9 +348,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         req.log.warn({ email: hmac(email) }, "signup refused — address already registered");
         return reply.code(409).send({
           error: "cannot_create",
+          /* SAID "your administrator can reset it" UNTIL THE RESET
+             ROUTES LANDED, and there was no administrator: this route
+             creates one ACCOUNTABLE_EXECUTIVE, that role does not hold
+             `user.manage`, and nothing anywhere creates a second user.
+             So the sentence sent every locked-out customer to a person
+             who does not exist. It now names the route that works. */
           message:
             "That account could not be created. If you already have one, sign in — " +
-            "and if you have forgotten the password, your administrator can reset it.",
+            "and if you have forgotten the password, ask for a reset link at /reset.",
         });
       }
 
@@ -423,6 +438,246 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         role: created.user.role,
         orgId: created.org.id,
         orgName: created.org.name,
+      });
+    },
+  );
+
+  /* ==================================================================
+     GETTING BACK IN WITHOUT AN ADMINISTRATOR — the two unauthenticated
+     routes, and the argument for them is in packages/shared/src/reset.ts
+     rather than repeated here.
+
+     The short version: the administrative reset above is the better
+     mechanism and it is unreachable. Signup makes one user, sets it to
+     ACCOUNTABLE_EXECUTIVE, and that role does not hold `user.manage` —
+     so every operator that has ever signed up has one account, in an
+     organisation containing nobody able to reset it.
+
+     FIVE PROPERTIES, and each is a line below:
+
+       1. IT ANSWERS THE SAME WAY WHATEVER IT FINDS. Same status, same
+          body, same argon2-shaped delay. The login route spends a dummy
+          hash to keep the clock quiet; this one issues and hashes a
+          token it then throws away, for the same reason and at the same
+          cost.
+
+       2. A NEW LINK KILLS THE OLD ONES. Somebody who asks twice because
+          the first mail was slow must not leave two live credentials in
+          an inbox.
+
+       3. CONSUMPTION IS ONE CONDITIONAL UPDATE. `usedAt: null` in the
+          WHERE, count checked — the refresh route records at length
+          what happens when a read-then-write is used to enforce
+          single-use, and the answer is that both racers win.
+
+       4. IT REVOKES EVERY SESSION. A reset is a statement that the old
+          credential is finished; leaving a refresh token alive means
+          whoever forced the reset keeps their access, and the remedy
+          becomes the breach.
+
+       5. IT SAYS WHAT THE MAIL PATH DID. NOT_CONFIGURED, SENT and
+          FAILED reach the caller as three different words. A recovery
+          route that reports success while sending nothing is the
+          quiet-failure objection to mail links coming true.
+     ================================================================== */
+  app.post(
+    "/api/v1/auth/forgot",
+    {
+      config: {
+        /* Harder than login. Login costs an attacker a guess; this
+           costs a real person an email they did not ask for, and a
+           product that can be made to post a hundred of them at one
+           address is a product mail providers stop delivering. */
+        rateLimit: { max: 5, timeWindow: "15 minutes" },
+      },
+    },
+    async (req, reply) => {
+      const parsed = ForgotSchema.safeParse(req.body);
+      /* EVEN A MALFORMED BODY GETS THE SAME ANSWER. A 400 for "that is
+         not an email address" is harmless, but a 400 that distinguishes
+         a valid-but-unknown address from an invalid one is the oracle
+         wearing a different status code. */
+      if (!parsed.success) {
+        return reply.code(202).send({ requested: true, message: RESET_REQUESTED_ANSWER });
+      }
+      const email = parsed.data.email;
+
+      /* READ BEFORE THE LOOKUP, so what is reported about the mail path
+         cannot depend on whether the account exists. Computing it after
+         a `if (!user) return` is how a server property becomes an
+         account oracle. */
+      const mail = mailConfigFromEnv();
+      const delivery = mail.apiKey ? "CONFIGURED" : "NOT_CONFIGURED";
+
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, orgId: true, active: true },
+      });
+
+      /* MINTED WHETHER OR NOT IT IS USED. randomBytes and the HMAC both
+         cost the same for a missing account as for a real one, which is
+         what keeps the two paths indistinguishable on the clock. */
+      const token = randomBytes(32).toString("base64url");
+      const tokenHash = hmac(token);
+      const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60_000);
+
+      if (user && user.active) {
+        await prisma.$transaction(async (tx) => {
+          /* Property 2. Every outstanding link for this account, spent
+             now rather than at expiry. */
+          await tx.passwordReset.updateMany({
+            where: { userId: user.id, usedAt: null },
+            data: { usedAt: new Date() },
+          });
+          await tx.passwordReset.create({
+            data: { userId: user.id, tokenHash, expiresAt },
+          });
+          await appendAuditTx(tx, {
+            orgId: user.orgId,
+            userId: user.id,
+            action: "auth.password.reset_requested",
+            entityType: "User",
+            entityId: user.id,
+            /* THE ACT AND THE CHANNEL, never the token. An audit entry
+               holding a live reset link would make the audit export a
+               credential store. */
+            detail: { delivery },
+          });
+        });
+
+        const outcome = await sendPasswordReset(
+          email,
+          `${mail.baseUrl}/reset?token=${token}`,
+          RESET_TTL_MINUTES,
+          mail,
+        );
+        /* Logged against an HMAC of the address, the way login logs a
+           failure — the log is read by people and a plaintext staff
+           roster in it is the same leak by a slower route. */
+        req.log.info({ email: hmac(email), outcome: outcome.status }, "password reset requested");
+      } else {
+        req.log.warn({ email: hmac(email) }, "password reset requested for no live account");
+      }
+
+      /* `delivery` IS REPORTED TO EVERY CALLER, and it is safe precisely
+         because it was computed above without reference to the account.
+         It says whether THIS DEPLOYMENT can send mail at all — a fact
+         about the server, identical for an address that exists and one
+         that does not, and the difference between "check your inbox"
+         and "nothing was sent and here is why". Charter rule 8. */
+      return reply.code(202).send({
+        requested: true,
+        delivery,
+        message: RESET_REQUESTED_ANSWER,
+      });
+    },
+  );
+
+  app.post(
+    "/api/v1/auth/reset",
+    {
+      config: {
+        /* A token is 32 random bytes, so guessing is not the threat;
+           hashing is. Each call runs argon2 on a caller-supplied
+           password, and an unbounded route that does that is a CPU
+           exhaustion primitive pointed at the API every other request
+           shares. */
+        rateLimit: { max: 10, timeWindow: "15 minutes" },
+      },
+    },
+    async (req, reply) => {
+      const parsed = ResetSchema.safeParse(req.body);
+      if (!parsed.success) {
+        /* THE PASSWORD RULE IS WORTH STATING and the token's shape is
+           not. A person who typed nine characters needs to know the
+           floor is twelve; a person holding a badly-formed token is
+           told the same thing every other bad token hears. */
+        const tooShort = parsed.error.issues.some((i) => i.path[0] === "newPassword");
+        return reply.code(400).send({
+          error: tooShort ? "password_too_short" : "invalid",
+          message: tooShort
+            ? `A new password needs at least ${MIN_PASSWORD_LENGTH} characters.`
+            : RESET_REFUSED_ANSWER,
+        });
+      }
+
+      const tokenHash = hmac(parsed.data.token);
+      const existing = await prisma.passwordReset.findUnique({
+        where: { tokenHash },
+        select: { id: true, userId: true, expiresAt: true, usedAt: true },
+      });
+
+      /* ONE ANSWER FOR FOUR FACTS — never issued, already spent, timed
+         out, and belonging to a deactivated account. Telling them apart
+         tells somebody holding a stolen link which kind they hold. */
+      const refuse = () =>
+        reply.code(400).send({ error: "reset_link_unusable", message: RESET_REFUSED_ANSWER });
+
+      if (!existing || existing.usedAt || existing.expiresAt.getTime() < Date.now()) {
+        return refuse();
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: existing.userId },
+        select: { id: true, orgId: true, email: true, active: true },
+      });
+      if (!user || !user.active) return refuse();
+
+      const passwordHash = await argon2.hash(parsed.data.newPassword, { type: argon2.argon2id });
+
+      /* Property 3. The claim and the write are one statement, so two
+         clicks on the same link produce exactly one winner. Read-then-
+         write here would let both set a password — and the second one
+         would win, which means an attacker racing the account holder
+         chooses the credential. */
+      const claimed = await prisma.passwordReset.updateMany({
+        where: { id: existing.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      if (claimed.count === 0) return refuse();
+
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({ where: { id: user.id }, data: { passwordHash } });
+
+        /* Any sibling link issued before this one, closed in the same
+           breath. Property 2 covers the normal path; this covers a link
+           that outlived a request the sweep never saw. */
+        await tx.passwordReset.updateMany({
+          where: { userId: user.id, usedAt: null },
+          data: { usedAt: new Date() },
+        });
+
+        /* Property 4, and the reason this is a recovery rather than a
+           password change. Whoever locked the account holder out is
+           holding a refresh token; a reset that leaves it live has
+           handed the account back to both of them. */
+        await tx.refreshToken.updateMany({
+          where: { userId: user.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+
+        await appendAuditTx(tx, {
+          orgId: user.orgId,
+          userId: user.id,
+          action: "auth.password.reset_completed",
+          entityType: "User",
+          entityId: user.id,
+          detail: { self: true, viaEmailLink: true, allSessionsRevoked: true },
+        });
+      });
+
+      req.log.info({ user: hmac(user.email) }, "password reset completed");
+
+      /* NO TOKENS IN THIS RESPONSE, deliberately. Signing the caller
+         straight in would be kinder and would mean a stolen link is a
+         session rather than a password prompt — and it would skip the
+         one step that proves the person now holds the credential they
+         just set. They sign in, like anybody else with a password. */
+      return reply.send({
+        reset: true,
+        message:
+          "Password set. Every device this account was signed in on has been signed out. " +
+          "Sign in with the new password.",
       });
     },
   );

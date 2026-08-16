@@ -211,6 +211,7 @@ model User {
   tokens   RefreshToken[]
   receipts SyncReceipt[]
   audits   AuditLog[]
+  resets   PasswordReset[]
 
   // Named relations, because a user can appear against one table in
   // more than one role and Prisma cannot guess which is which.
@@ -244,6 +245,35 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+}
+
+/// A live password-reset link, stored the way a credential has to be.
+///
+/// THE TOKEN IS NOT IN THIS TABLE. `tokenHash` holds an HMAC of it under
+/// the server's own signing secret, exactly as RefreshToken does — the
+/// value that goes in the email exists in this system for the length of
+/// one request and is never written down. A dump of this table restores
+/// nobody's account.
+///
+/// `usedAt` rather than a delete, because "this link was spent at 14:02"
+/// is the fact an operator needs when asking why a colleague was signed
+/// out, and a deleted row cannot answer it. Consumption is a conditional
+/// UPDATE on `usedAt IS NULL`, which is what makes two clicks on the same
+/// link a race exactly one of them wins — the lesson the refresh route
+/// records at length.
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Issuing a new link invalidates the outstanding ones for that user,
+  /// which is a sweep over exactly this index.
+  @@index([userId, usedAt])
 }
 
 model SafetyReport {

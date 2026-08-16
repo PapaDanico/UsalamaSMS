@@ -982,6 +982,17 @@ assert(
         "on /coverage would be the page overstating in the other direction, by " +
         "counting a security hygiene control as an Annex 19 element.",
     ],
+    [
+      "/api/v1/auth/forgot",
+      "Recovering access to the account is account security, not one of the twelve " +
+        "things an SMS has to do — the same line the self-service password change is " +
+        "on. It exists because the ADMINISTRATIVE reset was unreachable: signup makes " +
+        "one ACCOUNTABLE_EXECUTIVE, that role does not hold user.manage, and no route " +
+        "makes a second user, so every operator that signed up had nobody able to " +
+        "reset it. A real defect, and still not something an inspector asks an " +
+        "operator to evidence about its safety management.",
+    ],
+    ["/api/v1/auth/reset", "As above — the second half of the same path."],
     ["/api/v1/export", "Evidence extraction spans every element rather than belonging to one."],
   ]);
 

@@ -442,6 +442,16 @@ router
     (el) => lazy(el, () => import('./tools/login/signup-panel.js').then((m) => m.render)),
     { title: 'Create an operator' }
   )
+  /* LAZY, and unauthenticated by necessity — this is the screen for
+     somebody who cannot sign in. Its own chunk for the same reason the
+     signup panel has one: the account screen is eager, and a form
+     opened on the day a person is locked out has no claim on the bundle
+     a ramp agent downloads at a strip. */
+  .register(
+    '/reset',
+    (el) => lazy(el, () => import('./tools/login/reset-panel.js').then((m) => m.render)),
+    { title: 'Set a new password' }
+  )
   .register(
     '/pricing',
     (el) => lazy(el, () => import('./tools/pricing/index.js').then((m) => m.render)),

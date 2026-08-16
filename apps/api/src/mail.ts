@@ -191,6 +191,112 @@ export async function sendDigest(
   }
 }
 
+/* =====================================================================
+   THE SECOND THING THIS FILE SENDS, and the only one that is not counts.
+
+   A digest carries no free text by construction — a DigestItem has no
+   field capable of holding any — and the comment above bodyFor calls
+   that the confidentiality boundary. This message is held to the same
+   line by the same means: the only variable in it is a URL this server
+   composed from configuration and a token this server minted. No name,
+   no organisation, no report, nothing the caller supplied.
+
+   THAT INCLUDES NOT NAMING THE ACCOUNT. The obvious courtesy is "Hello
+   Jane" or "for the UsalamaSMS account at Skyward Air", and both are a
+   confirmation to whoever reads that mailbox that the address holds an
+   account here — which is the exact fact /auth/forgot refuses to
+   confirm to the person who asked. Putting it in the mail would leak
+   through a side channel what the route was careful about at the front.
+
+   THE LINK IS ABSOLUTE AND BUILT FROM PUBLIC_BASE_URL, never from a
+   request header, for the reason this file's header records: a Host
+   header is attacker-controlled, and a password-reset link pointing at
+   a site of the requester's choosing is a credential-harvesting
+   campaign sent from our own domain with our own return address.
+   ===================================================================== */
+export function resetSubject(): string {
+  return "UsalamaSMS — set a new password";
+}
+
+export function resetBody(link: string, minutes: number): string {
+  return [
+    "Somebody asked to set a new password for this address.",
+    "",
+    "Open this link and choose one:",
+    link,
+    "",
+    `The link works once and stops working after ${minutes} minutes.`,
+    "",
+    /* SAID PLAINLY, because it is the only instruction that matters to
+       the one reader who did not ask for this. "Ignore this email" is
+       the standard sentence and it is incomplete — it tells them to do
+       nothing without telling them that doing nothing is sufficient,
+       which is the part that decides whether they panic. */
+    "If that was not you, nothing has happened and nothing will. The link",
+    "changes nothing until it is opened, and your current password still works.",
+    "",
+    "Using it signs out every device this account is signed in on.",
+  ].join("\n");
+}
+
+/**
+ * Send a reset link, or say precisely why it was not sent.
+ *
+ * SAME DISCIPLINE AS sendDigest, and the same four outcomes minus the
+ * one that cannot apply — there is no "nothing to say" about a link
+ * somebody has asked for. NOT_CONFIGURED is a supported state and is
+ * reported rather than swallowed: a deployment with no RESEND_API_KEY
+ * has a recovery path that silently does nothing, and the operator
+ * staring at an empty inbox deserves to be told which of the two it is.
+ */
+export async function sendPasswordReset(
+  to: string,
+  link: string,
+  minutes: number,
+  config: MailConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MailOutcome> {
+  if (!config.apiKey) return { status: "NOT_CONFIGURED" };
+
+  try {
+    const response = await fetchImpl("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: config.from,
+        to,
+        subject: resetSubject(),
+        text: resetBody(link, minutes),
+      }),
+    });
+
+    if (!response.ok) {
+      /* The status, never the body — see the note on the digest send:
+         a provider error body can echo the request back, and this
+         request contains both an Authorization header and a live reset
+         link in the same object a careless log line would serialise. */
+      return { status: "FAILED", reason: `provider responded ${response.status}` };
+    }
+
+    let id = "";
+    try {
+      const payload = (await response.json()) as { id?: string };
+      id = payload.id ?? "";
+    } catch {
+      /* Accepted, unparseable. Still sent. */
+    }
+    return { status: "SENT", id };
+  } catch (error) {
+    return {
+      status: "FAILED",
+      reason: error instanceof Error ? error.message : "transport failed",
+    };
+  }
+}
+
 /**
  * Configuration from the environment, with the absent key left absent.
  *
