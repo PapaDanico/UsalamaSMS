@@ -106,7 +106,24 @@ const ReviewInput = z.object({
 });
 
 export async function changeRoutes(app: FastifyInstance): Promise<void> {
-  const limited = { preHandler: authenticate };
+  const limited = {
+    preHandler: authenticate,
+    /* EVERY ROUTE IN THIS FILE WRITES ROWS, AND NONE OF THEM WAS LIMITED.
+
+       Found by asking which route files declare no limit at all rather
+       than by reading any one of them: this file, routes.register.ts and
+       routes.spi.ts were the three, and all three accept POSTs that
+       create records. Authentication bounds WHO can do it; it does not
+       bound how often, so a stuck retry loop or a stolen token wrote
+       until something else broke.
+
+       60 a minute, matching routes.config.ts — this is a safety manager
+       adding entries on a working screen, not a reporter at a strip, so
+       the limit only has to be below "a script". The tighter number
+       belongs on routes.attachments.ts, which is the one that writes
+       megabytes. */
+    config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
+  };
 
   app.get("/api/v1/changes", limited, async (req, reply) => {
     if (!guard(req.auth!.role, "moc.create") && !guard(req.auth!.role, "moc.approve")) {

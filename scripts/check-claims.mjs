@@ -614,10 +614,63 @@ for (const p of passes) console.log(`  ok   ${p}`);
    far. It has now produced three: routes with no server, health
    endpoints unreachable at the deployed path, and this.
    ============================================================ */
-const routeSources = ['apps/api/src/routes.auth.ts', 'apps/api/src/routes.sync.ts']
-  .map((p) => read(p))
-  .join('\n');
+/* THE FILES ARE DISCOVERED, NOT LISTED.
+
+   This gate named routes.auth.ts and routes.sync.ts, because those were
+   the two that existed when it was written. Twelve more route files
+   arrived afterwards and the list did not grow — so the gate went on
+   passing about two files while saying something that reads as though
+   it is about all of them.
+
+   That is the hardcoded-list defect this repository has already met
+   twice: a ten-table list is how eight tables arrived outside the RLS
+   posture, and check-a11y.mjs discovers its routes for exactly this
+   reason. A gate over a literal list stops covering the moment somebody
+   adds a file, and nothing announces it. */
+const routeFiles = readdirSync(resolve(ROOT, 'apps/api/src'))
+  .filter((f) => f.startsWith('routes.') && f.endsWith('.ts'))
+  .map((f) => `apps/api/src/${f}`);
+
+assert(
+  'the rate-limit gate found the route files it is about',
+  routeFiles.length >= 10,
+  `only ${routeFiles.length} route file(s) were discovered — this gate is reading ` +
+    `the wrong directory and would pass on an empty set (charter rule 11)`
+);
+
+const routeSources = routeFiles.map((p) => read(p)).join('\n');
 const declaredLimits = (routeSources.match(/rateLimit\s*:/g) ?? []).length;
+
+/* ------------------------------------------------------------------
+   AND A WRITE ROUTE MUST DECLARE ONE.
+
+   The assertions below check that a DECLARED limit is a wired limit,
+   which was the defect of the day they were written. They cannot see
+   the opposite failure, and the audit found it: routes.change.ts,
+   routes.register.ts and routes.spi.ts each registered POSTs that
+   create rows, behind `authenticate` and nothing else. Every other
+   route file carried a limit; those three carried none, and the gate
+   was looking the wrong way to notice.
+
+   Authentication bounds WHO may write. It does not bound how often, so
+   a stuck retry loop on a handset — or a token somebody kept after
+   leaving — wrote until something else broke.
+
+   Mutating verbs only. A read route may legitimately go unlimited;
+   /health does, deliberately, so an orchestrator probe stays free. */
+const unlimitedWriters = routeFiles.filter((p) => {
+  const source = read(p);
+  const writes = /app\.(post|put|patch|delete)\b/.test(source);
+  return writes && !/rateLimit\s*:/.test(source);
+});
+
+assert(
+  'every route file that writes declares a rate limit',
+  unlimitedWriters.length === 0,
+  `${unlimitedWriters.length} route file(s) register a POST/PUT/PATCH/DELETE and ` +
+    `declare no config.rateLimit, so an authenticated caller may write without ` +
+    `bound: ${unlimitedWriters.join(', ')}`
+);
 
 assert(
   'routes still declare the rate limits this gate is about',
