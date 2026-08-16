@@ -92,7 +92,42 @@ export interface SubscriptionDates {
  */
 export const GRACE_DAYS = 14;
 
+/**
+ * HOW LONG A TRIAL RUNS, and 60 rather than the usual 14 or 30.
+ *
+ * A safety management system cannot be evaluated in a fortnight,
+ * because the thing being evaluated is a CYCLE rather than a screen. A
+ * reporter files, the safety office triages, somebody assesses the
+ * hazard, a corrective action is raised, an owner is named, a review
+ * date arrives and the loop closes. An operator who has not been all
+ * the way round that once has not seen the product; they have seen a
+ * form.
+ *
+ * Sixty days also spans two monthly safety meetings, which is where an
+ * operator actually decides whether a tool is helping — not at a desk
+ * during the trial, but in the room where the safety manager either has
+ * the numbers to hand or does not.
+ *
+ * The cost of being wrong is asymmetric and points the same way. A
+ * trial that is too long loses a little revenue from an operator who
+ * was going to buy anyway. A trial that is too short sends away an
+ * operator who never got to the part that would have convinced them.
+ */
+export const TRIAL_DAYS = 60;
+
 const DAY_MS = 86_400_000;
+
+/**
+ * When a trial that started on a given day ends.
+ *
+ * Exported so the signup path and any test agree by construction rather
+ * than by both doing the arithmetic. `startedOn` is a parameter for the
+ * same reason `asOf` is everywhere else here: a function that reads the
+ * clock cannot be tested against the boundary that matters.
+ */
+export function trialEndsFrom(startedOn: Date): Date {
+  return new Date(startedOn.getTime() + TRIAL_DAYS * DAY_MS);
+}
 
 /**
  * Which state, on a given day.

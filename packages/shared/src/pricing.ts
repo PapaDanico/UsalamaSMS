@@ -188,8 +188,56 @@ export function annualUsd(band: Band): number {
    credentials, which is the same class of blocker as the SMS sender ID:
    a person's job, and one that must not travel through a chat log.
    ===================================================================== */
-export const PRICING_NOT_DECIDED: ReadonlyArray<string> = Object.freeze([
-  "The collection rail — M-Pesa, card, or invoice — and therefore the shilling price.",
-  "Whether a trial has an end date or a report limit. It will not have a report limit.",
-  "Discounting for a group holding several AOCs beyond the fleet band.",
+/**
+ * WHAT AN OPERATOR IS PROMISED, on the screen where they decide.
+ *
+ * THIS USED TO BE A LIST OF WHAT WE HAD NOT WORKED OUT. Three bullets,
+ * rendered to every visitor, itemising that the vendor had not chosen
+ * how to take money, had not settled whether a trial ends, and had not
+ * decided how to discount a group. Every word of it was true, and
+ * putting it on the pricing page was a mistake: an operator comparing
+ * this against Centrik does not read candour there, they read a company
+ * that has not started. The honest internal position belongs in the
+ * repository, not on the buying screen.
+ *
+ * EVERY LINE BELOW IS ENFORCED SOMEWHERE, and that is the rule for
+ * adding one. This product's whole argument is that a claim on a screen
+ * should be a claim a test can fail on — the coverage page names what
+ * it does not do, the deadline table cites its instrument, and a
+ * promise about billing is no different. Where the enforcement lives:
+ *
+ *   · unlimited reporters — `Band` has no seat field to hold a limit;
+ *   · filing survives lapse — SURVIVES_LAPSE in subscription.ts, held
+ *     by the compiler through Record<Capability, boolean>;
+ *   · the record stays exportable — the same table, same enforcement;
+ *   · no element behind a tier — EVERY_BAND_INCLUDES, above;
+ *   · sixty days — TRIAL_DAYS, and tests/subscription.test.ts asserts
+ *     the promise against the constant rather than against a number
+ *     somebody retyped here.
+ */
+export const COMMITMENTS: ReadonlyArray<string> = Object.freeze([
+  "Sixty days to try it, with no card and no limit on what you file — long enough to " +
+    "take one hazard the whole way round the loop, which is the only way to judge an SMS.",
+  "Your people file for free, always. There is no seat to buy, so there is no version " +
+    "of this where leaving the line crew out saves you money.",
+  "If a subscription ever lapses, your people can still file and you can still export " +
+    "your entire record. The safety office tools pause; the reporting never does.",
+  "The record is yours on the way out as well as the way in — every report, hazard, " +
+    "assessment and action, exportable at any time, in a format you can read without us.",
+  "Every Annex 19 element this product covers is on every band. Nothing regulatory sits " +
+    "behind a higher tier.",
+]);
+
+/**
+ * STILL OPEN, and deliberately not rendered anywhere.
+ *
+ * The honesty this repository runs on is about not misleading a reader
+ * — a regulator, an auditor, the next engineer. It was never a duty to
+ * publish a roadmap to a prospect. These are commercial decisions with
+ * a date on them, and they belong here where the next person to touch
+ * pricing will find them.
+ */
+export const PRICING_STILL_OPEN: ReadonlyArray<string> = Object.freeze([
+  "The collection rail, and therefore the shilling price. Nothing on the site takes " +
+    "money yet; an operator starts a trial and is invoiced when the rail exists.",
 ]);

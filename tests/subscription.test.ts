@@ -27,9 +27,12 @@ import {
   daysUntilChange,
   ALL_CAPABILITIES,
   GRACE_DAYS,
+  TRIAL_DAYS,
+  trialEndsFrom,
 
   type SubscriptionDates,
 } from "../packages/shared/src/subscription";
+import { BANDS, COMMITMENTS } from "../packages/shared/src/pricing";
 
 const day = (iso: string) => new Date(`${iso}T12:00:00.000Z`);
 const DAY_MS = 86_400_000;
@@ -196,6 +199,67 @@ describe("what an operator may be invoiced for", () => {
      handed over free in the fleet band's `adds` line — so the most
      complex customer in the segment paid what the simplest one at the
      same fleet size paid. */
+  /* ==================================================================
+     A PROMISE ON THE PRICING PAGE IS A CLAIM, AND CLAIMS ARE GATED.
+
+     COMMITMENTS replaced a list of what had not been decided, and the
+     replacement is only defensible because every line is enforced
+     somewhere rather than written somewhere. The strongest of them —
+     that a lapsed subscription never stops a report being filed — is
+     the one an operator would feel worst about if it were untrue, so it
+     is asserted against SURVIVES_LAPSE through `allows()` rather than
+     against a restatement of it.
+
+     Flip FILE_REPORT to false in subscription.ts and this goes red
+     while the sentence on the page still reads perfectly, which is the
+     whole point.
+     ================================================================== */
+  it("keeps every promise the pricing page makes about a lapse", () => {
+    expect(allows("LAPSED", "FILE_REPORT")).toBe(true);
+    expect(allows("LAPSED", "EXPORT_OWN_RECORD")).toBe(true);
+    expect(allows("LAPSED", "READ_OWN_RECORD")).toBe(true);
+    /* And the other half of the sentence — the office tools DO pause,
+       so the promise is not quietly claiming the product is free. */
+    expect(allows("LAPSED", "TRIAGE")).toBe(false);
+
+    const lapse = COMMITMENTS.find((c) => c.includes("lapses"));
+    expect(lapse).toBeDefined();
+    expect(lapse).toMatch(/still file/i);
+    expect(lapse).toMatch(/export/i);
+  });
+
+  it("states the trial length the code actually grants", () => {
+    /* Charter rule 10 applied to a sales promise: the page says sixty
+       days, so the number comes from TRIAL_DAYS rather than from
+       somebody typing "60" twice. */
+    const promise = COMMITMENTS.find((c) => /days to try/i.test(c));
+    expect(promise).toBeDefined();
+    expect(promise).toContain("Sixty");
+    expect(TRIAL_DAYS).toBe(60);
+
+    const start = new Date("2026-03-01T00:00:00.000Z");
+    const end = trialEndsFrom(start);
+    expect(Math.round((end.getTime() - start.getTime()) / 86_400_000)).toBe(TRIAL_DAYS);
+    /* And it is genuinely a trial: still TRIAL the day before it ends. */
+    expect(stateOn({ trialEndsOn: end, paidThrough: null }, new Date(end.getTime() - 86_400_000)))
+      .toBe("TRIAL");
+    expect(stateOn({ trialEndsOn: end, paidThrough: null }, new Date(end.getTime() + 86_400_000)))
+      .toBe("LAPSED");
+  });
+
+  it("promises no report limit, and has no field that could hold one", () => {
+    /* The commitment says "no limit on what you file". The structural
+       guarantee is that neither a Band nor the capability set has
+       anywhere to put a quota — the same discipline that keeps a
+       per-seat price unexpressible. */
+    const promise = COMMITMENTS.find((c) => /no limit on what you file/i.test(c));
+    expect(promise).toBeDefined();
+    for (const band of BANDS) {
+      expect(Object.keys(band)).not.toContain("reportLimit");
+      expect(Object.keys(band)).not.toContain("includedReports");
+    }
+  });
+
   it("prices a second AOC on the only band that admits one", () => {
     expect(billableBand(20)!.perExtraAocUsdMonthly).toBeGreaterThan(0);
     expect(billableBand(5)!.perExtraAocUsdMonthly).toBeUndefined();
