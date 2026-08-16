@@ -3,8 +3,11 @@
 // over a list.
 //
 // WHY THIS EXISTS, and it is a fresh scar. Every table in `public` has
-// row security enabled and zero policies. That is not an unfinished
-// migration — it is the security model, documented in CLAUDE.md:
+// row security enabled and exactly one RESTRICTIVE deny-all policy.
+// (This comment said "zero policies" for longer than that was true —
+// the restrictive policy replaced the empty set in August 2026, and the
+// reasoning is in CLAUDE.md.) That is not an unfinished migration — it
+// is the security model, documented in CLAUDE.md:
 // nothing in this product uses PostgREST and the anon key is
 // deliberately absent from the codebase.
 //
@@ -15,11 +18,16 @@
 // never removed. So the deny-all is not a second lock behind an empty
 // grant table — it IS the lock.
 //
-// It still holds against `anon` and `authenticated`, which cannot
-// bypass RLS. It does NOT hold against `service_role`, which has
-// `rolbypassrls`, so no policy in this database restrains it and the
-// only control on that path is the secrecy of the project's JWT secret.
-// The full argument, and what to do about it, is in CLAUDE.md.
+// It held against `anon` and `authenticated`, which cannot bypass RLS.
+// It did NOT hold against `service_role`, which carries `rolbypassrls`:
+// granted SELECT on `SafetyReport` alone, that role read all seven real
+// production reports straight through the RESTRICTIVE deny-all. Proved
+// against production, then reverted.
+//
+// So the grants were revoked from all three roles — BYPASSRLS bypasses
+// policies, not privileges — and `public` now shows zero grant rows for
+// them while the owner keeps its 196. CLAUDE.md holds the statements
+// and the reasoning.
 //
 // Nothing below can assert any of that: these tests run against a local
 // Postgres that has no Supabase roles at all, so a grant assertion here

@@ -25,16 +25,20 @@ security posture:
 This section used to say "nothing is granted to anybody", and that was
 never true. Measured against production on 16 August 2026:
 
-| role | `rolbypassrls` | grants in `public` |
+| role | `rolbypassrls` | grant rows in `public` |
 |---|---|---|
 | `anon` | false | 196 |
 | `authenticated` | false | 196 |
 | `service_role` | **true** | 196 |
 | `postgres` | true | 196 |
 
-Supabase issues those grants when a project is created; nobody here
-removed them. So the deny-all is not a second lock behind an empty
-grant table — **it is the only lock**, and it is load-bearing.
+196 is **every table times every privilege** — 28 tables × 7 of
+`SELECT INSERT UPDATE DELETE TRUNCATE REFERENCES TRIGGER` — not 196
+tables. Each of those roles holds the full set on the whole schema.
+
+Supabase issues them when a project is created; nobody here removed
+them. So the deny-all is not a second lock behind an empty grant table
+— **it is the only lock**, and it is load-bearing.
 
 Against `anon` and `authenticated` it holds completely: neither can
 bypass RLS, so a RESTRICTIVE `USING (false)` denies them every row no
@@ -53,19 +57,45 @@ from 11 August. Nothing in this codebase ever read it; the Netlify
 Supabase extension created it. It has been deleted, along with
 `SUPABASE_ANON_KEY`, which was exposed the same way and equally unused.
 
-**Deleting it is not rotating it.** Anyone who read the value still
-holds a forgeable `service_role` credential until the secret is rotated
-in the Supabase dashboard, which no MCP tool can do. Until then, treat
-the database as reachable by anyone who had read access to the Netlify
-project during that window.
+**Deleting it is not rotating it**, and no MCP tool can rotate it — that
+is a Supabase dashboard action and it is still outstanding. Anyone who
+read the value holds a token they can sign at will.
 
-If you want the deny-all to be a genuine second lock rather than the
-only one, the change is `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM
-anon, authenticated, service_role`. Nothing in this product would
-notice — the API connects as the owner, and evidence storage uses the
-`storage` schema rather than `public`. It would, however, break the
-Supabase dashboard's table editor, which is why it is written here as a
-decision rather than taken as a cleanup.
+### So the grants were revoked, which closes it without the rotation
+
+`BYPASSRLS` bypasses **policies, not grants**. A role with no privilege
+on a table cannot read it however much RLS it ignores. So:
+
+```sql
+revoke all privileges on all tables    in schema public from anon, authenticated, service_role;
+revoke all privileges on all sequences in schema public from anon, authenticated, service_role;
+revoke all privileges on all functions in schema public from anon, authenticated, service_role;
+-- without these three the NEXT migration silently re-grants everything
+alter default privileges in schema public revoke all on tables    from anon, authenticated, service_role;
+alter default privileges in schema public revoke all on sequences from anon, authenticated, service_role;
+alter default privileges in schema public revoke all on functions from anon, authenticated, service_role;
+```
+
+Applied 16 August 2026. `postgres` keeps its 196 — the API connects as
+the owner. The `storage` schema is untouched, so evidence upload is
+unaffected.
+
+**IT WAS MUTATION-CHECKED AGAINST PRODUCTION, and the result is the
+strongest evidence in this file.** With `SELECT` granted back on
+`SafetyReport` alone, `service_role` read **all seven real reports**
+straight through the RESTRICTIVE deny-all. The grant was revoked again
+immediately and the denial re-proved.
+
+That is not a theory about `BYPASSRLS`. It is this database, these
+reports, one grant apart. The policy never restrained `service_role`
+and never could; the revoke is the control.
+
+The cost is that the Supabase dashboard's table editor no longer reads
+these tables — it goes through PostgREST as `service_role`. The SQL
+editor still works, and so does everything this product does. To undo
+it, grant the privileges back; do that only as part of genuinely
+adopting the Data API, with the policies and the two-tenant test in the
+same change.
 
 ### It used to be "zero policies", and that is why it changed
 
