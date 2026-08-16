@@ -223,11 +223,26 @@ function bindSet(outlet, token) {
 }
 
 export function render(outlet) {
-  /* READ FROM THE ADDRESS BAR, and never held anywhere else. The token
-     stays in the URL for the life of this page and goes into one POST
-     body; it is not written to storage, not put in the session, and not
-     logged. A reset link is a credential, and the shortest thing it can
-     live in is the right thing. */
+  /* READ FROM THE ADDRESS BAR, and never held anywhere else by this
+     file. The token stays in the URL for the life of this page and goes
+     into one POST body: not written to storage, not put in the session,
+     not logged. A reset link is a credential, and the shortest thing it
+     can live in is the right thing.
+
+     THAT SENTENCE WAS TRUE OF THIS FILE AND FALSE OF THE PRODUCT, and
+     saying so here is the point. The service worker cached every
+     same-origin navigation under its FULL URL, so arriving on
+     /reset?token=… wrote the credential into Cache Storage — on disk,
+     outliving the tab. Nothing in this file could have shown it and
+     nothing in sw.js mentions this one; it was found by navigating a
+     real browser to a real build and asking what it had stored.
+
+     What keeps the claim true now is cacheKeyFor() in
+     apps/web/public/sw.js, which strips the query from a navigation's
+     cache key, and the check in scripts/check-update.mjs that fails if
+     a token-shaped string ever reappears in Cache Storage. If this
+     screen ever moves the token somewhere else, that check does not
+     cover the new place. */
   const token = new URLSearchParams(window.location.search).get('token');
 
   if (!token) {

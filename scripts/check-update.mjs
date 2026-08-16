@@ -271,6 +271,96 @@ await check('A DISMISSED UPDATE IS OFFERED AGAIN ON THE NEXT LOAD', async () => 
   }
 });
 
+await check('A CREDENTIAL IN A URL IS NEVER WRITTEN TO CACHE STORAGE', async () => {
+  /* ============================================================
+     THE DEFECT, AND IT WAS INVISIBLE IN BOTH FILES THAT CAUSED IT.
+
+     `cache.put(request, …)` keys on the FULL URL. A password-reset
+     link is a navigation to /reset?token=<32 random bytes>, which is a
+     same-origin GET like any other — so the worker wrote the live
+     credential into Cache Storage, on disk, outliving the tab and the
+     session and readable by anything running on the origin.
+
+     sw.js was right about caching a shell. reset-panel.js was right
+     about holding a secret, and says in its own comment that the token
+     "is not written to storage" — true of every line in that file and
+     false of the running system. Neither file references the other,
+     which is why nothing in either one could have shown this.
+
+     FOUND BY ASKING THE BROWSER, not by reading. Real dist, real
+     worker, real Chromium, a navigation to a reset URL, then
+     `caches.keys()` — and the answer contained the token.
+
+     THE FIXTURE IS A TOKEN-SHAPED STRING, deliberately. A short marker
+     like "abc" could match something incidental in the bundle and turn
+     this into a check that passes for the wrong reason; 32 characters
+     of nothing-else-in-this-repo cannot.
+
+     WHAT TO DO WHEN IT FAILS. Something now caches a navigation under
+     a key that includes its query string. Normalise the key — see
+     cacheKeyFor() in sw.js. Do not solve it by taking the token out of
+     the URL: a link in an email has nowhere else to carry it.
+     ============================================================ */
+  const SECRET = 'MEASUREDSECRETTOKEN0123456789abcdefghij';
+  const fresh = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const tab = await fresh.newPage();
+  try {
+    await tab.goto(BASE + '/', { waitUntil: 'networkidle' });
+    await tab.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
+      timeout: 20000,
+    });
+
+    // The thing a person clicking a link in their inbox actually does.
+    await tab.goto(`${BASE}/reset?token=${SECRET}`, { waitUntil: 'networkidle' });
+    await tab.waitForTimeout(1200);
+
+    /* THE SCREEN MUST HAVE RENDERED, or this measures an empty cache
+       and reports it as safety — the shape of check this repository has
+       been bitten by before. */
+    assert(
+      await tab.locator('#reset-form').count(),
+      'the reset form did not render, so nothing was measured and a green result means nothing',
+    );
+
+    const stored = await tab.evaluate(async (secret) => {
+      const hits = [];
+      for (const name of await caches.keys()) {
+        const cache = await caches.open(name);
+        for (const req of await cache.keys()) {
+          if (req.url.includes(secret)) hits.push(`${name} :: ${req.url}`);
+        }
+      }
+      return hits;
+    }, SECRET);
+
+    assert(
+      stored.length === 0,
+      'a live credential from the URL is sitting in Cache Storage on disk, where it ' +
+        `outlives the tab and the session: ${stored.join(', ')}`,
+    );
+
+    /* AND THE SHELL IS STILL CACHED, which is the other direction and
+       the reason this is not fixed by simply not caching. A gate that
+       only checks the secret is absent passes perfectly against a
+       worker that caches nothing at all and has quietly ended the
+       offline promise. */
+    const shellCached = await tab.evaluate(async () => {
+      for (const name of await caches.keys()) {
+        const cache = await caches.open(name);
+        if (await cache.match('/reset')) return true;
+      }
+      return false;
+    });
+    assert(
+      shellCached,
+      'the navigation was not cached under its path either — offline reloads of this ' +
+        'route now depend on the network, which is the promise this product is built on',
+    );
+  } finally {
+    await fresh.close();
+  }
+});
+
 console.log('\n' + results.join('\n'));
 await browser.close();
 server.close();
