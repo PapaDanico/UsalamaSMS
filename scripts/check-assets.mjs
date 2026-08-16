@@ -43,8 +43,26 @@ const PUBLIC = resolve(ROOT, 'apps/web/public');
    set well above what a file weighs is a ceiling that cannot fail, and
    the point of the number is that growth has to be noticed. */
 const DECLARED = new Map([
-  ['fonts/dm-sans-latin.woff2', [64, 'Body face, Latin. Subset; the largest single asset and worth it — a report form in Times New Roman reads as a broken page, and this is precached so it is paid once.']],
-  ['fonts/dm-sans-latin-ext.woff2', [33, 'Body face, Latin Extended. Kenyan and East African names carry diacritics this subset covers and the base one does not.']],
+  /* THE TWO FACES OF THE OWNER'S DESIGN SYSTEM. Both variable latin
+     subsets, both precached, and together LIGHTER THAN THE ONE FACE
+     THEY REPLACE — DM Sans shipped 61.3 + 30.6 KB; these are 26.7 and
+     42.1 on the common path. */
+  ['fonts/jakarta-latin.woff2', [28, 'Plus Jakarta Sans, variable 400-800, latin. The DISPLAY face — h1-h4 and key figures, tracking -0.02em. Precached: a heading is on the first screen.']],
+  ['fonts/roboto-latin.woff2', [44, 'Roboto, variable 400-700, latin. The BODY face — all UI copy, the default on body. Precached: the report form is made of it.']],
+
+  /* THE EXTENDED CUTS ARE SERVED AND NOT PRECACHED, which is the whole
+     reason they are affordable — and it is a CORRECTION. fonts.css used
+     to say the extended file "is fetched only when a character needs it,
+     so it costs nothing on the common path". That is what unicode-range
+     promises and it was false here: the worker precaches by extension,
+     so every reporter downloaded 30.6 KB of Eastern European glyphs on
+     install before they could file anything.
+
+     Excluded in stamp-sw.mjs and asserted below. A name with a diacritic
+     still renders in the right face rather than falling back mid-word —
+     it costs the person who has one, rather than everybody. */
+  ['fonts/jakarta-latin-ext.woff2', [23, 'Plus Jakarta Sans, latin-ext. NOT precached — fetched only when a heading contains an extended glyph.']],
+  ['fonts/roboto-latin-ext.woff2', [30, 'Roboto, latin-ext. NOT precached — fetched only when copy contains an extended glyph.']],
   ['fonts/jetbrains-mono-identifiers.woff2', [7, 'IDENTIFIERS ONLY, and the subset is the whole argument. --us-font-mono was a system stack — ui-monospace, SFMono-Regular, Menlo, Consolas — so an audit-chain hash rendered in a different face on a manager’s Mac and a ramp agent’s Android, which is exactly the data where character shape carries the meaning. A full Latin cut of this face is ~55 KB; subset to digits, A–Z, a–z and the punctuation an identifier uses, it is 6 KB, and it still disambiguates 0/O and 1/l/I, which is the only reason it is here. NOT FOR NUMBERS: figures already align through font-variant-numeric on the body face at zero bytes, and mono digits are wider and lighter than DM Sans’s, so setting a risk matrix in them would read as weaker rather than more precise.']],
 
   /* EVERY ICON IS A CROP OF docs/brand/lockup-wide.jpg, and there is
@@ -96,7 +114,29 @@ const DECLARED = new Map([
    is the five font subsets. A raise needs a receipt here, the same as
    the JavaScript budget — and there is 0.3 KB of headroom, so the next
    thing added to this directory has to displace something. */
-const TOTAL_BUDGET_KB = 306;
+const TOTAL_BUDGET_KB = 330;
+/* 306 -> 330 for the share card and the second extended latin cut, and
+   the raise is only honest because of the number below it. Everything
+   here is SERVED; what a reporter waits for on install is a strict
+   subset, and until now this file could not tell them apart. */
+
+/* ============================================================
+   WHAT A REPORTER ACTUALLY DOWNLOADS BEFORE THEY CAN FILE.
+
+   The budget above counts every byte in public/. That was the right
+   measure when everything here was precached, and it stopped being
+   right the moment anything was not: the share card is fetched by link
+   scrapers, and the extended latin cuts are fetched only by somebody
+   whose name has a diacritic in it. Counting those against a ceiling
+   that exists to protect a cold start on a bad link measures the wrong
+   thing in the strict direction — it would force a cut to something a
+   reporter DOES wait for, to make room for something they never fetch.
+
+   So install weight is measured separately, from the BUILT worker's own
+   manifest rather than from a list here. Two numbers, because they
+   answer two questions, and the one a ramp agent cares about is this
+   one. */
+const INSTALL_BUDGET_KB = 220;
 /* 300 -> 306 for the mono identifier subset. 6.3 KB, and it is the
    cheapest font in this directory by a factor of five — the full Latin
    cut of the same face would have been ~55 KB and would have taken this
@@ -128,6 +168,7 @@ function walk(dir, out = []) {
 }
 
 const problems = [];
+let installNote = '';
 const found = walk(PUBLIC).map((f) => relative(PUBLIC, f).split(/[\\/]/).join('/'));
 let total = 0;
 
@@ -203,6 +244,63 @@ for (const rel of DECLARED.keys()) {
   }
 }
 
+/* ============================================================
+   INSTALL WEIGHT, from the worker's own manifest.
+
+   Everything above measures what is SERVED. This measures what a
+   reporter at a remote strip waits for before the app is usable
+   offline, which is the number the offline promise is actually made
+   of. Read from dist/sw.js rather than from a list here, so the answer
+   is what shipped rather than what anybody intended.
+
+   Skipped when dist is absent, and it says so rather than passing
+   silently — a check that reports success about a build it could not
+   find is the shape this repository has been bitten by before. The
+   build runs check:assets before stamping and verify runs it after, so
+   the honest answer to a missing dist is "not measured".
+   ============================================================ */
+{
+  const worker = resolve(ROOT, 'dist/sw.js');
+  if (!existsSync(worker)) {
+    console.log('  assets note      install weight not measured — dist/sw.js absent');
+  } else {
+    const manifest = readFileSync(worker, 'utf8').match(/const PRECACHE = (\[[^\]]*\]);/)?.[1];
+    if (!manifest) {
+      problems.push(
+        '  dist/sw.js has no PRECACHE manifest this check can read, so nothing was ' +
+          'verified about what a reporter downloads on install.',
+      );
+    } else {
+      const precached = new Set(JSON.parse(manifest));
+      let installKb = 0;
+      const carried = [];
+      for (const rel of found) {
+        if (!precached.has(`/${rel}`)) continue;
+        installKb += statSync(join(PUBLIC, rel)).size / 1024;
+        carried.push(rel);
+      }
+      if (carried.length < 5) {
+        problems.push(
+          `  only ${carried.length} of ${found.length} public files matched the precache ` +
+            'manifest, so install weight was computed from almost nothing and any number ' +
+            'it produced would be meaningless.',
+        );
+      }
+      if (installKb > INSTALL_BUDGET_KB) {
+        problems.push(
+          `  a reporter downloads ${installKb.toFixed(1)} KB from public/ on install, ` +
+            `against a ${INSTALL_BUDGET_KB} KB ceiling. This is the cold start on a bad ` +
+            'link, and it is the number the offline promise is made of.',
+        );
+      } else {
+        installNote =
+          `${installKb.toFixed(1)} KB of ${INSTALL_BUDGET_KB} KB downloaded on install ` +
+          `(${carried.length} of ${found.length} files precached)`;
+      }
+    }
+  }
+}
+
 if (total > TOTAL_BUDGET_KB) {
   problems.push(
     `  public/ totals ${total.toFixed(1)} KB against a ${TOTAL_BUDGET_KB} KB budget. ` +
@@ -216,6 +314,7 @@ if (problems.length === 0) {
     `  assets ok        ${found.length} files declared, ${total.toFixed(1)} KB of ` +
       `${TOTAL_BUDGET_KB} KB served from public/`,
   );
+  if (installNote) console.log(`  install weight   ${installNote}`);
   process.exit(0);
 }
 

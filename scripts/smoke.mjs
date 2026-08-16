@@ -277,7 +277,8 @@ try {
        handset.
 
        TWO — the new one, and the reason this check measures rather than
-       inspects. DM Sans ships as a VARIABLE face covering 400 to 700.
+       inspects. Both faces ship VARIABLE — Roboto 400-700, Plus Jakarta
+       Sans 400-800.
        Declare a single `font-weight: 400` on it and the browser still
        serves every rule that asks for bold: it SYNTHESISES one by
        smearing the regular. It looks approximately right, it survives
@@ -296,7 +297,7 @@ try {
       const loaded = [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family);
       const el = document.createElement('span');
       el.style.cssText =
-        'position:absolute;visibility:hidden;white-space:nowrap;font-size:40px;font-family:"DM Sans"';
+        'position:absolute;visibility:hidden;white-space:nowrap;font-size:40px;font-family:"Roboto"';
       el.textContent = 'Hazard identification 0123';
       document.body.appendChild(el);
       const widths = {};
@@ -308,18 +309,83 @@ try {
       el.style.fontWeight = '400';
       const fallback = el.getBoundingClientRect().width;
       el.remove();
-      return { loaded, widths, fallback, body: getComputedStyle(document.body).fontFamily };
+      const h = document.querySelector('h1');
+      return {
+        loaded,
+        widths,
+        fallback,
+        body: getComputedStyle(document.body).fontFamily,
+        heading: h ? getComputedStyle(h).fontFamily : '(no h1 on this screen)',
+      };
     });
 
+    /* BOTH FACES, because the system has two and a check that only
+       looked at the body one would pass while every heading on the site
+       rendered in the fallback. That is not hypothetical either: the
+       display face WAS silently cancelled on every tool screen by a
+       `[data-surface='tool']` rule that set font-family back to the body
+       token — written when the two tokens were the same value, so the
+       declaration was a no-op that became a defect the moment they
+       differed. It was found by asking the browser which rules matched
+       an h1; this is what would have found it without asking. */
     assert(
-      type.loaded.includes('DM Sans'),
-      'no DM Sans face reported as loaded, so the page is rendering in the system ' +
+      type.loaded.includes('Roboto'),
+      'no Roboto face reported as loaded, so body copy is rendering in the system ' +
         `fallback while claiming ${type.body.split(',')[0]}. Faces loaded: ` +
         `${type.loaded.length ? [...new Set(type.loaded)].join(', ') : 'none'}`
     );
     assert(
-      /^"?DM Sans"?/.test(type.body.trim()),
-      `the body is set in ${type.body.split(',')[0]} rather than the house face`
+      type.loaded.includes('Plus Jakarta Sans'),
+      'no Plus Jakarta Sans face reported as loaded, so every heading is rendering in ' +
+        `another face. Faces loaded: ${[...new Set(type.loaded)].join(', ') || 'none'}`
+    );
+    assert(
+      /^"?Roboto"?/.test(type.body.trim()),
+      `the body is set in ${type.body.split(',')[0]} rather than the body face`
+    );
+    assert(
+      /^"?Plus Jakarta Sans"?/.test(type.heading.trim()),
+      `an h1 is set in ${type.heading.split(',')[0]} rather than the display face`
+    );
+
+    /* ================================================================
+       AND ON A TOOL SURFACE, which is where the defect actually was and
+       where this check could not see it.
+
+       The assertion above runs on whatever screen the suite is sitting
+       on, and that is a DOCUMENT surface. The rule that cancelled the
+       display face was scoped to `[data-surface='tool']` — so restoring
+       the defect and re-running left this check green, which was
+       measured rather than assumed: the mutation was performed and it
+       passed.
+
+       A comment two paragraphs up claimed this check would have caught
+       it. That was wrong until this block existed. Tool screens are
+       most of the product, so a type system verified only on the
+       marketing surfaces is verified where it matters least.
+       ================================================================ */
+    const cameFromType = page.url();
+    await page.goto(BASE + '/toolkits/sra', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(400);
+    const toolType = await page.evaluate(async () => {
+      await document.fonts.ready;
+      const h = document.querySelector('h1');
+      return {
+        surface: document.documentElement.getAttribute('data-surface'),
+        heading: h ? getComputedStyle(h).fontFamily : '(no h1)',
+      };
+    });
+    await page.goto(cameFromType, { waitUntil: 'networkidle' });
+
+    assert(
+      toolType.surface === 'tool',
+      `/toolkits/sra reports data-surface="${toolType.surface}", so this measured the ` +
+        'wrong kind of screen and proves nothing about the one it was written for'
+    );
+    assert(
+      /^"?Plus Jakarta Sans"?/.test(toolType.heading.trim()),
+      `a heading on a TOOL screen is set in ${toolType.heading.split(',')[0]} rather than ` +
+        'the display face. A surface rule is overriding --us-font-display'
     );
     assert(
       type.widths[400] !== type.fallback,

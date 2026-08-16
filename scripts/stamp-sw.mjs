@@ -71,6 +71,13 @@ const assets = walk(DIST)
      never see. It still ships — it just is not part of what the
      worker installs. */
   .filter((f) => !f.endsWith('/og-card.jpg'))
+  /* AND THE EXTENDED LATIN CUTS. fonts.css used to claim the extended
+     file "is fetched only when a character needs it, so it costs
+     nothing on the common path" — which is what unicode-range promises
+     and was FALSE HERE, because this manifest precaches by extension.
+     Everyone downloaded 30 KB of Eastern European glyphs on install.
+     Excluded, so the laziness the CSS depends on is real. */
+  .filter((f) => !/-latin-ext\.woff2$/.test(f))
   .filter((f) => /\.(js|css|woff2?|svg|png|json|html)$/.test(f))
   .sort();
 
