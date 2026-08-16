@@ -261,6 +261,10 @@
      --us-container-wide rather than below it. Measured at 1440px:
      60rem gave the queue 896px while the prose pages took 1088. */
   --us-page: 76rem;
+  /* THE OUTER RULE, shared by the page and by the footer beneath it.
+     See the note above `.footer .wrap` — three left edges was a fact
+     about which markup each region happened to be written with. */
+  --us-shell: var(--us-page);
 
   /* 48, not 44. The WCAG floor is 44 and this is a form filled in with
      gloves on, in sunlight, one-handed, sometimes on a moving airstair.
@@ -763,6 +767,41 @@ html { scroll-padding-top: var(--us-chrome); }
 .band-dark .eyebrow { color: var(--us-gold); }
 
 /* ---------- footer ---------- */
+/* ============================================================
+   THE FOOTER SITS UNDER THE PAGE, SO IT TAKES THE PAGE'S EDGE.
+
+   It did not, and the gap was visible on every screen in the product
+   once somebody measured a left edge instead of reading a stylesheet.
+   Driven at 1440px: the nav mark rendered at x=32, the page content at
+   x=112, the footer at x=176. Three vertical rules down one screen. At
+   1920 it was 32 / 352 / 416, so the footer was inset SIXTY-FOUR
+   PIXELS from the column it sits directly beneath — close enough to
+   read as a mistake rather than as a margin, which is the worst
+   distance for two edges to be apart.
+
+   Nobody chose it. `.page` was widened to --us-page (76rem) in an
+   earlier pass and the footer kept `.wrap`'s --us-container-wide
+   (68rem), exactly as `.page .wrap` had drifted from `.page` before it
+   — the same defect, one region further out, and left behind because
+   that fix was scoped to "a wrap inside a page" and the footer's wrap
+   is outside one.
+
+   Kanda has ONE container token and everything uses it. So does this
+   now: --us-shell, which is --us-page including its large-viewport
+   step, and the same padding clamp rather than `.wrap`'s narrower one,
+   because matching the max-width alone still leaves the TEXT edges
+   apart by the difference between the two paddings. Both, or it has
+   not been fixed.
+
+   The header keeps its own full-bleed inset. That is Kanda's
+   `.nav-bar` verbatim — a sticky bar that hugs the viewport — and it
+   is a deliberate second edge rather than a drifted one.
+   ============================================================ */
+.footer .wrap {
+  max-width: var(--us-shell);
+  padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-8));
+}
+
 .footer { background: var(--us-charcoal); padding: 32px 0 20px; }
 .footer :is(h2, h3, h4) { color: #fff; font-family: var(--us-font); font-size: var(--us-text-sm); letter-spacing: .06em; text-transform: uppercase; }
 /* On ink, at 0.78 alpha sand, a link was the exact colour of the
@@ -2577,6 +2616,33 @@ html { scroll-padding-top: var(--us-chrome); }
   margin-inline: auto;
   padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-8));
   padding-block: var(--us-section-tight) var(--us-section);
+}
+
+/* ---------------------------------------------------------------
+   AND ABOVE 1600px IT STOPS SCALING ALTOGETHER, which is the second
+   half of the same defect.
+
+   76rem is 1216px and it is 1216px on every screen ever made. Measured:
+   1216 of 1440 is 84% and reads as a full page; 1216 of 1920 is 63%,
+   which is 704px of margin — more than half the width of the content —
+   on the monitor a safety manager actually reviews the queue on. The
+   token was chosen against a 1440px laptop and nobody drove it wider.
+
+   THIS IS SAFE TO WIDEN ONLY BECAUSE THE MEASURE IS SEPARATE. `.page
+   :is(p, li)` holds flowing text to 68 characters wherever it lands, so
+   what grows here is what should: the queue, the hazard register, the
+   indicator table, the risk picture — grids and lists, which have no
+   comfortable line length and were scrolling sideways inside an empty
+   screen. A paragraph is unaffected at any container width, which is
+   what makes the two rules a system rather than a compromise.
+
+   The step is at 1600 rather than continuous: a clamp() would put the
+   container at a different width on every machine, and a layout nobody
+   can name a number for is a layout nobody can check. Two widths, both
+   measured, both assertable — scripts/smoke.mjs drives 1920 and fails
+   if the working surface is still 1216 there. */
+@media (min-width: 1600px) {
+  :root { --us-page: 88rem; }
 }
 
 /* Measure, not width. Applies to text wherever it lands — including

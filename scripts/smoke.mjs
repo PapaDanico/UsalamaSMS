@@ -4879,6 +4879,151 @@ try {
     );
   });
 
+  await check('the page and the footer share one left edge, at both desktop widths', async () => {
+    /* ==================================================================
+       THREE VERTICAL RULES DOWN ONE SCREEN.
+
+       Measured before this gate existed, at 1440: the nav mark rendered
+       at x=32, the page content at x=112 and the footer at x=176. At
+       1920 it was 32 / 352 / 416 — the footer inset SIXTY-FOUR PIXELS
+       from the column it sits directly beneath, which is close enough
+       to read as a mistake rather than as a margin.
+
+       Nobody chose it. `.page` took --us-page and the footer's `.wrap`
+       kept --us-container-wide, so which edge a region landed on was a
+       fact about which markup it happened to be written with.
+
+       INVISIBLE IN THE STYLESHEET, because neither rule is wrong on its
+       own — the same shape as the queue's 68ch cap, and found the same
+       way: by measuring a rendered page instead of reading the CSS.
+
+       The nav is deliberately excluded. It is Kanda's `.nav-bar`
+       verbatim, a sticky bar that hugs the viewport, and its inset is a
+       chosen second edge rather than a drifted one.
+       ================================================================== */
+    const handset = page.viewportSize();
+    const offences = [];
+
+    for (const width of [1440, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const route of ['/today', '/coverage', '/toolkits/register']) {
+        await navigateTo(page, route);
+        await page.waitForTimeout(150);
+        const edges = await page.evaluate(() => {
+          const content =
+            document.querySelector('#main .page') ?? document.querySelector('#main .wrap');
+          const foot = document.querySelector('.footer .wrap');
+          if (!content || !foot) return null;
+          return {
+            content: Math.round(content.getBoundingClientRect().left),
+            footer: Math.round(foot.getBoundingClientRect().left),
+          };
+        });
+        if (!edges) {
+          offences.push(`${route} at ${width}: no content or footer container rendered`);
+          continue;
+        }
+        if (Math.abs(edges.content - edges.footer) > 1) {
+          offences.push(
+            `${route} at ${width}: content at x=${edges.content}, footer at x=${edges.footer}`
+          );
+        }
+      }
+    }
+
+    /* Restored BEFORE the assertions — a throw skips anything below it,
+       and every later check would then drive a desktop it never asked
+       for. The queue-width gate above learned this the same way. */
+    await page.setViewportSize(handset);
+
+    assert(
+      offences.length === 0,
+      `${offences.length} screen(s) whose footer does not align with the content above it:\n         ` +
+        offences.join('\n         ')
+    );
+  });
+
+  await check('the working surface takes the width a 1920px screen has', async () => {
+    /* ==================================================================
+       --us-page WAS 76rem AND 76rem IS 1216px ON EVERY SCREEN EVER MADE.
+
+       1216 of 1440 is 84% and reads as a full page. 1216 of 1920 is
+       63% — 704px of margin, more than half the width of the content
+       itself — on the monitor a safety manager reviews the queue on.
+       The token was chosen against a 1440px laptop and nobody drove it
+       wider, which is the only reason it survived.
+
+       ASSERTED AS A COMPARISON, not against a number. The point is that
+       the container RESPONDS; pinning 1408 here would fail the day
+       somebody legitimately retunes the step, and teach the next person
+       to edit the assertion rather than read it.
+       ================================================================== */
+    const handset = page.viewportSize();
+    const width = async (w) => {
+      await page.setViewportSize({ width: w, height: 900 });
+      await navigateTo(page, '/toolkits/register');
+      await page.waitForTimeout(150);
+      return page.evaluate(() =>
+        Math.round(document.querySelector('#main .page, #main .wrap').getBoundingClientRect().width)
+      );
+    };
+    const narrow = await width(1440);
+    const wide = await width(1920);
+    await page.setViewportSize(handset);
+
+    assert(
+      wide > narrow,
+      `the working surface is ${wide}px at 1920 and ${narrow}px at 1440 — it does not respond ` +
+        `to the wider screen at all`
+    );
+    assert(
+      wide / 1920 > 0.7,
+      `the working surface uses ${Math.round((wide / 1920) * 100)}% of a 1920px screen ` +
+        `(${1920 - wide}px of margin)`
+    );
+  });
+
+  await check('no link points at a route that needs a bearer token', async () => {
+    /* ==================================================================
+       A LINK CANNOT CARRY AN AUTHORIZATION HEADER.
+
+       Every route in this API authenticates from `Authorization:
+       Bearer` — there is no cookie, deliberately, because the same
+       token has to work from the service worker and from a handset that
+       has been offline. So a browser NAVIGATING to an authenticated
+       path sends nothing, and the user gets
+       {"error":"authentication_required"} rendered as JSON in a blank
+       tab.
+
+       That is not hypothetical. The evidence panel shipped
+       `<a href="/api/v1/attachments/${id}">Download</a>`, and every
+       download by every user since the feature was written returned a
+       401. It typechecks, it renders, it has the right label, and the
+       only way to see it is to click it while signed in — which no gate
+       did, because the feature had no gate.
+
+       SEARCHED IN THE BUILT BUNDLE rather than in source: this is about
+       what ships. `/api/health` and `/api/ready` are unauthenticated by
+       design and a link to either is fine.
+       ================================================================== */
+    const offences = [];
+    for (const file of readdirSync(join(DIST, 'assets'))) {
+      if (!file.endsWith('.js')) continue;
+      const source = readFileSync(join(DIST, 'assets', file), 'utf8');
+      /* The href of an anchor, however the template literal assembled
+         it — the interpolation is still a literal `<a href="/api/` in
+         the emitted string. */
+      for (const m of source.matchAll(/<a\b[^>]*href=["']?\/api\/(?!health|ready)/g)) {
+        offences.push(`${file}: ${source.slice(m.index, m.index + 60).replace(/\s+/g, ' ')}`);
+      }
+    }
+    assert(
+      offences.length === 0,
+      `${offences.length} anchor(s) navigate to an authenticated API route:\n         ` +
+        offences.join('\n         ')
+    );
+  });
+
   await check('no uncaught page errors across the whole run', async () => {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
   });
