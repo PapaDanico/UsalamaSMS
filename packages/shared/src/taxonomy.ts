@@ -157,15 +157,93 @@ export const REPORT_TYPES = [
   { code: 'SUGGESTION', label: 'Suggestion — a way to make this safer' }
 ];
 
-/** ICAO high-risk occurrence categories. */
+/**
+ * WHAT A REPORTER CAN TAG.
+ *
+ * ---------------------------------------------------------------
+ * THE FIRST SIX WERE RIGHT, AND I NEARLY BROKE THEM.
+ *
+ * The original list was RE, RI, LOC_I, CFIT, MAC and BWI, and the
+ * working assumption while extending it was that BWI was a typo for
+ * CICTT's BIRD and should be migrated. Reading the primary document
+ * says otherwise. Kenya's National Aviation Safety Plan, §5.1.1.1,
+ * lists the national High-Risk Categories of Occurrences as:
+ *
+ *     (a) Controlled flight into terrain (CFIT)
+ *     (b) Loss of control in-flight (LOC-I)
+ *     (c) Mid-air collision (MAC)
+ *     (d) Runway excursion (RE)
+ *     (e) Runway incursion (RI)
+ *     (f) Bird Strikes (BWI)
+ *
+ * SIX, INCLUDING BIRD STRIKES, AND `BWI` IS THE PLAN'S OWN CODE. It
+ * appears again in the plan's indicator table as "BWI incidents per
+ * quarter/per aerodrome". Whoever wrote this list was reading Kenya's
+ * national plan, not guessing, and migrating BWI to BIRD would have
+ * silently walked the product away from the vocabulary the regulator
+ * publishes. Exactly one production report carries a tag and that tag
+ * is BWI; the migration would have rewritten the only real datum here
+ * to match a taxonomy the State does not use.
+ *
+ * `LOC_I` WAS genuinely wrong — the plan and CICTT both write LOC-I
+ * with a hyphen — and that one is fixed.
+ *
+ * ---------------------------------------------------------------
+ * THE GROUND WAS MISSING, AND THAT PART WAS REAL.
+ *
+ * All six national HRCs are airborne or on the runway. A ramp
+ * collision, a tug into a fairing, a loading injury — among the most
+ * frequent things a charter or survey operator actually files, with no
+ * way to tag one. Untaggable is uncountable, so those events reached
+ * neither an indicator nor the risk picture.
+ *
+ * So the list is the national six PLUS what this segment files, and
+ * `nasp` marks which is which. That distinction is a fact about the
+ * code rather than a display flag: an operator showing KCAA an
+ * indicator against a national safety issue needs to know which of
+ * these the State actually named.
+ *
+ * ---------------------------------------------------------------
+ * `cictt` IS THE BRIDGE, and it exists only where the two disagree.
+ * The plan says BWI, the ADREP/CICTT registry says BIRD, and both are
+ * correct in their own document. A report tagged BWI must still reach
+ * a CICTT-coded export, so the mapping is declared once here rather
+ * than guessed at each call site. A test holds every entry to a real
+ * registry code through this field.
+ */
 export const HRC_CATEGORIES = [
-  { code: 'RE', label: 'Runway excursion' },
-  { code: 'RI', label: 'Runway incursion' },
-  { code: 'LOC_I', label: 'Loss of control in flight' },
-  { code: 'CFIT', label: 'Controlled flight into terrain' },
-  { code: 'MAC', label: 'Mid-air collision / loss of separation' },
-  { code: 'BWI', label: 'Bird or wildlife strike' }
+  { code: 'CFIT', label: 'Controlled flight into terrain', group: 'In flight', nasp: true },
+  { code: 'LOC-I', label: 'Loss of control in flight', group: 'In flight', nasp: true },
+  { code: 'MAC', label: 'Loss of separation or near mid-air', group: 'In flight', nasp: true },
+  { code: 'BWI', label: 'Bird or wildlife strike', group: 'In flight', nasp: true, cictt: 'BIRD' },
+  { code: 'TURB', label: 'Turbulence encounter', group: 'In flight', nasp: false },
+
+  { code: 'RE', label: 'Runway excursion', group: 'Runway', nasp: true },
+  { code: 'RI', label: 'Runway incursion', group: 'Runway', nasp: true },
+  { code: 'ARC', label: 'Heavy, long or abnormal landing', group: 'Runway', nasp: false },
+
+  { code: 'RAMP', label: 'Ground handling — loading, servicing, marshalling', group: 'On the ground', nasp: false },
+  { code: 'GCOL', label: 'Ground collision', group: 'On the ground', nasp: false },
+  { code: 'LOC-G', label: 'Loss of control while taxiing', group: 'On the ground', nasp: false },
+  { code: 'GTOW', label: 'Towing or pushback', group: 'On the ground', nasp: false },
+
+  { code: 'SCF-PP', label: 'Engine or propeller failure', group: 'Technical', nasp: false },
+  { code: 'SCF-NP', label: 'Other system or component failure', group: 'Technical', nasp: false },
+  { code: 'FUEL', label: 'Fuel — quantity, contamination or starvation', group: 'Technical', nasp: false }
 ];
+
+/** The order the groups are shown in, and the only place it is stated. */
+export const HRC_GROUPS = ['In flight', 'Runway', 'On the ground', 'Technical'];
+
+/**
+ * Kenya's six national High-Risk Categories, derived rather than
+ * relisted — charter rule 10, so the set cannot drift from the chips.
+ */
+export const NASP_HIGH_RISK = HRC_CATEGORIES.filter((c) => c.nasp);
+
+/** The CICTT code for a tag, which is the tag itself unless they differ. */
+export const cicttFor = (tag: string): string =>
+  HRC_CATEGORIES.find((c) => c.code === tag)?.cictt ?? tag;
 
 /**
  * Phase of flight — ICAO/CAST taxonomy, trimmed.
