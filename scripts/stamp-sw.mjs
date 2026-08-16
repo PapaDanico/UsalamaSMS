@@ -65,6 +65,12 @@ if (!sw.includes('__BUILD_ID__')) {
 const assets = walk(DIST)
   .map((f) => '/' + relative(DIST, f).split(/[\\/]/).join('/'))
   .filter((f) => !f.endsWith('/sw.js'))
+  /* THE SHARE CARD IS NOT PRECACHED. og-card.jpg is fetched by
+     link scrapers and never by the app, so precaching it would
+     charge every reporter 62 KB on install for a file they will
+     never see. It still ships — it just is not part of what the
+     worker installs. */
+  .filter((f) => !f.endsWith('/og-card.jpg'))
   .filter((f) => /\.(js|css|woff2?|svg|png|json|html)$/.test(f))
   .sort();
 

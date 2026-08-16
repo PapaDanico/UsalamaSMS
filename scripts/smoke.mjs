@@ -2928,6 +2928,72 @@ try {
     );
   });
 
+  await check('EVERY TOOLKIT OFFERS A WAY BACK WITHOUT SCROLLING FOR IT', async () => {
+    /* ================================================================
+       THE DEFECT, MEASURED. The only VISIBLE link to the toolkits index
+       sat in the footer of each toolkit screen:
+
+         /toolkits/sra        2,643px      /toolkits/spi       2,771px
+         /toolkits/register   1,836px      /toolkits/maturity  9,893px
+
+       Eleven screens of scrolling to leave the maturity assessment,
+       and on /toolkits/spi nothing marked which toolkit you were on —
+       aria-current was in the document and zero nodes carrying it were
+       rendered, so a screen reader was told and a sighted safety
+       manager was not.
+
+       VISIBILITY, NOT COORDINATES. Two earlier probes missed all of it
+       by counting nodes that matched a selector and filtering on
+       bounding boxes, which let a collapsed menu panel count as
+       on-screen. This asks offsetParent, visibility, opacity and box
+       size — whether the thing is actually rendered — because that is
+       the question a person is asking.
+
+       WHAT TO DO WHEN IT FAILS. A toolkit has stopped rendering
+       ToolNav, or the nav has moved below the first screen. Put it
+       back at the top; do not raise the threshold. The number is
+       generous already — a first viewport is 900px here and the bar
+       sits under 500. */
+    const TOOLKITS = [
+      '/toolkits/sra',
+      '/toolkits/register',
+      '/toolkits/spi',
+      '/toolkits/maturity',
+    ];
+    const cameFrom = page.url();
+    const problems = [];
+    for (const route of TOOLKITS) {
+      await page.goto(BASE + route, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(400);
+      const m = await page.evaluate(() => {
+        const vis = (el) => {
+          const r = el.getBoundingClientRect();
+          const st = getComputedStyle(el);
+          return (
+            el.offsetParent !== null &&
+            st.visibility !== 'hidden' &&
+            st.opacity !== '0' &&
+            r.width > 0 &&
+            r.height > 0
+          );
+        };
+        const backs = [...document.querySelectorAll('a[href="/toolkits"]')]
+          .filter(vis)
+          .map((a) => Math.round(a.getBoundingClientRect().top + window.scrollY))
+          .sort((x, y) => x - y);
+        const here = [...document.querySelectorAll('.toolnav__item.is-here')].filter(vis);
+        return { first: backs[0] ?? null, here: here.length, label: here[0]?.textContent.trim() };
+      });
+      if (m.first === null) problems.push(`${route} has no visible link back to /toolkits at all`);
+      else if (m.first > 900) problems.push(`${route} hides the way back ${m.first}px down`);
+      if (m.here !== 1) {
+        problems.push(`${route} marks ${m.here} toolkits as current; exactly one must be`);
+      }
+    }
+    await page.goto(cameFrom, { waitUntil: 'networkidle' });
+    assert(problems.length === 0, problems.join(' · '));
+  });
+
   await check('EVERY DESTINATION IN THE MENU CAN ACTUALLY BE REACHED', async () => {
     /* THE DEFECT THIS COMES FROM, and it shipped for exactly one build.
        The menu panel is position:fixed with no max-height and no

@@ -5333,3 +5333,63 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .notice--handoff .handoff__said:empty {
   display: none;
 }
+
+/* ---- toolkit wayfinding -------------------------------------------
+   The row that answers "how do I get back". See shared/tool-nav.js for
+   the measurements that produced it — the short version is that the
+   only visible way out of the maturity assessment was 9,893px down.
+
+   Sits in the working column rather than the dark band, because it is
+   navigation the reader uses repeatedly and the band is the screen
+   introducing itself once. */
+.toolnav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--us-space-3) var(--us-space-4);
+  padding-block: var(--us-space-4);
+  border-bottom: 1px solid var(--us-line);
+  margin-bottom: var(--us-space-6);
+}
+
+.toolnav__back {
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-medium);
+  color: var(--us-teal-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.toolnav__back:hover { text-decoration: underline; }
+
+.toolnav__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toolnav__item {
+  display: inline-block;
+  padding: var(--us-space-1) var(--us-space-3);
+  border: 1px solid var(--us-line-strong);
+  border-radius: var(--us-radius-pill);
+  font-size: var(--us-text-sm);
+  color: var(--us-charcoal);
+  text-decoration: none;
+  background: var(--us-paper);
+}
+.toolnav__item:hover { border-color: var(--us-teal); }
+
+/* THE "YOU ARE HERE" THAT WAS MISSING. aria-current was already on the
+   page and painted nothing, so a screen reader knew and a safety
+   manager did not. Contrast, not colour alone — the filled pill reads
+   as current without depending on hue. */
+.toolnav__item.is-here {
+  background: var(--us-charcoal);
+  border-color: var(--us-charcoal);
+  color: var(--us-paper);
+  font-weight: var(--us-weight-medium);
+  cursor: default;
+}

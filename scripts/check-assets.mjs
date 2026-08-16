@@ -32,7 +32,7 @@
    file over its own ceiling, and a total over budget.
    ===================================================================== */
 
-import { readdirSync, statSync } from 'node:fs';
+import { readdirSync, statSync, readFileSync, existsSync } from 'node:fs';
 import { join, resolve, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -73,6 +73,22 @@ const DECLARED = new Map([
 
   ['manifest.json', [2, 'The PWA manifest. Installability is the offline promise.']],
   ['offline.html', [39, 'The page served when there is no network. Self-contained by necessity — it cannot reference a stylesheet, a font or an image that might not be cached — so its own weight is its whole cost. WENT 6 -> 37 KB WHEN THE CRANE WAS INLINED: 22 KB of that is a WebP of docs/brand/crane.png, resampled by scripts/derive-brand.mjs and never redrawn, with its ground flood-filled transparent from the edges so the patterned sand this page paints shows through, rather than a second and slightly different sand sitting on top of it — which is what the first attempt shipped, and what only a screenshot could catch. It is DECORATION, it is precached, and every user pays for it once on install — so if this budget ever needs room, this is the first thing to cut and the ceiling is set to make that visible rather than comfortable. What buys it: this is the page a ramp agent sees at the moment they most need to trust the product, and it is the only identity surface reachable while the shared stylesheet sits at 59.9 of 60 KB.']],
+  /* THE ONLY FILE HERE THAT IS NOT PRECACHED, and that is the entire
+     reason it is affordable. A link pasted into WhatsApp, LinkedIn or
+     Slack drew nothing: the built index.html carried zero og: tags,
+     zero twitter: tags and no description, so a scraper found a title
+     and had nothing to build a card from.
+
+     Fetched by scrapers and never by the app. scripts/stamp-sw.mjs
+     excludes it from PRECACHE by name, so a reporter at a strip does
+     not download 62 KB on install for a picture they will never see —
+     and the check below reads the BUILT worker to confirm that, rather
+     than trusting this sentence.
+
+     If it ever does get precached it becomes the second largest asset
+     in this directory after the offline page, and it buys a reporter
+     nothing at all. */
+  ['og-card.jpg', [64, 'The link preview card, 1200x630, rendered from the real brand at scripts-time. NOT precached — excluded in stamp-sw.mjs and asserted below.']],
   ['sw.js', [12, 'The service worker, stamped by stamp-sw.mjs on every build.']],
 ]);
 
@@ -149,6 +165,41 @@ for (const rel of DECLARED.keys()) {
       `  ${rel} — declared here and not present. A declaration for a file that does not ` +
         `exist is how this list stops describing anything.`,
     );
+  }
+}
+
+/* ============================================================
+   THE SHARE CARD MUST STAY OUT OF THE PRECACHE MANIFEST.
+
+   Its declaration above says it is not precached, and that sentence is
+   worth nothing on its own — the worker precaches by extension and
+   .jpg is one it would happily take. So the built worker is read and
+   its own manifest is checked.
+
+   Read from dist/sw.js rather than from the filter in stamp-sw.mjs,
+   because what matters is what shipped rather than what the script
+   intended. If dist has not been built yet this is skipped and says so,
+   which is the honest answer to "there is nothing to check" — the build
+   runs this before it stamps, and the verify pass runs it after.
+   ============================================================ */
+{
+  const worker = resolve(ROOT, 'dist/sw.js');
+  if (existsSync(worker)) {
+    const src = readFileSync(worker, 'utf8');
+    const manifest = src.match(/const PRECACHE = (\[[^\]]*\]);/)?.[1];
+    if (!manifest) {
+      problems.push(
+        '  dist/sw.js has no PRECACHE manifest this check can read, so nothing was ' +
+          'verified about what a reporter downloads on install.',
+      );
+    } else if (manifest.includes('og-card.jpg')) {
+      problems.push(
+        '  og-card.jpg is IN the precache manifest. It is declared above as the one ' +
+          'asset here that is not, and it is only affordable because of that — every ' +
+          'reporter would download 62 KB on install for a card only link scrapers ' +
+          'fetch. Restore the filter in scripts/stamp-sw.mjs.',
+      );
+    }
   }
 }
 

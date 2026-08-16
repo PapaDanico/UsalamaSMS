@@ -66,6 +66,7 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import { ToolNav } from '../../shared/tool-nav.js';
 import { attachPrintId } from '../../shared/print-id.js';
 import {
   SMS_COMPONENTS,
@@ -556,6 +557,7 @@ export function render(outlet) {
     </section>
 
     <div class="panel wrap doc">
+      ${ToolNav('/toolkits/maturity')}
       <aside class="toc mat-result" id="mat-result" aria-live="polite">
         <h2 class="section-title">Your position</h2>
         <div id="mat-result-body"></div>
