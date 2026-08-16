@@ -123,8 +123,9 @@ const menuToggle = document.getElementById('menu-toggle');
    already started moving a thumb towards; an empty span reserves
    nothing visually and gives fill() somewhere to write. */
 menuPanel.innerHTML = WORKING_SECTIONS.map(
-  (section) => html`<div class="nav-group">
+  (section) => html`<div class="nav-group" data-group="${section.id}">
       <p class="nav-group__title">${section.title}</p>
+      <p class="nav-group__purpose"></p>
       ${section.items.map(
         (d) => html`<a class="nav-item" href="${d.href}">
           <span class="nav-item-title">${d.label}</span>
@@ -141,7 +142,7 @@ menuPanel.innerHTML = WORKING_SECTIONS.map(
 let hints;
 function loadHints() {
   hints ??= import('./shared/menu-hints.js')
-    .then(({ MENU_HINTS }) => {
+    .then(({ MENU_HINTS, GROUP_PURPOSE }) => {
       /* Keyed off the anchor's own href rather than a data- attribute
          repeating it. Writing data-hint-for onto fifteen items put the
          href in the entry chunk twice, which is weight spent to avoid
@@ -150,6 +151,13 @@ function loadHints() {
       for (const a of menuPanel.querySelectorAll('a.nav-item')) {
         const text = MENU_HINTS[a.getAttribute('href')];
         if (text) a.querySelector('.nav-item-summary').textContent = text;
+      }
+      /* The group's own line, keyed off the id the section already
+         carries — same rule as above, and the id is four characters
+         where the title is a sentence. */
+      for (const g of menuPanel.querySelectorAll('.nav-group')) {
+        const text = GROUP_PURPOSE[g.dataset.group];
+        if (text) g.querySelector('.nav-group__purpose').textContent = text;
       }
     })
     .catch(() => {

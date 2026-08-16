@@ -83,3 +83,26 @@ export const MENU_HINTS = {
   '/glossary': 'The vocabulary, transcribed from the KCAA course glossary',
   '/faq': 'What operators actually ask, including what we cannot answer'
 };
+
+/**
+ * WHAT A GROUP IS FOR, which is a different question from what it is
+ * called.
+ *
+ * Kanda's menu sets a section eyebrow over a one-line purpose — "MOVE /
+ * Operational diagnostics" — and it is the line that turns a list of
+ * headings into a map. This product's headings are already phrases
+ * rather than single words, so the purpose here says WHEN somebody is
+ * in this group rather than restating the heading in other words. A
+ * purpose that paraphrases its own title is furniture.
+ *
+ * Keyed by the section id rather than the title, for the reason above:
+ * an id is four characters and a title is a sentence, and the entry
+ * chunk pays for whichever one main.js writes into the markup.
+ */
+export const GROUP_PURPOSE = {
+  standing: 'Before the first report, and after a change of post',
+  occurrence: 'The hour after something happens, and the days that follow',
+  risk: 'Standing hazards, and the decisions somebody signs',
+  assurance: 'What an inspector asks for, and what you hand over',
+  reference: 'The instruments behind every number on these screens'
+};

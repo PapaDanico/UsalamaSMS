@@ -237,6 +237,36 @@ describe('the information architecture', () => {
     }
   });
 
+  it('gives every header section a purpose, for the same reason it gives every item a hint', () => {
+    /* The menu now sets a one-line purpose under each group heading —
+       Kanda's pattern, and the line that turns a list of headings into
+       a map. main.js writes the element empty and fills it from
+       menu-hints.js, exactly as it does the item summaries, so a
+       section with no purpose renders a BLANK LINE under its title:
+       the same defect as an item with no hint, one level up, and
+       invisible in either file on its own.
+
+       Matched on the section id rather than the title, because the id
+       is what main.js stamps into data-group and therefore what the
+       fill actually keys off. Matching titles would pass while the
+       rendered menu stayed empty. */
+    const ids = [...sitemap.matchAll(/id: '([^']+)',\n    title: '[^']*',\n    working: true/g)].map(
+      (m) => m[1]!
+    );
+    expect(ids.length, 'no working section ids were read out of sitemap.js').toBeGreaterThan(3);
+
+    const block = /export const GROUP_PURPOSE = \{([\s\S]*?)\n\};/.exec(hints)?.[1];
+    expect(block, 'GROUP_PURPOSE was not found in menu-hints.js').toBeTruthy();
+    const purposed = new Set([...block!.matchAll(/^\s*(\w+):/gm)].map((m) => m[1]!));
+
+    for (const id of ids) {
+      expect(
+        purposed.has(id),
+        `section "${id}" is in the menu with no purpose in GROUP_PURPOSE`
+      ).toBe(true);
+    }
+  });
+
   it('WRITES NO HINT BACK INTO THE ENTRY CHUNK, which is the whole point of moving them', () => {
     /* sitemap.js is imported by main.js, so it IS the entry chunk.
        Adding `hint:` back to an item is the obvious thing to do —

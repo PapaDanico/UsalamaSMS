@@ -92,42 +92,45 @@
   --us-text-sm: 12.5px;
   --us-text-base: 14px;
   --us-text-md: 15.5px;
-  /* THE DISPLAY END CAME DOWN TWICE, AND THE READING END NEITHER TIME.
+  /* THE DISPLAY END IS KANDA'S, VERBATIM, AND THE READING END IS NOT.
 
-     "Reduce the font sizes" is two different requests depending on which
-     end of the ladder it lands on. At the reading end it costs
-     legibility for a reporter squinting at a handset on a windy apron,
-     and buys almost nothing: body copy is already a measure, and
-     shrinking 15px to 14px reclaims a few pixels per line while making
-     every line harder. At the DISPLAY end it costs nothing anybody
-     reads and buys whole screenfuls — a 68px hero heading over three
-     lines is 250px of vertical space spent saying what 52px says.
+     These four rungs are copied from --ca-text-lg through -3xl in the
+     sibling product. That is the instruction — align to Kanda, it is
+     the DNA — and it is also the correction to something this ladder
+     had got wrong on its own terms.
 
-     Three passes, and the ceilings tell the story: 68 -> 52 -> 46 -> 36
-     on the hero rung. First pass took the display end down ~20%, second
-     another ~11%, third — "too too big" — another ~22%.
+     "Reduce the font sizes" was asked several times and answered at
+     BOTH ends, which was one end too many. The reading rungs coming
+     down was right: 2xs through md are 10 to 15.5px, at or under
+     Kanda's own 11 to 17, and a working screen full of labels, hints
+     and figures is denser here than anything Kanda renders. Those stay
+     where they are, and they are what "small fonts" meant.
 
-     THE FLOORS MOVE LESS THAN THE CEILINGS. The floor is what a 360px
-     handset renders, where a heading is already close to the body text
-     and the hierarchy is carried by weight and colour rather than by
-     size; the ceiling is a desktop hero, where the same proportion is
-     three lines of 50px type nobody asked to read. So the range
-     narrows from both ends rather than sliding down.
+     The display rungs coming down was wrong, and rendering the two
+     products side by side is what showed it. Kanda's 3xl reaches 68px
+     against this ladder's 36. Its headlines are LARGE and its body is
+     SMALL, and that contrast is most of what makes a page read as
+     confident. Small body plus small display does not read as
+     restrained; it reads as timid, which is the note the owner has
+     been giving about this product's design.
 
-     ORDERING WAS CHECKED, NOT ASSUMED. Four clamps and five fixed rungs
-     can cross over at a viewport nobody looked at, which would put a
-     section heading below its own body text somewhere between two
-     breakpoints. Evaluated at 320, 375, 800, 1200 and 1440px: md 15.5
-     sits under lg's 16px floor at every one, and each display rung
-     stays above the one below it.
+     So the contrast is Kanda's and the density is Usalama's. Both
+     clamps still hold at every breakpoint — evaluated at 320, 375,
+     800, 1200 and 1440 — and the accessibility sweep over every
+     rendered screen is the check that this stayed legible rather than
+     the claim.
 
-     The four sanctioned off-ladder sizes above are untouched. The
-     accessibility sweep runs over every rendered screen and is the
-     check that this stayed legible rather than the claim. */
-  --us-text-lg: clamp(16px, 1.6vw, 17px);
-  --us-text-xl: clamp(17.5px, 2.0vw, 20.5px);
-  --us-text-2xl: clamp(20px, 2.6vw, 27px);
-  --us-text-3xl: clamp(23.5px, 3.6vw, 36px);
+     THE TOOL SURFACES DO NOT INHERIT THE FULL JUMP, and they get that
+     for free rather than by a new rule: they were already mapped two
+     rungs down the ladder — h1 to xl, h2 to lg, h3 to md — so a
+     working screen now opens at 32px where the landing page opens at
+     68. A 68px h1 above a triage queue is exactly the marketing
+     furniture this pass has been removing. The mapping was written for
+     that reason and it still holds; only the numbers under it moved. */
+  --us-text-lg: clamp(20px, 2.2vw, 24px);
+  --us-text-xl: clamp(24px, 3vw, 32px);
+  --us-text-2xl: clamp(30px, 4.2vw, 46px);
+  --us-text-3xl: clamp(38px, 6vw, 68px);
 
   --us-weight-normal: 400;
   --us-weight-medium: 500;
@@ -2606,7 +2609,107 @@ html { scroll-padding-top: var(--us-chrome); }
 
 .dropdown-menu[hidden] { display: none; }
 
+/* ---------------------------------------------------------------------
+   TWO COLUMNS, BECAUSE ONE DOES NOT FIT.
+
+   Measured at 1440x900 with the menu open: the panel is 586 wide and
+   816 tall inside an 856px gap, and it SCROLLS. Every destination this
+   product has, with its one-line hint, is in there — and the reader
+   sees about two-thirds of it and has to discover the rest by
+   scrolling a menu, which is the one interaction nobody performs
+   speculatively. The rule above already records that a sixth item in a
+   group made "Questions" unreachable on a handset; this is the same
+   failure on the screen with the MOST room.
+
+   Kanda's menu holds twelve destinations with the same one-line
+   treatment and needs no scroll, because it is two columns.
+
+   A GRID, AND `columns` WAS TRIED FIRST AND IS WRONG HERE.
+
+   Multi-column is the tidier answer on paper: it flows the groups and
+   rebalances itself when a destination is added, where a grid places
+   them in the order they are written. It also SILENTLY DELETED A GROUP
+   from this panel, and the only reason that is recorded rather than
+   shipped is that the menu was screenshotted rather than measured.
+
+   The mechanism: this panel has a max-height, because it is
+   position:fixed and anything taller hangs below the fold. Constrain
+   the height of a multi-column box and the overflow does not go DOWN,
+   it goes SIDEWAYS into further columns — so "Reference" and its five
+   destinations were laid out in a third column past the panel's right
+   edge, clipped, with `overflow-y: auto` unable to reach them because
+   the overflow was horizontal. The panel reported no scrollbar and
+   looked complete.
+
+   That is the failure this rule's own neighbour already warns about,
+   arriving by a new route: the menu loses its last items, silently, and
+   nothing tells anybody. A grid overflows downward, which is the axis
+   the scroll is on.
+
+   ONLY ABOVE 900px. Below it there is no second column to have, and
+   the handset already has the scroll behaviour it needs.
+   --------------------------------------------------------------------- */
+@media (min-width: 900px) {
+  .dropdown-menu {
+    /* Both bounds, and the max is the one doing the work. A panel with
+       only a floor grows to whatever its longest hint wants — measured
+       at 1190px, which is 82% of a 1440 screen and reads as a page
+       rather than a menu. 56rem gives two columns of about 420px,
+       which is the measure these one-line hints actually need. */
+    min-width: min(44rem, calc(100vw - 2 * var(--us-space-6)));
+    max-width: min(56rem, calc(100vw - 2 * var(--us-space-6)));
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--us-space-5) var(--us-space-6);
+    align-content: start;
+    padding: var(--us-space-4);
+  }
+  /* The separator is a rule between groups in one flow. In a grid the
+     first group of the second column would wear one at the top of the
+     panel, which reads as a stray line rather than a separator, so it
+     goes and the grid's own gap does the spacing. */
+  .dropdown-menu .nav-group + .nav-group {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  /* DENSER, BECAUSE A MENU IS SCANNED. The 12px of vertical padding on
+     each item is a touch target on a handset, where it is correct and
+     stays; on a pointer device it is 17 items' worth of air in a panel
+     that has to fit above the fold. At 12px the grid needed 1072px
+     against 814 available and scrolled by a third.
+
+     The target does not fall below the WCAG 2.2 floor: the item is a
+     block, so its height is the type plus the summary plus this — 44px
+     at the smallest, and check:a11y measures every one of them on the
+     rendered page rather than trusting the arithmetic here. */
+  .dropdown-menu .nav-item { padding: var(--us-space-2) var(--us-space-3); }
+  .dropdown-menu .nav-group__title,
+  .dropdown-menu .nav-group__purpose { padding-inline: var(--us-space-3); }
+  .dropdown-menu .nav-group__purpose { margin-bottom: var(--us-space-1); }
+}
+
 .nav-group + .nav-group { margin-top: var(--us-space-3); padding-top: var(--us-space-3); border-top: 1px solid var(--us-border); }
+
+/* WHAT THE GROUP IS FOR, under what it is called. Kanda sets a section
+   eyebrow over a one-line purpose, and it is the line that turns a list
+   of headings into a map — you can tell whether a group is yours
+   without reading the four destinations inside it. Written empty by
+   main.js and filled from menu-hints.js, on the same terms as the item
+   summaries: help text is not navigation, and it is not on the
+   critical path. */
+.nav-group__purpose {
+  margin: 0 0 var(--us-space-2);
+  padding: 0 var(--us-space-4);
+  font-size: var(--us-text-xs);
+  line-height: var(--us-leading-snug);
+  color: var(--us-text-tertiary);
+}
+/* Empty until the hints land, and an empty paragraph with a bottom
+   margin is a gap that appears and then fills — the reflow the
+   summaries are written empty to avoid. */
+.nav-group__purpose:empty { display: none; }
 
 .nav-group__title {
   margin: 0 0 var(--us-space-1);
@@ -2842,6 +2945,7 @@ html { scroll-padding-top: var(--us-chrome); }
 [data-surface='tool'] h1 { font-size: var(--us-text-xl); line-height: 1.2; }
 [data-surface='tool'] h2 { font-size: var(--us-text-lg); line-height: 1.25; }
 [data-surface='tool'] h3 { font-size: var(--us-text-md); }
+[data-surface='tool'] .section-title { font-size: var(--us-text-md); }
 
 /* A PAGE HEAD'S h2 IS A SUBTITLE, not the start of a section, so it
    sits a rung below the h2 that is. This rule used to exist to undo a
@@ -3258,8 +3362,31 @@ html { scroll-padding-top: var(--us-chrome); }
    rung the ladder already has for exactly this, it clamps down to 20px
    on a narrow screen, and naming it costs twelve bytes LESS than
    computing an off-ladder size from a smaller one. */
+/* A PANEL LABEL, NOT DISPLAY TYPE, and the difference only became
+   visible when the ladder moved. This was --us-text-lg back when lg was
+   16-17px, which was the right size for "Add an entry" over a form and
+   for a footer column heading. lg is now Kanda's 20-24px, and the same
+   token rendered "WHEN SOMETHING HAPPENS" as three lines of 24px
+   uppercase in a footer column — a heading four times the weight of the
+   links under it.
+
+   Naming a rung is right; naming the rung that happened to be the size
+   you wanted is what breaks when the scale is retuned. This one is
+   pinned to the reading end, where a label belongs.
+
+   AND THE BARE RULE DOES NOT WIN ANYWHERE IT IS USED, which two
+   rounds of measuring is what established. A .section-title is an
+   <h2>, and every context it appears in styles h2 by element:
+   `[data-surface='tool'] h2` and `.footer :is(h2, h3, h4)` are both
+   0,1,1 against this rule's 0,1,0. The first attempt at this fix
+   changed the token here and moved nothing on the page.
+
+   So the bare rule is the default for a .section-title somewhere new,
+   and the two contextual rules below are what actually applies today.
+   Asking the browser which rules matched — rather than reading the
+   sheet and reasoning about specificity — is what found it. */
 .section-title {
-  font-size: var(--us-text-lg);
+  font-size: var(--us-text-md);
   letter-spacing: -.01em;
   margin: 0 0 var(--us-space-3);
 }
@@ -4320,7 +4447,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    surface restates it, once, for everything it contains — the same
    pattern .band-dark already uses two screens up. */
 .footer { color: rgb(var(--us-sand-rgb) / 0.78); }
-.footer .section-title { color: #fff; }
+/* See the note on .section-title: an element selector in each
+   context outranks the class, so the size is set here too. */
+.footer .section-title { color: #fff; font-size: var(--us-text-sm); }
 .footer .footer-note,
 
 .footer .us-lockup,
