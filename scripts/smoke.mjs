@@ -1823,6 +1823,71 @@ try {
     const health = (await page.locator('#reg-health .stat__value').nth(1).textContent()) ?? '';
     assert(health.trim() === '1', `the health strip counts ${health.trim()} intolerable, expected 1`);
 
+    /* THE ROW'S OWN BAND, WHICH IS WHAT DRAWS ITS EDGE.
+       Severity used to be carried by the chip's fill and nothing else,
+       so a register of forty entries had to be read row by row to find
+       the ones that need somebody — the only reason the screen is
+       opened. The row now states its band, and the leading edge is
+       drawn from it.
+
+       IT MUST BE THE BAND THAT GOVERNS. `residual ?? initial` is what
+       the escalation rule and the acceptance permission are computed
+       from, and drawing the edge from the INITIAL band instead would
+       put a red rail on an entry whose controls have brought it to
+       green — a worse reading than no rail, and one that looks
+       perfectly fine on this entry, which has no controls. The second
+       entry below is the one that can tell them apart. */
+    const rowBand = await page.locator('.reg-entry').first().getAttribute('data-tolerability');
+    assert(
+      rowBand === 'INTOLERABLE',
+      `the row states its band as "${rowBand}" while its chip says INTOLERABLE`
+    );
+
+    /* An entry whose controls bring it down. 5x5 initial, 2x2 residual:
+       intolerable before, acceptable after. If the row is drawn from
+       the initial band this reads INTOLERABLE and the test says so. */
+    await page.fill('input[name="hazard"]', 'Ramp lighting out on stand 4');
+    await page.fill('textarea[name="consequence"]', 'A defect leaves with the aircraft');
+    await page.selectOption('select[name="severity"]', 'A_CATASTROPHIC');
+    await page.selectOption('select[name="likelihood"]', 'FREQUENT');
+    await page.fill('textarea[name="controls"]', 'Temporary tower light until the fixture is replaced.');
+    await page.selectOption('select[name="residualSeverity"]', 'D_MINOR');
+    await page.selectOption('select[name="residualLikelihood"]', 'IMPROBABLE');
+    await page.selectOption('#reg-form select[name="owner"]', 'SAFETY_MANAGER');
+    await page.selectOption('#reg-form select[name="reviewInterval"]', '365');
+    await page.click('#reg-form button[type="submit"]');
+    await page.waitForFunction(() => document.querySelectorAll('.reg-entry').length === 2, undefined, {
+      timeout: 5000
+    });
+
+    const controlled = page.locator('.reg-entry', { hasText: 'Ramp lighting out on stand 4' });
+    const controlledBand = await controlled.getAttribute('data-tolerability');
+    assert(
+      controlledBand === 'ACCEPTABLE',
+      `an entry whose controls bring it to 2x2 states its band as "${controlledBand}" — ` +
+        `the edge is being drawn from the initial band rather than the one that governs`
+    );
+
+    /* And the edge is actually painted, rather than only declared. A
+       data attribute nothing renders is a data attribute. */
+    const rail = await controlled.evaluate((el) => {
+      const cs = getComputedStyle(el, '::before');
+      return { content: cs.content, width: cs.width, colour: cs.backgroundColor };
+    });
+    assert(
+      rail.content !== 'none' && Number.parseFloat(rail.width) >= 3,
+      `the band edge renders as ${rail.width} of ${rail.content} — nothing is drawn`
+    );
+
+    /* Back to one entry, so the reload and removal assertions below
+       test what they were written to test. It asks first — see
+       REMOVING AN ENTRY ASKS FIRST — so the dialog is accepted. */
+    page.once('dialog', (d) => d.accept());
+    await controlled.locator('[data-remove]').click();
+    await page.waitForFunction(() => document.querySelectorAll('.reg-entry').length === 1, undefined, {
+      timeout: 5000
+    });
+
     // Kept across a reload — the page says entries live here.
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForSelector('.reg-entry', { timeout: 5000 });

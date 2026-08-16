@@ -3535,6 +3535,63 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .doc__body { min-width: 0; max-width: 68ch; }
 
+/* ---------------------------------------------------------------------
+   A TOOLKIT IS NOT A DOCUMENT, AND ELEVEN SCREENS SAY IT IS.
+
+   `.doc` is the document template: a contents list in a 15rem rail and
+   a body set to a reading measure regardless of how wide the shell is.
+   That is exactly right for /about, /glossary and /templates, which are
+   pages somebody reads.
+
+   The risk register, the indicators, the SRA and the maturity
+   assessment are built from the same template, and they are not pages
+   somebody reads. Measured at 1440, every one of them: a 1216px shell,
+   a 240px rail, a 944px column — and a body that stops at 680 and
+   leaves 264 pixels of it empty, on every screen, permanently. The
+   register's entry form is in the CONTENTS SLOT, 320px wide, while its
+   record list sits at a prose measure beside it.
+
+   It is the same fault the reporting queue had, from a different rule:
+   a measure meant for sentences imposed on a working surface. And it
+   is invisible in the stylesheet, because .doc__body's 68ch is correct
+   — for the thing .doc was written for.
+
+   THE TEST IS WHETHER THE SCREEN HAS A FORM ON IT. A page you read has
+   no form; a page you work has one, wherever on it the form sits — in
+   the body on /toolkits/spi and /toolkits/sra, in the contents slot on
+   /toolkits/register. Screens with no form anywhere — /about,
+   /coverage, /glossary, /templates — keep the measure and are
+   untouched, because their dead column is not dead space, it is the
+   space a line stops at.
+
+   THE MEASURE MOVES TO THE PROSE RATHER THAN BEING REMOVED. `.page
+   :is(p, li)` already holds paragraphs to 68ch wherever they land, so
+   a widened body does not produce a 944px line of text — it produces a
+   944px record list with 680px paragraphs inside it, which is the
+   thing that was wanted.
+
+   AND A FORM KEEPS A FORM'S WIDTH. Removing the cap without this makes
+   every input on /toolkits/spi 944 pixels wide, which is not an
+   improvement — it is the same mistake pointed the other way. A form
+   is read one field per line and takes --us-container, the token that
+   already means "a column somebody fills in".
+   --------------------------------------------------------------------- */
+[data-surface='tool'] .doc:has(form) .doc__body { max-width: none; }
+[data-surface='tool'] .doc__body form { max-width: var(--us-container); }
+/* A callout is prose in a box. The box has to stop where the prose
+   does, or it is an empty frame around a short paragraph. */
+[data-surface='tool'] .doc__body .note { max-width: 68ch; }
+
+@media (min-width: 900px) {
+  /* A CONTENTS SLOT HOLDING A FORM IS NOT A CONTENTS SLOT. 15rem is the
+     width of a list of links; the register puts its whole entry form
+     there, and 240px is not a column anybody fills in — the selects
+     wrapped and the hints ran to four lines. */
+  [data-surface='tool'] .doc:has(> aside.toc form) {
+    grid-template-columns: 24rem minmax(0, 1fr);
+  }
+}
+
 /* THE CALLOUT HAD NO RULE OF ITS OWN. `.note` was styled only inside
    `.band-dark`, so everywhere else it was a bare paragraph whose lead-in
    <b> ran straight into the sentence: "The usual mistakeReading the
@@ -3962,6 +4019,53 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    `break-word` because only `anywhere` also shrinks the card's
    min-content width, which is what was actually forcing the page. */
 .reg-entry { break-inside: avoid; }
+
+/* ---------------------------------------------------------------------
+   SEVERITY IN FORM, NOT ONLY IN COLOUR.
+
+   Three entries on a register — one intolerable and unaccepted, one
+   tolerable, one acceptable — rendered as three identical white cards
+   with a small coloured pill inside each. The band was carried by the
+   pill's fill and by nothing else, so telling the intolerable one from
+   the acceptable one meant reading a 12px chip on every row.
+
+   That fails twice. It fails a safety manager scanning a register of
+   forty entries for the ones that need them, which is the only reason
+   this screen is opened. And it fails anybody who cannot separate the
+   red from the green, because colour is then the sole channel —
+   the same rule the status badges already answer by carrying a word
+   and a glyph rather than a hue.
+
+   THE RAIL IS THE PRODUCT'S OWN DEVICE, not a new one. `.queue__item`
+   already puts sync state on the leading edge for exactly this reason:
+   at a glance down a scrolling list, an edge reads and a badge in the
+   corner does not. The register now says its band the same way, so the
+   two lists an operator moves between are one language.
+
+   THE BAND IS THE ONE THAT GOVERNS — `residual ?? initial`, the same
+   value the escalation rule and the acceptance permission are computed
+   from. A rail drawn from the initial band on an entry whose controls
+   have brought it down would be a red edge on a green risk, which is
+   worse than no rail.
+
+   THE CHIP STAYS. The rail is a second channel, not a replacement:
+   it carries "how bad" and the chip carries the number and the word.
+   --------------------------------------------------------------------- */
+.reg-entry {
+  position: relative;
+  overflow: hidden;
+}
+
+.reg-entry[data-tolerability]::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--us-border-strong);
+}
+.reg-entry[data-tolerability='INTOLERABLE']::before { background: var(--us-risk-intolerable); }
+.reg-entry[data-tolerability='TOLERABLE']::before { background: var(--us-risk-tolerable); }
+.reg-entry[data-tolerability='ACCEPTABLE']::before { background: var(--us-risk-acceptable); }
 .reg-entry,
 .reg-entry h3,
 .cov__has,

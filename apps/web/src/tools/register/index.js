@@ -213,7 +213,8 @@ function Row(entry) {
   const residual = band(entry.residualSeverity, entry.residualLikelihood);
   const shown = residual ?? initial;
 
-  return html`<article class="card cov reg-entry" data-id="${entry.id}">
+  return html`<article class="card cov reg-entry" data-id="${entry.id}"
+    data-tolerability="${shown?.t ?? ''}">
     <div class="cov__head">
       <h3>${entry.hazard}</h3>
       <span class="badge" data-status="${BADGE[entry.status] ?? 'OFFLINE'}">
