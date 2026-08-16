@@ -152,11 +152,28 @@ export const ROUTED_TOOLKITS = TOOLKITS.filter((t) => t.routed);
    which is also the order regulation 9(4) of L.N. 32/2026 assumes
    when it requires a plan "to facilitate the implementation":
 
-     Start here                  where do we stand, and who am I
-     When something happens      file it, then see what is filed
-     Assess and manage the risk  how bad, who owns it, when reviewed
-     Show it is working          indicators, the record, the limits
-     Reference                   what you reach for while doing any of it
+     Getting started          where do we stand, and who am I
+     Occurrence reporting     file it, then see what is filed
+     Safety risk management   how bad, who owns it, when reviewed
+     Safety assurance         indicators, the record, the limits
+     Reference                what you reach for while doing any of it
+
+   AND THE MIDDLE TWO ARE ANNEX 19'S OWN COMPONENT NAMES, which is the
+   second reason to use them. "Assess and manage the risk" and "Show it
+   is working" said the same things in our words; safety risk
+   management and safety assurance are what the Annex calls components
+   2 and 3, what an auditor arrives asking about, and what every other
+   product in this category labels those screens. A group named the way
+   the standard names it is a group a safety manager does not have to
+   translate.
+
+   THE PLAIN-LANGUAGE VERSION DID NOT GO ANYWHERE. It moved to the
+   purpose line under each heading in GROUP_PURPOSE — "the hour after
+   something happens, and the days that follow" — so the menu now
+   carries the professional name AND the sentence that tells somebody
+   on their first shift whether the group is theirs. Before the purpose
+   line existed there was only one slot and it had to do both jobs,
+   which is why the titles were conversational.
 
    Every instrument with a route of its own now sits in the group that
    answers the question it exists to answer, under its own name. The
@@ -174,13 +191,13 @@ export const ROUTED_TOOLKITS = TOOLKITS.filter((t) => t.routed);
 export const SECTIONS = [
   {
     id: 'standing',
-    title: 'Start here',
+    title: 'Getting started',
     working: true,
     items: [
       {
         href: '/toolkits/maturity',
-        label: 'Where your SMS stands',
-        short: 'Where you stand',
+        label: 'SMS Maturity Assessment',
+        short: 'Maturity',
         inHeader: true
       },
       {
@@ -192,7 +209,7 @@ export const SECTIONS = [
   },
   {
     id: 'occurrence',
-    title: 'When something happens',
+    title: 'Occurrence reporting',
     working: true,
     items: [
       /* FIRST IN THE SEQUENCE THAT STARTS AFTER SIGNING IN, and ahead
@@ -203,19 +220,19 @@ export const SECTIONS = [
          it is the answer to that question, not a new subject. */
       {
         href: '/today',
-        label: 'What needs you today',
-        short: 'Today',
+        label: 'Outstanding Actions',
+        short: 'Actions',
         inHeader: true
       },
       {
         href: '/report',
-        label: 'File a report',
+        label: 'File a Safety Report',
         short: 'Report',
         inHeader: true
       },
       {
         href: '/triage',
-        label: 'The reporting queue',
+        label: 'Report Triage',
         short: 'Triage',
         inHeader: true
       }
@@ -223,30 +240,30 @@ export const SECTIONS = [
   },
   {
     id: 'risk',
-    title: 'Assess and manage the risk',
+    title: 'Safety risk management',
     working: true,
     items: [
       {
         href: '/toolkits/sra',
-        label: 'Safety risk assessment',
+        label: 'Safety Risk Assessment',
         short: 'Risk assessment',
         inHeader: true
       },
       {
         href: '/toolkits/register',
-        label: 'Risk register',
+        label: 'Hazard & Risk Register',
         short: 'Register'
       },
       {
         href: '/toolkits',
-        label: 'Toolkits and calculators',
-        short: 'Toolkits'
+        label: 'SMS Tools',
+        short: 'Tools'
       }
     ]
   },
   {
     id: 'assurance',
-    title: 'Show it is working',
+    title: 'Safety assurance',
     working: true,
     items: [
       {
@@ -255,25 +272,25 @@ export const SECTIONS = [
            other item here answers part of it — this is the one that
            answers it in one page. */
         href: '/picture',
-        label: 'The risk picture',
-        short: 'Risk picture',
+        label: 'Safety Performance',
+        short: 'Performance',
         inHeader: true
       },
       {
         href: '/toolkits/spi',
-        label: 'Safety performance indicators',
+        label: 'Safety Performance Indicators',
         short: 'Indicators'
       },
       {
         href: '/sms',
-        label: 'The SMS record',
-        short: 'SMS record',
+        label: 'SMS Documentation',
+        short: 'Documentation',
         inHeader: true
       },
       {
         href: '/coverage',
-        label: 'What this covers',
-        short: 'Coverage'
+        label: 'Annex 19 Conformance',
+        short: 'Conformance'
       }
     ]
   },
@@ -298,7 +315,7 @@ export const SECTIONS = [
       },
       {
         href: '/templates',
-        label: 'Templates and source documents',
+        label: 'Templates & Source Documents',
         short: 'Templates'
       },
       {
@@ -308,25 +325,25 @@ export const SECTIONS = [
       },
       {
         href: '/faq',
-        label: 'Questions, answered straight',
+        label: 'Frequently Asked Questions',
         short: 'Questions'
       }
     ]
   },
   {
     id: 'practice',
-    title: 'The practice',
+    title: 'The organisation',
     items: [
       /* "What this covers" moved up into "Show it is working", where
          an operator asking what they can actually evidence will look
          for it. The footer renders every section, so leaving it here
          too would print it twice in one footer. */
-      { href: '/about', label: 'About us' },
+      { href: '/about', label: 'About Us' },
       /* WHAT IT COSTS, in the footer of every screen. A product whose
          price is only available by asking is a product an operator does
          not evaluate on a Sunday evening, which is when a safety
          manager at a six-aircraft charter actually does this. */
-      { href: '/pricing', label: 'What it costs' },
+      { href: '/pricing', label: 'Pricing' },
       /* THE ONE ROUTE THE SITEMAP DID NOT KNOW ABOUT. /signup has been
          registered since self-service accounts landed and was reachable
          from exactly two in-page links — the sign-in screen and the
@@ -340,28 +357,28 @@ export const SECTIONS = [
          uses the product to DO — and an account-creation link there is
          weight in the entry chunk charged to every reporter who already
          has one. A footer is where a site index belongs. */
-      { href: '/signup', label: 'Create an operator account' },
+      { href: '/signup', label: 'Create an Operator Account' },
       /* IN THE FOOTER, NOT THE HEADER, for the same reason /signup is:
          the header carries the operator's SEQUENCE — what somebody
          signed in uses the product to do — and a profile link there is
          entry-chunk weight on every screen for a page opened once or
          twice in the life of an account. The account area itself links
          to it prominently, which is where somebody looks. */
-      { href: '/account/profile', label: 'Your profile' },
+      { href: '/account/profile', label: 'Profile' },
       /* Listed here for the same reason as the profile: the gate that
          fails on a registered route nobody advertises is the reason
          this product has no invisible screens. The account area is
          where somebody actually reaches it. */
-      { href: '/account/logo', label: 'Your operator’s mark' },
-      { href: '/#deadlines', label: 'Regulatory basis' }
+      { href: '/account/logo', label: 'Organisation Branding' },
+      { href: '/#deadlines', label: 'Regulatory Basis' }
     ]
   },
   {
     id: 'legal',
     title: 'Legal',
     items: [
-      { href: '/privacy', label: 'Privacy notice' },
-      { href: '/terms', label: 'Terms of use' }
+      { href: '/privacy', label: 'Privacy Notice' },
+      { href: '/terms', label: 'Terms of Use' }
     ]
   }
 ];
