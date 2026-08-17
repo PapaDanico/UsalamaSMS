@@ -4490,12 +4490,13 @@ try {
             barriers: {
               ...BODY.barriers,
               total: 1,
-              byKind: { MITIGATION: 1, CONTROL_REVIEW: 0, CHANGE: 0, PERFORMANCE: 0 },
+              byKind: { MITIGATION: 1, CONTROL_REVIEW: 0, PERFORMANCE: 0 },
               degraded: [BODY.barriers.degraded[0]],
               unattributed: 0,
               attribution: 1,
               withheld: [
                 { kind: 'AUDIT', source: 'the internal audit findings' },
+                { kind: 'CHANGE', source: 'the change assessments' },
                 { kind: 'COMPETENCE', source: "other people's training records" }
               ]
             }

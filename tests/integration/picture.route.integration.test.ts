@@ -428,6 +428,7 @@ describe.skipIf(!hasDatabase)("the risk picture, through the real route", () => 
   describe("what a role may see of the barrier picture", () => {
     const SECRET_FINDING = "the release was signed by an unlicensed engineer";
     const SECRET_COURSE = "Line check renewal";
+    const SECRET_CHANGE = "Night freight into an unlit strip";
 
     beforeEach(async () => {
       await prisma().auditFinding.create({
@@ -443,6 +444,21 @@ describe.skipIf(!hasDatabase)("the risk picture, through the real route", () => 
           expiresOn: new Date(Date.now() - 30 * DAY),
         },
       });
+      /* FOUND BY check:authz, NOT BY THE REVIEW that found the other
+         two. /api/v1/changes admits `moc.create` or `moc.approve`, and
+         a SAFETY_OFFICER holds neither — yet the barrier list was
+         naming unreviewed changes to them. */
+      await prisma().changeAssessment.create({
+        data: {
+          orgId, title: SECRET_CHANGE, description: "x",
+          trigger: "ROUTE_OR_NETWORK",
+          assessedOn: new Date(Date.now() - 200 * DAY),
+          effectiveFrom: new Date(Date.now() - 150 * DAY),
+          severity: "C_MAJOR", likelihood: "OCCASIONAL",
+          score: 8, tolerability: "TOLERABLE", status: "IN_EFFECT",
+          reviewDueOn: new Date(Date.now() - 15 * DAY),
+        },
+      });
     });
 
     it("a SAFETY_MANAGER sees both, because the matrix opens both to them", async () => {
@@ -451,8 +467,9 @@ describe.skipIf(!hasDatabase)("the risk picture, through the real route", () => 
       const res = await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"));
       expect(res.payload).toContain(SECRET_FINDING);
       expect(res.payload).toContain(SECRET_COURSE);
+      expect(res.payload).toContain(SECRET_CHANGE);
       expect(res.json().barriers.withheld).toEqual([]);
-      expect(res.json().barriers.total).toBe(2);
+      expect(res.json().barriers.total).toBe(3);
     });
 
     it("A SAFETY_OFFICER IS SHOWN NEITHER, and is TOLD they were not", async () => {
@@ -480,17 +497,22 @@ describe.skipIf(!hasDatabase)("the risk picture, through the real route", () => 
         res.payload,
         "the picture named another user, whose training record this role may not read",
       ).not.toContain("frontline@a.test");
+      expect(
+        res.payload,
+        "the picture named an unreviewed change, which /api/v1/changes refuses this role",
+      ).not.toContain(SECRET_CHANGE);
 
       /* SAID, NOT SILENTLY SMALLER. Zero barriers with no explanation
          reads as a healthy operation to the one role most likely to be
          looking. */
       expect(b.total).toBe(0);
       expect(b.withheld.map((w: { kind: string }) => w.kind).sort()).toEqual([
-        "AUDIT", "COMPETENCE",
+        "AUDIT", "CHANGE", "COMPETENCE",
       ]);
       /* And a withheld kind is ABSENT from the breakdown rather than
          counted as zero, for the same reason. */
       expect(Object.keys(b.byKind)).not.toContain("AUDIT");
+      expect(Object.keys(b.byKind)).not.toContain("CHANGE");
       expect(Object.keys(b.byKind)).not.toContain("COMPETENCE");
       expect(Object.keys(b.byKind)).toContain("MITIGATION");
     });
