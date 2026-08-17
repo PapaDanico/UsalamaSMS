@@ -64,6 +64,21 @@ export type Permission =
      organisation holds is a different act from administering accounts,
      and the roles that may do it are different ones. */
   | "org.export"
+  /* ---- THE VENDOR'S TWO POWERS, AND THERE ARE ONLY TWO ------------
+
+     Everything else in this union is something somebody in an aviation
+     organisation does. These two are things the company selling the
+     product does, and they are named separately so that the matrix
+     shows at a glance how small the vendor's reach is.
+
+     `platform.operator.provision` creates an operator and its first
+     user. `platform.entitlement.manage` writes the two dates a
+     subscription is computed from. Neither touches a safety record,
+     and no third one should be added without answering why the vendor
+     needs it — the honest answer is usually "to help with a support
+     request", and the honest response is that the operator's own
+     SYSTEM_ADMIN can do it. */
+  | "platform.operator.provision" | "platform.entitlement.manage"
   /* THE OPERATOR'S OWN VOCABULARY — what it calls its posts, what its
      manual calls each point on the risk scales, which strips it flies
      to. Its own permission for the same reason org.export got one and
@@ -142,6 +157,23 @@ export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   REGULATOR_INSPECTOR: new Set<Permission>([
     "regulator.oversight", "audit.read", "spi.read", "document.read",
   ]),
+  /* THE SHORTEST SET IN THIS MATRIX, ON PURPOSE.
+
+     A vendor account that could read one narrative could read every
+     narrative in every tenant, which is a worse position than any
+     single operator can put itself in. So it holds the two powers it
+     needs to run a business and nothing else: no report permission, no
+     hazard, no audit, no export, not even `org.manage` — creating an
+     operator is `platform.operator.provision` and administering one
+     afterwards belongs to that operator.
+
+     tests/platform.test.ts asserts this set is disjoint from
+     NARRATIVE_PERMISSIONS, and that it holds no permission any other
+     role uses to reach a safety record. */
+  PLATFORM_ADMIN: new Set<Permission>([
+    "platform.operator.provision", "platform.entitlement.manage",
+  ]),
+
   SYSTEM_ADMIN: new Set<Permission>([
     "org.manage", "user.manage", "audit.read",
     // Account administration extends to who holds which post; it stops

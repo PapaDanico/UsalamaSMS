@@ -32,6 +32,22 @@ enum Role {
   ACCOUNTABLE_EXECUTIVE
   REGULATOR_INSPECTOR
   SYSTEM_ADMIN
+
+  /// THE VENDOR, NOT THE OPERATOR, and the only role in this enum that
+  /// is not somebody in an aviation organisation.
+  ///
+  /// SYSTEM_ADMIN administers ONE tenant — it is the operator's own
+  /// account administrator. PLATFORM_ADMIN provisions tenants and
+  /// confirms what they have paid for, across all of them, and holds
+  /// NO safety permission whatsoever: not a narrative, not a hazard,
+  /// not an audit log, not an export. See permissions.ts, where a test
+  /// asserts that its set is disjoint from NARRATIVE_PERMISSIONS.
+  ///
+  /// The distinction is the product's own promise. An operator is
+  /// buying a place to put the thing their people are most reluctant
+  /// to write down; a vendor account that could read it would make the
+  /// confidentiality claim false no matter what the privacy page says.
+  PLATFORM_ADMIN
 }
 
 enum ReportType {

@@ -146,6 +146,22 @@ describe('the information architecture', () => {
          menu item, and listing it would print "Home" in a site index
          that is already reached by the mark. */
       if (path === '/') continue;
+      /* THE VENDOR'S CONSOLE IS NOT ADVERTISED, AND MUST NOT BE.
+         Every other exemption in this repository is a route that is
+         reachable by other means; this one is a route that the
+         operator-facing sitemap would be WRONG to carry. /admin
+         provisions operators and confirms payment, and the people who
+         read this menu are the customers — printing it in their site
+         index would advertise a door none of them can open and imply
+         the vendor has a presence inside their organisation.
+
+         It is not hidden as a security measure: the route answers 403
+         to every role but PLATFORM_ADMIN, and the screen renders "Not
+         your console" rather than a blank page, so somebody who finds
+         it learns what it is and that it is not theirs. Absence from
+         the menu is an information-architecture decision, and the
+         authorisation is enforced on the server. */
+      if (path === '/admin') continue;
       expect(
         advertised.has(path),
         `${path} is a registered route that no section of the sitemap advertises — ` +

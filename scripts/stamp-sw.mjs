@@ -1946,7 +1946,32 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    legal requirement earns a raise — and so does publishing a regulator's
    own syllabus that the product already carried privately. What still
    does not is a dependency, a polyfill or a component library. */
-const BUDGET = { entry: 224 * 1024, js: 576 * 1024, css: 80 * 1024 };
+/* TOTAL 576 -> 584 KB, for the vendor's console. ENTRY UNMOVED at
+   215.7 KB, and that is again the whole argument.
+
+   WHAT IT BOUGHT. The ability to take a customer. Until /admin the
+   only way to provision an operator was to write rows into production
+   by hand — no audit entry, no reason recorded, and a password that
+   existed in whatever terminal ran the INSERT. The console creates the
+   organisation and its first user, issues one password shown once,
+   starts the trial clock, and records payment against a required
+   reason that goes into the audit chain.
+
+   WHY IT IS NOT FAT, AND WHY THIS ONE IS THE CLEAREST CASE YET. It is
+   a lazy route that NO CUSTOMER EVER LOADS. Every previous raise
+   bought a screen some operator would eventually open; this chunk is
+   downloaded only by whoever runs UsalamaSMS. A reporter filing at a
+   strip pays nothing for it, an operator's safety manager pays nothing
+   for it, and the entry chunk moved 0.2 KB — the router entry, not the
+   page.
+
+   The stopping rule holds and gains a fifth precedent: a screen earns
+   a raise, a correctness fix on the target device earns a raise, a
+   legal requirement earns a raise, publishing a regulator's syllabus
+   earns a raise — and so does the machinery of being a business, when
+   it is carried entirely off the path every customer walks. What still
+   does not is a dependency, a polyfill or a component library. */
+const BUDGET = { entry: 224 * 1024, js: 584 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

@@ -1072,6 +1072,20 @@ assert(
         "that list — putting it there would be the coverage page overstating in the " +
         "other direction, by counting a commercial step as a regulatory one.",
     ],
+    [
+      "/api/v1/admin/operators",
+      "THE VENDOR'S CONSOLE IS NOT THE OPERATOR'S SMS. /coverage answers what an " +
+        "operator can evidence to an inspector, and 'our supplier provisioned our " +
+        "account' is not on that list. Listing it would be the coverage page " +
+        "counting a commercial step as a regulatory one — the same overstatement " +
+        "the signup exemption below exists to avoid, and worse here because this " +
+        "route is not even reachable by anybody in the operator's organisation.",
+    ],
+    [
+      "/api/v1/admin/operators/:id/entitlement",
+      "As above — confirming what a customer has paid for is a fact about the " +
+        "invoice, not about their safety management system.",
+    ],
     ["/api/v1/auth/logout", "As above."],
     ["/api/v1/auth/refresh", "As above."],
     ["/api/v1/auth/me", "As above."],

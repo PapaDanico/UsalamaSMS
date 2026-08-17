@@ -61,7 +61,7 @@
    below as data rather than prose, and asserted, because a line this
    easy to cross later needs to fail a build rather than a review.
    ===================================================================== */
-import { bandForFleet, type Band } from "./pricing";
+import { bandForFleet, TRIAL_DAYS, type Band } from "./pricing";
 
 export type SubscriptionState = "TRIAL" | "ACTIVE" | "GRACE" | "LAPSED";
 
@@ -93,27 +93,33 @@ export interface SubscriptionDates {
 export const GRACE_DAYS = 14;
 
 /**
- * HOW LONG A TRIAL RUNS, and 60 rather than the usual 14 or 30.
+ * HOW LONG A TRIAL RUNS BEFORE SOMEBODY HAS TO ASK FOR MORE.
  *
- * A safety management system cannot be evaluated in a fortnight,
- * because the thing being evaluated is a CYCLE rather than a screen. A
- * reporter files, the safety office triages, somebody assesses the
- * hazard, a corrective action is raised, an owner is named, a review
- * date arrives and the loop closes. An operator who has not been all
- * the way round that once has not seen the product; they have seen a
- * form.
- *
+ * THIS WAS 60, AND THE ARGUMENT FOR 60 IS STILL TRUE. A safety
+ * management system cannot be evaluated in a fortnight, because the
+ * thing being evaluated is a CYCLE rather than a screen: a reporter
+ * files, the safety office triages, somebody assesses the hazard, a
+ * corrective action is raised, an owner is named, a review date
+ * arrives and the loop closes. An operator who has not been all the
+ * way round that once has not seen the product; they have seen a form.
  * Sixty days also spans two monthly safety meetings, which is where an
- * operator actually decides whether a tool is helping — not at a desk
- * during the trial, but in the room where the safety manager either has
- * the numbers to hand or does not.
+ * operator actually decides whether a tool is helping.
  *
- * The cost of being wrong is asymmetric and points the same way. A
- * trial that is too long loses a little revenue from an operator who
- * was going to buy anyway. A trial that is too short sends away an
- * operator who never got to the part that would have convinced them.
+ * WHAT CHANGED IS NOT THE ARGUMENT, IT IS WHO CAN ACT ON IT. That
+ * reasoning says an operator mid-cycle needs more time. It does not
+ * say every operator must be GIVEN that time up front, and until there
+ * was a platform administrator there was nobody who could grant it —
+ * so the only safe choice was to hand it to everybody in advance.
+ *
+ * Now `platform.entitlement.manage` can extend a trial in one action.
+ * Thirty days is the default, and an operator who is genuinely part
+ * way round the loop gets more by asking. The asymmetry the old
+ * comment described still points the same way — a trial that is too
+ * short sends away an operator who never reached the part that would
+ * have convinced them — and an extension nobody has to build is the
+ * cheapest possible insurance against it.
  */
-export const TRIAL_DAYS = 60;
+export { TRIAL_DAYS };
 
 const DAY_MS = 86_400_000;
 

@@ -472,6 +472,13 @@ const INITIAL_KEYS = INITIAL_TOPICS.map((c) => c.key);
  * or fixes aircraft, they hold that role too.
  */
 const ADDITIONS_BY_ROLE: Readonly<Record<Role, readonly string[]>> = Object.freeze({
+  /* THE VENDOR IS NOT IN THE OPERATOR'S TRAINING MATRIX. A platform
+     administrator holds no post in an aviation organisation, so
+     CAA-AC-SMS011 has nothing to say about them — and an entry here
+     would put a permanent false gap on somebody's Appendix I band. The
+     empty array is the answer, and it is the same reasoning that keeps
+     REGULATOR_INSPECTOR empty. */
+  PLATFORM_ADMIN: Object.freeze([]),
   FRONTLINE: Object.freeze(["HAZARD_REPORTING"]),
   SAFETY_OFFICER: Object.freeze(["HAZARD_REPORTING", "RISK_ASSESSMENT"]),
   SAFETY_MANAGER: Object.freeze([

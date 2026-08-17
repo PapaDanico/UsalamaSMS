@@ -215,9 +215,22 @@ export function annualUsd(band: Band): number {
  *     the promise against the constant rather than against a number
  *     somebody retyped here.
  */
+/* THE TRIAL LENGTH LIVES HERE, and subscription.ts re-exports it as
+   TRIAL_DAYS rather than the other way round.
+
+   subscription.ts already imports this module for `bandForFleet`, so
+   declaring it there and importing it here would be a cycle. Putting
+   it beside the sentence that SELLS it also means the promise and the
+   number cannot drift: the string below is built from the constant,
+   which is charter rule 10 applied to a sales claim rather than to a
+   test count. */
+export const TRIAL_DAYS = 30;
+
 export const COMMITMENTS: ReadonlyArray<string> = Object.freeze([
-  "Sixty days to try it, with no card and no limit on what you file — long enough to " +
-    "take one hazard the whole way round the loop, which is the only way to judge an SMS.",
+  `${TRIAL_DAYS} days to try it, with no card and no limit on what you file — and ` +
+    "extended on request if you are part way round your first hazard. Taking one all " +
+    "the way round the loop is the only way to judge an SMS, and we would rather give " +
+    "you the time than have you decide on half of it.",
   "Your people file for free, always. There is no seat to buy, so there is no version " +
     "of this where leaving the line crew out saves you money.",
   "If a subscription ever lapses, your people can still file and you can still export " +

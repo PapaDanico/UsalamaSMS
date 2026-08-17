@@ -408,6 +408,11 @@ router
     { title: 'The SMS training programme', surface: 'tool' }
   )
   .register(
+    '/admin',
+    (el) => lazy(el, () => import('./tools/admin/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Platform administration', surface: 'tool' }
+  )
+  .register(
     '/glossary',
     (el) => lazy(el, () => import('./tools/glossary/index.js').then((m) => (o) => m.render(o))),
     { title: 'Glossary' }

@@ -115,7 +115,23 @@ try {
   );
   await first.close();
 
-  const routes = [...new Set(['/', ...declared])].sort();
+
+  /* THE ONE ROUTE DISCOVERY CANNOT FIND, ADDED BACK BY NAME.
+
+     Every route here comes from the product's own architecture, and
+     that is deliberate — a hardcoded list stops covering the moment
+     somebody adds a screen. /admin is the single exception, because it
+     is deliberately absent from the menu and the footer: it is the
+     vendor's console, and advertising it to operators would imply a
+     presence inside their organisation.
+
+     So the discovery is right and the sweep would have been wrong. A
+     screen nobody advertises is still a screen somebody uses, and it
+     shipped past both this gate and the symmetry sweep on its first
+     build precisely because neither could see it. Named here, with the
+     reason, rather than left silently uncovered. */
+  const UNADVERTISED = ['/admin'];
+  const routes = [...new Set(['/', ...declared, ...UNADVERTISED])].sort();
 
   /* RULE 11 FROM THE OTHER SIDE. A discovery that returns two routes
      passes this gate in four seconds and means nothing. The floor is
