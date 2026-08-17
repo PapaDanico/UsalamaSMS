@@ -35,12 +35,26 @@
          against the page it fetched in every implementation, and the
          ones that get it wrong show no image rather than a broken one.
 
-         ONE CARD FOR EVERY ROUTE, deliberately. This is a single-page
-         app and a scraper does not run JavaScript, so per-route tags
-         would need prerendering — a build-time change for a gain that
-         matters on one URL. The root is what gets shared; the rest is
-         honest as long as the card describes the product rather than a
-         screen.
+         THIS FILE IS NOW THE ROOT'S CARD ONLY, and it used to be every
+         route's. The note here said per-route tags "would need
+         prerendering — a build-time change for a gain that matters on
+         one URL. The root is what gets shared; the rest is honest as
+         long as the card describes the product rather than a screen."
+
+         That was true when it was written and stopped being true.
+         /amendment was given its own URL on the owner's request, along
+         with the other new routes, which is a statement that those URLs
+         are meant to be sent to people — a regulator sent the Amendment
+         2 readiness page was getting a card about the product.
+
+         scripts/prerender.mjs now emits one file per route inside
+         `build`, taking each title from the router's own registration
+         so there is no second list to keep in step. It runs AFTER
+         stamp-sw deliberately: before it, the thirty files land in the
+         service worker's install manifest and charge every reporter 635
+         KB, measured. The tags below are what the ROOT ships and what
+         every other route inherits before its own are written over
+         them, so they still have to be right on their own.
 
          THE IMAGE IS NOT PRECACHED. scripts/stamp-sw.mjs excludes it by
          name. It is fetched by scrapers and never by the app, so
