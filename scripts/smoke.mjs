@@ -4579,6 +4579,175 @@ try {
     assert(faults.length === 0, faults.join('\n         '));
   });
 
+  await check('A REFUSED CORRECTIVE ACTION KEEPS WHAT SOMEBODY TYPED', async () => {
+    /* THE PROPERTY THE PROMPT CHAIN COULD NOT HAVE.
+
+       Recording a corrective action used to be three chained
+       window.prompts — what, then who owns it, then by when. Each one
+       stood alone on a native dialog, so the sentence you wrote first
+       was invisible by the time you chose the date it was for, and a
+       refusal from the server threw all three away.
+
+       The old comment defending the prompts made a real objection to
+       replacing them: a form on a card that re-renders after every save
+       is more ways to lose what somebody typed. THIS IS THAT OBJECTION,
+       ASSERTED. The handler deliberately does not re-render on failure
+       — the refusal is written into the panel, the panel stays open,
+       and every field survives.
+
+       It is worth a check rather than a comment because the natural way
+       to write this handler is with `await render(outlet)` in a
+       `finally`, which is what the classification form beside it does.
+       That is tolerable for checkboxes reflecting server state and
+       would silently throw away a composed sentence here.
+
+       Driven against the BUILT bundle with the API stubbed to refuse
+       once and then accept. */
+    const bare = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+    const TYPED = 'Re-brief crews on the displaced threshold at Wilson';
+    let posted = null;
+    let refuseNext = true;
+    let seen = false;
+    const out = {};
+
+    /* `id`, not `serverId` — merge() maps the server's `id` onto
+       serverId, and the panel is gated on that. A stub using the wrong
+       key renders no panel and every assertion below would pass on an
+       empty page, which is how this check nearly tested nothing. */
+    const QUEUE = {
+      reports: [{
+        id: 'srv-1', clientId: 'c-1', type: 'HAZARD', title: 'Birds on the threshold',
+        state: 'TRIAGED', createdAt: new Date().toISOString(), isAnonymous: false,
+        occurredAt: new Date().toISOString(), available: [], cicttCodes: [], adrep: {}
+      }]
+    };
+
+    try {
+      await probe.route('**/api/v1/**', (r) =>
+        r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
+      await probe.route('**/api/v1/auth/refresh', (r) => r.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'stub', refreshToken: 'stub2', role: 'SAFETY_MANAGER', orgId: 'org-1'
+        })
+      }));
+      await probe.route('**/api/v1/reports/queue*', (r) => r.fulfill({
+        status: 200, contentType: 'application/json', body: JSON.stringify(QUEUE)
+      }));
+      await probe.route('**/api/v1/actions', (r) => {
+        seen = true;
+        posted = JSON.parse(r.request().postData() ?? '{}');
+        if (refuseNext) {
+          refuseNext = false;
+          return r.fulfill({
+            status: 400, contentType: 'application/json',
+            body: JSON.stringify({ message: 'That was not accepted. Nothing was recorded.' })
+          });
+        }
+        return r.fulfill({ status: 201, contentType: 'application/json', body: '{"id":"a1"}' });
+      });
+
+      await probe.goto(BASE + '/triage', { waitUntil: 'networkidle' });
+      await probe.evaluate(() => {
+        localStorage.setItem(
+          'usalamasms.session',
+          JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+        );
+        localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+      });
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(900);
+
+      out.panels = await probe.locator('details.queue__capa').count();
+      if (out.panels) {
+        await probe.locator('details.queue__capa > summary').first().click();
+        out.fieldsAtOnce = await probe.evaluate(() => {
+          const f = document.querySelector('form[data-raise-action]');
+          return f
+            ? [...f.querySelectorAll('textarea,input[name]')]
+                .filter((el) => el.offsetParent !== null).length
+            : 0;
+        });
+        out.dateType = await probe
+          .locator('form[data-raise-action] input[name="dueOn"]').getAttribute('type');
+        out.posts = await probe.locator('#capa-posts option').count();
+
+        await probe.fill('form[data-raise-action] textarea[name="action"]', TYPED);
+        await probe.fill('form[data-raise-action] input[name="ownerPost"]', 'Safety Manager');
+        await probe.fill('form[data-raise-action] input[name="dueOn"]', '2026-09-30');
+
+        await probe.click('form[data-raise-action] button[type="submit"]');
+        await probe.waitForTimeout(500);
+        out.kept = await probe
+          .inputValue('form[data-raise-action] textarea[name="action"]') === TYPED;
+        out.ownerKept = await probe
+          .inputValue('form[data-raise-action] input[name="ownerPost"]') === 'Safety Manager';
+        out.dateKept = await probe
+          .inputValue('form[data-raise-action] input[name="dueOn"]') === '2026-09-30';
+        out.stillOpen = await probe.evaluate(
+          () => !!document.querySelector('details.queue__capa[open]'));
+        out.errShown = await probe.locator('[data-capa-error]:not([hidden])').count() > 0;
+
+        await probe.click('form[data-raise-action] button[type="submit"]');
+        await probe.waitForTimeout(600);
+        out.cleared = await probe
+          .inputValue('form[data-raise-action] textarea[name="action"]') === '';
+        out.okShown = await probe.locator('[data-capa-ok]:not([hidden])').count() > 0;
+      }
+    } finally {
+      await bare.close();
+    }
+
+    const faults = [];
+    /* The vacuous-pass guard, and it caught a real mistake while this
+       check was being written: with the wrong stub key the panel never
+       rendered and every assertion below was trivially satisfied. */
+    if (!out.panels) {
+      faults.push(
+        'no corrective-action panel rendered on a triaged report the server knows about, ' +
+          'so nothing below was actually exercised'
+      );
+    } else if (!seen) {
+      faults.push('the stubbed /api/v1/actions was never called — the form did not submit');
+    } else {
+      if (out.fieldsAtOnce < 3) {
+        faults.push(
+          `only ${out.fieldsAtOnce} of the three fields are visible at once — the whole ` +
+            'point of replacing the prompt chain was seeing what you already typed'
+        );
+      }
+      if (out.dateType !== 'date') {
+        faults.push(
+          'the due date is not a date input, so a handset offers no picker and the ' +
+            'format has to be got right by hand'
+        );
+      }
+      if (!out.posts) faults.push('the owner field offers none of the operator\'s posts');
+
+      if (!out.kept || !out.ownerKept || !out.dateKept) {
+        faults.push(
+          'the server refused and the form threw away what was typed ' +
+            `(action kept: ${out.kept}, owner: ${out.ownerKept}, date: ${out.dateKept}). ` +
+            'This is the objection the prompt chain was defended with, restored'
+        );
+      }
+      if (!out.stillOpen) faults.push('the panel closed on a refusal, hiding the input it kept');
+      if (!out.errShown) faults.push('the refusal was not shown in the panel');
+
+      if (!out.cleared) faults.push('a recorded action was left in the form to be filed twice');
+      if (!out.okShown) faults.push('nothing confirmed that the action was recorded');
+      if (posted?.dueOn !== '2026-09-30') {
+        faults.push(`the date reached the API as ${JSON.stringify(posted?.dueOn)}`);
+      }
+    }
+
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
   await check('THE QUEUE NEVER PASSES ONE HANDSET OFF AS THE OPERATOR', async () => {
     /* CHARTER RULE 8, ON THE SCREEN WHOSE JOB IS TO CARRY IT.
 
