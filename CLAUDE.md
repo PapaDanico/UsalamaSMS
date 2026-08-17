@@ -172,10 +172,53 @@ seven real reports — while four separate deploys had been confirmed
 `state: ready` from Netlify and reported as live.
 
 **Confirming a deploy is not confirming the system.** After a merge
-that carries a migration, apply it — `mcp__Supabase__apply_migration`
-with the file's contents, or `prisma migrate deploy` against a direct
-(not pooler) connection — and then verify the columns exist rather
-than assuming.
+that carries a migration, apply it and then run `npm run check:db`
+against a direct (not pooler) connection, which compares the live
+schema and Prisma's ledger against the repository and names which of
+three states you are in.
+
+### The two ways of applying are NOT interchangeable, and mixing them bites
+
+This section used to offer `mcp__Supabase__apply_migration` and
+`prisma migrate deploy` as alternatives. They write **different
+ledgers**, and choosing the first makes the second fail.
+
+Measured against production on 17 August 2026: the schema was
+**perfect** — 315 columns expected from `schema.prisma`, 315 present,
+none missing, none extra — while `_prisma_migrations` held **17 rows
+against 30 migrations on disk**. The thirteen had been applied with the
+Supabase tool, which records them in
+`supabase_migrations.schema_migrations`, where Prisma cannot see them.
+
+Production's exact state was rebuilt locally to find out what that
+costs, rather than reasoned about:
+
+| attempt | result |
+|---|---|
+| first `prisma migrate deploy` | **P3018 / 42701** — `column "cicttCodes" of relation "SafetyReport" already exists` |
+| every `deploy` after it | **P3009** — blocked entirely, "migrate found failed migrations" |
+
+So one attempt at the documented recovery path leaves the database
+unable to accept **any** migration until somebody runs
+`prisma migrate resolve` by hand. A repair that breaks the repair.
+
+**Pick one and stay on it.** `prisma migrate deploy` is the one this
+repository is built around — the migrations are Prisma's, the ledger it
+checks is Prisma's, and CI runs it. Use `apply_migration` only when
+Prisma genuinely cannot reach the database, and then immediately record
+it with `prisma migrate resolve --applied <name>`, which writes the
+ledger without touching the schema.
+
+`npm run check:db` distinguishes the three states, because reporting
+"drift" without saying which is how the wrong command gets run:
+
+- **BEHIND** — ledger behind *and* schema behind. Genuinely unapplied.
+  Remedy: `prisma migrate deploy`.
+- **UNRECORDED** — ledger behind, schema current. Applied out of band.
+  Remedy: `prisma migrate resolve --applied`. Running `deploy` here is
+  the trap above. **This is production's state as of 17 August 2026.**
+- **BLOCKED** — a failed or rolled-back row is present. Nothing applies
+  until it is resolved.
 
 ## Two different connection strings, for two different jobs
 
