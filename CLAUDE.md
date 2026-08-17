@@ -216,7 +216,34 @@ ledger without touching the schema.
   Remedy: `prisma migrate deploy`.
 - **UNRECORDED** — ledger behind, schema current. Applied out of band.
   Remedy: `prisma migrate resolve --applied`. Running `deploy` here is
-  the trap above. **This is production's state as of 17 August 2026.**
+  the trap above.
+
+### Production was in the UNRECORDED state, and it has been repaired
+
+On 17 August 2026 production held **17 ledger rows against 30
+migrations** while the schema was complete. The thirteen were recorded
+by inserting the rows `prisma migrate resolve --applied` writes.
+
+**The checksum is the sha256 of `migration.sql`**, confirmed by running
+`resolve` against a local copy of production's exact state and
+comparing what Prisma wrote to `sha256sum` of the file. A row with a
+wrong checksum makes Prisma report the migration as MODIFIED, which is
+the same dead end one step later.
+
+The repair was rehearsed on a local database rebuilt to production's
+state, and `prisma migrate deploy` answered *"No pending migrations to
+apply"* rather than P3018 before anything touched production.
+
+**The one migration NOT recorded was the one production has not
+applied.** `20260817120000_platform_admin` adds an enum value that is
+genuinely absent — checked with `pg_enum` rather than assumed — so it
+stays pending and applies on merge, which is the correct end state.
+Marking it would have been the more dangerous mistake: a schema change
+recorded as done and never run.
+
+After: **30 rows, 0 failed, 7 reports and 2 orgs untouched.** The
+ledger is a record of what ran; nothing about the data or the schema
+changed.
 - **BLOCKED** — a failed or rolled-back row is present. Nothing applies
   until it is resolved.
 
