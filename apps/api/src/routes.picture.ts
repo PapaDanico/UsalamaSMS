@@ -29,12 +29,13 @@
 // it is bounded, and the bound is reported.
 // =====================================================================
 import type { FastifyInstance } from "fastify";
-import { can } from "@usalamasms/shared";
+import { can, HRC_CATEGORIES } from "@usalamasms/shared";
 import { spiVerdict } from "../../../packages/shared/src/spi";
 import {
   tally, sampleOf, trendOf, holderGaps, reportCount,
 } from "../../../packages/shared/src/picture";
 import { summarise as summariseActions } from "../../../packages/shared/src/capa";
+import { barrierHealth, BARRIER_KINDS } from "../../../packages/shared/src/barriers";
 import { prisma, authenticate, tenantWhere } from "./core";
 
 /** Ninety days: a quarter, which is the cadence an SMS review runs on. */
@@ -47,6 +48,16 @@ const REGISTER_LIMIT = 500;
    two-year window on a busy operator is otherwise unbounded. */
 const CLOSURE_LIMIT = 5000;
 const ACTION_LIMIT = 1000;
+/* The barrier reads are each already NARROWED to the degraded subset —
+   past a date, not closed — so this is a backstop rather than a working
+   bound. An operator with 300 expired training records has a problem
+   this screen cannot fix by listing all of them. Truncation is reported
+   like every other cap on this route. */
+const BARRIER_LIMIT = 300;
+/* How many degraded barriers travel with their text. The counts are the
+   answer; this list is the worst few, and a dashboard that shipped all
+   of them shipped 500 KB to render 12 of 1600. See the response block. */
+const DEGRADED_SHOWN = 12;
 
 const REPORT_STATES = [
   "SUBMITTED", "TRIAGED", "UNDER_INVESTIGATION", "ACTIONS_OPEN", "CLOSED",
@@ -68,6 +79,37 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
     if (!can(auth.role as never, "report.read.org")) {
       return reply.code(403).send({ error: "forbidden" });
     }
+
+    /* ----------------------------------------------------------------
+       AND THE SENTENCE ABOVE IS ONLY TRUE OF THE RECORDS IT WAS WRITTEN
+       ABOUT, which is a trap this route walked into once and must not
+       again.
+
+       "An aggregate of records this role can already read one at a
+       time" held while the route read reports, the register, indicators,
+       changes and actions — every one of which `report.read.org` also
+       opens one at a time. Barrier health then added TWO collections for
+       which it is false:
+
+         audit findings   /api/v1/sms/findings requires `audit.read`
+         training records /api/v1/sms/training returns ONLY the caller's
+                          own rows without `training.manage`
+
+       A SAFETY_OFFICER holds `report.read.org` and neither of those. So
+       for one commit this route answered 200 with the full text of an
+       audit finding that /api/v1/sms/findings answers 403 for, and with
+       a colleague's name and lapsed course that /api/v1/sms/training
+       deliberately withholds. Measured, both ways, before it was fixed.
+
+       The permission is therefore checked PER COLLECTION rather than
+       once at the door, and what a caller may not see is not silently
+       dropped — `withheld` names it, because a barrier count computed
+       over four of six records and presented as the operator's position
+       is the understating twin of the overstating defect /coverage
+       exists to prevent.
+       ---------------------------------------------------------------- */
+    const mayReadFindings = can(auth.role as never, "audit.read");
+    const mayReadTraining = can(auth.role as never, "training.manage");
 
     const asked = Number((req.query as { days?: string }).days ?? DEFAULT_WINDOW_DAYS);
     const days = Number.isFinite(asked)
@@ -92,8 +134,10 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
        shape for a column only one model carries. */
     const reportWhere = { ...where, retractedAt: null };
 
-    const [byState, filed, closures, monthly, register, indicators, changes, actions] =
-      await Promise.all([
+    const [
+      byState, filed, closures, monthly, register, indicators, changes, actions,
+      lateActions, lapsedTraining, openFindings, unreviewedChanges,
+    ] = await Promise.all([
         /* THE WHOLE QUEUE, not the window. "How many are open" is a
            question about now, and a report filed four months ago and
            still untriaged is exactly the one that must not fall out of
@@ -145,7 +189,16 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
           select: {
             id: true, tolerability: true, residualTolerability: true,
             owner: true, reviewBy: true,
-            hazard: { select: { title: true } },
+            /* THE REPORT BEHIND THE HAZARD, for its HRC tags and nothing
+               else. `hrcTags` exists on SafetyReport and on no other
+               model, so this two-hop join is the ONLY path from a
+               register entry to a national high-risk category — and it
+               is null for a hazard raised any other way. That is why
+               barrier health below reports how much of itself it could
+               attribute rather than grouping regardless. */
+            hazard: {
+              select: { title: true, report: { select: { hrcTags: true } } },
+            },
           },
         }),
 
@@ -153,7 +206,7 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
           where,
           select: {
             id: true, name: true, kind: true, direction: true, per: true,
-            target: true, exposureUnit: true,
+            target: true, exposureUnit: true, owner: true,
             periods: { orderBy: { label: "asc" },
               select: { id: true, label: true, events: true, exposure: true } },
           },
@@ -176,6 +229,81 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
           where,
           take: ACTION_LIMIT,
           select: { dueOn: true, completedOn: true, verifiedOn: true, cancelledOn: true },
+        }),
+
+        /* ------------------------------------------------------------
+           THE FOUR READS BARRIER HEALTH ADDS.
+
+           Each is NARROWED IN POSTGRES to the degraded subset rather
+           than fetched whole and filtered here — `dueOn < now AND not
+           closed` is an index-hittable predicate on every one of them,
+           and the alternative is pulling an operator's entire training
+           history across the wire to discard the current records.
+
+           They are separate from the reads above rather than widenings
+           of them. `actions` fetches dates for a summary and is capped
+           at a thousand; this one fetches the TEXT of the overdue ones
+           only, because barrier health names the barrier and a summary
+           does not. Widening the first read to serve both would pull a
+           thousand rows of db.Text to display at most a few dozen.
+           ------------------------------------------------------------ */
+
+        /* The overdue mitigations, with the report behind them — the
+           only one of the four that can reach an HRC at all. */
+        prisma.correctiveAction.findMany({
+          where: {
+            ...where,
+            completedOn: null,
+            cancelledOn: null,
+            dueOn: { lt: to },
+          },
+          take: BARRIER_LIMIT,
+          orderBy: { dueOn: "asc" },
+          select: {
+            id: true, action: true, ownerPost: true, dueOn: true,
+            report: { select: { hrcTags: true } },
+          },
+        }),
+
+        /* NOT QUERIED AT ALL without the permission, rather than queried
+           and filtered afterwards. A row this caller may not see should
+           not cross the database boundary on their behalf — the cheapest
+           way to leak one is to load it and forget the filter later. */
+        mayReadTraining
+          ? prisma.trainingRecord.findMany({
+              where: { ...where, expiresOn: { lt: to } },
+              take: BARRIER_LIMIT,
+              orderBy: { expiresOn: "asc" },
+              select: {
+                id: true, course: true, expiresOn: true,
+                user: { select: { name: true } },
+              },
+            })
+          : [],
+
+        mayReadFindings
+          ? prisma.auditFinding.findMany({
+              where: { ...where, closedOn: null, dueBy: { lt: to } },
+              take: BARRIER_LIMIT,
+              orderBy: { dueBy: "asc" },
+              select: { id: true, auditRef: true, finding: true, dueBy: true },
+            })
+          : [],
+
+        /* The overdue-review subset of the count above, as rows. The
+           count stays a COUNT — it is exact, it appears in "what needs
+           attention", and turning it into `rows.length` would silently
+           convert an exact figure into a capped one. */
+        prisma.changeAssessment.findMany({
+          where: {
+            ...where,
+            status: "IN_EFFECT",
+            reviewedOn: null,
+            reviewDueOn: { lt: to },
+          },
+          take: BARRIER_LIMIT,
+          orderBy: { reviewDueOn: "asc" },
+          select: { id: true, title: true, reviewDueOn: true },
         }),
       ]);
 
@@ -204,11 +332,96 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
     const alerting = indicators
       .map((i) => ({ spi: i, verdict: spiVerdict(i as never) }))
       .filter((x) => x.verdict.headline.startsWith("Alert"))
-      .map((x) => ({ id: x.spi.id, name: x.spi.name, headline: x.verdict.headline }));
+      .map((x) => ({
+        id: x.spi.id, name: x.spi.name, headline: x.verdict.headline,
+        owner: x.spi.owner,
+      }));
 
     const overdueReview = register.filter(
       (r) => r.reviewBy !== null && r.reviewBy.getTime() < to.getTime(),
     ).length;
+
+    /* ----------------------------------------------------------------
+       BARRIER HEALTH. Doc 9859's predictive layer, assembled from six
+       records this operator already keeps rather than from flight data
+       it has no recorder to produce.
+
+       THE ARITHMETIC AND THE REFUSAL ARE BOTH IN barriers.ts. What is
+       decided here is only which rows feed it — and the one decision
+       worth naming is that `alerting` is passed through verbatim as the
+       PERFORMANCE input rather than re-derived. There is exactly one
+       definition of "over an alert level" in this product, it is
+       spi.ts's, and the indicators panel below renders the same list.
+       ---------------------------------------------------------------- */
+    const barriers = barrierHealth(
+      {
+        actions: lateActions.map((a) => ({
+          id: a.id,
+          action: a.action,
+          ownerPost: a.ownerPost,
+          dueOn: a.dueOn,
+          hrcs: a.report?.hrcTags ?? [],
+        })),
+        assessments: register
+          .filter((r) => r.reviewBy !== null)
+          .map((r) => ({
+            id: r.id,
+            hazardTitle: r.hazard.title,
+            reviewBy: r.reviewBy,
+            hrcs: r.hazard.report?.hrcTags ?? [],
+          })),
+        training: lapsedTraining.map((t) => ({
+          id: t.id, who: t.user.name, course: t.course, expiresOn: t.expiresOn,
+        })),
+        changes: unreviewedChanges.map((c) => ({
+          id: c.id, title: c.title, reviewDueOn: c.reviewDueOn,
+        })),
+        findings: openFindings.map((f) => ({
+          id: f.id, auditRef: f.auditRef, finding: f.finding, dueBy: f.dueBy,
+        })),
+        crossing: alerting,
+      },
+      to,
+    );
+
+    /* The kinds this caller was not permitted to be shown. Named, so
+       the screen can say the picture is partial FOR THEM rather than
+       presenting four records out of six as the operator's position. */
+    const withheld = [
+      ...(mayReadFindings
+        ? []
+        : [{ kind: "AUDIT", source: "the internal audit findings" }]),
+      ...(mayReadTraining
+        ? []
+        : [{ kind: "COMPETENCE", source: "other people's training records" }]),
+    ];
+    const withheldKinds = withheld.map((w) => w.kind);
+
+    /* Counted by kind here rather than in barriers.ts: the module
+       returns findings, and how a screen chooses to aggregate them is
+       not a safety judgement.
+
+       A WITHHELD KIND IS ABSENT FROM THIS MAP, not zero. Zero on a
+       dashboard reads as a measurement — "no competence barriers are
+       down" — and the sentence it displaces is "you were not shown
+       this one". That is the rule the whole screen is built on. */
+    const byKind = Object.fromEntries(
+      Object.keys(BARRIER_KINDS)
+        .filter((k) => !withheldKinds.includes(k))
+        .map((k) => [k, barriers.degraded.filter((d) => d.kind === k).length]),
+    );
+
+    /* The label beside the code, taken from the taxonomy rather than
+       copied onto the screen. A second copy of the six national
+       categories on the web side is a copy that goes stale in the
+       direction nobody notices — the register renames a category and
+       the dashboard keeps the old word. */
+    const hrcLabel = new Map(HRC_CATEGORIES.map((c) => [c.code, c.label]));
+    const byHrc = Object.entries(barriers.byHrc)
+      .map(([code, items]) => ({
+        code, label: hrcLabel.get(code) ?? code, count: items.length,
+      }))
+      .sort((a, b) => b.count - a.count);
 
     return reply.send({
       window: { from: from.toISOString(), to: to.toISOString(), days },
@@ -253,6 +466,40 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
       actions: {
         ...summariseActions(actions, to),
         truncated: actions.length === ACTION_LIMIT,
+      },
+      barriers: {
+        total: barriers.degraded.length,
+        byKind,
+        /* The six sentences, sent rather than held on the screen. They
+           are the meaning of each kind, they belong beside the module
+           that decides what a degradation of it is, and a copy in the
+           web bundle is a copy that drifts from it. */
+        kinds: BARRIER_KINDS,
+        byHrc,
+        attribution: barriers.attribution,
+        unattributed: barriers.unattributed.length,
+        withheld,
+        /* THE WORST FEW, NOT ALL OF THEM, and the counts above are what
+           carry the totals.
+
+           This shipped as `barriers.degraded` entire. Measured against a
+           neglected operator — 400 of each record, every one overdue —
+           the response was 564 KB of which 500 KB was this array: 1600
+           findings, of which the screen renders twelve and discards the
+           rest. Eighty-nine per cent of the payload, on a page an
+           operator opens over a metered connection at a remote strip,
+           for an app whose entire entry chunk is 215 KB.
+
+           The list is ranked worst-first, so the top of it is the part
+           with any claim on the reader. `total` above is the real
+           figure and is unaffected by this cap. */
+        degraded: barriers.degraded.slice(0, DEGRADED_SHOWN),
+        truncated:
+          lateActions.length === BARRIER_LIMIT ||
+          lapsedTraining.length === BARRIER_LIMIT ||
+          openFindings.length === BARRIER_LIMIT ||
+          unreviewedChanges.length === BARRIER_LIMIT ||
+          register.length === REGISTER_LIMIT,
       },
     });
   });

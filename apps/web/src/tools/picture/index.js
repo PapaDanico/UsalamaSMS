@@ -229,6 +229,10 @@ const LOCKED_SECTIONS = Object.freeze([
   {
     title: 'What needs attention',
     what: 'The few things actually overdue or unowned, rather than everything sorted by date.'
+  },
+  {
+    title: 'Barrier health',
+    what: 'Which of your defences are currently down — mitigations, control reviews, competence, change closeout, audit findings and indicators — read together instead of six registers apart.'
   }
 ]);
 
@@ -294,7 +298,10 @@ export async function render(outlet) {
          `{}`. The smoke suite's "no uncaught page errors" check never
          saw it because smoke stubs a well-formed body — the shape it
          asserts is the shape it supplies. */
-      data = body && body.window && body.reporting && body.register ? body : null;
+      data =
+        body && body.window && body.reporting && body.register && body.barriers
+          ? body
+          : null;
       if (!data) {
         failure =
           'The safety office answered, but not with a picture this version of the app ' +
@@ -328,7 +335,7 @@ export async function render(outlet) {
     return;
   }
 
-  const { reporting, register, indicators, changes, actions, window: win } = data;
+  const { reporting, register, indicators, changes, actions, barriers, window: win } = data;
   /* THE LIST, not only the counts.
   
      The counts shipped one release before this and read zero forever,
@@ -354,6 +361,9 @@ export async function render(outlet) {
       </header>
 
       ${attention({ register, indicators, changes, reporting, actions })}
+
+      <h2>Barrier health</h2>
+      ${barrierPanel(barriers)}
 
       <h2>Reporting</h2>
       <div class="picture-grid">
@@ -527,6 +537,147 @@ function attention({ register, indicators, changes, reporting, actions }) {
       <h2>What needs attention</h2>
       <ul class="picture-list">${items}</ul>
     </div>
+  `;
+}
+
+/* ------------------------------------------------------------------
+   Barrier health — the predictive layer.
+
+   WHAT THIS IS FOR. Doc 9859 splits hazard identification into
+   reactive, proactive and predictive. The incumbents do predictive with
+   flight data, and an operator flying sub-27-tonne aircraft has no
+   recorder to read. But prediction does not require flight data: it
+   requires knowing which defences are currently down, and this operator
+   already records every one of those as its own object in its own
+   register. Read together they are a picture; read six registers apart
+   they are six to-do lists nobody reads at once.
+
+   HOW MANY OF THEM CAN BE PLACED AGAINST A HIGH-RISK CATEGORY IS
+   PRINTED ON THE SCREEN, and that figure is the point of the section
+   rather than a caveat under it. `hrcTags` lives on SafetyReport and on
+   no other model, so a training lapse, an audit finding, an unclosed
+   change and a crossing indicator have NO path to a category at all.
+   Grouping regardless would print "Bird strike: 2 barriers down" when
+   the honest answer is that two of nine could be placed and the rest
+   could not — a confident number computed from a fraction of the
+   evidence, which is exactly what the coverage page exists to prevent.
+
+   THE LIST IS CAPPED BY THE SERVER AND THE REMAINDER IS COUNTED. A
+   hundred rows is a register, and there are already four of those to
+   open. The worst few by how late they are, and a sentence saying how
+   many more there are, is a dashboard.
+
+   The cap moved to the API after measurement: this file sliced to
+   twelve while the route sent every finding it had, which on a
+   neglected operator was 500 KB of a 564 KB response. Slicing on the
+   screen hides the cost rather than paying it — the bytes had already
+   crossed the reporter's connection by then.
+
+   WHAT THIS CALLER WAS NOT SHOWN IS PRINTED, NOT DROPPED. A
+   SAFETY_OFFICER may not read audit findings or anybody else's training
+   currency, so their barrier picture is genuinely narrower than the
+   operator's. Rendering that as a smaller number with no note is the
+   understating twin of overstating: they would read four records out of
+   six as the whole position.
+   ------------------------------------------------------------------ */
+function barrierPanel(b) {
+  const withheldNote = (b.withheld ?? []).length
+    ? html`<p class="notice">
+        Your role does not include reading
+        ${b.withheld.map((w) => w.source).join(' or ')}, so
+        ${b.withheld.length === 1 ? 'that record is' : 'those records are'}
+        not counted here. This is a narrower picture than the operator's,
+        not a healthier one.
+      </p>`
+    : '';
+
+  if (b.total === 0) {
+    return html`${withheldNote}<p class="lede">
+      Nothing recorded as degraded. That is a statement about six
+      records — mitigations, register review dates, training currency,
+      change closeout, audit findings and indicators — and it is only as
+      good as what has been entered into them. An empty barrier picture
+      on an empty record is not a healthy operation.
+    </p>`;
+  }
+
+  const shown = b.degraded;
+  const rest = b.total - shown.length;
+  const placed = b.total - b.unattributed;
+
+  return html`
+    ${withheldNote}
+    <p class="lede">
+      ${b.total} defence${b.total === 1 ? ' is' : 's are'} currently down
+      across six records the operator already keeps. This is the
+      predictive question — which barriers are degraded now — rather
+      than the reactive one, and it needs no flight data to answer.
+    </p>
+
+    ${b.truncated
+      ? html`<p class="notice">
+          Showing the first entries from at least one of these records.
+          These counts are a floor, not a total.
+        </p>`
+      : ''}
+
+    ${bars('By kind of barrier', b.byKind, b.kinds)}
+
+    <h3>Against the national high-risk categories</h3>
+    ${b.byHrc.length === 0
+      ? html`<p class="picture-note">
+          None of these ${b.total} can be placed against a high-risk
+          category. A category is carried by the report a finding came
+          from, and none of these came from one — so the categories are
+          not empty, they are unknown.
+        </p>`
+      : html`
+          <ul class="picture-bars">
+            ${b.byHrc.map(
+              (h) => html`<li class="picture-bar">
+                <span class="picture-bar__label">${h.label}</span>
+                <span class="picture-bar__track">
+                  <span class="picture-bar__fill"
+                    style="width: ${Math.round((h.count / Math.max(1, ...b.byHrc.map((x) => x.count))) * 100)}%"></span>
+                </span>
+                <span class="picture-bar__value">${h.count}</span>
+              </li>`
+            )}
+          </ul>
+          <p class="picture-note">
+            ${placed} of ${b.total} could be placed against a category
+            (${Math.round(b.attribution * 100)}%). The other
+            ${b.unattributed} carry no path to one: a category is held on
+            the report a finding came from, and a training lapse, an
+            audit finding, an unclosed change and an indicator do not
+            come from reports. They are counted above and left out here
+            rather than distributed across the categories as a guess.
+          </p>
+        `}
+
+    <h3>The worst of them</h3>
+    <ul class="picture-list">
+      ${shown.map(
+        (d) => html`<li>
+          <strong>${d.what}</strong>
+          <span class="barrier__meta">
+            ${b.kinds[d.kind] ?? d.kind}${d.daysLate === null
+              ? ''
+              : ` · ${d.daysLate} day${d.daysLate === 1 ? '' : 's'} past the date somebody set`}${d.ownerPost
+              ? ` · ${POST_LABEL[d.ownerPost] ?? d.ownerPost}`
+              : ''}${d.hrcs.length ? ` · ${d.hrcs.join(', ')}` : ''}
+          </span>
+        </li>`
+      )}
+    </ul>
+    ${rest > 0
+      ? html`<p class="picture-note">
+          And ${rest} more. The registers themselves are the place to
+          work through them: <a href="/picture#actions">the actions</a>,
+          <a href="/toolkits/register">the register</a>,
+          <a href="/sms">training, findings and changes</a>.
+        </p>`
+      : ''}
   `;
 }
 

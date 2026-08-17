@@ -1,8 +1,9 @@
 /* ============================================================
-   THE OFFER AND THE SCREEN SAY THE SAME FOUR THINGS.
+   THE OFFER AND THE SCREEN SAY THE SAME THINGS.
 
    Signed out, /picture now lists what it puts on one screen —
-   Reporting, the register, indicators, what needs attention — because
+   reporting, the register, indicators, what needs attention, barrier
+   health — because
    the screen used to be a heading, two sentences and a button on a
    page stretched to the full viewport, and it told somebody evaluating
    this product nothing about what signing in would give them.
@@ -50,8 +51,8 @@ function renderedHeadings(): string[] {
 }
 
 describe("the signed-out offer matches the screen", () => {
-  it("declares four sections", () => {
-    expect(offeredTitles()).toHaveLength(4);
+  it("declares five sections", () => {
+    expect(offeredTitles()).toHaveLength(5);
   });
 
   it("finds the headings it is compared against", () => {
@@ -62,7 +63,7 @@ describe("the signed-out offer matches the screen", () => {
       renderedHeadings().length,
       "no plain <h2> headings found in picture/index.js, so there is nothing " +
         "to compare the offer against and this check has stopped checking",
-    ).toBeGreaterThanOrEqual(4);
+    ).toBeGreaterThanOrEqual(5);
   });
 
   /* THE DIRECTION THAT LIES TO A VISITOR: the offer names something

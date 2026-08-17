@@ -4348,6 +4348,236 @@ try {
     assert(faults.length === 0, faults.join('\n         '));
   });
 
+  await check('BARRIER HEALTH SAYS HOW MUCH OF ITSELF IT COULD PLACE', async () => {
+    /* THE ONE THING ON THIS SECTION THAT CAN GO QUIETLY WRONG.
+
+       Barrier health reads six records — overdue mitigations, register
+       review dates, training currency, change closeout, audit findings
+       and crossing indicators — and groups them against Kenya's six
+       national high-risk categories. But `hrcTags` lives on
+       SafetyReport and on NO OTHER MODEL, so only the findings that
+       trace back to a report can be placed at all. Four of the six
+       sources cannot reach a category by any path in the schema.
+
+       So the section renders a number computed from a FRACTION of the
+       evidence, and everything rests on it saying which fraction. Drop
+       that sentence and the screen still renders, still looks
+       authoritative, and now implies that "Bird strike: 2" is the
+       total. Nothing else in the build compares what a dashboard claims
+       to what it could actually see.
+
+       THE SECOND HALF IS THAT UNPLACEABLE FINDINGS STILL APPEAR. If the
+       per-category grouping ever becomes the only list, a training
+       lapse — which can never carry a category — vanishes from the
+       screen entirely while remaining in the total above it.
+
+       ASSERTED AGAINST A WELL-FORMED BODY, which is the shape no other
+       assertion in this file supplies for this route. The refusal check
+       above stubs a 503 and a `{}`; both are answered before the panel
+       is reached, so neither has ever executed a line of it.
+
+       Service workers blocked so the stub is reached. */
+    const bare = await browser.newContext({
+      viewport: { width: 1024, height: 900 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+    let called = false;
+    let text = '';
+    let narrowed = '';
+
+    /* Two findings, one placeable and one not — the smallest body that
+       can tell an honest section from a confident one. The training
+       lapse has no route to a category by construction. */
+    const BODY = {
+      window: { from: '2026-05-19T00:00:00.000Z', to: '2026-08-17T00:00:00.000Z', days: 90 },
+      reporting: {
+        count: 4, rate: null, note: 'Four reports in ninety days.',
+        queue: { total: 4, by: { SUBMITTED: 1, TRIAGED: 1, UNDER_INVESTIGATION: 0, ACTIONS_OPEN: 1, CLOSED: 1 } },
+        queueScope: 'all', trend: 'FLAT', months: [],
+        closure: { n: 1, median: 9, p90: 9, note: '' }, closureTruncated: false
+      },
+      register: {
+        open: { total: 1, by: { INTOLERABLE: 0, TOLERABLE: 1, ACCEPTABLE: 0 } },
+        overdueReview: 1, truncated: false, holderGaps: []
+      },
+      indicators: { total: 1, alerting: [] },
+      changes: { inEffectUnreviewed: 0 },
+      actions: { total: 2, outstanding: 1, overdue: 1, undated: 0, awaitingVerification: 0, truncated: false },
+      barriers: {
+        total: 2,
+        byKind: { MITIGATION: 1, CONTROL_REVIEW: 0, COMPETENCE: 1, CHANGE: 0, AUDIT: 0, PERFORMANCE: 0 },
+        kinds: {
+          MITIGATION: 'A mitigation that was agreed and is not in place',
+          CONTROL_REVIEW: 'A control nobody has re-checked since it was accepted',
+          COMPETENCE: 'A competence the operation relies on, expired',
+          CHANGE: 'A change assessed and never closed out',
+          AUDIT: 'A finding the operation admitted and has not closed',
+          PERFORMANCE: 'An indicator that has crossed its own alert level'
+        },
+        byHrc: [{ code: 'BWI', label: 'Bird or wildlife strike', count: 1 }],
+        attribution: 0.5,
+        unattributed: 1,
+        withheld: [],
+        degraded: [
+          {
+            kind: 'MITIGATION', id: 'a1', what: 'Re-brief crews on the displaced threshold',
+            daysLate: 31, ownerPost: 'SAFETY_MANAGER', hrcs: ['BWI']
+          },
+          {
+            kind: 'COMPETENCE', id: 't1',
+            what: 'Dangerous goods awareness has expired for R. Otieno',
+            daysLate: 12, ownerPost: null, hrcs: []
+          }
+        ],
+        truncated: false
+      }
+    };
+
+    try {
+      await probe.goto(BASE + '/picture', { waitUntil: 'networkidle' });
+      await probe.route('**/api/v1/auth/refresh', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'stub', refreshToken: 'stub2',
+            role: 'SAFETY_MANAGER', orgId: 'org-1'
+          })
+        })
+      );
+      await probe.route('**/api/v1/picture*', (r) => {
+        called = true;
+        return r.fulfill({
+          status: 200, contentType: 'application/json', body: JSON.stringify(BODY)
+        });
+      });
+      /* Everything else answers empty; the actions list degrades to its
+         own honest notice, which is not what this check is about. */
+      await probe.route('**/api/v1/actions*', (r) =>
+        r.fulfill({ status: 200, contentType: 'application/json', body: '{"actions":[]}' })
+      );
+      await probe.evaluate(() => {
+        localStorage.setItem(
+          'usalamasms.session',
+          JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+        );
+        localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+      });
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      text = await probe.evaluate(() => document.body.innerText);
+      /* AND THE NARROWED VIEW, which is a branch nothing else drives.
+
+         A SAFETY_OFFICER holds report.read.org and neither audit.read
+         nor training.manage, so the API withholds two of the six
+         records from them and says which. The screen must PRINT that:
+         a barrier picture that is quietly smaller for one role reads to
+         that role as a healthier operation, and they are the role most
+         likely to be looking.
+
+         Stubbed rather than driven through a real session, because the
+         property under test is that the screen renders what the API
+         tells it — the API's half is asserted against a real Postgres
+         in picture.route.integration.test.ts. */
+      await probe.unroute('**/api/v1/picture*');
+      await probe.route('**/api/v1/picture*', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ...BODY,
+            barriers: {
+              ...BODY.barriers,
+              total: 1,
+              byKind: { MITIGATION: 1, CONTROL_REVIEW: 0, CHANGE: 0, PERFORMANCE: 0 },
+              degraded: [BODY.barriers.degraded[0]],
+              unattributed: 0,
+              attribution: 1,
+              withheld: [
+                { kind: 'AUDIT', source: 'the internal audit findings' },
+                { kind: 'COMPETENCE', source: "other people's training records" }
+              ]
+            }
+          })
+        })
+      );
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      narrowed = await probe.evaluate(() => document.body.innerText);
+    } finally {
+      await bare.close();
+    }
+
+    const faults = [];
+
+    /* THE VACUOUS-PASS GUARD. Every assertion below is a negative
+       search over page text, and a page that never rendered the section
+       — or never called the route at all — would satisfy none of them
+       by having no text to fail on. */
+    if (!called) {
+      faults.push(
+        'the stubbed /api/v1/picture was never called, so the panel never rendered ' +
+          'and this check tested nothing'
+      );
+    } else if (!/barrier health/i.test(text)) {
+      faults.push(
+        'the picture rendered from a well-formed body and has no barrier health ' +
+          'section at all — the section this check exists for is absent'
+      );
+    } else {
+      /* 1. THE ATTRIBUTION SENTENCE. */
+      if (!/1 of 2 could be placed against a category/i.test(text)) {
+        faults.push(
+          'the barrier section groups findings against high-risk categories without ' +
+            'saying how many of them it could place. It could place 1 of 2 — the rest ' +
+            'carry no path to a category — and a category count that does not say so ' +
+            'reads as the total'
+        );
+      }
+      if (!/50%/.test(text)) {
+        faults.push('the attribution share is not printed as a figure a reader can quote');
+      }
+
+      /* 2. AND THE UNPLACEABLE FINDING IS STILL ON THE SCREEN. */
+      if (!/Dangerous goods awareness has expired/i.test(text)) {
+        faults.push(
+          'a finding that can carry no high-risk category is counted in the total and ' +
+            'never shown — it exists only as an arithmetic difference, which is the ' +
+            'same as dropping it'
+        );
+      }
+
+      /* 3. A CATEGORY IS NAMED, NOT CODED. `BWI` is Kenya's own code
+         and it is on the wire; a dashboard that prints it raw is asking
+         an accountable executive to know the plan's abbreviations. */
+      if (!/bird or wildlife strike/i.test(text)) {
+        faults.push(
+          'the high-risk category is shown as its code rather than its name — the label ' +
+            'is on the wire and was not used'
+        );
+      }
+
+      /* 4. AND A NARROWED VIEW SAYS IT IS NARROWED. */
+      if (!/internal audit findings/i.test(narrowed) ||
+          !/other people's training records/i.test(narrowed)) {
+        faults.push(
+          'the API withheld two of the six records from this role and the screen did not ' +
+            'say which. A barrier picture that is quietly smaller for one role reads to ' +
+            'that role as a healthier operation'
+        );
+      }
+      if (!/narrower picture|not counted here/i.test(narrowed)) {
+        faults.push(
+          'the withheld records are named but the screen never says the picture is ' +
+            'narrower than the operator\'s — naming a gap is not stating it'
+        );
+      }
+    }
+
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
   await check('THE QUEUE NEVER PASSES ONE HANDSET OFF AS THE OPERATOR', async () => {
     /* CHARTER RULE 8, ON THE SCREEN WHOSE JOB IS TO CARRY IT.
 
@@ -5309,6 +5539,74 @@ try {
       wide / 1920 > 0.7,
       `the working surface uses ${Math.round((wide / 1920) * 100)}% of a 1920px screen ` +
         `(${1920 - wide}px of margin)`
+    );
+  });
+
+  await check('A BACKER THIS SITE NAMES IS ONE A READER CAN GO AND CHECK', async () => {
+    /* THE DEFECT, MEASURED ACROSS THE ELEVEN PUBLIC ROUTES.
+
+         route         "JK & Associates" in text   links to it
+         /             1                            0
+         /about        2                            0
+         /pricing      1                            0
+         /coverage     1                            0
+         /methodology  1                            0
+         ... eleven routes, 16 mentions             0
+
+       The only outbound links anywhere on the site were icao.int and
+       casa.gov.au. So every REGULATORY claim carried its source and the
+       one COMMERCIAL claim — who stands behind this product — was a dead
+       end. The share card asserts it too, so a link pasted into a
+       WhatsApp group made a claim its destination could not substantiate.
+
+       This is the same rule the rest of the product already lives by: a
+       deadline cites L.N. 32, a category cites CICTT, a figure cites the
+       instrument it came from. A backer is a claim like any other.
+
+       IT ASSERTS THE PROPERTY, NOT THE PLACEMENT. Where the link sits is
+       a design decision and may move; that the name is reachable is the
+       rule. And it is checked on a route that is NOT /about, so moving
+       the corporate banner off the global chrome and into one page would
+       fail here rather than quietly shrinking the claim's reach. */
+    const named = [];
+    const linked = [];
+    for (const route of ['/', '/pricing', '/coverage']) {
+      await page.goto(BASE + route, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(300);
+      const m = await page.evaluate(() => {
+        const seen = (el) => {
+          const s = getComputedStyle(el);
+          const r = el.getBoundingClientRect();
+          return !!el.offsetParent && s.visibility !== 'hidden' && s.opacity !== '0'
+            && r.width > 0 && r.height > 0;
+        };
+        const mentions = (document.body.innerText.match(/JK\s*&\s*Associates/gi) || []).length;
+        const links = [...document.querySelectorAll('a[href]')]
+          .filter((a) => /jkassociates\.enterprises/i.test(a.getAttribute('href')))
+          .filter(seen).length;
+        return { mentions, links };
+      });
+      named.push(`${route}:${m.mentions}`);
+      linked.push(`${route}:${m.links}`);
+    }
+
+    /* Without this the check passes on a site that stopped naming JK at
+       all, which is a different change wearing this one's green tick. */
+    const totalNamed = named.reduce((n, s) => n + Number(s.split(':')[1]), 0);
+    assert(
+      totalNamed >= 3,
+      `"JK & Associates" is named ${totalNamed} time(s) across the three routes sampled, ` +
+        'so there is no claim here for this check to be about. If the corporate banner ' +
+        'was removed deliberately, remove this check with it.'
+    );
+
+    const unlinked = linked.filter((s) => Number(s.split(':')[1]) === 0);
+    assert(
+      unlinked.length === 0,
+      `the site names JK & Associates (${named.join(', ')}) but offers no VISIBLE link to ` +
+        `jkassociates.enterprises on ${unlinked.map((s) => s.split(':')[0]).join(', ')}. ` +
+        'Every regulatory claim here carries its source; the claim about who stands ' +
+        'behind the product has to carry one too.'
     );
   });
 

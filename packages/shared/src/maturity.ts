@@ -754,8 +754,15 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "authority was told and by whom, which is a claim about a call this product did not " +
       "place rather than proof of one, so a reported occurrence stops counting down.",
     missing:
-      "Proactive and predictive identification — surveys, flight data, and the analysis " +
-      "Doc 10159 asks for. And disposition is a connected act: the queue shows this " +
+      "Proactive identification — surveys, audits sampled for hazards rather than " +
+      "conformity, and the analysis Doc 10159 asks for. PREDICTIVE IS NOW PART-ANSWERED " +
+      "AND THE HONEST SHAPE OF IT IS ON /picture: barrier health reads which defences are " +
+      "currently degraded, which is prediction without flight data — but the flight data " +
+      "half is genuinely absent and stays absent, because this segment flies aircraft " +
+      "with no recorder to read. Barrier health also states how much of itself it could " +
+      "place against a high-risk category, and that figure is usually well under half: " +
+      "the categories are carried by the REPORT a finding came from, and four of the six " +
+      "records it reads do not come from reports. And disposition is a connected act: the queue shows this " +
       "handset's reports offline and says so, but the operator's whole queue, and moving " +
       "a report through it, need a connection. The occurrence categories carry their " +
       "codes and published names but NOT their definitions, and the list is shorter than " +
@@ -845,7 +852,15 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "the three crossing criteria evaluated per period. And an aggregate risk picture " +
       "over all of it \u2014 reports filed, time from report to closure, the open queue, " +
       "the register by band, indicators over an alert level, and which risks are owned " +
-      "below the authority their band requires \u2014 computed on every read, never stored.",
+      "below the authority their band requires \u2014 computed on every read, never stored. " +
+      "And BARRIER HEALTH, which is the same record read as a question about defences " +
+      "rather than about work: an overdue mitigation is a control not in place, an " +
+      "assessment past its review date is a control nobody re-checked, an expired " +
+      "training currency is a competence barrier decayed, an unclosed change is a change " +
+      "nobody closed out, an open audit finding is a defect the operation admitted, and " +
+      "a crossing indicator is the trend before the event. Read together they are Doc " +
+      "9859's predictive layer without flight data, which an operator of this size has " +
+      "no recorder to produce.",
     missing:
       "Indicators fed from the reporting queue AUTOMATICALLY. The screen will now count " +
       "the reports that arrived in a period and put the figure beside the field, so the " +

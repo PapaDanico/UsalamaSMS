@@ -37,11 +37,20 @@ export const ABOUT = {
       id: 'publisher',
       title: 'Who publishes this',
       body: `
-        <p><strong>UsalamaSMS is a product of JK &amp; Associates</strong>, and
+        <p><strong>UsalamaSMS is a product of
+        <a href="https://jkassociates.enterprises" target="_blank"
+        rel="noopener noreferrer">JK &amp; Associates</a></strong>, and
         operates under that corporate banner. The consultancy practice is the
         reason this product exists in the shape it does: the questions it
         answers are the ones operators bring to an advisory engagement, and the
         instruments it cites are the ones that engagement works from.</p>
+        <p>It is also why there are no operator testimonials on this site. The
+        product is new; anyone quoted would have been invented. What stands in
+        their place is checkable: the practice that built it, the
+        <a href="/coverage">conformance table</a> that names the elements this
+        does <em>not</em> cover, and sixty days in which the product either
+        fits your operation or does not. If it does not, you keep your record
+        and owe nothing.</p>
         <p>That relationship is stated here, on the
         <a href="/privacy">privacy notice</a> and in the
         <a href="/terms">terms of use</a> rather than left to be inferred,

@@ -188,6 +188,13 @@ export function render(outlet) {
 
       <p class="mat-actions no-print">
         <a class="btn btn-primary" href="/signup">Create an operator account</a>
+        <a
+          class="btn btn-secondary"
+          href="https://calendly.com/danmoi08/30min"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Talk to us first</a
+        >
       </p>
     </section>
   `.toString();

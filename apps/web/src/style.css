@@ -1551,9 +1551,22 @@ html { scroll-padding-top: var(--us-chrome); }
 /* The corporate banner in the footer rule. Slightly stronger than the
    line it sits in, because it is an identity rather than a caption —
    and still quiet enough not to compete with the product name. */
+/* It became an anchor when the banner started linking out, and the
+   underline is not decoration. WCAG 1.4.1 — a link inside a run of text
+   must not be distinguished by colour alone, and this one sits mid
+   sentence after "a product of". The weight and colour stay exactly as
+   they were so the corporate line still reads as a signature rather
+   than as a call to action. */
 .ver__banner {
   color: var(--us-text-secondary);
   font-weight: var(--us-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ver__banner:hover,
+.ver__banner:focus-visible {
+  color: var(--us-accent-text);
 }
 
 .cell-none {
@@ -2308,6 +2321,17 @@ html { scroll-padding-top: var(--us-chrome); }
   flex-direction: column;
   gap: var(--us-space-3);
   max-width: 68ch;
+}
+
+/* The second line of a barrier row: what kind of defence it is, how
+   late, who holds it. Muted and smaller than the barrier itself, on its
+   own line, because the barrier is the finding and this is the
+   qualification of it. */
+.barrier__meta {
+  display: block;
+  margin-top: var(--us-space-1);
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
 }
 
 /* THE ONE PLACE THE ACCENT IS SPENT. It is a rule and a tint, not a

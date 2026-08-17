@@ -84,9 +84,42 @@ if (!version) {
    "the new version did not wait" about a version it had itself
    prevented from installing. The same shape of mistake as an earlier
    check in this repo that deleted the database it was measuring. */
+/* THE ENTRY CHUNK IS READ OUT OF index.html, NOT GUESSED AT BY POSITION.
+
+   This line used to exclude `assets[0]`, meaning "not the entry chunk".
+   assets[0] is whatever readdir returned first — here
+   `account-home-CPNUmr5p.js`, not an index- chunk at all — so the guard
+   excluded NOTHING and `.find()` returned the first index- chunk in
+   directory order. Sixteen of them qualify and which one comes first
+   depends on content hashes, so a change anywhere in the bundle can
+   silently move it.
+
+   It eventually landed on the entry chunk itself. v2 then had no code to
+   boot from: no service worker took control, and the two checks at the
+   bottom of this file failed reporting "the reset form did not render" —
+   a harness describing damage it had done itself, which is the exact
+   shape the comment below already warns about.
+
+   So the entry is identified by the thing that actually defines it — the
+   script index.html loads — and the victim is any OTHER lazily-loaded
+   chunk. */
 const assets = await readdir(join(V2, 'assets'));
-const victim = assets.find((f) => f.startsWith('index-') && f.endsWith('.js') && f !== assets[0]);
+const entryChunk = (await readFile(join(V2, 'index.html'), 'utf8'))
+  .match(/\/assets\/(index-[^"']+\.js)/)?.[1];
+assert(entryChunk, 'could not read the entry chunk out of v2 index.html');
+
+const victim = assets.find(
+  (f) => f.startsWith('index-') && f.endsWith('.js') && f !== entryChunk
+);
 assert(victim, 'no lazily-loaded chunk found to retire');
+/* The assertion that stops this recurring: retiring the entry is not a
+   deploy, it is a broken upload, and every check below would then be
+   measuring rubble. */
+assert(
+  victim !== entryChunk,
+  `refusing to retire ${victim}: it is the entry chunk index.html loads, and deleting ` +
+    'it leaves v2 with nothing to boot from'
+);
 await rm(join(V2, 'assets', victim));
 
 const patched = sw

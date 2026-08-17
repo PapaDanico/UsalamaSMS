@@ -262,6 +262,264 @@ describe.skipIf(!hasDatabase)("the risk picture, through the real route", () => 
     expect((await picture(tokenFor(frontlineId, orgId, "FRONTLINE"))).statusCode).toBe(403);
   });
 
+  /* ==============================================================
+     BARRIER HEALTH — the part only a database can answer.
+
+     barriers.test.ts holds the judgements: what counts as degraded,
+     and what the module refuses to claim. What it cannot hold is the
+     GATHERING, and the gathering is where this one can fail silently.
+
+     THE ATTRIBUTION PATH IS A TWO-HOP JOIN. `hrcTags` lives on
+     SafetyReport; a register entry reaches it only through
+     RiskAssessment -> Hazard -> SafetyReport, and a corrective action
+     only through its own `reportId`. Get either wrong — select the
+     wrong relation, forget the nested select, join through a null —
+     and the route still answers 200 with a perfectly well-formed
+     barrier block in which NOTHING is attributed. The screen would
+     then print "0 of 9 could be placed", which is a sentence this
+     product might legitimately print, so nothing downstream can tell
+     the broken join from an operator whose findings genuinely carry no
+     category.
+
+     That is why the assertion is that a finding WITH a category
+     arrives WITH it, alongside one that has none. A test that only
+     checked the total would pass with the join removed.
+     ============================================================== */
+  it("REACHES THE HRC THROUGH TWO JOINS, and says what it could not reach", async () => {
+    const tagged = await prisma().safetyReport.create({
+      data: {
+        orgId, clientId: "bwi-report", type: "HAZARD", title: "Birds on the threshold",
+        narrative: "x", hrcTags: ["BWI"],
+      },
+    });
+
+    /* 1 · an overdue mitigation raised FROM that report — reachable. */
+    await prisma().correctiveAction.create({
+      data: {
+        orgId, reportId: tagged.id, action: "Re-brief crews on the threshold",
+        ownerPost: "SAFETY_MANAGER", dueOn: new Date(Date.now() - 31 * DAY),
+      },
+    });
+
+    /* 2 · a register entry whose hazard came from that report — the
+           two-hop path, and the one most likely to be got wrong. */
+    const hazard = await prisma().hazard.create({
+      data: {
+        orgId, reportId: tagged.id, title: "Bird activity at the threshold",
+        description: "x", source: "REPORT",
+      },
+    });
+    await prisma().riskAssessment.create({
+      data: {
+        orgId, hazardId: hazard.id, consequence: "Engine ingestion",
+        severity: "B_HAZARDOUS", likelihood: "OCCASIONAL", score: 8,
+        tolerability: "TOLERABLE", owner: "SAFETY_MANAGER",
+        reviewBy: new Date(Date.now() - 5 * DAY),
+      },
+    });
+
+    /* 3 · a training lapse, which can reach no category by any path. */
+    await prisma().trainingRecord.create({
+      data: {
+        orgId, userId: frontlineId, course: "Dangerous goods awareness",
+        completedOn: new Date(Date.now() - 400 * DAY),
+        expiresOn: new Date(Date.now() - 35 * DAY),
+      },
+    });
+
+    const b = (await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"))).json().barriers;
+
+    expect(b.total, "all three degraded barriers should be read").toBe(3);
+    expect(b.byKind.MITIGATION).toBe(1);
+    expect(b.byKind.CONTROL_REVIEW).toBe(1);
+    expect(b.byKind.COMPETENCE).toBe(1);
+
+    /* The join actually carried the tag, through both paths. */
+    expect(
+      b.byHrc,
+      "nothing reached a high-risk category — the report join returned no tags, which " +
+        "is indistinguishable on screen from an operator whose findings carry none",
+    ).toEqual([{ code: "BWI", label: "Bird or wildlife strike", count: 2 }]);
+
+    /* And what could not be placed is counted rather than dropped. */
+    expect(b.unattributed).toBe(1);
+    expect(b.attribution).toBeCloseTo(2 / 3, 5);
+    expect(b.degraded).toHaveLength(3);
+    expect(b.truncated).toBe(false);
+  });
+
+  it("A CANCELLED ACTION AND A CLOSED FINDING ARE NOT DEGRADED BARRIERS", async () => {
+    /* The route's WHERE clauses, not the module's guards — a `where`
+       that forgot `cancelledOn: null` would report an action the
+       operator explicitly decided against as an open failure, and the
+       module never sees the row to refuse it. */
+    await prisma().correctiveAction.create({
+      data: {
+        orgId, action: "Superseded control", ownerPost: "SAFETY_MANAGER",
+        dueOn: new Date(Date.now() - 40 * DAY),
+        cancelledOn: new Date(Date.now() - 30 * DAY),
+        cancelledReason: "Replaced by a procedural change",
+        findingId: (
+          await prisma().auditFinding.create({
+            data: {
+              orgId, auditRef: "IA-01", finding: "Closed already",
+              ownerPost: "SAFETY_MANAGER",
+              dueBy: new Date(Date.now() - 20 * DAY),
+              closedOn: new Date(Date.now() - 2 * DAY),
+            },
+          })
+        ).id,
+      },
+    });
+
+    const b = (await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"))).json().barriers;
+    expect(b.total).toBe(0);
+    expect(b.attribution, "an empty record is fully attributed, not zero").toBe(1);
+  });
+
+  it("does not read another operator's degraded barriers", async () => {
+    /* An action carries exactly one source — the CHECK in the migration
+       — so the competitor's action hangs off the competitor's report. */
+    const theirs = await prisma().safetyReport.create({
+      data: {
+        orgId: otherOrgId, clientId: "theirs", type: "HAZARD",
+        title: "Their report", narrative: "x", hrcTags: ["RE"],
+      },
+    });
+    await prisma().correctiveAction.create({
+      data: {
+        orgId: otherOrgId, reportId: theirs.id, action: "Their overdue action",
+        ownerPost: "SAFETY_MANAGER", dueOn: new Date(Date.now() - 10 * DAY),
+      },
+    });
+    const body = (await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"))).json();
+    expect(body.barriers.total).toBe(0);
+    expect(JSON.stringify(body)).not.toContain("Their overdue action");
+  });
+
+  /* ==============================================================
+     THE PICTURE DOES NOT HAND A ROLE WHAT THE MATRIX REFUSES IT.
+
+     This route gates once, on `report.read.org`, and its own comment
+     explains why: everything here is an aggregate of records that
+     permission already opens one at a time, so a separate permission
+     would let an operator grant the summary while withholding the
+     detail — which is backwards.
+
+     THAT REASONING WAS LOAD-BEARING AND BARRIER HEALTH BROKE IT. It
+     added two collections `report.read.org` does NOT open:
+
+       /api/v1/sms/findings  needs `audit.read`
+       /api/v1/sms/training  returns only the CALLER'S OWN rows without
+                             `training.manage`
+
+     A SAFETY_OFFICER holds `report.read.org` and neither. Measured
+     before the fix: /api/v1/sms/findings answered 403 to that role
+     while /api/v1/picture answered 200 carrying the finding's full
+     text, and /api/v1/sms/training withheld a colleague's record while
+     /api/v1/picture named the person and the lapsed course.
+
+     A dashboard is the easiest place in a product to lose an
+     authorisation rule, because nobody reads it as a read of the
+     underlying table — it looks like arithmetic. This asserts the
+     refusal against the SAME ROW the permitted role can see, so it
+     cannot pass by the fixture being empty.
+     ============================================================== */
+  describe("what a role may see of the barrier picture", () => {
+    const SECRET_FINDING = "the release was signed by an unlicensed engineer";
+    const SECRET_COURSE = "Line check renewal";
+
+    beforeEach(async () => {
+      await prisma().auditFinding.create({
+        data: {
+          orgId, auditRef: "IA-2026-03", finding: SECRET_FINDING,
+          ownerPost: "SAFETY_MANAGER", dueBy: new Date(Date.now() - 20 * DAY),
+        },
+      });
+      await prisma().trainingRecord.create({
+        data: {
+          orgId, userId: frontlineId, course: SECRET_COURSE,
+          completedOn: new Date(Date.now() - 400 * DAY),
+          expiresOn: new Date(Date.now() - 30 * DAY),
+        },
+      });
+    });
+
+    it("a SAFETY_MANAGER sees both, because the matrix opens both to them", async () => {
+      /* THE OTHER HALF OF THE CHECK. Without it the assertions below
+         pass on a route that returns no barriers to anybody. */
+      const res = await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"));
+      expect(res.payload).toContain(SECRET_FINDING);
+      expect(res.payload).toContain(SECRET_COURSE);
+      expect(res.json().barriers.withheld).toEqual([]);
+      expect(res.json().barriers.total).toBe(2);
+    });
+
+    it("A SAFETY_OFFICER IS SHOWN NEITHER, and is TOLD they were not", async () => {
+      const officerId = (
+        await prisma().user.create({
+          data: {
+            orgId, email: "officer@a.test", passwordHash: "x",
+            name: "Officer", role: "SAFETY_OFFICER",
+          },
+        })
+      ).id;
+      const res = await picture(tokenFor(officerId, orgId, "SAFETY_OFFICER"));
+      const b = res.json().barriers;
+
+      expect(res.statusCode).toBe(200);
+      expect(
+        res.payload,
+        "the picture carried an audit finding to a role /api/v1/sms/findings answers 403 for",
+      ).not.toContain(SECRET_FINDING);
+      expect(
+        res.payload,
+        "the picture named a colleague's lapsed course, which /api/v1/sms/training withholds",
+      ).not.toContain(SECRET_COURSE);
+      expect(
+        res.payload,
+        "the picture named another user, whose training record this role may not read",
+      ).not.toContain("frontline@a.test");
+
+      /* SAID, NOT SILENTLY SMALLER. Zero barriers with no explanation
+         reads as a healthy operation to the one role most likely to be
+         looking. */
+      expect(b.total).toBe(0);
+      expect(b.withheld.map((w: { kind: string }) => w.kind).sort()).toEqual([
+        "AUDIT", "COMPETENCE",
+      ]);
+      /* And a withheld kind is ABSENT from the breakdown rather than
+         counted as zero, for the same reason. */
+      expect(Object.keys(b.byKind)).not.toContain("AUDIT");
+      expect(Object.keys(b.byKind)).not.toContain("COMPETENCE");
+      expect(Object.keys(b.byKind)).toContain("MITIGATION");
+    });
+  });
+
+  it("SENDS THE WORST FEW WITH THEIR TEXT, not every one of them", async () => {
+    /* Measured: shipping the whole ranked list put 500 KB of a 564 KB
+       response into an array the screen renders twelve of. `total` is
+       the answer; the list is the top of it. */
+    const r = await prisma().safetyReport.create({
+      data: { orgId, clientId: "many", type: "HAZARD", title: "t", narrative: "x" },
+    });
+    await prisma().correctiveAction.createMany({
+      data: Array.from({ length: 40 }, (_, i) => ({
+        orgId, reportId: r.id, action: `Action ${i}`, ownerPost: "SAFETY_MANAGER",
+        dueOn: new Date(Date.now() - (i + 1) * DAY),
+      })),
+    });
+
+    const b = (await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"))).json().barriers;
+    expect(b.total, "the count is the whole truth").toBe(40);
+    expect(
+      b.degraded.length,
+      "the whole ranked list travelled — 89% of this response is text nothing renders",
+    ).toBeLessThanOrEqual(12);
+    /* WORST-FIRST, so the few that travel are the few worth reading. */
+    expect(b.degraded[0].daysLate).toBe(40);
+  });
+
   it("requires a token", async () => {
     expect(
       (await app.inject({ method: "GET", url: "/api/v1/picture" })).statusCode,
