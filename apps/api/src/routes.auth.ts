@@ -10,7 +10,24 @@ import type { FastifyInstance } from "fastify";
 import { LoginSchema } from "@usalamasms/shared";
 import { SignupSchema } from "../../../packages/shared/src/signup";
 import { z } from "zod";
-import { PERMISSIONS, type Role } from "@usalamasms/shared";
+import { PERMISSIONS, RoleEnum, type Role } from "@usalamasms/shared";
+import { mayCreateRole } from "../../../packages/shared/src/permissions";
+
+/* THE SAME SHAPE THE CONSOLE ISSUES, so a credential from either path
+   reads identically to whoever receives it. Duplicated deliberately
+   rather than exported from routes.admin.ts: that file is the vendor's
+   and this one is the operator's, and a shared helper between them
+   would be a seam somebody later routes an operator through. Twenty
+   bytes of entropy either way — the alphabet drops the characters that
+   are misread aloud over a telephone, which is how most of these will
+   actually be handed over.  */
+const CREDENTIAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function issuePassword(): string {
+  const bytes = randomBytes(20);
+  let out = "";
+  for (const b of bytes) out += CREDENTIAL_ALPHABET[b % CREDENTIAL_ALPHABET.length];
+  return `${out.slice(0, 5)}-${out.slice(5, 10)}-${out.slice(10, 15)}-${out.slice(15, 20)}`;
+}
 
 /* WHAT A PERSON MAY CHANGE ABOUT THEMSELVES, and the email is not on
    the list — see the route below. Trimmed and bounded to the same
@@ -49,7 +66,7 @@ function knownOnly(
 }
 import {
   prisma, ENV, hmac, verifyPassword, issueAccessToken, issueRefreshToken,
-  appendAuditTx, authenticate, requirePermission,
+  appendAuditTx, authenticate, requirePermission, tenantWhere,
 } from "./core";
 /* By path rather than through the barrel, for the reason reset.ts
    states in its own header: the report form imports the barrel, so
@@ -813,6 +830,131 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
      
      AOC number too, where the operator has one, because that is the
      reference a regulator files a pack under. */
+  /* =====================================================================
+     THE SECOND USER, WHICH NOTHING COULD CREATE.
+
+     Nine roles, a permission matrix, role-gated routes throughout — and
+     until this route existed, an operator had exactly one account. The
+     comment above this file's signup handler said so outright:
+     "nothing anywhere creates a second user". Filing a report requires
+     `authenticate`, so the FRONTLINE staff the whole reporting system
+     exists for could not have accounts at all, the triage queue had
+     nobody to staff it, and investigator assignment had nobody to
+     assign to.
+
+     ---------------------------------------------------------------
+     THE ESCALATION THIS OPENS IS NOT VISIBLE FROM THE ROUTE.
+
+     `mayCreateRole` in permissions.ts carries the argument in full. The
+     short version: SYSTEM_ADMIN deliberately reads no narrative, and
+     `user.manage` would otherwise let it create a SAFETY_MANAGER, set
+     that account's password — the creator chooses it — sign in, and
+     read everything. No check is violated anywhere on that path. The
+     sequence is the breach, which is why it is refused in the matrix
+     rather than here.
+
+     ---------------------------------------------------------------
+     THE PASSWORD IS HANDED OVER, NOT EMAILED. Same discipline as
+     provisioning: shown once, never stored in the clear, never logged.
+     A set-your-own link would have been better and would have shipped
+     DISABLED, because it needs mail configured — the exact failure
+     evidence upload had.
+     ===================================================================== */
+  app.post<{ Body: { email?: unknown; name?: unknown; role?: unknown } }>(
+    "/api/v1/users",
+    {
+      preHandler: [authenticate, requirePermission("user.manage")],
+      config: { rateLimit: { max: 20, timeWindow: "15 minutes" } },
+    },
+    async (req, reply) => {
+      const auth = req.auth!;
+      const email = String(req.body?.email ?? "").trim().toLowerCase();
+      const name = String(req.body?.name ?? "").trim();
+      const roleRaw = String(req.body?.role ?? "");
+
+      if (!email.includes("@") || email.length > 254) {
+        return reply.code(400).send({ error: "email_required" });
+      }
+      if (name.length < 2 || name.length > 160) {
+        return reply.code(400).send({ error: "name_required" });
+      }
+
+      const parsed = RoleEnum.safeParse(roleRaw);
+      if (!parsed.success) return reply.code(400).send({ error: "unknown_role" });
+      const role = parsed.data;
+
+      /* THE MATRIX ANSWERS, NOT THIS ROUTE. Keeping the rule in
+         permissions.ts means the unit tests can drive every role pair
+         without standing a server up, and means a second creation path
+         cannot disagree with this one. */
+      if (!mayCreateRole(auth.role as never, role)) {
+        return reply.code(403).send({
+          error: "role_not_permitted",
+          /* NAMED, because "forbidden" would read as a bug to an
+             administrator who can plainly see the role in the list. */
+          message:
+            role === "PLATFORM_ADMIN"
+              ? "That role belongs to the supplier of this product and cannot be created by an operator."
+              : "Your role cannot create an account that reads safety narratives. Ask the accountable executive.",
+        });
+      }
+
+      /* Globally unique, not per-tenant: an address identifies a person
+         at sign-in, and two organisations holding the same one would
+         make login ambiguous. Checked before the hash is spent. */
+      const taken = await prisma.user.findFirst({ where: { email }, select: { id: true } });
+      if (taken) return reply.code(409).send({ error: "email_already_registered" });
+
+      const password = issuePassword();
+      const passwordHash = await argon2.hash(password);
+
+      const created = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          /* orgId FROM THE TOKEN, never from the body. An admin of one
+             operator creating an account inside another is the worst
+             breach this product could have, and the safe version is one
+             where the request cannot express it. */
+          data: { orgId: auth.org, email, name, role, passwordHash },
+          select: { id: true, email: true, name: true, role: true },
+        });
+        await appendAuditTx(tx, {
+          orgId: auth.org,
+          userId: auth.sub,
+          action: "user.created",
+          entityType: "User",
+          entityId: user.id,
+          /* Field by field, and NEVER the password or its hash. */
+          detail: { email: user.email, role: user.role },
+        });
+        return user;
+      });
+
+      return reply.code(201).send({
+        id: created.id,
+        email: created.email,
+        name: created.name,
+        role: created.role,
+        password,
+        passwordShownOnce: true,
+      });
+    },
+  );
+
+  /* The team, so the screen that creates people can show who exists.
+     No narrative, no password, no hash — a name, an address and a
+     role. Reading who works here is not reading what they filed. */
+  app.get("/api/v1/users", {
+    preHandler: [authenticate, requirePermission("user.manage")],
+  }, async (req) => {
+    const rows = await prisma.user.findMany({
+      where: tenantWhere(req),
+      orderBy: [{ name: "asc" }],
+      take: 500,
+      select: { id: true, email: true, name: true, role: true, active: true },
+    });
+    return { users: rows };
+  });
+
   app.get("/api/v1/auth/me", { preHandler: [authenticate] }, async (req) => {
     const [org, user] = await Promise.all([
       prisma.org.findUnique({

@@ -142,6 +142,13 @@ export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
     "report.read.org", "risk.accept.tolerable",
     "spi.read", "moc.approve", "document.read", "audit.read", "training.read.own",
     "config.manage",
+    /* APPOINTING THE PEOPLE, because signup creates exactly one of these
+       and nothing else could create a second user at all. Every operator
+       that ever signed up had one account, in an organisation containing
+       nobody able to add a safety officer — so the reporting system had
+       no reporters. Under Annex 19 this post is the one answerable for
+       the SMS; deciding who staffs it is squarely its function. */
+    "user.manage",
     /* SIGNING THE POLICY IS THIS ROLE'S ALONE, and it is the only
        permission in this file held by exactly one role. Element 1.1 is
        not "there is a policy" — it is that the person who can move money
@@ -202,3 +209,64 @@ export const NARRATIVE_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission
   "report.read.own", "report.read.org", "report.triage",
   "report.investigate", "report.deidentify.review",
 ]);
+
+/**
+ * MAY THIS ROLE CREATE AN ACCOUNT HOLDING THAT ONE?
+ *
+ * ---------------------------------------------------------------
+ * THE ESCALATION USER MANAGEMENT OPENS, WHICH IS NOT OBVIOUS FROM
+ * EITHER SIDE OF IT.
+ *
+ * `SYSTEM_ADMIN` deliberately holds NO narrative permission — the note
+ * beside the matrix says why, and `/api/v1/auth/admin/reset-password`
+ * repeats it: being able to restore somebody's access is not being able
+ * to read what they filed in confidence. Under Annex 19's protection
+ * provisions the technical administrator is exactly who confidentiality
+ * has to hold against.
+ *
+ * Give that role `user.manage` and the guarantee evaporates through the
+ * side door: create a `SAFETY_MANAGER`, set its password — the creator
+ * chooses it — sign in, read every narrative. No permission check is
+ * violated anywhere along that path. Each step is authorised; the
+ * SEQUENCE is the breach.
+ *
+ * ---------------------------------------------------------------
+ * THE RULE IS ABOUT NARRATIVE ACCESS, NOT ABOUT SUBSETS.
+ *
+ * The obvious rule — a creator may only confer permissions it already
+ * holds — is wrong here, and wrong in the direction that breaks the
+ * product. An `ACCOUNTABLE_EXECUTIVE` holds `report.read.org` and not
+ * `report.triage`, so a subset rule would stop the person answerable
+ * for the safety management system from appointing a safety manager.
+ * That is the single most normal act of setting one up.
+ *
+ * What actually matters is whether the creator can already reach a
+ * narrative at all. An accountable executive reads org narratives
+ * today, so appointing somebody who also reads them grants that
+ * creator nothing new. An administrator who can read none is a
+ * different case entirely: any narrative-holding account it mints is a
+ * key to a room it was deliberately locked out of.
+ *
+ * So: A CREATOR WITH NO NARRATIVE PERMISSION MAY NOT CREATE A ROLE
+ * THAT HAS ONE. `SYSTEM_ADMIN` can still add another administrator or
+ * a regulator inspector — neither reaches a narrative — and cannot mint
+ * itself an eye.
+ *
+ * `PLATFORM_ADMIN` is refused as a target unconditionally, by anybody.
+ * A tenant that could mint a platform administrator would be a tenant
+ * that could read the other tenants.
+ */
+export function mayCreateRole(creator: Role, target: Role): boolean {
+  /* Never, from inside an operator. The vendor's own account is made
+     out of band by `npm run seed:platform-admin`. */
+  if (target === "PLATFORM_ADMIN") return false;
+
+  if (!can(creator, "user.manage")) return false;
+
+  const holds = (r: Role) =>
+    [...NARRATIVE_PERMISSIONS].some((p) => can(r, p));
+
+  if (!holds(creator) && holds(target)) return false;
+
+  return true;
+}

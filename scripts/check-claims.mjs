@@ -1117,6 +1117,17 @@ assert(
         "invoice, not about their safety management system.",
     ],
     [
+      "/api/v1/users",
+      "GIVING A COLLEAGUE A LOGIN IS ACCOUNT ADMINISTRATION, not one of the twelve " +
+        "things an SMS has to do — the same reasoning /api/v1/auth/password carries. " +
+        "An inspector asks what an operator can evidence about its safety management, " +
+        "and 'our safety officer has an account' is not on that list. WHO HOLDS WHICH " +
+        "POST is a different question, it IS element 1.3, and it is answered by " +
+        "appointment.manage and the accountability matrix — which /coverage does list. " +
+        "Putting a user table there as well would double-count the same element under " +
+        "a mechanism rather than a responsibility.",
+    ],
+    [
       "/api/v1/admin/upgrade-requests",
       "The vendor reading who has asked to pay. Same reasoning as the console " +
         "routes above: an inspector asks what an OPERATOR can evidence about its " +
@@ -1220,7 +1231,25 @@ assert(
   for (const f of readdirSync(resolve(ROOT, "apps/api/src"))) {
     if (!f.startsWith("routes.") || !f.endsWith(".ts")) continue;
     const src = read(`apps/api/src/${f}`);
-    for (const m of src.matchAll(/app\.(?:post|put|patch|delete)\(\s*"([^"]+)"/g)) {
+    /* THE GENERIC IS OPTIONAL AND USED TO BE FATAL.
+
+       This pattern required the quote to follow the parenthesis
+       immediately, so every route declared `app.post<{ Body: … }>(`
+       was invisible to it — and Fastify routes that read a typed body
+       or typed params are declared exactly that way. Measured when
+       /api/v1/users slipped through: 43 write routes seen, SIX
+       unseen, and the gate reported complete coverage of all of them.
+
+       The six were not obscure. They included
+       /api/v1/auth/admin/reset-password — the administrative password
+       reset, the one route whose reachability the product's recovery
+       story depends on — and both policy-signing verbs.
+
+       `[^(]*` bounds the generic so it cannot run past the opening
+       parenthesis and swallow a later route. */
+    for (const m of src.matchAll(
+      /app\.(?:post|put|patch|delete)(?:<[^(]*>)?\(\s*"([^"]+)"/g,
+    )) {
       writeRoutes.add(m[1]);
     }
   }

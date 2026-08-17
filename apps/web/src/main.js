@@ -341,6 +341,14 @@ router
     (el) => import('./tools/login/logo-panel.js').then((m) => m.render(el)),
     { title: 'Your operator’s mark', surface: 'tool' }
   )
+  /* Lazy like its neighbours. An operator adds people a handful of
+     times in the product's life; a ramp agent filing a hazard never
+     opens it. */
+  .register(
+    '/account/team',
+    (el) => import('./tools/login/team-panel.js').then((m) => m.render(el)),
+    { title: 'The people in your organisation', surface: 'tool' }
+  )
   /* LAZY, all of them. A ramp agent filing a hazard at a remote strip
      opens none of these, and every kilobyte here would otherwise be
      charged to the screen they do open — which loads over the link that
