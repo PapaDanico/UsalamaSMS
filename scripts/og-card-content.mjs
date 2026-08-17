@@ -54,7 +54,7 @@ const PUBLIC = join(ROOT, 'apps/web/public');
 export const COPY = {
   slogan: 'Proof, not paperwork',
   sub:
-    "Eleven of ICAO Annex 19's twelve elements, built for the 3-to-15 " +
+    "Twelve of ICAO Annex 19's twelve elements, built for the 3-to-15 " +
     'aircraft operator in East and Central Africa.',
   chips: [
     'Files with the radio off',
