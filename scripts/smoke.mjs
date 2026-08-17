@@ -5312,6 +5312,74 @@ try {
     );
   });
 
+  await check('A BACKER THIS SITE NAMES IS ONE A READER CAN GO AND CHECK', async () => {
+    /* THE DEFECT, MEASURED ACROSS THE ELEVEN PUBLIC ROUTES.
+
+         route         "JK & Associates" in text   links to it
+         /             1                            0
+         /about        2                            0
+         /pricing      1                            0
+         /coverage     1                            0
+         /methodology  1                            0
+         ... eleven routes, 16 mentions             0
+
+       The only outbound links anywhere on the site were icao.int and
+       casa.gov.au. So every REGULATORY claim carried its source and the
+       one COMMERCIAL claim — who stands behind this product — was a dead
+       end. The share card asserts it too, so a link pasted into a
+       WhatsApp group made a claim its destination could not substantiate.
+
+       This is the same rule the rest of the product already lives by: a
+       deadline cites L.N. 32, a category cites CICTT, a figure cites the
+       instrument it came from. A backer is a claim like any other.
+
+       IT ASSERTS THE PROPERTY, NOT THE PLACEMENT. Where the link sits is
+       a design decision and may move; that the name is reachable is the
+       rule. And it is checked on a route that is NOT /about, so moving
+       the corporate banner off the global chrome and into one page would
+       fail here rather than quietly shrinking the claim's reach. */
+    const named = [];
+    const linked = [];
+    for (const route of ['/', '/pricing', '/coverage']) {
+      await page.goto(BASE + route, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(300);
+      const m = await page.evaluate(() => {
+        const seen = (el) => {
+          const s = getComputedStyle(el);
+          const r = el.getBoundingClientRect();
+          return !!el.offsetParent && s.visibility !== 'hidden' && s.opacity !== '0'
+            && r.width > 0 && r.height > 0;
+        };
+        const mentions = (document.body.innerText.match(/JK\s*&\s*Associates/gi) || []).length;
+        const links = [...document.querySelectorAll('a[href]')]
+          .filter((a) => /jkassociates\.enterprises/i.test(a.getAttribute('href')))
+          .filter(seen).length;
+        return { mentions, links };
+      });
+      named.push(`${route}:${m.mentions}`);
+      linked.push(`${route}:${m.links}`);
+    }
+
+    /* Without this the check passes on a site that stopped naming JK at
+       all, which is a different change wearing this one's green tick. */
+    const totalNamed = named.reduce((n, s) => n + Number(s.split(':')[1]), 0);
+    assert(
+      totalNamed >= 3,
+      `"JK & Associates" is named ${totalNamed} time(s) across the three routes sampled, ` +
+        'so there is no claim here for this check to be about. If the corporate banner ' +
+        'was removed deliberately, remove this check with it.'
+    );
+
+    const unlinked = linked.filter((s) => Number(s.split(':')[1]) === 0);
+    assert(
+      unlinked.length === 0,
+      `the site names JK & Associates (${named.join(', ')}) but offers no VISIBLE link to ` +
+        `jkassociates.enterprises on ${unlinked.map((s) => s.split(':')[0]).join(', ')}. ` +
+        'Every regulatory claim here carries its source; the claim about who stands ' +
+        'behind the product has to carry one too.'
+    );
+  });
+
   await check('no link points at a route that needs a bearer token', async () => {
     /* ==================================================================
        A LINK CANNOT CARRY AN AUTHORIZATION HEADER.
