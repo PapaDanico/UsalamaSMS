@@ -83,6 +83,31 @@ function Operator(o) {
   </article>`;
 }
 
+/* One request, and whether it still needs answering.
+
+   `answered` is DERIVED from the operator's current subscription state
+   rather than stored — a flag set when an entitlement was granted would
+   be wrong the moment one lapsed again, and this list is read to decide
+   who still needs chasing. */
+function Ask(a) {
+  const when = new Date(a.askedOn).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric'
+  });
+  return html`<article class="rec" data-ask data-answered="${a.answered ? 'yes' : 'no'}">
+    <h3>${a.orgName}</h3>
+    <p class="rec__meta">
+      <span>asked ${when}</span>
+      <span>${a.fleetSize === null ? 'no fleet size recorded' : `fleet ${a.fleetSize}`}</span>
+      <span>${a.state}</span>
+    </p>
+    <p>
+      ${a.answered
+        ? 'Already paid up — nothing outstanding.'
+        : 'STILL WAITING. Confirm payment, then grant the entitlement below.'}
+    </p>
+  </article>`;
+}
+
 export async function render(outlet) {
   let payload = null;
   let denied = false;
@@ -114,6 +139,21 @@ export async function render(outlet) {
   }
 
   const ops = payload.operators ?? [];
+
+  /* FETCHED SEPARATELY AND FAILING SOFT. An error reading the request
+     list must not blank the console — provisioning and granting are the
+     jobs this screen exists for, and losing both because a secondary
+     list would not load is the wrong trade. An empty array renders "no
+     requests", which is honest for a deployment where none have been
+     made, and the section says where the data comes from so an
+     administrator can tell that from a fetch that failed. */
+  let asks = [];
+  try {
+    const r = await authFetch('/api/v1/admin/upgrade-requests');
+    if (r.ok) asks = (await r.json()).requests ?? [];
+  } catch {
+    /* Left empty on purpose — see above. */
+  }
 
   outlet.innerHTML = html`
     <section class="panel wrap">
@@ -160,6 +200,16 @@ export async function render(outlet) {
         <p class="field-error" data-err="provision" role="status" aria-live="polite"></p>
       </form>
       <div data-issued hidden></div>
+
+      <h2>Asked to upgrade</h2>
+      <p class="hint">
+        Read from the audit chain, not from a mailbox. An operator who presses
+        “ask to upgrade” lands here whether or not the notification email went
+        out — a customer trying to pay must not be able to reach nobody.
+      </p>
+      ${asks.length
+        ? html`<div class="rec-list">${asks.map(Ask)}</div>`
+        : html`<p class="empty-state"><span>Nobody has asked yet.</span></p>`}
 
       <h2>Provisioned operators</h2>
       ${ops.length

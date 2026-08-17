@@ -1117,6 +1117,14 @@ assert(
         "invoice, not about their safety management system.",
     ],
     [
+      "/api/v1/admin/upgrade-requests",
+      "The vendor reading who has asked to pay. Same reasoning as the console " +
+        "routes above: an inspector asks what an OPERATOR can evidence about its " +
+        "safety management, and this route is not even reachable by anybody in an " +
+        "operator's organisation. It is on /admin, which is deliberately absent " +
+        "from the menu, for the same reason.",
+    ],
+    [
       "/api/v1/upgrade-request",
       "ASKING TO PAY IS NOT A SAFETY CAPABILITY. This is the operator's own side " +
         "of the entitlement exemption above: that one records what a customer HAS " +

@@ -2134,7 +2134,28 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    when no fleet size was recorded, and the panel asks rather than
    guesses. A wrong price is worse than no price: an operator budgets
    against it and then somebody has to take it back. */
-const BUDGET = { entry: 224 * 1024, js: 610 * 1024, css: 80 * 1024 };
+/* TOTAL 610 -> 614 KB, and this one removes a dependency rather than
+   adding a feature. ENTRY UNMOVED AT 216.3, CSS unmoved.
+
+   THE UPGRADE REQUEST HAD EXACTLY ONE WAY OF REACHING THE VENDOR, AND
+   IT WAS AN ENVIRONMENT VARIABLE NOBODY HAD SET. A deployment without
+   PLATFORM_NOTICE_EMAIL recorded every request faithfully to the audit
+   chain and told nobody — so an operator pressed "ask to upgrade", was
+   honestly informed the notice had not gone, and the request sat in a
+   table no screen read. A customer trying to pay, reaching nobody, on
+   the one route whose entire purpose is revenue.
+
+   So the console reads them from the chain that already held them. The
+   email is now a convenience; the record is the channel. No new table,
+   because a second store of the same fact is a second thing to keep in
+   step — and an append-only hash-linked chain is a better record of
+   "who asked and when" than a mutable row.
+
+   The 4 KB is the admin screen's request list and the read route's
+   share of the console chunk. /admin is deliberately absent from the
+   menu and reachable by nobody in an operator's organisation, so this
+   is weight no customer ever downloads. */
+const BUDGET = { entry: 224 * 1024, js: 614 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

@@ -348,6 +348,83 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  /* =====================================================================
+     WHO HAS ASKED, READ BACK FROM THE CHAIN THAT ALREADY RECORDED IT.
+
+     THE EMAIL WAS THE ONLY WAY TO LEARN OF A REQUEST, AND IT IS THE ONE
+     PART OF THIS FEATURE THAT DEPENDS ON SOMETHING OUTSIDE THE PRODUCT.
+     A deployment with no PLATFORM_NOTICE_EMAIL recorded every request
+     faithfully and told nobody — so an operator pressed "ask to
+     upgrade", was honestly informed that the notice had not gone, and
+     the request sat in a table no screen read. That is a customer
+     trying to pay and reaching nobody, which is the worst possible
+     failure for the one route whose whole purpose is revenue.
+
+     So the console reads them. The audit chain was already the record;
+     this makes it the CHANNEL as well, and the email becomes a
+     convenience rather than the mechanism.
+
+     NO NEW TABLE, DELIBERATELY. A second store of the same fact is a
+     second thing to keep in step, and this one would have to be written
+     inside the transaction that writes the audit entry or drift from
+     it. The chain is append-only and hash-linked, which makes it a
+     better record of "who asked and when" than a mutable row would be.
+
+     THE ORG'S CURRENT STATE COMES WITH IT, because the question an
+     administrator actually has is not "who asked" but "who asked and
+     has not been granted yet" — and answering the first while implying
+     the second is how somebody gets billed twice or chased after they
+     have already paid.
+     ===================================================================== */
+  app.get("/api/v1/admin/upgrade-requests", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "platform.entitlement.manage")) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+
+    const rows = await prisma.auditLog.findMany({
+      where: { action: "platform.upgrade.requested" },
+      orderBy: [{ seq: "desc" }],
+      take: 100,
+      select: {
+        createdAt: true, orgId: true, detail: true,
+        org: { select: { name: true, fleetSize: true, trialEndsOn: true, paidThrough: true } },
+      },
+    });
+
+    /* NOT tenantWhere. This route is the vendor's, and scoping it to the
+       platform administrator's own org would return nothing — the
+       requests belong to customers. That is the one place in this API
+       where crossing the tenancy boundary is correct, and it is
+       correct only because platform.entitlement.manage is held by
+       nobody inside an operator. */
+    const now = new Date();
+    return reply.send({
+      requests: rows.map((r) => {
+        const state = stateOn(
+          {
+            trialEndsOn: r.org.trialEndsOn ?? trialEndsFrom(new Date()),
+            paidThrough: r.org.paidThrough,
+          },
+          now,
+        );
+        return {
+          askedOn: r.createdAt.toISOString(),
+          orgId: r.orgId,
+          orgName: r.org.name,
+          fleetSize: r.org.fleetSize ?? null,
+          detail: r.detail ?? null,
+          /* ANSWERED means the operator is paid up now, whenever that
+             happened. Derived rather than stored: a flag set when an
+             entitlement was granted would be wrong the moment one
+             lapsed again, and this list is read to decide who still
+             needs chasing. */
+          answered: state !== "LAPSED",
+          state,
+        };
+      }),
+    });
+  });
+
   /* ---- confirm payment, or extend a trial ------------------------- */
   app.post("/api/v1/admin/operators/:id/entitlement", limited, async (req, reply) => {
     if (!guard(req.auth!.role, "platform.entitlement.manage")) {
