@@ -72,6 +72,10 @@ const BLURBS = {
     'SMS maturity assessment',
     'Twelve elements of Annex 19, scored against evidence'
   ],
+  '/training': [
+    'The SMS training programme',
+    'What the course covers, who sits which version, and how long each one runs'
+  ],
   '/toolkits#classifier': [
     'Occurrence classifier',
     'Accident, serious incident or incident — and the clock it starts'

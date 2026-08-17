@@ -2323,6 +2323,37 @@ html { scroll-padding-top: var(--us-chrome); }
   max-width: 68ch;
 }
 
+/* THE TRAINING PROGRAMME. Sections nested under a module, and the
+   time-per-module grid. The grid is the only table on a public page
+   wide enough to need scrolling on a handset, so it gets .table-scroll
+   around it rather than a font size nobody can read. */
+.training-sections {
+  list-style: disc;
+  margin: var(--us-space-2) 0 0;
+  padding-left: var(--us-space-5);
+  display: grid;
+  gap: var(--us-space-1);
+  font-size: var(--us-text-sm);
+  color: var(--us-ink-600);
+}
+.training-grid { border-collapse: collapse; width: 100%; min-width: 34rem; }
+.training-grid th, .training-grid td {
+  text-align: left;
+  padding: var(--us-space-2) var(--us-space-3);
+  border-bottom: 1px solid var(--us-line);
+  font-size: var(--us-text-sm);
+}
+.training-grid thead th {
+  font-size: var(--us-text-xs);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--us-ink-600);
+  background: var(--us-surface-2);
+  white-space: nowrap;
+}
+.training-grid td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.training-grid tbody th { font-weight: 600; }
+
 /* RECORD A CORRECTIVE ACTION, inline on the report that prompted it.
 
    Same details/summary shape as the classification panel above it, and

@@ -1925,7 +1925,28 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    The css ceiling is untouched at 80 against 69.5 actual. It was
    raised for this redesign already and the redesign has not spent it.
    ===================================================================== */
-const BUDGET = { entry: 224 * 1024, js: 560 * 1024, css: 80 * 1024 };
+/* TOTAL 560 -> 576 KB, for the training programme. ENTRY UNMOVED at
+   215.4 KB, and that is the whole argument.
+
+   WHAT IT BOUGHT. Element 4.1's syllabus, published. CAA-AC-SMS011 was
+   read in full and its four role bands, six-module syllabus, eleven
+   executive topics, eight specialised functions and two recommended
+   intervals now render on /training — where a safety manager deciding
+   whether to adopt this can read what the course contains, instead of
+   being told only that training is tracked.
+
+   WHY IT IS NOT FAT. It is a LAZY ROUTE. A reporter filing at a strip
+   downloads none of it; the entry chunk moved 0.3 KB, and that 0.3 KB
+   is the router entry, not the page. The two-number budget exists to
+   tell exactly this case apart from weight on the filing path, and this
+   is the case it was designed to permit.
+
+   The stopping rule holds and gains a fourth precedent: a screen earns
+   a raise, a correctness fix on the target device earns a raise, a
+   legal requirement earns a raise — and so does publishing a regulator's
+   own syllabus that the product already carried privately. What still
+   does not is a dependency, a polyfill or a component library. */
+const BUDGET = { entry: 224 * 1024, js: 576 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

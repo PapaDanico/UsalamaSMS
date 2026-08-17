@@ -101,6 +101,11 @@ export const TOOLKITS = [
     routed: true
   },
   {
+    href: '/training',
+    short: 'the training programme',
+    routed: true
+  },
+  {
     href: '/toolkits#classifier',
     short: 'occurrence classifier'
   },
@@ -286,6 +291,15 @@ export const SECTIONS = [
         label: 'SMS Documentation',
         short: 'Documentation',
         inHeader: true
+      },
+      {
+        /* Element 4.1's syllabus, published rather than described. It
+           sits in assurance rather than in Reference because a safety
+           manager reaches for it when asked to SHOW the programme, not
+           when reading about the product. */
+        href: '/training',
+        label: 'SMS Training Programme',
+        short: 'Training'
       },
       {
         href: '/coverage',
