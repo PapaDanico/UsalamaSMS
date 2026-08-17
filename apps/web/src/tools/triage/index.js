@@ -78,6 +78,14 @@
       Only on rows the server knows about, like the disposition:
       an action against a report still in the outbox has nothing
       to hang off.
+      A PANEL, NOT THREE PROMPTS. It was three chained
+      window.prompts — what, then who owns it, then by when —
+      and the sentence you typed first was invisible by the time
+      you chose the date it was for. The date is now a real date
+      input rather than "YYYY-MM-DD" asked for in prose, and the
+      owner is the operator's ten posts in a datalist instead of
+      three named in a sentence. Still free text: a small
+      operator's titles are its own, and the schema says so.
 
    9. WHAT THE STATE FILES IT UNDER.
       The report TYPE above says what kind of report arrived. This
@@ -94,11 +102,11 @@
       is a badge only somebody who already knows the taxonomy can
       read, and this screen is read by people learning it.
 
-   10. AN INLINE PANEL, NOT A PROMPT. Every other confirmation
-      on this screen is a window.prompt, which is right for
-      one line of free text and wrong for twenty grouped
-      choices: a prompt cannot show a group, cannot show what
-      is already selected, and cannot carry the caveat that
+   10. AN INLINE PANEL, NOT A PROMPT. The remaining prompts on
+      this screen each ask for ONE line of free text, which is
+      what a prompt is right for. This is wrong for twenty
+      grouped choices: a prompt cannot show a group, cannot show
+      what is already selected, and cannot carry the caveat that
       has to travel with these codes. Details/summary rather
       than a modal — it keeps the choice next to the report it
       is about, and it works with a keyboard without any of
@@ -186,6 +194,10 @@ import {
    this screen should not download the vocabulary for a judgement only
    the safety office makes. */
 import { ADREP_FIELDS, adrepLabel, ADREP_CAVEAT } from '../../../../../packages/shared/src/adrep.ts';
+/* The operator's own posts, for the corrective-action owner. The
+   prompt this replaced named three of them in a sentence and told
+   people to type the rest. */
+import { SAFETY_ROLES } from '../../../../../packages/shared/src/posts.ts';
 import { syncBadge, StatusBadge } from '../../components/Status.js';
 import { HandoffButton, wireHandoff } from '../../components/Handoff.js';
 import { deadlinesHandoff } from '../../../../../packages/shared/src/handoff.ts';
@@ -461,6 +473,9 @@ export async function render(outlet) {
             <ul class="queue">
               ${rows.map(row)}
             </ul>
+            <datalist id="capa-posts">
+              ${SAFETY_ROLES.map((p) => html`<option value="${p.label}"></option>`)}
+            </datalist>
           `}
     </section>
   `.toString();
@@ -564,7 +579,92 @@ function bindOnce(outlet) {
     }
   }, true);
 
+  /* ------------------------------------------------------------------
+     RECORD A CORRECTIVE ACTION — a form, where it used to be three
+     chained window.prompts.
+
+     WHY IT CHANGED. The prompts asked what, then who owns it, then by
+     when, each one alone on a native dialog. Three things that fail
+     there and cannot fail here:
+
+     · you could not see what you had already typed. Field three is
+       where you decide the date, and the sentence you wrote in field
+       one — the thing the date is for — was gone by then;
+     · the date was typed by hand against "YYYY-MM-DD" in prose. This
+       is `type="date"`, so a handset offers its own picker and a
+       mistyped month is not a 400 from the server;
+     · the owner was three post codes named in a sentence and an
+       instruction to type your own. It is now the operator's ten real
+       posts in a datalist, still free text, because a small operator's
+       titles are its own — that escape is in the schema deliberately.
+
+     THE OBJECTION IN THE OLD COMMENT WAS RIGHT AND IS ANSWERED. It
+     said a form on a card that re-renders after every save is more ways
+     to lose what somebody typed. So THIS HANDLER DOES NOT RE-RENDER ON
+     FAILURE: the refusal is written into the panel, the panel stays
+     open, and every word survives. The classify form beside it
+     re-renders in a `finally` and does lose its input on a refusal —
+     that is tolerable for checkboxes reflecting server state and would
+     not be for a sentence somebody composed.
+     ------------------------------------------------------------------ */
   outlet.addEventListener('submit', async (event) => {
+    const capa = event.target?.closest?.('form[data-raise-action]');
+    if (capa) {
+      event.preventDefault();
+      const err = capa.querySelector('[data-capa-error]');
+      const ok = capa.querySelector('[data-capa-ok]');
+      const submit = capa.querySelector('button[type="submit"]');
+      const data = new FormData(capa);
+      const action = String(data.get('action') ?? '').trim();
+      const ownerPost = String(data.get('ownerPost') ?? '').trim();
+      const dueOn = String(data.get('dueOn') ?? '').trim();
+
+      const say = (node, text) => {
+        for (const n of [err, ok]) n.hidden = true;
+        if (!text) return;
+        node.textContent = text;
+        node.hidden = false;
+      };
+
+      /* The browser's own `required` catches these before submit; this
+         is the second door, for a form submitted any other way. */
+      if (!action) return say(err, 'An action needs to say what will be done.');
+      if (!ownerPost) return say(err, 'An action with no owner is an action nobody does.');
+
+      const label = submit.textContent;
+      submit.disabled = true;
+      submit.textContent = 'Saving…';
+      try {
+        const res = await authFetch('/api/v1/actions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action, ownerPost,
+            reportId: capa.dataset.raiseAction,
+            ...(dueOn ? { dueOn } : {})
+          })
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          say(err, body.detail?.fieldErrors?.dueOn
+            ? 'That date was not accepted. Leave it blank if there is genuinely no date.'
+            : (body.message ?? 'That was not accepted. Nothing was recorded.'));
+          return;
+        }
+        /* CLEARED ONLY ON SUCCESS, and the panel stays open carrying
+           the confirmation — closing it would take the sentence away
+           at the one moment it is worth reading. */
+        capa.reset();
+        say(ok, 'Recorded. It is tracked on the risk picture until it is done and verified.');
+      } catch {
+        say(err, 'The safety office could not be reached. Nothing was recorded.');
+      } finally {
+        submit.disabled = false;
+        submit.textContent = label;
+      }
+      return;
+    }
+
     const form = event.target?.closest?.('form[data-classify]');
     if (!form) return;
     event.preventDefault();
@@ -775,70 +875,6 @@ function bindOnce(outlet) {
       return;
     }
 
-    /* ------------------------------------------------------------
-       Record a corrective action against this report.
-
-       THREE PROMPTS RATHER THAN A FORM, deliberately and for now. The
-       queue is worked on a handset, the three fields are short, and a
-       hand-built inline form on a card that re-renders after every
-       save is more ways to lose what somebody typed than it is worth.
-       The server validates all three regardless.
-       ------------------------------------------------------------ */
-    const raise = event.target.closest?.('[data-raise-action]');
-    if (raise) {
-      const what = window.prompt(
-        'What will be done about this report? One sentence — it becomes the action somebody is accountable for.'
-      );
-      if (what === null) return;
-      if (!what.trim()) {
-        window.alert('An action needs to say what will be done.');
-        return;
-      }
-      const owner = window.prompt(
-        'Which post owns it? SAFETY_MANAGER, SAFETY_OFFICER, ACCOUNTABLE_EXECUTIVE — or your own title.'
-      );
-      if (owner === null) return;
-      if (!owner.trim()) {
-        window.alert('An action with no owner is an action nobody does.');
-        return;
-      }
-      const due = window.prompt(
-        'By when? YYYY-MM-DD. Leave blank if there is genuinely no date — it is recorded as undated rather than guessed at.'
-      );
-      if (due === null) return;
-
-      raise.disabled = true;
-      const label = raise.textContent;
-      raise.textContent = 'Saving…';
-      try {
-        const res = await authFetch('/api/v1/actions', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            action: what,
-            ownerPost: owner,
-            reportId: raise.dataset.raiseAction,
-            ...(due.trim() ? { dueOn: due.trim() } : {})
-          })
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          window.alert(
-            body.detail?.fieldErrors?.dueOn
-              ? 'That date was not understood. Use YYYY-MM-DD, or leave it blank.'
-              : (body.message ?? 'That was not accepted. Nothing was recorded.')
-          );
-        } else {
-          window.alert('Recorded. It is now on the risk picture until it is done and verified.');
-        }
-      } catch {
-        window.alert('The safety office could not be reached. Nothing was recorded.');
-      } finally {
-        raise.disabled = false;
-        raise.textContent = label;
-      }
-      return;
-    }
 
     const copy = event.target.closest?.('[data-copy]');
     if (copy) {
@@ -1085,20 +1121,52 @@ function row(r) {
 
       ${r.serverId
         ? html`<div class="queue__actions">
-            <button
-              type="button"
-              class="btn btn-ghost btn-sm"
-              data-raise-action="${r.serverId}"
-            >
-              Record an action
-            </button>
             <a
               class="btn btn-ghost btn-sm"
               href="/toolkits/register?from=${r.serverId}"
             >
               Raise a hazard
             </a>
-          </div>`
+          </div>
+          <details class="queue__capa">
+            <summary>Record a corrective action</summary>
+            <form data-raise-action="${r.serverId}">
+              <label class="field">
+                <span class="field-label">What will be done?</span>
+                <textarea name="action" rows="2" required
+                  placeholder="Re-brief crews on the displaced threshold"></textarea>
+                <span class="field-hint">
+                  One sentence. It becomes the action somebody is accountable for.
+                </span>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Which post owns it?</span>
+                <input name="ownerPost" list="capa-posts" required
+                  placeholder="Safety Manager" />
+                <span class="field-hint">
+                  Pick one of your posts or type your own title — a small operator's
+                  real titles are not this product's list.
+                </span>
+              </label>
+
+              <label class="field">
+                <span class="field-label">By when?</span>
+                <input name="dueOn" type="date" />
+                <span class="field-hint">
+                  Leave it blank if there is genuinely no date. It is recorded as
+                  undated rather than guessed at, and the risk picture says so.
+                </span>
+              </label>
+
+              <p class="notice notice--error" data-capa-error hidden></p>
+              <p class="notice" data-capa-ok hidden></p>
+
+              <button type="submit" class="btn btn-secondary btn-sm">
+                Record it
+              </button>
+            </form>
+          </details>`
         : ''}
 
       ${r.available?.length

@@ -2323,6 +2323,28 @@ html { scroll-padding-top: var(--us-chrome); }
   max-width: 68ch;
 }
 
+/* RECORD A CORRECTIVE ACTION, inline on the report that prompted it.
+
+   Same details/summary shape as the classification panel above it, and
+   for the reason stated there: it keeps the work next to the report it
+   is about and needs none of the focus-trapping a modal would. This one
+   replaced three chained window.prompts, where the sentence you typed
+   first was invisible by the time you chose the date it was for. */
+.queue__capa { margin-top: var(--us-space-3); }
+.queue__capa > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--us-text-sm);
+  padding: var(--us-space-2) 0;
+}
+.queue__capa .field { margin-bottom: var(--us-space-4); }
+/* The labels and hints are spans inside a wrapping <label>, so that one
+   click target covers the question and its control. A span is inline by
+   default and these have to stack. */
+.queue__capa .field-label,
+.queue__capa .field-hint { display: block; }
+.queue__capa textarea { resize: vertical; min-height: 3.5rem; }
+
 /* The second line of a barrier row: what kind of defence it is, how
    late, who holds it. Muted and smaller than the barrier itself, on its
    own line, because the barrier is the finding and this is the
