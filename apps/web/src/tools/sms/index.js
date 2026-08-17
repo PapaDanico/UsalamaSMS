@@ -526,11 +526,16 @@ const RENDER = {
           )}
           ${payload?.curriculumVerifiedAgainstPrimary === false
             ? html`<p class="hint">
-                The six initial topics are Doc 9859's, read through a search index rather
-                than the instrument itself. Check them against your own copy before acting
+                The initial topics were read through a search index rather than the
+                instrument itself. Check them against your own copy before acting
                 on a gap.
               </p>`
-            : ''}
+            : payload?.curriculumInstrument
+              ? html`<p class="hint">
+                  The syllabus above is ${payload.curriculumInstrument}'s, read from the
+                  circular itself.
+                </p>`
+              : ''}
         </div>`
       : '';
 
