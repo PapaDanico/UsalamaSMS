@@ -27,7 +27,7 @@
 export const ABOUT = {
   eyebrow: 'About us',
   title: 'The whole safety management system, for the operators the incumbents priced out',
-  lede: `Eleven of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
+  lede: `Twelve of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
          operator in East and Central Africa — the one running an SMS on paper
          because the software market starts above what the operation earns. The
          two that are partial are named, on this page and on the coverage page,
@@ -62,12 +62,14 @@ export const ABOUT = {
       id: 'what',
       title: 'What this is',
       body: `
-        <p>UsalamaSMS runs <strong>eleven of the twelve elements ICAO Annex 19
+        <p>UsalamaSMS runs <strong>all twelve of the elements ICAO Annex 19
         defines</strong> — the safety policy and the accountabilities under it,
-        the appointments, the emergency response plan, hazard identification,
+        the appointments, the emergency response plan, the controlled document
+        register that holds the documents themselves, hazard identification,
         risk assessment, the performance indicators, management of change,
-        internal audit and its corrective actions, and the communication loop
-        back to the people who file. It takes a frontline report, classifies
+        internal audit and its corrective actions, the training matrix that
+        warns before a currency lapses rather than after, and the communication
+        loop back to the people who file. It takes a frontline report, classifies
         it, gives it the regulatory clock its jurisdiction actually sets, puts
         it against the ICAO Doc 9859 scale, and holds it on a record an auditor
         can verify.</p>
@@ -135,15 +137,25 @@ export const ABOUT = {
       title: 'What is still partial, and what no software can do for you',
       body: `
         <p>ICAO Annex 19 defines a safety management system as four components
-        and twelve elements. This product runs <strong>11 of 12</strong>: ten
-        built, and two partial.</p>
+        and twelve elements. This product runs <strong>12 of 12</strong>.</p>
 
-        <p><strong>The two partial ones, named rather than averaged away.</strong>
-        <em>SMS documentation (1.5)</em> holds controlled documents, their
-        revisions and who has acknowledged which — it does not author your
-        manual. <em>Training and education (4.1)</em> holds the training matrix,
-        currencies and expiry — it does not deliver the training or issue the
-        certificate.</p>
+        <p><strong>Two of them were only partial until recently, and what
+        changed is worth saying plainly.</strong>
+        <em>SMS documentation (1.5)</em> held the control — reference, revision,
+        approver, review date, and who acknowledged which — but not the
+        document, so an inspector asking to see revision 3 was sent to a shared
+        drive. The register now holds the file itself, hashed on the way in and
+        checked on the way out.
+        <em>Training and education (4.1)</em> held the matrix and told you what
+        had expired. It now tells you ninety days BEFORE, and the daily digest
+        puts it in an email — because a warning that waits for somebody to open
+        a screen is a warning that arrives after the grounding.</p>
+
+        <p><strong>What twelve of twelve does not mean.</strong> It does not mean
+        this product runs your safety management system. It holds the record,
+        computes what is derivable from it, and puts the result where an
+        inspector can check it. Somebody still has to identify the hazard, decide
+        the risk is tolerable, and sign their name to that.</p>
 
         <p><a href="/coverage">The coverage page</a> states every element, its
         status, and what is missing from it. Both figures are computed from the

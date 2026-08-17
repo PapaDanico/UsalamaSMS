@@ -1,13 +1,17 @@
 /* =====================================================================
    WHAT AN OPERATOR NEEDS TOLD TODAY.
 
-   Everything this product knows is currently visible only to somebody
-   who opens the screen and looks. A currency lapsing next month, a
-   reporting window closing in six hours, a report sitting untriaged for
-   a week — all computed correctly, all announced to nobody. Element
-   4.1's coverage entry says it in its own words: "there is no digest,
-   no email and no push, so a currency still lapses quietly for an
-   operator who does not look."
+   THIS MODULE WAS WRITTEN WHEN NOTHING ARRIVED. A currency lapsing
+   next month, a reporting window closing in six hours, a report
+   sitting untriaged for a week — all computed correctly, all announced
+   to nobody, and element 4.1's coverage entry said so in its own
+   words.
+
+   IT ARRIVES NOW. netlify/functions/digest.mts runs on a daily cron,
+   composes this, and emails every recipient who holds report.read.org.
+   That is what moved element 4.1 from PARTIAL to BUILT, and
+   check:claims fails if the delivery path is removed while the claim
+   stays.
 
    THIS MODULE IS THE ANSWER TO "WHAT WOULD YOU SAY", AND NOTHING ELSE.
    It does not send. It has no provider, no API key, no network and no

@@ -362,13 +362,30 @@ const partialIds = coverageDecl
   .filter((entry) => /state:\s*"PARTIAL"/.test(entry))
   .map((entry) => entry.match(/id:\s*"([\d.]+)"/)?.[1])
   .filter(Boolean);
+/* THE GUARD HAD TO LEARN THAT ZERO IS AN ANSWER.
+
+   It required partialIds.length > 0, because an empty list would have
+   meant the parser had broken rather than that the product had
+   finished — a gate naming zero elements agrees that all zero of them
+   are named, which is the shape this file exists to refuse.
+
+   Both elements are now BUILT, so zero is the truth. The guard
+   therefore checks the PARSER rather than the count: the ids it
+   extracted must match the PARTIAL states it can see, whatever that
+   number is. If the regex ever stops matching, the two disagree and
+   this still fails. */
+const partialStates = (coverageDecl.match(/state:\s*"PARTIAL"/g) ?? []).length;
 assert(
   'the partial elements were discovered out of the coverage table',
-  partialIds.length > 0 &&
-    partialIds.length === (coverageDecl.match(/state:\s*"PARTIAL"/g) ?? []).length,
-  `found ${partialIds.length} partial ids against ` +
-    `${(coverageDecl.match(/state:\s*"PARTIAL"/g) ?? []).length} PARTIAL states — ` +
-    'this check would pass by naming nothing'
+  partialIds.length === partialStates,
+  `found ${partialIds.length} partial ids against ${partialStates} PARTIAL states — ` +
+    'the parser and the table disagree, so this check is reading something it does not understand'
+);
+assert(
+  'and the coverage table was parsed at all',
+  (coverageDecl.match(/state:\s*"(BUILT|PARTIAL|NOT_BUILT)"/g) ?? []).length >= 12,
+  'fewer than twelve element states were found in the coverage table — the parser has ' +
+    'lost its subject, and every assertion below it would pass over nothing'
 );
 const unnamed = partialIds.filter((id) => !pages.includes(`(${id})`));
 assert(
@@ -1652,13 +1669,37 @@ assert(
     training.length > 0,
     'no 4.1 entry in COVERAGE — this gate has lost its subject (rule 11)'
   );
+  /* CHANGED DELIBERATELY, WHICH IS WHAT THE OLD MESSAGE ASKED FOR.
+
+     This used to assert element 4.1 was PARTIAL, and its failure text
+     said: "if real delivery has shipped, this assertion should be
+     changed deliberately in the same commit — not discovered to have
+     been passing." Real delivery has shipped, and this is that commit.
+
+     The chain was verified end to end rather than assumed:
+     netlify/functions/digest.mts runs on cron 0 5 * * *, computeDigest
+     classifies every training record through currencyOf — which
+     returns DUE_SOON BEFORE the expiry, not only LAPSED after it —
+     sendDigest emails every recipient holding report.read.org, and
+     mail.ts renders "N training currencies are lapsing" into the
+     message. A share sheet reaches somebody who already opened the
+     screen; this reaches somebody who did not.
+
+     SO THE ASSERTION IS NOW THE ONE THAT WOULD CATCH A REGRESSION:
+     the delivery path must still exist. Deleting the scheduled
+     function, or dropping currencies from the digest, puts element 4.1
+     back to where it was and this gate says so. */
+  const digestFn = read('netlify/functions/digest.mts');
   assert(
-    'ELEMENT 4.1 STILL SAYS THE WARNING DOES NOT ARRIVE',
-    /state:\s*"PARTIAL"/.test(training),
-    'element 4.1 is no longer PARTIAL. A share sheet is not alerting: it reaches ' +
-      'somebody who has already opened the screen. If real delivery has shipped, this ' +
-      'assertion should be changed deliberately in the same commit — not discovered ' +
-      'to have been passing'
+    'ELEMENT 4.1 IS BUILT ONLY WHILE THE WARNING ACTUALLY ARRIVES',
+    /state:\s*"BUILT"/.test(training) &&
+      /sendDigest/.test(digestFn) &&
+      /currencies/.test(read('apps/api/src/digest.compute.ts')),
+    'element 4.1 claims BUILT, but the delivery path that justifies it is gone. ' +
+      'A currency standing computed on a screen only reaches somebody who opens the ' +
+      'screen — which is exactly what made this element PARTIAL for months. Either ' +
+      'restore the scheduled digest and its training currencies, or put 4.1 back to ' +
+      'PARTIAL and say why'
   );
 
   /* The copy, on the component and on every screen that hosts it.

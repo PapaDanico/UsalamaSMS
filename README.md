@@ -49,10 +49,11 @@ them — alongside a glossary, tutorials, FAQ, about, privacy and terms.
 
 **`/coverage` is the one to read before adopting anything.** It states,
 element by element against Annex 19's twelve, what is built here and
-what is only partial — and the figure it reports, **11 of 12**, is
+what is only partial — and the figure it reports, **12 of 12**, is
 computed from the same declaration the table renders rather than typed
-beside it. Ten elements are built and two are partial; a partial
-element counts a half, which is where the figure comes from.
+beside it. All twelve are built; the arithmetic still counts a partial
+element as a half, so the figure moves on its own if one ever goes
+back.
 
 That figure moved from 2.5 when `/sms` gave eight elements a
 server-held record, again when the register joined the indicators on
@@ -144,14 +145,14 @@ npm install
 npm run check          # prisma generate, typecheck, brand, assets, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:assets   # every file served from public/ is declared, with a ceiling
-npm run check:claims   # 103 assertions that the registries match the docs
+npm run check:claims   # 104 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm run check:authz    # no route shows a model to a role its own endpoint refuses
-npm test               # 798 unit tests
+npm test               # 812 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 7 checks across TWO versions — the PWA update path
-npm run test:integration   # 381 checks against a real Postgres
+npm run test:integration   # 385 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify

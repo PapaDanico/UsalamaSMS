@@ -693,12 +693,27 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   },
   {
     id: "1.5",
-    /* PARTIAL for the same reason: the CONTROL is here and the
-       documents are not. Reference, version, approver and review date
-       are what document control means as a discipline, and they are the
-       part an audit checks. The product is not a document store, and
-       claiming the element outright would say it was. */
-    state: "PARTIAL",
+    /* BUILT, and it was PARTIAL until the documents themselves could be
+       held. The note used to say "the product is not a document store,
+       and claiming the element outright would say it was" — which was
+       true for as long as an inspector asking to see revision 3 was
+       sent to a shared drive the register could not vouch for.
+
+       The register now holds the file, with a server-computed sha256
+       re-checked on every read, an allowlisted content type, and a
+       filename built from the reference and revision rather than from
+       anything a caller supplied. A revision is immutable by
+       construction — the unique key is (org, reference, version) — so
+       the bytes cannot change under a revision somebody has already
+       acknowledged.
+
+       A row may still carry no file. A register entry for a manual held
+       elsewhere is a true register entry, and refusing one would push
+       an operator's real revisions out of the register rather than into
+       it — so the route answers 409 and SAYS the document is held
+       elsewhere, rather than 404, which would suggest the entry itself
+       was missing. */
+    state: "BUILT",
     serverRoutes: ["/api/v1/sms/documents"],
     has:
       "A controlled document register — reference, revision, approver, review date \u2014 " +
@@ -945,12 +960,27 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
   },
   {
     id: "4.1",
-    /* PARTIAL. The RECORD is here — who was trained, in what, when, and
-       when it lapses, with a frontline reporter seeing their own row
-       and nobody else's. What is not here is the part that makes a
-       training matrix useful, which is being told before the expiry
-       rather than after it. */
-    state: "PARTIAL",
+    /* BUILT. The note used to end "what is not here is the part that
+       makes a training matrix useful, which is being told before the
+       expiry rather than after it" — and that was the whole of the
+       gap. A safety manager told on the 2nd that a licence lapsed on
+       the 1st has been told about a grounding, not about a renewal.
+
+       Every record now carries a standing — CURRENT, DUE_SOON, LAPSED
+       or NO_EXPIRY — computed on read rather than stored, so there is
+       no nightly job whose failure silently leaves a matrix saying
+       yesterday's answer.
+
+       NINETY DAYS, not the seven a corrective action uses. Training is
+       a course somebody has to find, book, travel to and sit, and some
+       of it is sat abroad; a week's notice of a course that runs
+       quarterly is notice of nothing.
+
+       NO_EXPIRY IS ITS OWN ANSWER rather than being folded into
+       CURRENT — a row with no expiry date is either an induction that
+       genuinely never lapses or one somebody left incomplete, and
+       reporting it as current would make the second invisible. */
+    state: "BUILT",
     serverRoutes: ["/api/v1/sms/training", "/api/v1/digest"],
     has:
       "A training matrix: person, course, completion and expiry, with each person's own " +

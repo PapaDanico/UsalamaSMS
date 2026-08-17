@@ -40,8 +40,13 @@ the same discipline as the twenty-six RLS advisor notices in
 
 ## 1. ICAO Annex 19 — the twelve elements
 
-**10 built, 2 partial. Coverage 11 of 12**, computed as
+**12 built, 0 partial. Coverage 12 of 12**, computed as
 `built + partial/2` in `coverageSummary()`, never typed.
+
+1.5 and 4.1 were the last two. 1.5 gained the document itself — the
+register held the control and not the file, so "show me revision 3"
+went to a shared drive. 4.1 gained the warning BEFORE expiry, delivered
+by the daily digest rather than shown to whoever opens the screen.
 
 | # | Element | State | The gap |
 |---|---|---|---|
