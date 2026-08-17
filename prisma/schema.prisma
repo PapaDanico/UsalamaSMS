@@ -775,6 +775,28 @@ model Spi {
   // and a required target is how indicators go untracked.
   target       Float?
   owner        String
+  /// WHICH NATIONAL HIGH-RISK CATEGORY THIS INDICATOR BEARS ON, if any.
+  ///
+  /// Amendment 2 makes the link between an operator's indicators and
+  /// the State's safety plan the substance of performance-based
+  /// oversight rather than a courtesy. Kenya's NASP names six HRCs and
+  /// lists the indicators it counts under each; an operator filing a
+  /// number that lands in the same row as the national one can be read
+  /// side by side with it, and one that invents its own measure cannot.
+  ///
+  /// NULLABLE, AND IT STAYS NULLABLE. An operator's indicators are
+  /// theirs to choose — nothing in Kenya's plan is a requirement placed
+  /// on them, and `NASP_CAVEAT` says so on the screen. A required
+  /// column here would be this product inventing an obligation the
+  /// State did not make, and would force every existing indicator to
+  /// claim a category somebody never picked.
+  ///
+  /// A CODE FROM `HRC_CATEGORIES`, not free text, so the rollup cannot
+  /// be defeated by spelling. Not an enum in the database: the list is
+  /// declared once in taxonomy.ts and an enum here would be a second
+  /// copy that drifts — which is exactly how `LOC_I` and the plan's
+  /// `LOC-I` came to disagree.
+  hrc          String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

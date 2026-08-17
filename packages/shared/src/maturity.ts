@@ -860,7 +860,7 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        gap in the element. */
     state: "BUILT",
 
-    serverRoutes: ["/api/v1/spi", "/api/v1/picture"],
+    serverRoutes: ["/api/v1/spi", "/api/v1/ssp", "/api/v1/picture"],
     has:
       "Safety performance indicators with targets, and alert levels computed from " +
       "the operator's own baseline at one, two and three standard deviations, with " +

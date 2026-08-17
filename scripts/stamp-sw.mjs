@@ -2079,7 +2079,31 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    never buy anything, and it is the best-performing thing in this
    product. This is the same shape aimed at the same buyer, on the one
    workflow no competitor covers for a Kenyan operator. */
-const BUDGET = { entry: 224 * 1024, js: 602 * 1024, css: 80 * 1024 };
+/* TOTAL 602 -> 606 KB, for the SSP rollup. ENTRY effectively unmoved
+   (216.2 -> 216.3, one route registration), CSS unmoved — the section
+   is built from .picture-list and .badge, which already had rules.
+
+   Amendment 2 turns the link between an operator's indicators and the
+   State Safety Programme from good practice into the substance of
+   performance-based oversight. Kenya's NASP names six High-Risk
+   Categories; /toolkits/spi now answers, from the operator's own
+   record, which of the six they can currently speak to.
+
+   THE WEIGHT IS ON THE INDICATOR SCREEN RATHER THAN A NEW ROUTE, and
+   that was the cheaper AND the better call. A seventh toolkit would
+   have cost a menu entry, a hint, a blurb, an a11y sweep and a
+   symmetry sweep — and it would have put the national comparison
+   somewhere other than where an operator manages the indicators it is
+   comparing.
+
+   WHAT IT REFUSES TO RENDER IS THE PART THAT COST DESIGN TIME. No
+   score, no percentage, no "4 of 6": not every category applies to
+   every operator, and a Wilson charter with no night operations has a
+   defensible reason to measure four. Rendering that as 67% would tell
+   their regulator they are a third non-compliant. tests/ssp.test.ts
+   asserts the shape has no score field, so somebody adding one has to
+   argue for it rather than ship it. */
+const BUDGET = { entry: 224 * 1024, js: 606 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

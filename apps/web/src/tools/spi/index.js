@@ -69,6 +69,7 @@ import {
   rate
 } from '../../../../../packages/shared/src/spi.ts';
 import { SAFETY_ROLES } from '../../../../../packages/shared/src/posts.ts';
+import { NASP_HIGH_RISK } from '../../../../../packages/shared/src/taxonomy.ts';
 import {
   REACHABLE_NASP_INDICATORS,
   NASP_CAVEAT,
@@ -96,6 +97,12 @@ function normalise(raw_) {
     direction: raw_.direction === 'HIGHER_IS_BETTER' ? 'HIGHER_IS_BETTER' : 'LOWER_IS_BETTER',
     target: Number.isFinite(Number(raw_.target)) ? Number(raw_.target) : undefined,
     owner: String(raw_.owner ?? ''),
+    /* Kept only when it is a category the taxonomy actually names. A
+       value that survives a round trip through localStorage and no
+       longer matches the list would group into a category of its own
+       in the rollup — a gap that reads as a gap in the operator's SMS
+       rather than in a stale string. */
+    hrc: NASP_HIGH_RISK.some((c) => c.code === raw_.hrc) ? raw_.hrc : null,
     periods: Array.isArray(raw_.periods)
       ? raw_.periods
           .filter((p) => p && typeof p === 'object')
@@ -172,6 +179,7 @@ const fromServer = (indicators) =>
       direction: i.direction,
       target: i.target ?? undefined,
       owner: i.owner,
+      hrc: i.hrc ?? null,
       periods: i.periods ?? []
     })
   );
@@ -404,6 +412,13 @@ export function render(outlet) {
           <div id="spi-list"></div>
         </section>
 
+        <section class="doc-section" id="national">
+          <h2>What your State is counting</h2>
+          <div class="card" id="ssp-rollup">
+            <p class="hint">Reading your indicators against the national plan…</p>
+          </div>
+        </section>
+
         <section class="doc-section" id="new">
           <h2>Add an indicator</h2>
 
@@ -487,6 +502,19 @@ export function render(outlet) {
               otherLabel: 'Another post…',
               otherPlaceholder: 'The post, as your organisation names it'
             })}
+
+            ${Select({
+              name: 'hrc',
+              label: 'National high-risk category',
+              placeholder: 'Not tied to one',
+              options: NASP_HIGH_RISK.map((c) => ({ value: c.code, label: c.label }))
+            })}
+            <p class="field-hint">
+              Optional, and deliberately so. Tagging an indicator with one of the six
+              categories Kenya's plan names lets your number be read beside the national
+              one. Leaving it blank is a legitimate answer — an indicator you keep for
+              your own reasons is still safety performance management.
+            </p>
 
             <button type="submit" class="btn btn-primary btn-block">Add the indicator</button>
             <p class="field-error" id="spi-error" role="status" aria-live="polite"></p>
@@ -643,6 +671,9 @@ export function render(outlet) {
           direction: f.direction.value,
           target: target === '' ? undefined : Number(target),
           owner,
+          /* Empty select means "not tied to one", which is a real
+             answer rather than a missing one — see the field hint. */
+          hrc: f.hrc.value || null,
           periods: []
         })
       ]
@@ -659,7 +690,8 @@ export function render(outlet) {
       per: added.per,
       direction: added.direction,
       ...(added.target === undefined ? {} : { target: added.target }),
-      owner: added.owner
+      owner: added.owner,
+      hrc: added.hrc
     }).then((r) => {
       if (r.ok && r.data?.indicator?.id) {
         /* Adopt the server's id. The local one was minted from a clock
@@ -838,6 +870,86 @@ export function render(outlet) {
        than the top of a form that is now partly filled. */
     (unit ? form.querySelector('[name="target"]') : form.querySelector('[name="exposureUnit"]'))?.focus();
   });
+
+  /* ------------------------------------------------------------
+     THE NATIONAL ROLLUP, PAINTED FROM THE SERVER.
+
+     Computed on the API rather than here, and that is an authorisation
+     decision rather than a performance one: the rollup counts reports
+     tagged with each category, and report tags sit behind
+     `report.read.org`. Computing it in the browser would mean shipping
+     those counts to anybody who can open this screen.
+
+     THE STANDINGS ARE THE SERVER'S WORDS, INCLUDING THE CAVEAT. A row
+     with nothing behind it says what it does NOT mean — "that is a
+     statement about your records, not about your operation" — and that
+     sentence lives beside the arithmetic in ssp.ts so two surfaces
+     cannot render the same standing with different warnings. This is
+     the page an operator shows to a regulator; an unqualified zero on
+     it understates their position using their own product.
+
+     NO SCORE IS RENDERED because none is returned. See ssp.ts. */
+  const STANDING_BADGE = { MEASURED: 'SAFE', REPORTED: 'CAUTION', UNSEEN: 'NEUTRAL' };
+  const STANDING_LABEL = {
+    MEASURED: 'measured',
+    REPORTED: 'reported, not measured',
+    UNSEEN: 'nothing tagged'
+  };
+
+  const paintRollup = async () => {
+    const slot = outlet.querySelector('#ssp-rollup');
+    if (!slot) return;
+    let data = null;
+    try {
+      const res = await authFetch('/api/v1/ssp');
+      if (res.ok) data = await res.json();
+    } catch {
+      /* Falls through to the sentence below. */
+    }
+    if (!data) {
+      slot.innerHTML = html`<p class="hint">
+        The national comparison could not be read. That is not the same as your
+        indicators covering nothing — this section simply has no answer right now.
+      </p>`.toString();
+      return;
+    }
+    slot.innerHTML = html`
+      <p class="hint">${data.caveat}</p>
+      <ul class="picture-list">
+        ${data.rows.map(
+          (r) => html`<li class="picture-action">
+            <p class="picture-action__what">${r.label}</p>
+            <p class="picture-action__meta">
+              <span class="badge" data-status="${STANDING_BADGE[r.standing]}">
+                <span class="badge__label">${STANDING_LABEL[r.standing]}</span>
+              </span>
+              ${r.indicators.map((i) => html`<span>${i.name} · ${i.periods} periods</span>`)}
+              ${r.reports ? html`<span>${r.reports} tagged reports</span>` : ''}
+            </p>
+            ${r.meaning ? html`<p class="picture-action__note">${r.meaning}</p>` : ''}
+            ${r.standing === 'UNSEEN' && r.available.length
+              ? html`<p class="picture-action__note">
+                  The plan counts these here, and you could produce them:
+                  ${r.available.join('; ')}.
+                </p>`
+              : ''}
+          </li>`
+        )}
+      </ul>
+      ${data.ownIndicators
+        ? html`<p class="hint">
+            ${data.ownIndicators} of your indicators are not tied to a national
+            category. That is not a gap — an indicator you keep for your own reasons
+            is safety performance management.
+          </p>`
+        : ''}
+      ${data.withheld.length
+        ? html`<p class="hint">${data.withheld.join(' ')}</p>`
+        : ''}
+      <p class="footnote">${data.source}</p>
+    `.toString();
+  };
+  void paintRollup();
 
   outlet.querySelector('#spi-print').addEventListener('click', () => window.print());
 

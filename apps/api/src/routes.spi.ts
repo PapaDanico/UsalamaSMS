@@ -26,7 +26,9 @@
 // =====================================================================
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { can, type Permission } from "@usalamasms/shared";
+import { can, HRC_CATEGORIES, type Permission } from "@usalamasms/shared";
+import { rollUp, SSP_CAVEAT } from "../../../packages/shared/src/ssp";
+import { NASP_INDICATORS, NASP_SOURCE } from "../../../packages/shared/src/nasp";
 import { periodWindow } from "../../../packages/shared/src/spi";
 import { prisma, authenticate, appendAuditTx, tenantWhere , requireEntitlement } from "./core";
 
@@ -52,6 +54,24 @@ const IndicatorSchema = z.object({
   direction: z.enum(DIRECTIONS),
   target: z.number().finite().optional(),
   owner: z.string().trim().max(160).default(""),
+  /* WHICH NATIONAL HIGH-RISK CATEGORY THIS BEARS ON, if the operator
+     says it bears on one.
+
+     Validated against the taxonomy rather than accepted as free text,
+     because the rollup groups by this value and a typo would silently
+     put an indicator in a category of its own — a gap that reads as a
+     gap in the operator's SMS rather than in their spelling.
+
+     `.nullable()` as well as optional: clearing the tag on an existing
+     indicator has to be expressible, and an absent key would read as
+     "leave it alone". */
+  hrc: z
+    .string()
+    .refine((c) => HRC_CATEGORIES.some((h) => h.code === c), {
+      message: "hrc must be a category code from the taxonomy",
+    })
+    .nullable()
+    .optional(),
 });
 
 /* The response, and when it was taken. actionOn is optional and
@@ -134,6 +154,83 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return reply.send({ indicators });
+  });
+
+  /* =====================================================================
+     HOW THE OPERATOR'S INDICATORS ROLL UP TO KENYA'S NATIONAL PLAN.
+
+     Annex 19 Amendment 2 turns the SSP-to-SMS indicator link from good
+     practice into the substance of performance-based oversight. Kenya's
+     NASP names six High-Risk Categories; this answers, from the
+     operator's own record, which of the six they can currently speak
+     to.
+
+     TWO MODELS, TWO PERMISSIONS, AND CLAUDE.md RECORDS WHY. `/picture`
+     gated once at the door and for one commit disclosed an audit
+     finding to a role that its own endpoint answers 403 for. A rollup
+     reads like arithmetic rather than like a read of the underlying
+     table, which is exactly what makes it the easy place to lose the
+     rule.
+
+       Spi           `spi.read`         — the same gate /api/v1/spi uses
+       SafetyReport  `report.read.org`  — the same gate /api/v1/reports uses
+
+     AND A CALLER WHO MAY NOT READ REPORTS IS TOLD SO. Silently passing
+     an empty tag count would render every category the operator is not
+     measuring as UNSEEN — "nothing is tagged here" — when the tags
+     exist and the reader simply cannot see them. On the one screen an
+     operator shows to a regulator, that understates their position
+     using their own product.
+     ===================================================================== */
+  app.get("/api/v1/ssp", limited, async (req, reply) => {
+    const auth = req.auth!;
+    if (!guard(auth.role, "spi.read")) return reply.code(403).send({ error: "forbidden" });
+
+    const indicators = await prisma.spi.findMany({
+      where: tenantWhere(req),
+      take: LIST_LIMIT,
+      select: { name: true, hrc: true, periods: { select: { id: true }, take: LIST_LIMIT } },
+    });
+
+    const withheld: string[] = [];
+    const reportsByHrc: Record<string, number> = {};
+
+    if (guard(auth.role, "report.read.org")) {
+      /* THE TAGS ONLY — not the title, not the narrative. A rollup
+         needs to know how many reports carry a category, and nothing
+         about what any of them says. Selecting the narrative here and
+         counting it would put confidential text into a response that
+         had no use for it. */
+      const tagged = await prisma.safetyReport.findMany({
+        /* RETRACTED REPORTS DO NOT COUNT, and the gate caught this
+           before it shipped. A retraction is a tombstone — the row
+           stays so the audit chain is unbroken, and it stops counting.
+           Including them here would tell a regulator that an operator
+           is seeing events in a category on the strength of reports
+           that operator has withdrawn, on the one screen built to be
+           shown to that regulator. */
+        where: { ...tenantWhere(req), retractedAt: null },
+        take: LIST_LIMIT,
+        select: { hrcTags: true },
+      });
+      for (const r of tagged) {
+        for (const tag of r.hrcTags) {
+          reportsByHrc[tag] = (reportsByHrc[tag] ?? 0) + 1;
+        }
+      }
+    } else {
+      withheld.push(
+        "Counts of reports tagged against each category — these need report access. " +
+          "A category shown as unseen may only be unseen by you.",
+      );
+    }
+
+    return reply.send({
+      ...rollUp(HRC_CATEGORIES, NASP_INDICATORS, indicators, reportsByHrc),
+      caveat: SSP_CAVEAT,
+      source: NASP_SOURCE,
+      withheld,
+    });
   });
 
   app.post("/api/v1/spi", paid, async (req, reply) => {
