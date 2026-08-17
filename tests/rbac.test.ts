@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { RoleEnum, type Role } from "../packages/shared/src/index";
 import {
-  can, mayCreateRole, NARRATIVE_PERMISSIONS,
+  can, mayCreateRole, mayResetCredential, readsNarrative, NARRATIVE_PERMISSIONS,
 } from "../packages/shared/src/permissions";
 
 
@@ -70,5 +70,83 @@ describe("mayCreateRole", () => {
     const holders = RoleEnum.options.filter((r) => can(r, "user.manage"));
     expect(holders.length).toBeGreaterThan(0);
     expect(holders).toContain("ACCOUNTABLE_EXECUTIVE");
+  });
+});
+
+/* =====================================================================
+   AND WHO MAY RESET WHOM, which is the same escalation through a door
+   that predates the rule above.
+
+   These assertions are the CHEAP half. The expensive half — the one
+   that actually catches a regression — is
+   `tests/integration/reset-escalation.integration.test.ts`, which runs
+   the four requests over HTTP. A predicate can be perfect and never be
+   called: that is exactly what happened to `mayCreateRole`, which had
+   six green unit tests against a route that did not invoke it.
+   ===================================================================== */
+describe("who may reset whose credential", () => {
+  it("REFUSES AN ADMINISTRATOR THE ACCOUNTS THAT READ NARRATIVES", () => {
+    /* The reset RETURNS the password, so this is not "may I help them
+       back in" — it is "may I sign in as them". */
+    for (const target of RoleEnum.options) {
+      if (!readsNarrative(target)) continue;
+      expect(
+        mayResetCredential("SYSTEM_ADMIN", target),
+        `SYSTEM_ADMIN could reset ${target}, which reads narratives`,
+      ).toBe(false);
+    }
+  });
+
+  it("AND SOME ROLE ACTUALLY READS ONE, so that is not a loop over nothing", () => {
+    /* The assertion above is green if NARRATIVE_PERMISSIONS is ever
+       emptied, or if no role holds any of them. */
+    const readers = RoleEnum.options.filter(readsNarrative);
+    expect(NARRATIVE_PERMISSIONS.size).toBeGreaterThan(0);
+    expect(readers).toContain("SAFETY_MANAGER");
+    expect(readers).toContain("ACCOUNTABLE_EXECUTIVE");
+    expect(readers).not.toContain("SYSTEM_ADMIN");
+  });
+
+  it("but lets it reset the accounts that read none, so the role still works", () => {
+    expect(mayResetCredential("SYSTEM_ADMIN", "SYSTEM_ADMIN")).toBe(true);
+    expect(mayResetCredential("SYSTEM_ADMIN", "REGULATOR_INSPECTOR")).toBe(true);
+  });
+
+  it("and lets the accountable executive reset the safety office", () => {
+    /* The path that keeps this from being a lockout. The executive
+       reads org narratives already, so a credential for somebody who
+       also reads them grants nothing new. */
+    expect(mayResetCredential("ACCOUNTABLE_EXECUTIVE", "SAFETY_MANAGER")).toBe(true);
+    expect(mayResetCredential("ACCOUNTABLE_EXECUTIVE", "SAFETY_OFFICER")).toBe(true);
+    expect(mayResetCredential("ACCOUNTABLE_EXECUTIVE", "INVESTIGATOR")).toBe(true);
+  });
+
+  it("refuses PLATFORM_ADMIN as a target to everybody", () => {
+    for (const r of RoleEnum.options) {
+      expect(mayResetCredential(r, "PLATFORM_ADMIN"), `${r} could reset the supplier`).toBe(false);
+    }
+  });
+
+  it("refuses every role that does not hold user.manage", () => {
+    for (const r of RoleEnum.options) {
+      if (can(r, "user.manage")) continue;
+      expect(mayResetCredential(r, "FRONTLINE"), `${r} could reset a credential`).toBe(false);
+    }
+  });
+
+  it("AGREES WITH mayCreateRole ON EVERY PAIR, because it is the same escalation", () => {
+    /* The two doors share `readsNarrative` so they cannot drift apart
+       about what a narrative role is. If somebody later adds a
+       condition to one, this fails and makes them decide whether it
+       belongs on both — rather than leaving the weaker door open,
+       which is how this finding happened in the first place. */
+    for (const actor of RoleEnum.options) {
+      for (const target of RoleEnum.options) {
+        expect(
+          mayResetCredential(actor, target),
+          `${actor} -> ${target} disagrees between creating and resetting`,
+        ).toBe(mayCreateRole(actor, target));
+      }
+    }
   });
 });

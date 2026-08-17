@@ -256,6 +256,10 @@ export const NARRATIVE_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission
  * A tenant that could mint a platform administrator would be a tenant
  * that could read the other tenants.
  */
+export function readsNarrative(role: Role): boolean {
+  return [...NARRATIVE_PERMISSIONS].some((p) => can(role, p));
+}
+
 export function mayCreateRole(creator: Role, target: Role): boolean {
   /* Never, from inside an operator. The vendor's own account is made
      out of band by `npm run seed:platform-admin`. */
@@ -263,10 +267,72 @@ export function mayCreateRole(creator: Role, target: Role): boolean {
 
   if (!can(creator, "user.manage")) return false;
 
-  const holds = (r: Role) =>
-    [...NARRATIVE_PERMISSIONS].some((p) => can(r, p));
+  if (!readsNarrative(creator) && readsNarrative(target)) return false;
 
-  if (!holds(creator) && holds(target)) return false;
+  return true;
+}
+
+/**
+ * MAY THIS ROLE RESET THE CREDENTIAL OF AN ACCOUNT HOLDING THAT ONE?
+ *
+ * ---------------------------------------------------------------
+ * THE SAME ESCALATION, THROUGH A DOOR THAT PREDATES THE RULE ABOVE.
+ *
+ * `mayCreateRole` closes the mint-yourself-an-eye path, and the comment
+ * above it cites `/api/v1/auth/admin/reset-password` as the place the
+ * distinction is already respected — "being able to restore somebody's
+ * access is not being able to read what they filed in confidence".
+ *
+ * That sentence was false about the route it pointed at. The reset
+ * RETURNS the new password, because there is no mail path to send it
+ * down and an administrator has to be able to hand it over. So the
+ * administrator ends up holding a working credential for the account it
+ * just reset, and the sequence is the create-path breach with one step
+ * removed — no account even has to be created. It was measured over
+ * HTTP rather than argued:
+ *
+ *   SYSTEM_ADMIN, own token,   GET /api/v1/export -> 403
+ *   POST /api/v1/auth/admin/reset-password        -> 200, password returned
+ *   POST /api/v1/auth/login as the safety manager -> 200, role SAFETY_MANAGER
+ *   SAFETY_MANAGER token,      GET /api/v1/export -> 200, narratives in the body
+ *
+ * `/api/v1/export` is the whole safety record, and `org.export` is a
+ * permission `SYSTEM_ADMIN` does not hold under any reading of the
+ * matrix. It held it four requests later.
+ *
+ * ---------------------------------------------------------------
+ * WHY THIS IS NOT `mayCreateRole` WITH THE ARGUMENTS RENAMED.
+ *
+ * It very nearly is, and the narrative half is shared deliberately —
+ * `readsNarrative` is one function so the two paths cannot drift into
+ * disagreeing about what a narrative role is. Two differences are real:
+ *
+ *   · RESETTING YOUR OWN ACCOUNT IS ALWAYS ALLOWED. A safety manager
+ *     is a narrative role and holds no `user.manage`, so the shared
+ *     rule would refuse them their own credential. The route handles
+ *     that case before it asks this question;
+ *   · PLATFORM_ADMIN is refused here as a target for defence in depth
+ *     rather than as the primary control. The vendor account lives in
+ *     the vendor's own org and the route's lookup is tenant-scoped, so
+ *     an operator cannot name it in the first place. If that scoping is
+ *     ever loosened this line is what is left.
+ *
+ * ---------------------------------------------------------------
+ * IT IS NOT A LOCKOUT, AND THAT WAS CHECKED RATHER THAN ASSUMED.
+ *
+ * A safety manager who forgets their password keeps two routes back in:
+ * `/api/v1/auth/forgot`, which is self-service and needs mail
+ * configured, and an `ACCOUNTABLE_EXECUTIVE`, who holds `user.manage`
+ * and reads org narratives and is therefore permitted here. What is
+ * removed is the technical administrator's ability to do it — which is
+ * exactly the person Annex 19's protection provisions name.
+ */
+export function mayResetCredential(actor: Role, target: Role): boolean {
+  if (target === "PLATFORM_ADMIN") return false;
+
+  if (!can(actor, "user.manage")) return false;
+
+  if (!readsNarrative(actor) && readsNarrative(target)) return false;
 
   return true;
 }

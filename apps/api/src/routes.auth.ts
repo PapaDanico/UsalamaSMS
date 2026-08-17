@@ -11,7 +11,7 @@ import { LoginSchema } from "@usalamasms/shared";
 import { SignupSchema } from "../../../packages/shared/src/signup";
 import { z } from "zod";
 import { PERMISSIONS, RoleEnum, type Role } from "@usalamasms/shared";
-import { mayCreateRole } from "../../../packages/shared/src/permissions";
+import { mayCreateRole, mayResetCredential } from "../../../packages/shared/src/permissions";
 
 /* THE SAME SHAPE THE CONSOLE ISSUES, so a credential from either path
    reads identically to whoever receives it. Duplicated deliberately
@@ -749,12 +749,25 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           share this database, and an admin of one resetting an account
           in the other is the worst breach this product could have.
 
-       3. THE ADMIN STILL CANNOT READ A REPORT. SYSTEM_ADMIN holds
-          user.manage and org.manage and NO narrative permission — see
-          the note beside NARRATIVE_PERMISSIONS. Being able to restore
-          somebody's access is not being able to read what they filed in
-          confidence, and this route does not quietly become the way
-          around that.
+       3. THE ADMIN STILL CANNOT READ A REPORT — WHICH THIS ROUTE USED
+          TO ASSERT AND NOT ENFORCE. The claim was that being able to
+          restore somebody's access is not being able to read what they
+          filed, and that this route "does not quietly become the way
+          around that". It was the way around it. The new password is
+          RETURNED, because there is no mail path to send it down, so
+          the administrator finishes the request holding a working
+          credential for the account it just reset. Measured over HTTP:
+
+            SYSTEM_ADMIN own token, GET /api/v1/export -> 403
+            POST this route                           -> 200 + password
+            POST /api/v1/auth/login as the target     -> 200, role SAFETY_MANAGER
+            that token,             GET /api/v1/export -> 200, narratives
+
+          `mayResetCredential` now refuses it, sharing `readsNarrative`
+          with `mayCreateRole` so the two administrative doors cannot
+          drift apart about what a narrative role is. The safety manager
+          still gets back in through `/api/v1/auth/forgot` or through
+          the accountable executive, who reads narratives already.
 
      The new password is returned ONCE, in the response, for the admin
      to hand over. It is never stored in the clear and never logged: the
@@ -779,6 +792,35 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         select: { id: true, email: true, role: true },
       });
       if (!target) return reply.code(404).send({ error: "user_not_found" });
+
+      /* NO SELF-RESET EXEMPTION HERE, AND THE FIRST DRAFT HAD ONE.
+         It read `target.id !== req.auth!.sub &&`, to stop the rule
+         refusing a safety manager their own credential — and it could
+         not fire. This route's preHandler demands `user.manage`, so a
+         safety manager never reaches the handler; and every role that
+         does reach it is permitted against itself anyway, because the
+         rule compares narrative access and a role always matches
+         itself. A branch that cannot execute reads as protection and
+         is not, which is the objection this repository keeps meeting.
+
+         Somebody resetting their OWN password does it at
+         `/api/v1/auth/password` while signed in, or
+         `/api/v1/auth/forgot` when they are not. */
+      if (!mayResetCredential(req.auth!.role as never, target.role as never)) {
+        return reply.code(403).send({
+          error: "reset_not_permitted",
+          /* NAMED rather than "forbidden". An administrator looking at
+             a list of their own colleagues needs to know this is a rule
+             and not a malfunction, and needs to know who to ask. */
+          message:
+            target.role === "PLATFORM_ADMIN"
+              ? "That account belongs to the supplier of this product."
+              : "Your role cannot reset an account that reads safety narratives — " +
+                "a reset hands you a working password for it. The accountable " +
+                "executive can, and they can also reset it themselves from the " +
+                "sign-in screen.",
+        });
+      }
 
       /* 18 bytes of base64url — comfortably past the 12 characters
          LoginSchema demands, and generated here rather than chosen, so
