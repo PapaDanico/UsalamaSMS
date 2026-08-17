@@ -982,6 +982,139 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  /* =====================================================================
+     SOMEBODY LEAVES, AND UNTIL NOW NOTHING COULD SAY SO.
+
+     `User.active` has been in the schema since the first migration and
+     is checked in four places — login, refresh, forgot and reset all
+     refuse an inactive account. Nothing in the product ever set it
+     false. So an operator could hire, and could not offboard: a pilot
+     who left last month kept a working sign-in to the safety record of
+     the operator they left, and the only routes available were deleting
+     the row — which the schema refuses, see the note on AuditLog.userId
+     — or an UPDATE by hand against production.
+
+     ---------------------------------------------------------------
+     DEACTIVATION, NOT DELETION, AND THE SCHEMA ENFORCES IT.
+
+     `AuditLog.userId` is `onDelete: Restrict` because it used to be
+     SetNull, and offboarding therefore rewrote the hashed content of
+     every audit row naming the departing person — the chain reported
+     itself altered, which to a regulator reading it is indistinguishable
+     from a chain that was. The row stays; the access ends.
+
+     ---------------------------------------------------------------
+     THE WINDOW IS FIFTEEN MINUTES AND THE RESPONSE SAYS SO.
+
+     `authenticate` verifies a signature and does not re-read the user,
+     so an access token already issued keeps working until it expires —
+     ENV.ACCESS_TTL, fifteen minutes. Revoking the refresh tokens is what
+     bounds it: without that the holder renews indefinitely and
+     deactivation ends nothing, which is the same objection the password
+     reset above records. Reporting "signed out" while a token is live
+     for another quarter of an hour would be the quiet-failure shape, so
+     the answer names the bound instead.
+
+     ---------------------------------------------------------------
+     TWO REFUSALS, AND BOTH ARE ABOUT BEING ABLE TO UNDO IT.
+
+     Deactivating YOURSELF is refused: on an operator with one
+     administrator it is a one-way door, and the person walking through
+     it is the person who would have to open it again. Deactivating the
+     LAST ACTIVE ACCOUNTABLE EXECUTIVE is refused for a larger reason —
+     that role signs the safety policy, and since the escalation rule
+     above it is also the only role that can reset a safety manager's
+     credential. An operator with none has no way to appoint one, and
+     `mayCreateRole` will not let an administrator mint the replacement.
+     ===================================================================== */
+  app.post<{ Params: { id: string }; Body: { active?: unknown } }>(
+    "/api/v1/users/:id/active",
+    {
+      preHandler: [authenticate, requirePermission("user.manage")],
+      config: { rateLimit: { max: 20, timeWindow: "15 minutes" } },
+    },
+    async (req, reply) => {
+      const auth = req.auth!;
+      if (typeof req.body?.active !== "boolean") {
+        return reply.code(400).send({ error: "active_required" });
+      }
+      const active = req.body.active;
+
+      /* Scoped in the WHERE, not fetched and then checked — the reset
+         route records why, and the reason is the same one. */
+      const target = await prisma.user.findFirst({
+        where: { id: req.params.id, orgId: auth.org },
+        select: { id: true, email: true, name: true, role: true, active: true },
+      });
+      if (!target) return reply.code(404).send({ error: "user_not_found" });
+
+      if (target.id === auth.sub && !active) {
+        return reply.code(409).send({
+          error: "cannot_deactivate_self",
+          message:
+            "You cannot deactivate your own account — nobody would be left to " +
+            "reactivate it. Ask a colleague who manages accounts.",
+        });
+      }
+
+      if (!active && target.role === "ACCOUNTABLE_EXECUTIVE") {
+        const others = await prisma.user.count({
+          where: {
+            orgId: auth.org, role: "ACCOUNTABLE_EXECUTIVE",
+            active: true, id: { not: target.id },
+          },
+        });
+        if (others === 0) {
+          return reply.code(409).send({
+            error: "last_accountable_executive",
+            message:
+              "This is the only active accountable executive. That role signs the " +
+              "safety policy and is the only one that can reset the safety office's " +
+              "credentials. Appoint the replacement first, then deactivate this one.",
+          });
+        }
+      }
+
+      /* IDEMPOTENT, AND IT SAYS WHICH IT WAS. Repeating the request is
+         harmless, and an audit entry per click would make the chain
+         report activity that did not happen. */
+      if (target.active === active) {
+        return { id: target.id, active, changed: false };
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({ where: { id: target.id }, data: { active } });
+
+        if (!active) {
+          await tx.refreshToken.updateMany({
+            where: { userId: target.id, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+        }
+
+        await appendAuditTx(tx, {
+          orgId: auth.org,
+          userId: auth.sub,
+          action: active ? "user.reactivated" : "user.deactivated",
+          entityType: "User",
+          entityId: target.id,
+          detail: { targetEmail: target.email, targetRole: target.role },
+        });
+      });
+
+      return {
+        id: target.id,
+        active,
+        changed: true,
+        note: active
+          ? "They can sign in again with the password they had. If it is lost, reset it."
+          : "Signed out of every device, and no new session can be started. A session " +
+            "opened in the last 15 minutes stays valid until it expires. Their reports, " +
+            "and every audit entry naming them, are untouched.",
+      };
+    },
+  );
+
   /* The team, so the screen that creates people can show who exists.
      No narrative, no password, no hash — a name, an address and a
      role. Reading who works here is not reading what they filed. */
