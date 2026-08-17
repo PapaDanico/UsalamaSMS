@@ -2323,6 +2323,17 @@ html { scroll-padding-top: var(--us-chrome); }
   max-width: 68ch;
 }
 
+/* The second line of a barrier row: what kind of defence it is, how
+   late, who holds it. Muted and smaller than the barrier itself, on its
+   own line, because the barrier is the finding and this is the
+   qualification of it. */
+.barrier__meta {
+  display: block;
+  margin-top: var(--us-space-1);
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+}
+
 /* THE ONE PLACE THE ACCENT IS SPENT. It is a rule and a tint, not a
    fill: the panel holds sentences, and body text on a saturated ground
    is harder to read exactly when somebody is reading carefully. */

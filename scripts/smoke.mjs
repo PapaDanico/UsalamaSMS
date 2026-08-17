@@ -4348,6 +4348,180 @@ try {
     assert(faults.length === 0, faults.join('\n         '));
   });
 
+  await check('BARRIER HEALTH SAYS HOW MUCH OF ITSELF IT COULD PLACE', async () => {
+    /* THE ONE THING ON THIS SECTION THAT CAN GO QUIETLY WRONG.
+
+       Barrier health reads six records — overdue mitigations, register
+       review dates, training currency, change closeout, audit findings
+       and crossing indicators — and groups them against Kenya's six
+       national high-risk categories. But `hrcTags` lives on
+       SafetyReport and on NO OTHER MODEL, so only the findings that
+       trace back to a report can be placed at all. Four of the six
+       sources cannot reach a category by any path in the schema.
+
+       So the section renders a number computed from a FRACTION of the
+       evidence, and everything rests on it saying which fraction. Drop
+       that sentence and the screen still renders, still looks
+       authoritative, and now implies that "Bird strike: 2" is the
+       total. Nothing else in the build compares what a dashboard claims
+       to what it could actually see.
+
+       THE SECOND HALF IS THAT UNPLACEABLE FINDINGS STILL APPEAR. If the
+       per-category grouping ever becomes the only list, a training
+       lapse — which can never carry a category — vanishes from the
+       screen entirely while remaining in the total above it.
+
+       ASSERTED AGAINST A WELL-FORMED BODY, which is the shape no other
+       assertion in this file supplies for this route. The refusal check
+       above stubs a 503 and a `{}`; both are answered before the panel
+       is reached, so neither has ever executed a line of it.
+
+       Service workers blocked so the stub is reached. */
+    const bare = await browser.newContext({
+      viewport: { width: 1024, height: 900 },
+      serviceWorkers: 'block'
+    });
+    const probe = await bare.newPage();
+    let called = false;
+    let text = '';
+
+    /* Two findings, one placeable and one not — the smallest body that
+       can tell an honest section from a confident one. The training
+       lapse has no route to a category by construction. */
+    const BODY = {
+      window: { from: '2026-05-19T00:00:00.000Z', to: '2026-08-17T00:00:00.000Z', days: 90 },
+      reporting: {
+        count: 4, rate: null, note: 'Four reports in ninety days.',
+        queue: { total: 4, by: { SUBMITTED: 1, TRIAGED: 1, UNDER_INVESTIGATION: 0, ACTIONS_OPEN: 1, CLOSED: 1 } },
+        queueScope: 'all', trend: 'FLAT', months: [],
+        closure: { n: 1, median: 9, p90: 9, note: '' }, closureTruncated: false
+      },
+      register: {
+        open: { total: 1, by: { INTOLERABLE: 0, TOLERABLE: 1, ACCEPTABLE: 0 } },
+        overdueReview: 1, truncated: false, holderGaps: []
+      },
+      indicators: { total: 1, alerting: [] },
+      changes: { inEffectUnreviewed: 0 },
+      actions: { total: 2, outstanding: 1, overdue: 1, undated: 0, awaitingVerification: 0, truncated: false },
+      barriers: {
+        total: 2,
+        byKind: { MITIGATION: 1, CONTROL_REVIEW: 0, COMPETENCE: 1, CHANGE: 0, AUDIT: 0, PERFORMANCE: 0 },
+        kinds: {
+          MITIGATION: 'A mitigation that was agreed and is not in place',
+          CONTROL_REVIEW: 'A control nobody has re-checked since it was accepted',
+          COMPETENCE: 'A competence the operation relies on, expired',
+          CHANGE: 'A change assessed and never closed out',
+          AUDIT: 'A finding the operation admitted and has not closed',
+          PERFORMANCE: 'An indicator that has crossed its own alert level'
+        },
+        byHrc: [{ code: 'BWI', label: 'Bird or wildlife strike', count: 1 }],
+        attribution: 0.5,
+        unattributed: 1,
+        degraded: [
+          {
+            kind: 'MITIGATION', id: 'a1', what: 'Re-brief crews on the displaced threshold',
+            daysLate: 31, ownerPost: 'SAFETY_MANAGER', hrcs: ['BWI']
+          },
+          {
+            kind: 'COMPETENCE', id: 't1',
+            what: 'Dangerous goods awareness has expired for R. Otieno',
+            daysLate: 12, ownerPost: null, hrcs: []
+          }
+        ],
+        truncated: false
+      }
+    };
+
+    try {
+      await probe.goto(BASE + '/picture', { waitUntil: 'networkidle' });
+      await probe.route('**/api/v1/auth/refresh', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            accessToken: 'stub', refreshToken: 'stub2',
+            role: 'SAFETY_MANAGER', orgId: 'org-1'
+          })
+        })
+      );
+      await probe.route('**/api/v1/picture*', (r) => {
+        called = true;
+        return r.fulfill({
+          status: 200, contentType: 'application/json', body: JSON.stringify(BODY)
+        });
+      });
+      /* Everything else answers empty; the actions list degrades to its
+         own honest notice, which is not what this check is about. */
+      await probe.route('**/api/v1/actions*', (r) =>
+        r.fulfill({ status: 200, contentType: 'application/json', body: '{"actions":[]}' })
+      );
+      await probe.evaluate(() => {
+        localStorage.setItem(
+          'usalamasms.session',
+          JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-1' })
+        );
+        localStorage.setItem('usalamasms.refresh', 'not-a-real-token');
+      });
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      text = await probe.evaluate(() => document.body.innerText);
+    } finally {
+      await bare.close();
+    }
+
+    const faults = [];
+
+    /* THE VACUOUS-PASS GUARD. Every assertion below is a negative
+       search over page text, and a page that never rendered the section
+       — or never called the route at all — would satisfy none of them
+       by having no text to fail on. */
+    if (!called) {
+      faults.push(
+        'the stubbed /api/v1/picture was never called, so the panel never rendered ' +
+          'and this check tested nothing'
+      );
+    } else if (!/barrier health/i.test(text)) {
+      faults.push(
+        'the picture rendered from a well-formed body and has no barrier health ' +
+          'section at all — the section this check exists for is absent'
+      );
+    } else {
+      /* 1. THE ATTRIBUTION SENTENCE. */
+      if (!/1 of 2 could be placed against a category/i.test(text)) {
+        faults.push(
+          'the barrier section groups findings against high-risk categories without ' +
+            'saying how many of them it could place. It could place 1 of 2 — the rest ' +
+            'carry no path to a category — and a category count that does not say so ' +
+            'reads as the total'
+        );
+      }
+      if (!/50%/.test(text)) {
+        faults.push('the attribution share is not printed as a figure a reader can quote');
+      }
+
+      /* 2. AND THE UNPLACEABLE FINDING IS STILL ON THE SCREEN. */
+      if (!/Dangerous goods awareness has expired/i.test(text)) {
+        faults.push(
+          'a finding that can carry no high-risk category is counted in the total and ' +
+            'never shown — it exists only as an arithmetic difference, which is the ' +
+            'same as dropping it'
+        );
+      }
+
+      /* 3. A CATEGORY IS NAMED, NOT CODED. `BWI` is Kenya's own code
+         and it is on the wire; a dashboard that prints it raw is asking
+         an accountable executive to know the plan's abbreviations. */
+      if (!/bird or wildlife strike/i.test(text)) {
+        faults.push(
+          'the high-risk category is shown as its code rather than its name — the label ' +
+            'is on the wire and was not used'
+        );
+      }
+    }
+
+    assert(faults.length === 0, faults.join('\n         '));
+  });
+
   await check('THE QUEUE NEVER PASSES ONE HANDSET OFF AS THE OPERATOR', async () => {
     /* CHARTER RULE 8, ON THE SCREEN WHOSE JOB IS TO CARRY IT.
 
