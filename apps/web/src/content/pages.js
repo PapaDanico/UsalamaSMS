@@ -481,12 +481,68 @@ export const FAQ = {
         },
         {
           q: 'What does it cost?',
-          a: `<p>Pricing is not set, and this page will not invent a number to
-              look complete. The market position it is built for is below the
-              roughly $300 a month at which the cheapest established product
-              starts, because above that figure a six-turboprop operator in the
-              region is not a price-sensitive customer — it is a non-customer
-              running its SMS on paper.</p>`
+          a: `<p>Bands by the size of the operation, priced per operator and
+              published in full on the pricing page. What matters more than the
+              figure is the shape: this is billed <strong>per operator</strong>,
+              not per user.</p>
+              <p>The established products in this market charge per seat, per
+              month. A safety manager, two safety officers and an accountable
+              executive is four seats — and four seats at the going rate is
+              several times what a whole operator pays here. That is not a
+              discount on the same model; it is the reason a six-turboprop
+              operator can afford an SMS at all, because under per-seat pricing
+              the sensible move is to give one person the licence and have
+              everyone else email them, which is how reporting dies.</p>
+              <p>Every Annex 19 element is in every band. What changes with
+              price is the size of the operation, never the obligation.</p>`
+        },
+        {
+          q: 'We answer to KCAA. Does it do anything specifically for us?',
+          a: `<p>Yes, and it is the part no international product does. When the
+              Authority raises a Corrective Action Request, the corrective action
+              plan is composed from the record you already hold — the finding,
+              the action, the accountable post, the target date, and the SHA-256
+              of every file you are about to upload — in the order the ICAAS
+              portal asks for them, with a link straight to it.</p>
+              <p>It does not submit on your behalf and never says it has. There
+              is no ICAAS API; the manual describes a portal a person signs into.
+              You sign in, you raise the CAP, and you know that you did. An
+              operator who believed software had filed something with their
+              regulator, and then met an inspector who had never seen it, would
+              be worse off than one who had never used this at all.</p>
+              <p>The deadlines are Kenya's own — L.N. 32 of 2026's three
+              class-dependent clocks, not a flat 24 hours — and the high-risk
+              categories are the six the National Aviation Safety Plan names,
+              in the plan's own vocabulary rather than a near-miss of it.</p>`
+        },
+        {
+          q: 'Can we show a regulator how our indicators line up with the national plan?',
+          a: `<p>That is a question Amendment 2 makes sharper, and the answer is
+              on the safety performance screen. Each of the six national
+              high-risk categories shows what your own records can currently
+              speak to: an indicator with periods behind it, reports tagged but
+              nothing measuring them, or nothing at all.</p>
+              <p>It is deliberately not a score. Several categories may not apply
+              to your operation — a Wilson-based charter with no night operations
+              has a defensible reason to measure four of six — and rendering that
+              as a percentage would tell your regulator you are a third
+              non-compliant. Deciding which apply is your call to make and to
+              justify; this supplies the facts you make it with.</p>
+              <p>Where a category is empty, the screen says what that does
+              <em>not</em> mean. No tagged CFIT reports is a statement about your
+              records, not about your operation.</p>`
+        },
+        {
+          q: 'Can a reporter attach a photograph?',
+          a: `<p>Yes. A hazard report about a cracked bracket is worth a great
+              deal less than the photograph of the bracket. Files are held
+              against the report with a SHA-256 computed by the server and
+              re-checked on every read, so a file that changed between upload and
+              download is refused rather than served.</p>
+              <p>It works on a deploy with no object storage configured — the
+              bytes fall back to the database the API already holds — because a
+              feature that ships disabled until somebody sets a second credential
+              is a feature that ships disabled.</p>`
         },
         {
           q: 'Is it certified or approved by a civil aviation authority?',
