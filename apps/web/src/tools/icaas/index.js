@@ -62,6 +62,7 @@ import { html } from '../../shared/html.js';
 import { ToolNav } from '../../shared/tool-nav.js';
 import { attachPrintId } from '../../shared/print-id.js';
 import { isSignedIn, authFetch } from '../../shared/session.js';
+import { composeCap } from '../../../../../packages/shared/src/icaas.ts';
 
 const longDate = (iso) =>
   iso
@@ -223,6 +224,85 @@ function Empty(message) {
   </div>`;
 }
 
+/* ------------------------------------------------------------
+   THE WORKED EXAMPLE, AND WHY THIS PAGE NEEDED ONE.
+
+   This screen is in the public menu and in the footer, so somebody
+   with no account can land on it — and until now all they got was
+   "Nothing to compose. Sign in." The one thing this product does that
+   nothing else does for a Kenyan operator, described to the audience
+   that cannot see it. Compare /amendment, which answers a real
+   question for a visitor who will never buy anything; that page works
+   for exactly the reason this one did not.
+
+   COMPOSED THROUGH THE REAL composeCap(), NOT WRITTEN OUT. A hand-typed
+   "sample output" is a screenshot in prose: it goes stale the first
+   time the composer changes its mind, and it goes stale silently,
+   because nothing renders it. Running the fixture through the shipped
+   function means the example a prospect reads is the behaviour they
+   will get, or the page is wrong in a way a test can see.
+
+   IT IS DELIBERATELY MISSING ITS TARGET DATE. The temptation was to
+   show a perfect pack — every field filled, ready to submit. But the
+   thing worth proving to a safety manager is not that software can
+   copy fields across; it is that this one REFUSES TO INVENT THE FIELD
+   IT DOES NOT HAVE. An invented target date is one they would carry to
+   their regulator under their own signature. So the example shows the
+   composition AND the refusal, which is the whole argument in one
+   artifact.
+
+   AND IT MUST NEVER BE MISTAKEN FOR THE OPERATOR'S OWN RECORD. The
+   operator is fictional and named so, the block is labelled, and it
+   renders only where there is nothing real to show. A visitor
+   mistaking a demonstration for their own outstanding CAR is the one
+   failure this feature cannot have.
+   ------------------------------------------------------------ */
+const EXAMPLE_ACTION = Object.freeze({
+  id: 'example',
+  action:
+    'Re-brief all line crews on the displaced threshold at Wilson before ' +
+    'any further night operations, and record attendance.',
+  ownerPost: 'Safety Manager',
+  /* Absent on purpose — see above. */
+  dueOn: null,
+  finding: Object.freeze({
+    finding: 'Crews were not briefed on the displaced threshold in force since 12 June.',
+    auditRef: 'CAR-2026-014',
+  }),
+  attachments: Object.freeze([
+    Object.freeze({ label: 'Briefing sheet, signed', sha256: 'a'.repeat(64) }),
+  ]),
+});
+
+function Example() {
+  const pack = composeCap(EXAMPLE_ACTION);
+  return html`<div class="card" data-example>
+    <span class="eyebrow">Example — not your record</span>
+    <h2 class="section-title">What a pack looks like</h2>
+    <p class="hint">
+      A fictional operator, answering a fictional Corrective Action Request.
+      Everything below is composed from the record by the same code that
+      composes yours.
+    </p>
+    <dl class="deflist deflist--tight">
+      ${Field('CAR reference', pack.reference, '')}
+      ${Field('The finding', pack.finding, '')}
+      ${Field('Corrective action', pack.action, '')}
+      ${Field('Accountable post', pack.ownerPost, '')}
+      ${Field('Target date', longDate(pack.targetDate), 'not set on this example')}
+    </dl>
+    <h3 class="section-title">And what it will not do</h3>
+    <p class="hint">
+      This example has no target date, which is the point of showing it.
+      The pack names the gap and leaves it for a person to answer — it
+      does not put a plausible date in front of you to sign.
+    </p>
+    <ul data-example-missing>
+      ${pack.missing.map((m) => html`<li>${m}</li>`)}
+    </ul>
+  </div>`;
+}
+
 /* The one sentence that is true on every path, including the ones that
    compose nothing. Held here so the disclaimer cannot be present on the
    pack and missing from the screen somebody reaches first. */
@@ -243,6 +323,7 @@ export async function render(outlet) {
           'Sign in to compose a corrective action plan from a record your ' +
             'organisation already holds.'
         )}
+        ${Example()}
       </section>
     `.toString();
     return;
@@ -257,6 +338,7 @@ export async function render(outlet) {
           'A pack is composed from one corrective action. Open the risk picture ' +
             'and choose the action that answers the Authority’s request.'
         )}
+        ${Example()}
       </section>
     `.toString();
     return;

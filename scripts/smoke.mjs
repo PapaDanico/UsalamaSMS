@@ -5938,6 +5938,71 @@ try {
     }
   });
 
+  await check('THE KCAA PAGE SELLS ITSELF TO SOMEBODY WITH NO ACCOUNT', async () => {
+    /* This screen is in the public menu AND in the footer, so a visitor
+       with no account can land on it directly. It shipped showing them
+       "Nothing to compose. Sign in." — the one thing this product does
+       that nothing else does for a Kenyan operator, described to the
+       audience that cannot see it.
+
+       THE EXAMPLE IS COMPOSED BY composeCap(), NOT WRITTEN OUT, so what
+       a prospect reads is the behaviour they will get. This check
+       asserts the three things that make it worth having, and the third
+       is the one that rots quietly.  */
+    await page.goto(`${BASE}/toolkits/icaas`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(300);
+
+    const example = page.locator('[data-example]');
+    assert(
+      (await example.count()) === 1,
+      'a signed-out visitor gets no worked example, so the page describes nothing'
+    );
+
+    const text = (await example.textContent()) ?? '';
+
+    /* LABELLED, because a visitor mistaking a demonstration for their
+       own outstanding CAR is the one failure this cannot have. */
+    assert(
+      /not your record/i.test(text),
+      'the example is not labelled as an example'
+    );
+
+    /* IT REALLY RAN THE COMPOSER. A hand-typed sample would satisfy
+       everything above and go stale the first time composeCap changed
+       its mind. */
+    assert(
+      /CAR-2026-014/.test(text),
+      'the example does not show a composed CAR reference'
+    );
+
+    /* AND IT STILL MAKES ITS ARGUMENT — asserted against the COMPOSED
+       LIST, not against the page text.
+
+       THE FIRST VERSION OF THIS ASSERTION COULD NOT FAIL, and it is the
+       second time in one change that a check matched the prose
+       DESCRIBING a thing instead of the thing. It tested
+       /no target date/ against the whole block — and the explanatory
+       copy inside that block says "This example has no target date,
+       which is the point of showing it." So it matched the sentence,
+       not the output, and passed cleanly against a build where the
+       fixture HAD been given a date and composeCap was reporting
+       nothing missing at all. Mutation-checked, went green, and only
+       then was believed.
+
+       The composed gaps now have their own element. An empty list is
+       zero items however much surrounding prose talks about gaps. */
+    const gaps = page.locator('[data-example-missing] li');
+    assert(
+      (await gaps.count()) > 0,
+      'the example composes no gaps at all, so it no longer demonstrates the ' +
+        'one thing worth demonstrating: that the pack names what it will not invent'
+    );
+    assert(
+      /target date/i.test((await gaps.allTextContents()).join(' ')),
+      'the example no longer shows the refusal to invent a missing target date'
+    );
+  });
+
   await check('no uncaught page errors across the whole run', async () => {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
   });

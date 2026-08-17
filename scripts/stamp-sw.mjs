@@ -2042,7 +2042,44 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    numbers instead of one: the total says something grew, and the entry
    says it grew somewhere the person filing a hazard report does not
    have to pay for. */
-const BUDGET = { entry: 224 * 1024, js: 598 * 1024, css: 80 * 1024 };
+/* TOTAL 598 -> 602 KB, for a worked example on a page that was selling
+   nothing. ENTRY UNMOVED AT 216.2, CSS UNMOVED.
+
+     /toolkits/icaas chunk   5,426 -> 8,530   +3,104 bytes
+
+   Nothing else moved; the whole 3.0 KB is one lazily-loaded screen.
+
+   WHAT IT BUYS, AND THE DEFECT WAS ONLY VISIBLE BY LOOKING. Every gate
+   passed on this screen — 82 smoke checks, 30 screens a11y-clean, 270
+   symmetry measurements — and then a screenshot at 1440 showed a
+   visitor with no account being handed "Nothing to compose. Sign in."
+   The page is in the public menu AND the footer, so it is reachable by
+   exactly the prospect it tells nothing. The single most Kenya-specific
+   thing this product does, described to the audience that cannot see
+   it. No gate can ask "is this page persuasive"; that is what looking
+   at it is for.
+
+   It now shows a fictional operator's Corrective Action Request
+   composed into a CAP — COMPOSED BY composeCap() RATHER THAN WRITTEN
+   OUT, so the example is the behaviour rather than a screenshot in
+   prose that goes stale silently.
+
+   AND THE EXAMPLE HAS NO TARGET DATE, ON PURPOSE. The persuasive move
+   was a perfect pack with every field filled. The honest one is a pack
+   that NAMES the field it will not invent — because the thing worth
+   proving to a safety manager is not that software can copy fields
+   across, it is that this one refuses to put a plausible date in front
+   of them to sign and carry to their regulator. A new smoke check
+   asserts the missing-list is still non-empty, so "tidying" the fixture
+   by giving it a date fails the build rather than quietly killing the
+   demonstration.
+
+   THE COMPARISON THAT SETTLES WHETHER IT IS WORTH 3 KB: /amendment is
+   the other page that answers a real question for somebody who will
+   never buy anything, and it is the best-performing thing in this
+   product. This is the same shape aimed at the same buyer, on the one
+   workflow no competitor covers for a Kenyan operator. */
+const BUDGET = { entry: 224 * 1024, js: 602 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
