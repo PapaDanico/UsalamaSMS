@@ -179,6 +179,7 @@ function Hero() {
   return html`
     <section class="band-dark band-dark--hero">
       <div class="wrap">
+        <div class="hero-copy">
         ${Mark({ height: 116, tone: 'gold', title: '' })}
         <span class="eyebrow">Aviation safety management</span>
         <h1>Safety intelligence for African skies</h1>
@@ -195,6 +196,7 @@ function Hero() {
         <div class="hero-actions">
           <a class="btn btn-primary" href="/report">File a report</a>
           <a class="btn btn-ghost-lt" href="/toolkits/maturity">See where your SMS stands</a>
+        </div>
         </div>
 
         ${Clock()}

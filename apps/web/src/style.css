@@ -3151,6 +3151,23 @@ html { scroll-padding-top: var(--us-chrome); }
      what it is rather than by nth-child, so inserting a line into the
      hero does not silently move something into the panel's column. */
   .band-dark--hero .wrap > :not(.hero-clock) { grid-column: 1; }
+  /* COLUMN ONE IS ONE GRID ROW, NOT SEVEN, and that is what fixes the
+     gap under the mark.
+
+     The clock spans `grid-row: 1 / -1`, and a spanning item's height is
+     distributed across the AUTO rows it covers. With every line of the
+     hero its own row, the panel was inflating the first one: measured
+     at 1440px, row one computed to 227.8px for a mark that is 116px
+     tall with a 12px margin, so the mark floated 112px above the
+     eyebrow — against 19px on a handset, where this grid does not
+     apply.
+
+     `grid-auto-rows: min-content` does NOT fix it; a min-content row
+     still grows to take its share of a spanning item. Nor does moving
+     the margin, which was already right. The cause is the row count, so
+     the copy is one flex column in one cell and the panel has nothing
+     left to inflate. */
+  .band-dark--hero .hero-copy { display: flex; flex-direction: column; align-items: flex-start; }
   .band-dark--hero .hero-clock {
     grid-column: 2;
     grid-row: 1 / -1;
