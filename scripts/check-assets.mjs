@@ -136,7 +136,10 @@ const TOTAL_BUDGET_KB = 330;
    manifest rather than from a list here. Two numbers, because they
    answer two questions, and the one a ramp agent cares about is this
    one. */
-const INSTALL_BUDGET_KB = 220;
+/* The install ceiling itself is enforced in scripts/check-dist.mjs,
+   which is the only place that can read the built worker. Named here
+   because this is where the two budgets are explained together. */
+// INSTALL_BUDGET_KB = 220 — see scripts/check-dist.mjs
 /* 300 -> 306 for the mono identifier subset. 6.3 KB, and it is the
    cheapest font in this directory by a factor of five — the full Latin
    cut of the same face would have been ~55 KB and would have taken this
@@ -168,7 +171,6 @@ function walk(dir, out = []) {
 }
 
 const problems = [];
-let installNote = '';
 const found = walk(PUBLIC).map((f) => relative(PUBLIC, f).split(/[\\/]/).join('/'));
 let total = 0;
 
@@ -209,97 +211,22 @@ for (const rel of DECLARED.keys()) {
   }
 }
 
-/* ============================================================
-   THE SHARE CARD MUST STAY OUT OF THE PRECACHE MANIFEST.
+/* THE PRECACHE EXCLUSION, THE DANGLING-REFERENCE CHECK AND INSTALL
+   WEIGHT ALL MOVED TO scripts/check-dist.mjs.
 
-   Its declaration above says it is not precached, and that sentence is
-   worth nothing on its own — the worker precaches by extension and
-   .jpg is one it would happily take. So the built worker is read and
-   its own manifest is checked.
+   They read dist/, and this file runs inside `npm run check`, which
+   `npm run build` executes BEFORE `vite build`. So they judged an
+   artefact that did not exist yet — or, on a machine where a dist from
+   an earlier commit survives into a new build, one that predates the
+   source beside them. Two of them degraded politely to "not measured",
+   which meant install weight was never enforced on a deploy at all,
+   only on the machine of whoever last ran it locally. The third failed
+   a build whose source was correct.
 
-   Read from dist/sw.js rather than from the filter in stamp-sw.mjs,
-   because what matters is what shipped rather than what the script
-   intended. If dist has not been built yet this is skipped and says so,
-   which is the honest answer to "there is nothing to check" — the build
-   runs this before it stamps, and the verify pass runs it after.
-   ============================================================ */
-{
-  const worker = resolve(ROOT, 'dist/sw.js');
-  if (existsSync(worker)) {
-    const src = readFileSync(worker, 'utf8');
-    const manifest = src.match(/const PRECACHE = (\[[^\]]*\]);/)?.[1];
-    if (!manifest) {
-      problems.push(
-        '  dist/sw.js has no PRECACHE manifest this check can read, so nothing was ' +
-          'verified about what a reporter downloads on install.',
-      );
-    } else if (manifest.includes('og-card.jpg')) {
-      problems.push(
-        '  og-card.jpg is IN the precache manifest. It is declared above as the one ' +
-          'asset here that is not, and it is only affordable because of that — every ' +
-          'reporter would download 62 KB on install for a card only link scrapers ' +
-          'fetch. Restore the filter in scripts/stamp-sw.mjs.',
-      );
-    }
-  }
-}
-
-/* ============================================================
-   INSTALL WEIGHT, from the worker's own manifest.
-
-   Everything above measures what is SERVED. This measures what a
-   reporter at a remote strip waits for before the app is usable
-   offline, which is the number the offline promise is actually made
-   of. Read from dist/sw.js rather than from a list here, so the answer
-   is what shipped rather than what anybody intended.
-
-   Skipped when dist is absent, and it says so rather than passing
-   silently — a check that reports success about a build it could not
-   find is the shape this repository has been bitten by before. The
-   build runs check:assets before stamping and verify runs it after, so
-   the honest answer to a missing dist is "not measured".
-   ============================================================ */
-{
-  const worker = resolve(ROOT, 'dist/sw.js');
-  if (!existsSync(worker)) {
-    console.log('  assets note      install weight not measured — dist/sw.js absent');
-  } else {
-    const manifest = readFileSync(worker, 'utf8').match(/const PRECACHE = (\[[^\]]*\]);/)?.[1];
-    if (!manifest) {
-      problems.push(
-        '  dist/sw.js has no PRECACHE manifest this check can read, so nothing was ' +
-          'verified about what a reporter downloads on install.',
-      );
-    } else {
-      const precached = new Set(JSON.parse(manifest));
-      let installKb = 0;
-      const carried = [];
-      for (const rel of found) {
-        if (!precached.has(`/${rel}`)) continue;
-        installKb += statSync(join(PUBLIC, rel)).size / 1024;
-        carried.push(rel);
-      }
-      if (carried.length < 5) {
-        problems.push(
-          `  only ${carried.length} of ${found.length} public files matched the precache ` +
-            'manifest, so install weight was computed from almost nothing and any number ' +
-            'it produced would be meaningless.',
-        );
-      }
-      if (installKb > INSTALL_BUDGET_KB) {
-        problems.push(
-          `  a reporter downloads ${installKb.toFixed(1)} KB from public/ on install, ` +
-            `against a ${INSTALL_BUDGET_KB} KB ceiling. This is the cold start on a bad ` +
-            'link, and it is the number the offline promise is made of.',
-        );
-      } else {
-        installNote =
-          `${installKb.toFixed(1)} KB of ${INSTALL_BUDGET_KB} KB downloaded on install ` +
-          `(${carried.length} of ${found.length} files precached)`;
-      }
-    }
-  }
-}
+   check:dist runs after stamp-sw and refuses to run without a dist.
+   What stays here is everything answerable from the repository alone:
+   the declaration of every file in public/, the served budget, and the
+   share card's staleness stamp. */
 
 /* ============================================================
    THE SHARE CARD IS STILL SET IN THE FACES THE SITE SHIPS.
@@ -353,50 +280,6 @@ for (const rel of DECLARED.keys()) {
   }
 }
 
-/* ============================================================
-   EVERY ASSET THE BUILT PAGE POINTS AT IS ACTUALLY IN THE BUILD.
-
-   THE DEFECT. index.html preloaded /fonts/dm-sans-latin.woff2 after DM
-   Sans had been replaced and both dm-sans files deleted in the same
-   change. Every gate stayed green, and so did a runtime check that
-   counted failed requests — because netlify.toml carries one rewrite,
-   `/*` -> `/index.html` at status 200. NOTHING 404s on this site. A
-   missing font returns the entire HTML document to something expecting
-   a typeface, at status 200, and a cold start over a bad link pays for
-   the whole page a second time to throw it away.
-
-   That is why this is a STATIC check against dist rather than a network
-   one. A dangling reference is a fact about the build, and asking the
-   server about it only ever gets the rewrite's answer.
-   ============================================================ */
-{
-  const built = join(ROOT, 'dist/index.html');
-  if (existsSync(built)) {
-    const html = readFileSync(built, 'utf8');
-    /* Root-relative URLs with a file extension: the ones the rewrite
-       swallows. Relative and absolute-origin URLs are out of scope —
-       Vite rewrites the first and the CSP already governs the second. */
-    const refs = [...html.matchAll(/(?:href|src)="(\/[^"?#]+\.[a-z0-9]{2,5})(?:[?#][^"]*)?"/gi)]
-      .map((m) => m[1]);
-    const dangling = [...new Set(refs)].filter((r) => !existsSync(join(ROOT, 'dist', r)));
-    if (dangling.length) {
-      problems.push(
-        `  dist/index.html references ${dangling.length} file(s) that are not in the ` +
-          `build: ${dangling.join(', ')}. The /* -> /index.html rewrite means these do ` +
-          'NOT 404 — each one serves the whole HTML page at status 200 to something ' +
-          'expecting a font, an icon or a stylesheet.',
-      );
-    }
-    if (refs.length < 3) {
-      problems.push(
-        `  only ${refs.length} root-relative asset reference(s) were found in ` +
-          'dist/index.html, which is too few for this page — the extractor above has ' +
-          'stopped matching and is checking nothing.',
-      );
-    }
-  }
-}
-
 if (total > TOTAL_BUDGET_KB) {
   problems.push(
     `  public/ totals ${total.toFixed(1)} KB against a ${TOTAL_BUDGET_KB} KB budget. ` +
@@ -410,7 +293,6 @@ if (problems.length === 0) {
     `  assets ok        ${found.length} files declared, ${total.toFixed(1)} KB of ` +
       `${TOTAL_BUDGET_KB} KB served from public/`,
   );
-  if (installNote) console.log(`  install weight   ${installNote}`);
   process.exit(0);
 }
 
