@@ -383,6 +383,52 @@ const TUTORIAL_SECTIONS = [
       ]
     },
     {
+      id: 'act-three',
+      kind: 'steps',
+      title: 'Act three — answering the Authority',
+      lede: `The two acts above produce a record. This one hands it over. Both
+             steps are Kenya-specific, and both exist because the point of
+             keeping a record properly is the day somebody asks to see it.`,
+      items: [
+        {
+          title: 'Compose the KCAA pack from the action that answers the CAR',
+          body: `<p>Open the corrective action on the safety performance screen
+                 and choose <em>Compose the KCAA pack</em>. The plan is
+                 assembled from the record you already hold — the finding, the
+                 action, the accountable post, the target date, and the SHA-256
+                 of every file you are about to upload — in the order the ICAAS
+                 portal asks for them.</p>
+                 <p>Read what it says is missing before you go anywhere. It
+                 will not fill a blank in for you: a target date this product
+                 invented is one you would carry to your regulator under your
+                 own signature.</p>`,
+          pitfall: `Believing the pack has been submitted. It has not, and the
+                    screen says so — there is no ICAAS API and this product
+                    never files anything with the Authority. You sign in at the
+                    portal and raise the CAP yourself. An operator who thought
+                    software had done it, and then met an inspector who had
+                    never seen it, would have stopped chasing it.`
+        },
+        {
+          title: 'Look at which national categories your records can speak to',
+          body: `<p>The safety performance screen shows each of the six
+                 high-risk categories Kenya's National Aviation Safety Plan
+                 names, and what you can currently show against it: an
+                 indicator with periods behind it, reports tagged and nothing
+                 counting them, or nothing at all.</p>
+                 <p>The middle one is where the work is. Events already
+                 reaching you and no indicator counting them means the data
+                 exists and the measurement does not — which is a morning's
+                 work, not a programme.</p>`,
+          pitfall: `Reading an empty category as a clean one. It is a statement
+                    about your records, not about your operation, and the
+                    screen says so in those words. Several of the six may
+                    genuinely not apply to how you fly — that is your judgement
+                    to make and to defend, which is why this shows no score.`
+        }
+      ]
+    },
+    {
       id: 'anonymous',
       title: 'On anonymous reporting',
       body: `
