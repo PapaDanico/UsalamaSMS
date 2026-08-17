@@ -16,6 +16,9 @@ import {
   INITIAL_TOPICS,
   ROLE_ADDITIONS,
   CURRICULUM_VERIFIED_AGAINST_PRIMARY,
+  CURRICULUM_INSTRUMENT,
+  CURRICULUM_SOURCE,
+  RECOMMENDED_TIMING,
   requiredFor,
   courseFor,
   gapsFor,
@@ -168,13 +171,39 @@ describe("what this module refuses to assert", () => {
     expect(serialised).not.toMatch(/month|annual|yearly|recurren|interval|validity/i);
   });
 
-  /* Same sentence as cictt.ts, and it stays false for the same reason:
-     every regulatory host this environment can reach returns 403 at the
-     egress proxy, so the manual was read through a search index rather
-     than opened. Good enough to structure a programme and prompt an
-     operator; not good enough to tell somebody they are compliant. */
-  it("does not claim to have been read against the primary document", () => {
-    expect(CURRICULUM_VERIFIED_AGAINST_PRIMARY).toBe(false);
+  /* THIS ASSERTION USED TO BE THE OPPOSITE, and the change is a real
+     one rather than a gate being relaxed.
+
+     It read `toBe(false)` for the reason cictt.ts still records: every
+     regulatory host this environment reaches returns 403 at the egress
+     proxy, so Doc 9859 had been read through a search index rather than
+     opened. kcaa.or.ke is blocked the same way and the circular could
+     not be fetched either.
+
+     CAA-AC-SMS011 was then supplied directly and read in full — all
+     thirteen pages, both appendices. So the flag is true because the
+     document was read, and the test now asserts the stronger property:
+     that the claim comes with the citation, and that what the circular
+     RECOMMENDS is not presented as what the Regulations REQUIRE.
+
+     If somebody ever flips the flag without a document, the second and
+     third assertions are what catch it. */
+  it("claims primary verification only with the instrument that backs it", () => {
+    expect(CURRICULUM_VERIFIED_AGAINST_PRIMARY).toBe(true);
+    expect(CURRICULUM_INSTRUMENT.reference).toBe("CAA-AC-SMS011");
+    expect(CURRICULUM_INSTRUMENT.readOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(CURRICULUM_SOURCE).toMatch(/CAA-AC-SMS011/);
+  });
+
+  it("records the refresher interval as a RECOMMENDATION, never as law", () => {
+    /* Appendix I recommends two years. The old comment in curriculum.ts
+       said writing `recurrentMonths: 12` would have been the easiest
+       line in the file; it would also have been double what the
+       operator's own regulator asks for. Recorded, and labelled. */
+    expect(RECOMMENDED_TIMING.refresherMonths).toBe(24);
+    expect(RECOMMENDED_TIMING.initialWithinMonths).toBe(2);
+    expect(RECOMMENDED_TIMING.status).toMatch(/not prescribed by regulation/i);
+    expect(RECOMMENDED_TIMING.basis).toMatch(/Appendix I/);
   });
 
   it("keeps role additions genuinely additional, never a replacement", () => {
