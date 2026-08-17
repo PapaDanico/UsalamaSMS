@@ -2323,6 +2323,37 @@ html { scroll-padding-top: var(--us-chrome); }
   max-width: 68ch;
 }
 
+/* THE TRAINING PROGRAMME. Sections nested under a module, and the
+   time-per-module grid. The grid is the only table on a public page
+   wide enough to need scrolling on a handset, so it gets .table-scroll
+   around it rather than a font size nobody can read. */
+.training-sections {
+  list-style: disc;
+  margin: var(--us-space-2) 0 0;
+  padding-left: var(--us-space-5);
+  display: grid;
+  gap: var(--us-space-1);
+  font-size: var(--us-text-sm);
+  color: var(--us-ink-600);
+}
+.training-grid { border-collapse: collapse; width: 100%; min-width: 34rem; }
+.training-grid th, .training-grid td {
+  text-align: left;
+  padding: var(--us-space-2) var(--us-space-3);
+  border-bottom: 1px solid var(--us-line);
+  font-size: var(--us-text-sm);
+}
+.training-grid thead th {
+  font-size: var(--us-text-xs);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--us-ink-600);
+  background: var(--us-surface-2);
+  white-space: nowrap;
+}
+.training-grid td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.training-grid tbody th { font-weight: 600; }
+
 /* RECORD A CORRECTIVE ACTION, inline on the report that prompted it.
 
    Same details/summary shape as the classification panel above it, and
@@ -3120,6 +3151,23 @@ html { scroll-padding-top: var(--us-chrome); }
      what it is rather than by nth-child, so inserting a line into the
      hero does not silently move something into the panel's column. */
   .band-dark--hero .wrap > :not(.hero-clock) { grid-column: 1; }
+  /* COLUMN ONE IS ONE GRID ROW, NOT SEVEN, and that is what fixes the
+     gap under the mark.
+
+     The clock spans `grid-row: 1 / -1`, and a spanning item's height is
+     distributed across the AUTO rows it covers. With every line of the
+     hero its own row, the panel was inflating the first one: measured
+     at 1440px, row one computed to 227.8px for a mark that is 116px
+     tall with a 12px margin, so the mark floated 112px above the
+     eyebrow — against 19px on a handset, where this grid does not
+     apply.
+
+     `grid-auto-rows: min-content` does NOT fix it; a min-content row
+     still grows to take its share of a spanning item. Nor does moving
+     the margin, which was already right. The cause is the row count, so
+     the copy is one flex column in one cell and the panel has nothing
+     left to inflate. */
+  .band-dark--hero .hero-copy { display: flex; flex-direction: column; align-items: flex-start; }
   .band-dark--hero .hero-clock {
     grid-column: 2;
     grid-row: 1 / -1;

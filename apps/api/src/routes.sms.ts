@@ -34,6 +34,7 @@ import {
   gapsFor,
   unrecognisedIn,
   CURRICULUM_VERIFIED_AGAINST_PRIMARY,
+  CURRICULUM_INSTRUMENT,
 } from "../../../packages/shared/src/curriculum";
 import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
 
@@ -768,14 +769,23 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
       training: rows,
       scope: wide ? "org" : "own",
       curriculum,
-      /* STATED IN THE PAYLOAD, not only in a doc nobody fetches. The
-         six topics come from a search index's rendering of Doc 9859,
-         not from the instrument — the same reason cictt.ts carries its
-         own flag. A deadline table nobody has read the instrument for
-         is the one kind of wrong this product cannot ship, and a
-         consumer of this route is entitled to know which it is
-         holding. */
+      /* STATED IN THE PAYLOAD, not only in a doc nobody fetches. A
+         syllabus nobody has read the instrument for is the one kind of
+         wrong this product cannot ship, and a consumer of this route is
+         entitled to know which it is holding.
+
+         THIS USED TO SAY THE TOPICS CAME FROM A SEARCH INDEX'S
+         RENDERING OF DOC 9859, and that was true until somebody read
+         CAA-AC-SMS011 itself. The comment outlived the fact by one
+         commit, which is why the instrument now travels BESIDE the
+         flag: a bare `true` tells a consumer that something was
+         verified without telling them against what, and the next
+         person to change the source has to change a value rather than
+         a sentence. Both are read from curriculum.ts rather than
+         written here, so this route cannot claim a provenance the
+         shared module does not hold. */
       curriculumVerifiedAgainstPrimary: CURRICULUM_VERIFIED_AGAINST_PRIMARY,
+      curriculumInstrument: CURRICULUM_INSTRUMENT.reference,
     });
   });
 

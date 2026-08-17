@@ -21,6 +21,9 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import jwt from "jsonwebtoken";
 import type { FastifyInstance } from "fastify";
 import { prisma, reset, migrate, disconnect, hasDatabase } from "./db.setup";
+import {
+  CURRICULUM_VERIFIED_AGAINST_PRIMARY, CURRICULUM_INSTRUMENT,
+} from "../../packages/shared/src/curriculum";
 
 const JWT_SECRET = "integration-test-secret-not-a-real-one";
 process.env["JWT_SECRET"] = JWT_SECRET;
@@ -293,12 +296,32 @@ describe.skipIf(!hasDatabase)("the rest of Annex 19, through the real routes", (
     expect(own.json().curriculum[0].userId).toBe(frontlineId);
   });
 
-  /* Charter rule 7, in the payload. The six topics came from a search
-     index's rendering of Doc 9859, not from the instrument, and a
-     consumer is entitled to know which it is holding. */
-  it("4.1 — states that the curriculum is not verified against the primary source", async () => {
+  /* Charter rule 7, in the payload: a consumer is entitled to know
+     whether the syllabus it is holding was read from the instrument
+     or from a search index's rendering of one.
+
+     THIS TEST USED TO PIN THE LITERAL `false`, and it went red the
+     day somebody read CAA-AC-SMS011 and the flag became true. That is
+     the wrong assertion to have written twice, because the fact it
+     pins is a fact this product is supposed to be able to IMPROVE —
+     pinning the other literal now would just arm the same trap for
+     whoever adds a second jurisdiction.
+
+     So what is asserted is the property that cannot legitimately
+     change: the route DISCLOSES its provenance, and discloses it by
+     WIRING THE SHARED CONSTANT THROUGH rather than by writing a value
+     of its own. A route that hardcodes `true` beside a curriculum
+     nobody read is exactly the failure this disclosure exists to
+     prevent, and it is the only way this payload can lie. */
+  it("4.1 — DISCLOSES the curriculum's provenance from the shared module, not its own", async () => {
     const matrix = await call("GET", "/api/v1/sms/training", manager());
-    expect(matrix.json().curriculumVerifiedAgainstPrimary).toBe(false);
+    const body = matrix.json();
+    expect(body.curriculumVerifiedAgainstPrimary).toBe(CURRICULUM_VERIFIED_AGAINST_PRIMARY);
+    /* And says against WHAT. A bare boolean tells a consumer that
+       something was checked without telling them what it was checked
+       against, which is not a provenance. */
+    expect(body.curriculumInstrument).toBe(CURRICULUM_INSTRUMENT.reference);
+    expect(body.curriculumInstrument).toBeTruthy();
   });
 
   it("4.1 — a frontline reporter cannot write a training record", async () => {

@@ -403,6 +403,11 @@ router
     { title: 'What this covers', surface: 'tool' }
   )
   .register(
+    '/training',
+    (el) => lazy(el, () => import('./tools/training/index.js').then((m) => (o) => m.render(o))),
+    { title: 'The SMS training programme', surface: 'tool' }
+  )
+  .register(
     '/glossary',
     (el) => lazy(el, () => import('./tools/glossary/index.js').then((m) => (o) => m.render(o))),
     { title: 'Glossary' }
