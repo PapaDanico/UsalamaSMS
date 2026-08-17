@@ -17,6 +17,7 @@ const configured = {
   from: "UsalamaSMS <safety@usalamasms.com>",
   /* No Reply-To by default, which is the state a deployment is in
      until somebody sets MAIL_REPLY_TO to a mailbox they read. */
+  platformNotice: undefined,
   replyTo: undefined,
 };
 

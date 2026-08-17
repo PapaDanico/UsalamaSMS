@@ -2103,7 +2103,38 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    their regulator they are a third non-compliant. tests/ssp.test.ts
    asserts the shape has no score field, so somebody adding one has to
    argue for it rather than ship it. */
-const BUDGET = { entry: 224 * 1024, js: 606 * 1024, css: 80 * 1024 };
+/* TOTAL 606 -> 610 KB, for a paywall that reads as a bill instead of a
+   fault. ENTRY UNMOVED AT 216.3, CSS unmoved.
+
+   THE SERVER HAS ANSWERED 402 SINCE requireEntitlement WAS WRITTEN AND
+   EXACTLY ONE SCREEN KNEW WHAT IT MEANT. Everywhere else it fell into a
+   generic catch and rendered "the safety office could not be reached" —
+   about a request the safety office had refused on purpose. A paywall
+   that reads as a malfunction produces a support ticket instead of a
+   payment, and an operator who thinks the product is broken does not
+   renew a thing they think is broken.
+
+   ONE MODULE, LAZILY IMPORTED AT THE MOMENT OF THE 402, so the weight
+   lands only on somebody who has actually hit the wall — every other
+   session pays nothing for it. Shared between the indicator screen and
+   the KCAA pack rather than written twice, because two surfaces
+   wording the same refusal differently is how one of them ends up
+   saying something the other would not.
+
+   WHAT IT BUYS, commercially: the wall now says what still works
+   (filing, reading, exporting — an operator whose subscription lapsed
+   must never believe their people cannot report a hazard), names the
+   band and price for THEIR fleet, and carries a button that records the
+   intention and tells the vendor. Before this, saying yes to the wall
+   meant finding the pricing page, working out your own band, and
+   composing an email — three steps, each a place to give up, at the
+   exact moment somebody was trying to work.
+
+   AND IT QUOTES NOTHING IT DOES NOT KNOW. The server sends band: null
+   when no fleet size was recorded, and the panel asks rather than
+   guesses. A wrong price is worse than no price: an operator budgets
+   against it and then somebody has to take it back. */
+const BUDGET = { entry: 224 * 1024, js: 610 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

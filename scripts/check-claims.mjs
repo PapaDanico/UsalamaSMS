@@ -1116,6 +1116,17 @@ assert(
       "As above — confirming what a customer has paid for is a fact about the " +
         "invoice, not about their safety management system.",
     ],
+    [
+      "/api/v1/upgrade-request",
+      "ASKING TO PAY IS NOT A SAFETY CAPABILITY. This is the operator's own side " +
+        "of the entitlement exemption above: that one records what a customer HAS " +
+        "paid for, this one records that they WANT to. Both are facts about an " +
+        "invoice. An inspector asks what an operator can evidence about its safety " +
+        "management, and 'we asked our supplier for a quote' is not on that list — " +
+        "putting it on /coverage would count a commercial step as a regulatory one, " +
+        "which is the overstatement in the direction this page is least able to " +
+        "afford. It also grants nothing: only platform.entitlement.manage answers.",
+    ],
     ["/api/v1/auth/logout", "As above."],
     ["/api/v1/auth/refresh", "As above."],
     ["/api/v1/auth/me", "As above."],

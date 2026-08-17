@@ -53,9 +53,10 @@ import { z } from "zod";
 import argon2 from "argon2";
 import { randomBytes } from "node:crypto";
 import { can } from "@usalamasms/shared";
+import { bandForFleet } from "../../../packages/shared/src/pricing";
 import { stateOn, trialEndsFrom } from "../../../packages/shared/src/subscription";
 import { prisma, authenticate, appendAuditTx } from "./core";
-import { sendInvitation, mailConfigFromEnv } from "./mail";
+import { sendInvitation, sendUpgradeRequest, mailConfigFromEnv } from "./mail";
 
 function guard(role: string, permission: string): boolean {
   return can(role as never, permission as never);
@@ -258,6 +259,92 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
          reading the screen. */
       invitation: invitation.status,
       invitationReason: invitation.status === "FAILED" ? invitation.reason : undefined,
+    });
+  });
+
+  /* =====================================================================
+     THE OPERATOR ASKS TO PAY.
+
+     Provisioning and granting were both administrator actions, so the
+     operator's own side of the transaction had no expression at all:
+     somebody meeting the 402 wall could read what it cost and had no
+     way to say yes except to find an email address. Three steps, each a
+     place to give up, at the moment they were trying to work.
+
+     NO PAYMENT RAIL, DELIBERATELY. This records an intention and tells
+     the administrator. Money still arrives out of band and the
+     administrator still grants the entitlement by hand, which is the
+     right shape while every customer is one somebody spoke to — it
+     keeps a person in the loop on every deal and it means no card data
+     ever touches this product.
+
+     IT DOES NOT GRANT ANYTHING. Worth stating because the obvious next
+     commit is "and then set paidThrough", and an operator who could
+     grant their own entitlement by asking for it is an operator with a
+     free subscription. The audit entry records who asked; only
+     `platform.entitlement.manage` can answer.
+
+     ANY AUTHENTICATED MEMBER MAY ASK. Not gated on a permission,
+     because the person who hits the wall is whoever was working — a
+     safety officer recording an indicator period is exactly the caller
+     this exists for, and making them fetch the accountable executive to
+     press a button is the friction this removes. Asking twice is
+     harmless; the rate limit bounds the noise.
+     ===================================================================== */
+  app.post("/api/v1/upgrade-request", limited, async (req, reply) => {
+    const auth = req.auth!;
+    const org = await prisma.org.findUnique({
+      where: { id: auth.org },
+      select: { name: true, fleetSize: true, trialEndsOn: true, paidThrough: true },
+    });
+    if (!org) return reply.code(401).send({ error: "invalid_token" });
+
+    const who = await prisma.user.findUnique({
+      where: { id: auth.sub },
+      select: { email: true, name: true },
+    });
+
+    const band = typeof org.fleetSize === "number" && org.fleetSize > 0
+      ? bandForFleet(org.fleetSize)
+      : null;
+
+    await prisma.$transaction(async (tx) => {
+      await appendAuditTx(tx, {
+        orgId: auth.org,
+        userId: auth.sub,
+        action: "platform.upgrade.requested",
+        entityType: "Org",
+        entityId: auth.org,
+        /* Built field by field. Spreading the org would put whatever
+           that table grows next into the audit chain, which is the
+           trap routes.admin.ts already records about provisioning. */
+        detail: {
+          fleetSize: org.fleetSize ?? null,
+          band: band?.id ?? null,
+          usdMonthly: band?.usdMonthly ?? null,
+        },
+      });
+    });
+
+    /* THE ADMINISTRATOR IS TOLD, and the outcome is returned rather
+       than swallowed — an operator who asked and reached nobody is
+       waiting for an answer that is not coming. The screen says which
+       of the two happened. */
+    const notice = await sendUpgradeRequest(
+      org.name,
+      who?.email ?? "unknown",
+      org.fleetSize ?? null,
+      band ? { name: band.name, usdMonthly: band.usdMonthly } : null,
+      mailConfigFromEnv(),
+    );
+
+    return reply.code(202).send({
+      recorded: true,
+      /* SENT / NOT_CONFIGURED / FAILED. The operator is told plainly if
+         nothing reached us, so they can pick up a phone rather than
+         wait. */
+      notified: notice.status,
+      band: band ? { name: band.name, usdMonthly: band.usdMonthly } : null,
     });
   });
 

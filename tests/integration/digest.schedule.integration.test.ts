@@ -108,7 +108,8 @@ describe.skipIf(!hasDatabase)("the scheduled digest", () => {
     const outcome = await sendDigest(
       digest!,
       "rival@b.test",
-      { apiKey: "k", baseUrl: "https://example.test", replyTo: undefined,
+      { apiKey: "k", baseUrl: "https://example.test", platformNotice: undefined,
+  replyTo: undefined,
       from: "x@example.test" },
       fetchImpl as never,
     );
@@ -143,7 +144,8 @@ describe.skipIf(!hasDatabase)("the scheduled digest", () => {
     const outcome = await sendDigest(
       digest!,
       "manager@a.test",
-      { apiKey: "k", baseUrl: "https://example.test", replyTo: undefined,
+      { apiKey: "k", baseUrl: "https://example.test", platformNotice: undefined,
+  replyTo: undefined,
       from: "x@example.test" },
       fetchImpl as never,
     );
@@ -161,7 +163,8 @@ describe.skipIf(!hasDatabase)("the scheduled digest", () => {
     const outcome = await sendDigest(
       digest!,
       "manager@a.test",
-      { apiKey: undefined, baseUrl: "https://example.test", replyTo: undefined,
+      { apiKey: undefined, baseUrl: "https://example.test", platformNotice: undefined,
+  replyTo: undefined,
       from: "x@example.test" },
       fetchImpl as never,
     );

@@ -346,14 +346,18 @@ export async function render(outlet) {
 
   let data = null;
   let problem = '';
+  let paywall = null;
   try {
     const res = await authFetch(`/api/v1/icaas/cap/${encodeURIComponent(id)}`);
     if (res.status === 402) {
       /* A bill, not a permission — core.ts draws that line deliberately
          and repeating it as "forbidden" here would tell a safety
          manager they are not allowed to do their job. */
-      const answer = await res.json().catch(() => ({}));
-      problem = answer.message ?? 'This is included once the subscription is active.';
+      /* THE SAME WALL THE INDICATOR SCREEN SHOWS, rendered from the
+         same module. This screen had its own sentence about the 402
+         first; two surfaces wording the same refusal differently is how
+         one of them ends up saying something the other would not. */
+      paywall = await res.json().catch(() => ({}));
     } else if (res.status === 404) {
       problem = 'That corrective action is not in your organisation’s record.';
     } else if (!res.ok) {
@@ -367,7 +371,15 @@ export async function render(outlet) {
 
   if (!data) {
     outlet.innerHTML = html`${ToolNav('/toolkits/icaas')}
-      <section class="panel wrap">${Header()}${Empty(problem)}</section>`.toString();
+      <section class="panel wrap">
+        ${Header()}
+        <div id="cap-paywall"></div>
+        ${paywall ? '' : Empty(problem)}
+      </section>`.toString();
+    if (paywall) {
+      const { renderPaywall } = await import('../../shared/paywall.js');
+      renderPaywall(outlet.querySelector('#cap-paywall'), paywall);
+    }
     return;
   }
 

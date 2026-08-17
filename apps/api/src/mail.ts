@@ -78,6 +78,13 @@ interface MailConfig {
    * same reasoning SURVIVES_LAPSE uses in subscription.ts.
    */
   readonly replyTo: string | undefined;
+  /**
+   * WHERE A COMMERCIAL NOTICE GOES — the vendor's own inbox, not an
+   * operator's. Absent unless configured, for the same reason as
+   * `replyTo`: a notice sent to a guessed address carries a customer's
+   * name somewhere nobody chose.
+   */
+  readonly platformNotice: string | undefined;
 }
 
 /**
@@ -446,6 +453,101 @@ export async function sendInvitation(
   }
 }
 
+/* =====================================================================
+   AN OPERATOR HAS ASKED TO PAY, AND SOMEBODY HAS TO HEAR IT.
+
+   The 402 wall now names a price. Without this, saying yes to it
+   reached a database row and nobody's inbox — an operator waiting for
+   an answer that was never going to come, which is a worse outcome than
+   a wall with no button on it.
+
+   IT CARRIES NO SAFETY DATA. Only the operator's name, who asked, the
+   fleet size and the band. A commercial notice is not a place for a
+   narrative, a report count or anything a reporter wrote in confidence,
+   and the temptation to enrich it with "and they have 14 open hazards"
+   is exactly how confidential material ends up in a sales mailbox.
+   ===================================================================== */
+export function upgradeRequestSubject(orgName: string): string {
+  return `UsalamaSMS — ${orgName} has asked to upgrade`;
+}
+
+export function upgradeRequestBody(
+  orgName: string,
+  askedBy: string,
+  fleetSize: number | null,
+  band: { name: string; usdMonthly: number } | null,
+): string {
+  return [
+    `${orgName} has asked to move onto a paid subscription.`,
+    "",
+    `Asked by: ${askedBy}`,
+    fleetSize === null
+      ? "Fleet size: not recorded — ask before quoting, do not assume a band."
+      : `Fleet size: ${fleetSize}`,
+    band
+      ? `Band: ${band.name}, $${band.usdMonthly}/month`
+      : "Band: cannot be determined without a fleet size.",
+    "",
+    "NOTHING HAS BEEN GRANTED. Confirm payment however you normally do,",
+    "then grant the entitlement from the administration console. Until you",
+    "do, their safety office stays paused — their people can still file",
+    "reports and they can still export their whole record.",
+  ].join("\n");
+}
+
+/**
+ * Tell the platform administrator, or say precisely why nobody was told.
+ *
+ * ADDRESSED FROM THE ENVIRONMENT, and absent means NOT_CONFIGURED
+ * rather than a guess. Sending a commercial notice to an address
+ * nobody chose is how a customer's name ends up somewhere it was never
+ * meant to go.
+ */
+export async function sendUpgradeRequest(
+  orgName: string,
+  askedBy: string,
+  fleetSize: number | null,
+  band: { name: string; usdMonthly: number } | null,
+  config: MailConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MailOutcome> {
+  if (!config.apiKey) return { status: "NOT_CONFIGURED" };
+  if (!config.platformNotice) return { status: "NOT_CONFIGURED" };
+
+  try {
+    const response = await fetchImpl("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
+        to: config.platformNotice,
+        subject: upgradeRequestSubject(orgName),
+        text: upgradeRequestBody(orgName, askedBy, fleetSize, band),
+      }),
+    });
+    if (!response.ok) {
+      return { status: "FAILED", reason: `provider responded ${response.status}` };
+    }
+    let id = "";
+    try {
+      const payload = (await response.json()) as { id?: string };
+      id = payload.id ?? "";
+    } catch {
+      /* Accepted, unparseable. Still sent. */
+    }
+    return { status: "SENT", id };
+  } catch (error) {
+    return {
+      status: "FAILED",
+      reason: error instanceof Error ? error.message : "transport failed",
+    };
+  }
+}
+
 /**
  * Configuration from the environment, with the absent key left absent.
  *
@@ -463,5 +565,6 @@ export function mailConfigFromEnv(env: NodeJS.ProcessEnv = process.env): MailCon
        believes is monitored. An empty string is not an address, so a
        variable created and never filled in stays absent. */
     replyTo: env.MAIL_REPLY_TO || undefined,
+    platformNotice: env.PLATFORM_NOTICE_EMAIL || undefined,
   };
 }

@@ -9,6 +9,7 @@ import argon2 from "argon2";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { can, type Role, type Permission } from "@usalamasms/shared";
+import { bandForFleet } from "../../../packages/shared/src/pricing";
 import {
   allows, stateOn, trialEndsFrom, type Capability,
 } from "../../../packages/shared/src/subscription";
@@ -231,7 +232,9 @@ export function requireEntitlement(capability: Capability) {
     if (!req.auth) { reply.code(401).send({ error: "authentication_required" }); return; }
     const org = await prisma.org.findUnique({
       where: { id: req.auth.org },
-      select: { trialEndsOn: true, paidThrough: true, createdAt: true },
+      /* fleetSize comes back so the refusal can name a PRICE rather
+         than a policy. See the 402 body below. */
+      select: { trialEndsOn: true, paidThrough: true, createdAt: true, fleetSize: true },
     });
     /* An org that cannot be read is not an org that has lapsed. Failing
        open here would be a licence check that any database blip
@@ -260,6 +263,24 @@ export function requireEntitlement(capability: Capability) {
       new Date(),
     );
     if (allows(state, capability)) return;
+    /* THE PRICE, WHERE THE OPERATOR MEETS THE WALL.
+     
+       This used to answer "subscription_lapsed" and stop, which tells a
+       safety manager they cannot work and nothing about what to do
+       next. They then have to find the pricing page, work out which
+       band they are in, and email somebody — three steps, each a place
+       to give up, at the exact moment they were trying to do their job.
+     
+       ONLY WHEN THE FLEET SIZE IS KNOWN. `bandForFleet` will happily
+       answer for any number, and answering for a number nobody stated
+       would put a figure in front of an operator that is not their
+       price. A missing fleet size is reported as unknown and the screen
+       asks rather than guesses — a wrong price is worse than no price,
+       because the operator budgets against it. */
+    const band = typeof org.fleetSize === "number" && org.fleetSize > 0
+      ? bandForFleet(org.fleetSize)
+      : null;
+
     reply.code(402).send({
       error: "subscription_lapsed",
       state,
@@ -268,6 +289,11 @@ export function requireEntitlement(capability: Capability) {
          needs to know immediately that their people can still report
          and their record is still theirs. */
       stillAvailable: ["FILE_REPORT", "READ_OWN_RECORD", "EXPORT_OWN_RECORD"],
+      /* Null rather than a default band. See above. */
+      band: band
+        ? { id: band.id, name: band.name, fleet: band.fleet, usdMonthly: band.usdMonthly }
+        : null,
+      fleetSize: org.fleetSize ?? null,
     });
   };
 }

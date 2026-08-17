@@ -412,6 +412,8 @@ export function render(outlet) {
           <div id="spi-list"></div>
         </section>
 
+        <div id="spi-paywall" class="no-print"></div>
+
         <section class="doc-section" id="national">
           <h2>What your State is counting</h2>
           <div class="card" id="ssp-rollup">
@@ -593,6 +595,20 @@ export function render(outlet) {
         body: JSON.stringify(body)
       });
       if (res.ok) return { ok: true, data: await res.json() };
+      /* A 402 IS A BILL, NOT A MISTAKE, and it used to fall into the
+         generic branch below — which told a safety manager "the safety
+         office could not be reached" about a request the safety office
+         refused on purpose. A paywall that reads as a malfunction is a
+         paywall that produces a support ticket instead of a payment. */
+      if (res.status === 402) {
+        const wall = outlet.querySelector('#spi-paywall');
+        if (wall) {
+          const { renderPaywall } = await import('../../shared/paywall.js');
+          renderPaywall(wall, await res.json().catch(() => ({})));
+          wall.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return { ok: false, message: 'This is included once the subscription is active.' };
+      }
       const detail = await res.json().catch(() => ({}));
       return { ok: false, message: detail.message ?? 'The safety office could not be reached.' };
     } catch {
