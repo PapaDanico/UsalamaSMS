@@ -108,7 +108,8 @@ describe.skipIf(!hasDatabase)("the scheduled digest", () => {
     const outcome = await sendDigest(
       digest!,
       "rival@b.test",
-      { apiKey: "k", baseUrl: "https://example.test", from: "x@example.test" },
+      { apiKey: "k", baseUrl: "https://example.test", replyTo: undefined,
+      from: "x@example.test" },
       fetchImpl as never,
     );
     expect(outcome.status).toBe("NOTHING_TO_SAY");
@@ -142,7 +143,8 @@ describe.skipIf(!hasDatabase)("the scheduled digest", () => {
     const outcome = await sendDigest(
       digest!,
       "manager@a.test",
-      { apiKey: "k", baseUrl: "https://example.test", from: "x@example.test" },
+      { apiKey: "k", baseUrl: "https://example.test", replyTo: undefined,
+      from: "x@example.test" },
       fetchImpl as never,
     );
 
@@ -159,7 +161,8 @@ describe.skipIf(!hasDatabase)("the scheduled digest", () => {
     const outcome = await sendDigest(
       digest!,
       "manager@a.test",
-      { apiKey: undefined, baseUrl: "https://example.test", from: "x@example.test" },
+      { apiKey: undefined, baseUrl: "https://example.test", replyTo: undefined,
+      from: "x@example.test" },
       fetchImpl as never,
     );
     expect(outcome.status).toBe("NOT_CONFIGURED");

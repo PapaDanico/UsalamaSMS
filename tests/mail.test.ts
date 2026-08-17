@@ -15,7 +15,12 @@ const configured = {
   apiKey: "re_test_key",
   baseUrl: "https://usalamasms.com",
   from: "UsalamaSMS <safety@usalamasms.com>",
+  /* No Reply-To by default, which is the state a deployment is in
+     until somebody sets MAIL_REPLY_TO to a mailbox they read. */
+  replyTo: undefined,
 };
+
+const withReplyTo = { ...configured, replyTo: "safety@strip.test" };
 
 const busy = digestFor({
   deadlines: [{ status: "OVERDUE", daysLeft: -2 }],
@@ -205,5 +210,53 @@ describe("configuration", () => {
   it("trims a trailing slash so a link never doubles it", () => {
     const config = mailConfigFromEnv({ PUBLIC_BASE_URL: "https://usalamasms.com/" } as NodeJS.ProcessEnv);
     expect(config.baseUrl).toBe("https://usalamasms.com");
+  });
+});
+
+/* =====================================================================
+   THE REPLY THAT USED TO GO NOWHERE.
+
+   Every message this product sent came from safety@usalamasms.com with
+   no Reply-To, so a safety manager hitting Reply on the daily digest
+   wrote into a void. That is the worst of the three states a sender can
+   be in: a no-reply address at least tells them not to bother, and a
+   real mailbox answers. This one looked like it worked.
+
+   ABSENT MEANS THE HEADER IS OMITTED, never set to something
+   plausible — the same discipline the API key gets. A placeholder
+   turns "nobody has configured this" into "we sent your reply
+   somewhere", and only one of those is true.
+   ===================================================================== */
+describe("reply-to", () => {
+  const bodyOf = async (config: typeof configured | typeof withReplyTo) => {
+    const fetchImpl = spyFetch();
+    await sendDigest(busy, "safety@example.com", config, fetchImpl);
+    const call = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    return JSON.parse(String((call[1] as { body: string }).body)) as Record<string, unknown>;
+  };
+
+  it("SENDS NO Reply-To HEADER AT ALL when none is configured", async () => {
+    const body = await bodyOf(configured);
+    expect(body).not.toHaveProperty("reply_to");
+  });
+
+  it("and sends it when there is a mailbox to send it to", async () => {
+    /* The other direction — a config that never emitted the header
+       would satisfy the assertion above and be useless. */
+    const body = await bodyOf(withReplyTo);
+    expect(body["reply_to"]).toBe("safety@strip.test");
+  });
+
+  it("reads it from the environment, absent when unset", () => {
+    expect(mailConfigFromEnv({} as NodeJS.ProcessEnv).replyTo).toBeUndefined();
+    expect(
+      mailConfigFromEnv({ MAIL_REPLY_TO: "ops@strip.test" } as NodeJS.ProcessEnv).replyTo,
+    ).toBe("ops@strip.test");
+    /* An empty string is not an address. Left as a variable somebody
+       created and never filled in, it would otherwise become a
+       Reply-To of "". */
+    expect(
+      mailConfigFromEnv({ MAIL_REPLY_TO: "" } as NodeJS.ProcessEnv).replyTo,
+    ).toBeUndefined();
   });
 });

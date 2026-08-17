@@ -59,6 +59,25 @@ interface MailConfig {
   readonly apiKey: string | undefined;
   readonly baseUrl: string;
   readonly from: string;
+  /**
+   * WHERE A REPLY GOES, when somebody has somewhere for it to go.
+   *
+   * Every message this product sent came from `safety@usalamasms.com`
+   * with no Reply-To, so a safety manager hitting Reply on the daily
+   * digest wrote to an address nobody reads. That is the worst of the
+   * three possible states: a no-reply sender at least tells them not to
+   * bother, and a real mailbox answers. This looked like it worked.
+   *
+   * ABSENT UNLESS CONFIGURED, and absent means the header is OMITTED
+   * rather than set to something plausible. The same discipline
+   * `apiKey` gets: a placeholder would turn "nobody has set this up"
+   * into "we sent your reply somewhere", and only one of those is true.
+   *
+   * REQUIRED IN THE TYPE, not optional. Every construction site has to
+   * decide, which is how a future sender cannot quietly forget — the
+   * same reasoning SURVIVES_LAPSE uses in subscription.ts.
+   */
+  readonly replyTo: string | undefined;
 }
 
 /**
@@ -155,6 +174,7 @@ export async function sendDigest(
       },
       body: JSON.stringify({
         from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
         to,
         subject: subjectFor(digest),
         text: bodyFor(digest, config.baseUrl),
@@ -267,6 +287,7 @@ export async function sendPasswordReset(
       },
       body: JSON.stringify({
         from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
         to,
         subject: resetSubject(),
         text: resetBody(link, minutes),
@@ -395,6 +416,7 @@ export async function sendInvitation(
       },
       body: JSON.stringify({
         from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
         to,
         subject: invitationSubject(orgName),
         text: invitationBody(orgName, to, config.baseUrl, trialEndsOn),
@@ -435,5 +457,11 @@ export function mailConfigFromEnv(env: NodeJS.ProcessEnv = process.env): MailCon
     apiKey: env.RESEND_API_KEY || undefined,
     baseUrl: (env.PUBLIC_BASE_URL || "https://usalamasms.com").replace(/\/+$/, ""),
     from: "UsalamaSMS <safety@usalamasms.com>",
+    /* Set MAIL_REPLY_TO to a mailbox somebody actually reads. Until it
+       is set, no Reply-To is sent at all — which is honest: a reply
+       fails visibly rather than disappearing into a void the sender
+       believes is monitored. An empty string is not an address, so a
+       variable created and never filled in stays absent. */
+    replyTo: env.MAIL_REPLY_TO || undefined,
   };
 }
