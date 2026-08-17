@@ -155,16 +155,13 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
+    /* NO LONGER A REFUSAL. This route used to answer 503 when no
+       object store was configured, which meant evidence — part of
+       reporting, not an extra — shipped disabled on any deploy without
+       a second credential. It now falls back to the database the API
+       already holds. See `data` on ReportAttachment for why that is
+       sound at three-to-fifteen aircraft. */
     const ready = storageReady();
-    if (!ready.ok) {
-      /* NAMES THE VARIABLE, NOT ITS VALUE. */
-      return reply.code(503).send({
-        error: "storage_unconfigured",
-        message:
-          `This deploy has no evidence storage configured (${ready.missing} is unset), ` +
-          `so nothing was stored and no record was made.`,
-      });
-    }
 
     const { id } = req.params as { id: string };
     const body = (req.body ?? {}) as {
@@ -221,18 +218,25 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
     /* THE SERVER'S HASH, over the bytes it is about to write. */
     const sha256 = createHash("sha256").update(bytes).digest("hex");
 
-    const put = await fetch(objectUrl(key), {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${STORAGE_KEY}`,
-        "content-type": verdict.type,
-        /* Never overwrite. A key is a fresh UUID every time, so a
-           collision means something is wrong rather than something is
-           being replaced, and failing loudly is the right answer. */
-        "x-upsert": "false",
-      },
-      body: new Uint8Array(bytes),
-    });
+    /* WHERE THE BYTES GO. The bucket when one is configured, the
+       database otherwise — and `inlineBytes` is what decides, once,
+       so the row and the file cannot disagree about which. */
+    const inlineBytes = ready.ok ? null : bytes;
+
+    const put = ready.ok
+      ? await fetch(objectUrl(key), {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${STORAGE_KEY}`,
+            "content-type": verdict.type,
+            /* Never overwrite. A key is a fresh UUID every time, so a
+               collision means something is wrong rather than something is
+               being replaced, and failing loudly is the right answer. */
+            "x-upsert": "false",
+          },
+          body: new Uint8Array(bytes),
+        })
+      : ({ ok: true, status: 200 } as { ok: boolean; status: number });
 
     if (!put.ok) {
       /* NO ROW IS WRITTEN. A ledger entry for a file that does not
@@ -256,6 +260,10 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
         sha256,
         /* Display only, and capped. Nothing is ever built from it. */
         label: typeof body.label === "string" ? body.label.slice(0, 120) : null,
+        /* Null when the bucket took it. The row records WHERE the file
+           is by which of these is set, so there is no third column to
+           fall out of step with reality. */
+        data: inlineBytes,
         uploadedById: auth.sub,
       },
       select: { id: true, contentType: true, bytes: true, sha256: true, label: true, createdAt: true },
@@ -285,19 +293,37 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
     const { id } = req.params as { id: string };
     const row = await prisma.reportAttachment.findFirst({
       where: { ...tenantWhere(req), id },
-      select: { key: true, contentType: true, sha256: true },
+      /* `data` IS SELECTED ONLY HERE. It is the one column in this
+         product that can be megabytes, and no list, export or picture
+         route touches it — which is what keeps a bytea in the row from
+         costing anything anywhere else. */
+      select: { key: true, contentType: true, sha256: true, data: true },
     });
     if (!row) return reply.code(404).send({ error: "not_found" });
 
-    const ready = storageReady();
-    if (!ready.ok) return reply.code(503).send({ error: "storage_unconfigured" });
-
-    const got = await fetch(objectUrl(row.key), {
-      headers: { authorization: `Bearer ${STORAGE_KEY}` },
-    });
-    if (!got.ok) return reply.code(502).send({ error: "storage_failed" });
-
-    const buf = Buffer.from(await got.arrayBuffer());
+    let buf: Buffer;
+    if (row.data) {
+      /* Stored in the database because this deploy has no bucket. */
+      buf = Buffer.from(row.data);
+    } else {
+      const ready = storageReady();
+      /* A row with no inline bytes and no bucket to fetch from is a
+         record of a file nobody can produce. That is worth 503 and a
+         name, not a silent empty response. */
+      if (!ready.ok) {
+        return reply.code(503).send({
+          error: "storage_unconfigured",
+          message:
+            `This attachment is held in object storage, and ${ready.missing} is unset on ` +
+            "this deploy, so the file cannot be fetched.",
+        });
+      }
+      const got = await fetch(objectUrl(row.key), {
+        headers: { authorization: `Bearer ${STORAGE_KEY}` },
+      });
+      if (!got.ok) return reply.code(502).send({ error: "storage_failed" });
+      buf = Buffer.from(await got.arrayBuffer());
+    }
 
     /* THE HASH IS CHECKED ON THE WAY OUT, not only on the way in.
        Storage is a separate system with its own access path; if what

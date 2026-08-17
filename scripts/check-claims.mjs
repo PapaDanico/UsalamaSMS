@@ -36,6 +36,19 @@ const read = (p) => {
   }
 };
 
+/**
+ * Every file under `dir` matching `pattern`, as ROOT-relative paths.
+ *
+ * The same `readdirSync(..., { recursive: true })` the web-source read
+ * further down already uses — collected here because a second gate now
+ * needs it, and two spellings of "walk a directory" is how two gates
+ * come to disagree about which files exist.
+ */
+const listFiles = (dir, pattern) =>
+  readdirSync(resolve(ROOT, dir), { recursive: true })
+    .filter((f) => typeof f === 'string' && pattern.test(f))
+    .map((f) => `${dir}/${f}`);
+
 const failures = [];
 const passes = [];
 
@@ -362,13 +375,30 @@ const partialIds = coverageDecl
   .filter((entry) => /state:\s*"PARTIAL"/.test(entry))
   .map((entry) => entry.match(/id:\s*"([\d.]+)"/)?.[1])
   .filter(Boolean);
+/* THE GUARD HAD TO LEARN THAT ZERO IS AN ANSWER.
+
+   It required partialIds.length > 0, because an empty list would have
+   meant the parser had broken rather than that the product had
+   finished — a gate naming zero elements agrees that all zero of them
+   are named, which is the shape this file exists to refuse.
+
+   Both elements are now BUILT, so zero is the truth. The guard
+   therefore checks the PARSER rather than the count: the ids it
+   extracted must match the PARTIAL states it can see, whatever that
+   number is. If the regex ever stops matching, the two disagree and
+   this still fails. */
+const partialStates = (coverageDecl.match(/state:\s*"PARTIAL"/g) ?? []).length;
 assert(
   'the partial elements were discovered out of the coverage table',
-  partialIds.length > 0 &&
-    partialIds.length === (coverageDecl.match(/state:\s*"PARTIAL"/g) ?? []).length,
-  `found ${partialIds.length} partial ids against ` +
-    `${(coverageDecl.match(/state:\s*"PARTIAL"/g) ?? []).length} PARTIAL states — ` +
-    'this check would pass by naming nothing'
+  partialIds.length === partialStates,
+  `found ${partialIds.length} partial ids against ${partialStates} PARTIAL states — ` +
+    'the parser and the table disagree, so this check is reading something it does not understand'
+);
+assert(
+  'and the coverage table was parsed at all',
+  (coverageDecl.match(/state:\s*"(BUILT|PARTIAL|NOT_BUILT)"/g) ?? []).length >= 12,
+  'fewer than twelve element states were found in the coverage table — the parser has ' +
+    'lost its subject, and every assertion below it would pass over nothing'
 );
 const unnamed = partialIds.filter((id) => !pages.includes(`(${id})`));
 assert(
@@ -1072,6 +1102,39 @@ assert(
         "that list — putting it there would be the coverage page overstating in the " +
         "other direction, by counting a commercial step as a regulatory one.",
     ],
+    [
+      "/api/v1/admin/operators",
+      "THE VENDOR'S CONSOLE IS NOT THE OPERATOR'S SMS. /coverage answers what an " +
+        "operator can evidence to an inspector, and 'our supplier provisioned our " +
+        "account' is not on that list. Listing it would be the coverage page " +
+        "counting a commercial step as a regulatory one — the same overstatement " +
+        "the signup exemption below exists to avoid, and worse here because this " +
+        "route is not even reachable by anybody in the operator's organisation.",
+    ],
+    [
+      "/api/v1/admin/operators/:id/entitlement",
+      "As above — confirming what a customer has paid for is a fact about the " +
+        "invoice, not about their safety management system.",
+    ],
+    [
+      "/api/v1/admin/upgrade-requests",
+      "The vendor reading who has asked to pay. Same reasoning as the console " +
+        "routes above: an inspector asks what an OPERATOR can evidence about its " +
+        "safety management, and this route is not even reachable by anybody in an " +
+        "operator's organisation. It is on /admin, which is deliberately absent " +
+        "from the menu, for the same reason.",
+    ],
+    [
+      "/api/v1/upgrade-request",
+      "ASKING TO PAY IS NOT A SAFETY CAPABILITY. This is the operator's own side " +
+        "of the entitlement exemption above: that one records what a customer HAS " +
+        "paid for, this one records that they WANT to. Both are facts about an " +
+        "invoice. An inspector asks what an operator can evidence about its safety " +
+        "management, and 'we asked our supplier for a quote' is not on that list — " +
+        "putting it on /coverage would count a commercial step as a regulatory one, " +
+        "which is the overstatement in the direction this page is least able to " +
+        "afford. It also grants nothing: only platform.entitlement.manage answers.",
+    ],
     ["/api/v1/auth/logout", "As above."],
     ["/api/v1/auth/refresh", "As above."],
     ["/api/v1/auth/me", "As above."],
@@ -1249,6 +1312,120 @@ assert(
     `${unclaimed.join(", ")} — the API holds this and the coverage page does not say so. ` +
       "That is the 2.2 defect arriving by omission rather than by a false sentence: an " +
       "operator reads /coverage to know what it can evidence, and this is evidence it has",
+  );
+
+  /* ---- and the same question one layer down, where nothing asked it ----
+
+     THE ASSERTION ABOVE READS ROUTES, so a capability that never became
+     a route is invisible to it. That is not a hypothetical gap; it is
+     how `packages/shared/src/icaas.ts` came to exist.
+
+     The KCAA handoff was written, documented, and covered by fifteen
+     assertions in `tests/icaas.test.ts`. It composed a corrective action
+     into the pack KCAA's ICAAS portal asks for, named every field it
+     could not fill rather than inventing one, and refused to claim it
+     had submitted anything. All of it correct, all of it tested, and
+     **imported by nothing** — no route, no screen, not even the barrel.
+     Every gate in this repository was green with a whole feature
+     unreachable, because each one was looking at a layer it had not
+     reached yet.
+
+     A TEST IS NOT A CALLER. That is the distinction this measures, and
+     the reason the rule is worth stating precisely: `icaas.ts` had a
+     test file, so any check asking "is this module referenced anywhere"
+     would have passed. What it did not have was somebody in the product
+     who could run it. So `tests/` is excluded from what counts as
+     reaching a module — a module whose only importer is its own suite
+     is code the customer paid for and cannot use.
+
+     DISCOVERED, NOT LISTED, because a hardcoded roster stops covering
+     the moment somebody adds a file — this file says so about a
+     different check. Measured across all 39 modules at the time of
+     writing: 38 had a product importer and one did not. One true
+     positive, zero false, which is the discrimination that makes a rule
+     survive contact with people.
+
+     THE BARREL IS NOT THE TEST OF THIS, and getting that backwards
+     would break the bundle. Screens import shared modules by path
+     precisely so that `nasp.ts` and `pricing.ts` do NOT ride in the
+     entry chunk a ramp agent downloads before they can file — see the
+     SignupSchema note in `packages/shared/src/index.ts`. Absent from
+     `index.ts` is correct and deliberate. Absent from the product is
+     the defect.
+
+     MUTATION-CHECK THIS by adding an unimported module to
+     `packages/shared/src`, or by deleting the import in the route that
+     reaches one. Both go red and name the module. */
+  const SHARED_DIR = "packages/shared/src";
+  const sharedModules = readdirSync(resolve(ROOT, SHARED_DIR))
+    .filter((f) => f.endsWith(".ts") && f !== "index.ts")
+    .map((f) => f.slice(0, -3));
+
+  if (sharedModules.length < 20) {
+    console.error(
+      `check:claims — found only ${sharedModules.length} modules in ${SHARED_DIR}. ` +
+        "A gate that reads almost nothing passes almost everything. Refusing to.",
+    );
+    process.exit(1);
+  }
+
+  /* Everywhere a module could legitimately be reached FROM: the API,
+     the web app, the build and seed scripts, and its siblings. Not
+     tests — that is the whole point above. */
+  const callerText = [
+    ...listFiles("apps", /\.(ts|js|mjs)$/),
+    ...listFiles("scripts", /\.(mjs|js|ts)$/),
+    ...listFiles(SHARED_DIR, /\.ts$/),
+  ].map((p) => ({ path: p, text: read(p) }));
+
+  /* IMPORT SPECIFIERS, NOT RAW TEXT, and the first version of this gate
+     got that wrong in the way this file exists to prevent.
+
+     It tested whether the module's name appeared inside any quoted
+     string anywhere under apps/ or scripts/. The comment you are
+     reading names `icaas.ts` four times, in backticks, inside
+     scripts/ — so the gate reported zero orphans against the very tree
+     whose orphan it was written for. GREEN, FOREVER, and green in a way
+     that would have survived somebody deleting the real importer,
+     because the prose would still have been there.
+
+     A gate whose own documentation satisfies it is worse than no gate:
+     it also makes every module ever MENTIONED in prose permanently
+     invisible to the check.
+
+     So the module graph is read as a module graph. Only the specifier
+     of an actual `import`/`export … from` or `require()` counts, which
+     is the thing that makes a module reachable at runtime; prose about
+     a module cannot be one, whatever quotes it wears. */
+  const SPECIFIER = /(?:\bfrom\s*|\brequire\(\s*|\bimport\(\s*)["'`]([^"'`]+)["'`]/g;
+  const imported = new Map();
+  for (const f of callerText) {
+    for (const [, spec] of f.text.matchAll(SPECIFIER)) {
+      if (!imported.has(spec)) imported.set(spec, new Set());
+      imported.get(spec).add(f.path);
+    }
+  }
+
+  const orphans = sharedModules.filter((m) => {
+    const own = `${SHARED_DIR}/${m}.ts`;
+    /* `./nasp`, `../../packages/shared/src/nasp.ts` and
+       `@usalamasms/shared/nasp` are the three forms in use. All three
+       END in the module name at a path boundary, which distinguishes
+       `nasp` from `naspSomething` without needing to resolve the path. */
+    const named = new RegExp(`(^|[./])${m}(\\.ts)?$`);
+    for (const [spec, importers] of imported) {
+      if (!named.test(spec)) continue;
+      if ([...importers].some((p) => p !== own)) return false;
+    }
+    return true;
+  });
+
+  assert(
+    "NO SHARED MODULE EXISTS THAT ONLY ITS OWN TEST CAN REACH",
+    orphans.length === 0,
+    `${orphans.map((m) => `${SHARED_DIR}/${m}.ts`).join(", ")} — written, tested, and ` +
+      "imported by nothing in the product. A suite is not a caller: this is a capability " +
+      "the customer paid for and no route or screen can run",
   );
 }
 
@@ -1638,13 +1815,37 @@ assert(
     training.length > 0,
     'no 4.1 entry in COVERAGE — this gate has lost its subject (rule 11)'
   );
+  /* CHANGED DELIBERATELY, WHICH IS WHAT THE OLD MESSAGE ASKED FOR.
+
+     This used to assert element 4.1 was PARTIAL, and its failure text
+     said: "if real delivery has shipped, this assertion should be
+     changed deliberately in the same commit — not discovered to have
+     been passing." Real delivery has shipped, and this is that commit.
+
+     The chain was verified end to end rather than assumed:
+     netlify/functions/digest.mts runs on cron 0 5 * * *, computeDigest
+     classifies every training record through currencyOf — which
+     returns DUE_SOON BEFORE the expiry, not only LAPSED after it —
+     sendDigest emails every recipient holding report.read.org, and
+     mail.ts renders "N training currencies are lapsing" into the
+     message. A share sheet reaches somebody who already opened the
+     screen; this reaches somebody who did not.
+
+     SO THE ASSERTION IS NOW THE ONE THAT WOULD CATCH A REGRESSION:
+     the delivery path must still exist. Deleting the scheduled
+     function, or dropping currencies from the digest, puts element 4.1
+     back to where it was and this gate says so. */
+  const digestFn = read('netlify/functions/digest.mts');
   assert(
-    'ELEMENT 4.1 STILL SAYS THE WARNING DOES NOT ARRIVE',
-    /state:\s*"PARTIAL"/.test(training),
-    'element 4.1 is no longer PARTIAL. A share sheet is not alerting: it reaches ' +
-      'somebody who has already opened the screen. If real delivery has shipped, this ' +
-      'assertion should be changed deliberately in the same commit — not discovered ' +
-      'to have been passing'
+    'ELEMENT 4.1 IS BUILT ONLY WHILE THE WARNING ACTUALLY ARRIVES',
+    /state:\s*"BUILT"/.test(training) &&
+      /sendDigest/.test(digestFn) &&
+      /currencies/.test(read('apps/api/src/digest.compute.ts')),
+    'element 4.1 claims BUILT, but the delivery path that justifies it is gone. ' +
+      'A currency standing computed on a screen only reaches somebody who opens the ' +
+      'screen — which is exactly what made this element PARTIAL for months. Either ' +
+      'restore the scheduled digest and its training currencies, or put 4.1 back to ' +
+      'PARTIAL and say why'
   );
 
   /* The copy, on the component and on every screen that hosts it.

@@ -29,6 +29,8 @@ import { digestRoutes } from "./routes.digest";
 import { actionRoutes } from "./routes.actions";
 import { erpRoutes } from "./routes.erp";
 import { exportRoutes } from "./routes.export";
+import { adminRoutes } from "./routes.admin";
+import { icaasRoutes } from "./routes.icaas";
 import { rateLimitKey } from "./rate-limit-key";
 import { missingTables } from "./schema-guard";
 
@@ -242,6 +244,8 @@ export async function build(): Promise<FastifyInstance> {
   await app.register(actionRoutes);
   await app.register(erpRoutes);
   await app.register(exportRoutes);
+  await app.register(adminRoutes);
+  await app.register(icaasRoutes);
 
   // Regulator oversight: verify an org's audit chain by content.
   //

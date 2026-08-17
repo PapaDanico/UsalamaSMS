@@ -9,6 +9,10 @@ import argon2 from "argon2";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { can, type Role, type Permission } from "@usalamasms/shared";
+import { bandForFleet } from "../../../packages/shared/src/pricing";
+import {
+  allows, stateOn, trialEndsFrom, type Capability,
+} from "../../../packages/shared/src/subscription";
 import { deIdentify } from "./deident";
 import { auditMaterial } from "./audit-material";
 
@@ -181,6 +185,116 @@ export function requirePermission(p: Permission) {
     if (!can(req.auth.role, p)) {
       reply.code(403).send({ error: "forbidden", permission: p }); return;
     }
+  };
+}
+
+/* =====================================================================
+   ENTITLEMENT, ENFORCED.
+
+   `allows(state, capability)` has been in subscription.ts since the
+   subscription model was written, with a careful argument about which
+   capabilities survive a lapse and why. IT HAD ZERO CALLERS. The
+   pricing page promised that "the safety office tools pause; the
+   reporting never does", and nothing in this API had any opinion about
+   it — a capability model that reads as protection and protects
+   nothing, which is the product-shaped version of a check that cannot
+   fail.
+
+   WHAT THIS REFUSES TO BLOCK, AND WHY IT IS NOT NEGOTIABLE. Filing a
+   report, reading your own record and exporting the whole record stay
+   available in every state, including LAPSED:
+
+     · the deadline is owed to the AUTHORITY, not to us. An occurrence
+       under L.N. 32 has a reporting window that runs whatever our
+       invoice is doing, and software that blocked a filing over an
+       unpaid subscription would put itself between an operator and a
+       legal obligation — with the operator still in breach;
+     · the person filing is a ramp agent who saw something. They bought
+       nothing and can pay nothing, and a pricing decision three levels
+       above them must not arrive as a locked door;
+     · the record is theirs. A record held hostage until an invoice
+       clears is exactly what operators are escaping.
+
+   THE STATE IS READ, NOT TRUSTED FROM THE TOKEN. An access token is
+   minted at sign-in and lives for minutes, so a token-carried
+   entitlement would keep working after a lapse and — worse — after a
+   payment. The read is a primary-key lookup on Org, on routes that are
+   not in the filing path, which is the cheapest place to pay for being
+   correct rather than fast.
+
+   402 RATHER THAN 403. "Forbidden" tells an operator their ROLE is
+   wrong and sends them to their administrator; this is not about who
+   they are, and the response says which capability paused and what
+   still works, so the screen can say something true.
+   ===================================================================== */
+export function requireEntitlement(capability: Capability) {
+  return async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    if (!req.auth) { reply.code(401).send({ error: "authentication_required" }); return; }
+    const org = await prisma.org.findUnique({
+      where: { id: req.auth.org },
+      /* fleetSize comes back so the refusal can name a PRICE rather
+         than a policy. See the 402 body below. */
+      select: { trialEndsOn: true, paidThrough: true, createdAt: true, fleetSize: true },
+    });
+    /* An org that cannot be read is not an org that has lapsed. Failing
+       open here would be a licence check that any database blip
+       disables; failing closed would pause a safety office over one. So
+       it is neither — a missing org is an authentication problem, and
+       says so. */
+    if (!org) { reply.code(401).send({ error: "invalid_token" }); return; }
+    /* AN ORG WITH NO DATES HAS NOT LAPSED — IT HAS NOT BEEN GIVEN ONE.
+       The first version of this read a null trial date as the epoch,
+       which made every organisation created before the console existed
+       instantly LAPSED. Seven integration tests went red on it, and
+       every one of them was right: an operator who was never granted a
+       trial has not used one up.
+
+       So the trial runs from `createdAt`, which is the honest reading —
+       an org created twelve days ago is twelve days into its thirty,
+       whoever did or did not write a date down. Existing operators are
+       corrected by arithmetic rather than by a migration, and the
+       console still writes an explicit date for everyone provisioned
+       from now on. */
+    const state = stateOn(
+      {
+        trialEndsOn: org.trialEndsOn ?? trialEndsFrom(org.createdAt),
+        paidThrough: org.paidThrough,
+      },
+      new Date(),
+    );
+    if (allows(state, capability)) return;
+    /* THE PRICE, WHERE THE OPERATOR MEETS THE WALL.
+     
+       This used to answer "subscription_lapsed" and stop, which tells a
+       safety manager they cannot work and nothing about what to do
+       next. They then have to find the pricing page, work out which
+       band they are in, and email somebody — three steps, each a place
+       to give up, at the exact moment they were trying to do their job.
+     
+       ONLY WHEN THE FLEET SIZE IS KNOWN. `bandForFleet` will happily
+       answer for any number, and answering for a number nobody stated
+       would put a figure in front of an operator that is not their
+       price. A missing fleet size is reported as unknown and the screen
+       asks rather than guesses — a wrong price is worse than no price,
+       because the operator budgets against it. */
+    const band = typeof org.fleetSize === "number" && org.fleetSize > 0
+      ? bandForFleet(org.fleetSize)
+      : null;
+
+    reply.code(402).send({
+      error: "subscription_lapsed",
+      state,
+      capability,
+      /* Named rather than implied. An operator meeting this response
+         needs to know immediately that their people can still report
+         and their record is still theirs. */
+      stillAvailable: ["FILE_REPORT", "READ_OWN_RECORD", "EXPORT_OWN_RECORD"],
+      /* Null rather than a default band. See above. */
+      band: band
+        ? { id: band.id, name: band.name, fleet: band.fleet, usdMonthly: band.usdMonthly }
+        : null,
+      fleetSize: org.fleetSize ?? null,
+    });
   };
 }
 

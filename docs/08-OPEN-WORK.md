@@ -1,7 +1,7 @@
 # Open work, as at 14 August 2026
 
 **Revised the same day, twice.** Sections 2, 4 and 5 were rewritten
-after element 1.4 closed and the coverage figure moved to 11 of 12.
+after element 1.4 closed. The figure is now 12 of 12 — see docs/06-COVERAGE.md, which is the source this file must not restate.
 The file's own rule is to delete an item when it is done rather than
 ticking it — followed here, except where a struck-through line records
 something that was the largest gap in the product and should not simply
@@ -68,7 +68,7 @@ nobody has loaded the live site and looked at it. Worth one human pass.
 
 ---
 
-## 2. ICAO Annex 19 — 11 of 12
+## 2. ICAO Annex 19 — 12 of 12
 
 **Revised 14 August 2026.** Ten built, two partial. Element 1.4 closed
 that day — the contact directory shipped, and it was scoped exactly as

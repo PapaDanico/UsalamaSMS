@@ -234,8 +234,14 @@ describe("what an operator may be invoiced for", () => {
        somebody typing "60" twice. */
     const promise = COMMITMENTS.find((c) => /days to try/i.test(c));
     expect(promise).toBeDefined();
-    expect(promise).toContain("Sixty");
-    expect(TRIAL_DAYS).toBe(60);
+    /* The number in the sentence IS the constant — the string is built
+       from it — so this asserts they cannot drift rather than pinning a
+       word somebody would have to remember to retype. */
+    expect(promise).toContain(`${TRIAL_DAYS} days`);
+    expect(TRIAL_DAYS).toBe(30);
+    /* And the promise still names the extension, because thirty days is
+       not reliably one whole loop and saying so is the honest half. */
+    expect(promise).toMatch(/extended on request/i);
 
     const start = new Date("2026-03-01T00:00:00.000Z");
     const end = trialEndsFrom(start);

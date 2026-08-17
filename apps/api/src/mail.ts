@@ -59,6 +59,32 @@ interface MailConfig {
   readonly apiKey: string | undefined;
   readonly baseUrl: string;
   readonly from: string;
+  /**
+   * WHERE A REPLY GOES, when somebody has somewhere for it to go.
+   *
+   * Every message this product sent came from `safety@usalamasms.com`
+   * with no Reply-To, so a safety manager hitting Reply on the daily
+   * digest wrote to an address nobody reads. That is the worst of the
+   * three possible states: a no-reply sender at least tells them not to
+   * bother, and a real mailbox answers. This looked like it worked.
+   *
+   * ABSENT UNLESS CONFIGURED, and absent means the header is OMITTED
+   * rather than set to something plausible. The same discipline
+   * `apiKey` gets: a placeholder would turn "nobody has set this up"
+   * into "we sent your reply somewhere", and only one of those is true.
+   *
+   * REQUIRED IN THE TYPE, not optional. Every construction site has to
+   * decide, which is how a future sender cannot quietly forget — the
+   * same reasoning SURVIVES_LAPSE uses in subscription.ts.
+   */
+  readonly replyTo: string | undefined;
+  /**
+   * WHERE A COMMERCIAL NOTICE GOES — the vendor's own inbox, not an
+   * operator's. Absent unless configured, for the same reason as
+   * `replyTo`: a notice sent to a guessed address carries a customer's
+   * name somewhere nobody chose.
+   */
+  readonly platformNotice: string | undefined;
 }
 
 /**
@@ -155,6 +181,7 @@ export async function sendDigest(
       },
       body: JSON.stringify({
         from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
         to,
         subject: subjectFor(digest),
         text: bodyFor(digest, config.baseUrl),
@@ -267,6 +294,7 @@ export async function sendPasswordReset(
       },
       body: JSON.stringify({
         from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
         to,
         subject: resetSubject(),
         text: resetBody(link, minutes),
@@ -297,6 +325,229 @@ export async function sendPasswordReset(
   }
 }
 
+/* =====================================================================
+   THE INVITATION AN OPERATOR GETS WHEN AN ADMINISTRATOR PROVISIONS THEM.
+
+   Until this existed, provisioning an operator sent NOTHING. The
+   generated password came back once in the administrator's response and
+   the new safety manager learned they had an account only if somebody
+   remembered to tell them. That is the gap between having a product and
+   being able to onboard a paying customer, and it was closed last.
+
+   ---------------------------------------------------------------
+   IT DOES NOT CARRY THE PASSWORD, AND THAT IS NOT AN OVERSIGHT.
+
+   routes.admin.ts already says the generated password is "never logged,
+   never emailed from here, and never returned again". A password in an
+   email is a password in a mailbox forever — searchable, forwarded,
+   backed up, and still valid months after the person has left. The
+   administrator hands it over by whatever channel they and the customer
+   already trust, and this message tells the recipient to expect that.
+
+   WHAT IT DOES CARRY is the thing an operator cannot get any other way:
+   confirmation that the account is real, the address it is under, and
+   an absolute link to sign in. A person who receives "your
+   administrator will send your password separately" from a domain that
+   passes DKIM is far harder to phish than one who receives a password.
+
+   ---------------------------------------------------------------
+   THE LINK IS BUILT FROM PUBLIC_BASE_URL, never from a request header,
+   for the reason the reset email records: a Host header is
+   attacker-controlled, and a sign-in link pointing wherever the
+   requester chooses is a credential-harvesting campaign sent from our
+   own domain with our own return address.
+   ===================================================================== */
+export function invitationSubject(orgName: string): string {
+  return `UsalamaSMS — your safety management account for ${orgName}`;
+}
+
+export function invitationBody(
+  orgName: string,
+  email: string,
+  baseUrl: string,
+  trialEndsOn: string | null,
+): string {
+  return [
+    `An account has been created for ${orgName} on UsalamaSMS.`,
+    "",
+    `Sign in at: ${baseUrl}/login`,
+    `Your username is this address: ${email}`,
+    "",
+    /* SAID BEFORE THEY GO LOOKING FOR IT. The single most likely
+       failure of this email is somebody hunting for a password that is
+       deliberately not in it, deciding the message is broken, and
+       filing it. */
+    "Your password is not in this email, on purpose — a password sent by",
+    "email stays in a mailbox long after it should. Your administrator has",
+    "it and will pass it to you directly. If you have not been given one,",
+    "ask them rather than requesting a reset.",
+    "",
+    ...(trialEndsOn
+      ? [`Your trial runs until ${trialEndsOn}. Everything is available during it.`, ""]
+      : []),
+    "What to do first: file one report, so the system holds something real,",
+    "and open Annex 19 Conformance to see where you stand against the twelve",
+    "elements.",
+    "",
+    "This product holds your safety record. It does not run your safety",
+    "management system — somebody still has to identify the hazard, decide",
+    "the risk is tolerable, and sign their name to that.",
+  ].join("\n");
+}
+
+/**
+ * Send the invitation, or say precisely why it was not sent.
+ *
+ * THE OUTCOME IS RETURNED RATHER THAN SWALLOWED, and the provisioning
+ * route reports it to the administrator, because the administrator is
+ * the only person who can act on a failure — they are holding the
+ * password and can pick up a phone. An invitation that silently did not
+ * arrive is worse than one that was never attempted: it leaves somebody
+ * believing the customer has been onboarded.
+ */
+export async function sendInvitation(
+  to: string,
+  orgName: string,
+  trialEndsOn: string | null,
+  config: MailConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MailOutcome> {
+  if (!config.apiKey) return { status: "NOT_CONFIGURED" };
+
+  try {
+    const response = await fetchImpl("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
+        to,
+        subject: invitationSubject(orgName),
+        text: invitationBody(orgName, to, config.baseUrl, trialEndsOn),
+      }),
+    });
+
+    if (!response.ok) {
+      /* The status, never the body — a provider error can echo the
+         request back, and this request carries an Authorization header
+         in the same object a careless log line would serialise. */
+      return { status: "FAILED", reason: `provider responded ${response.status}` };
+    }
+
+    let id = "";
+    try {
+      const payload = (await response.json()) as { id?: string };
+      id = payload.id ?? "";
+    } catch {
+      /* Accepted, unparseable. Still sent. */
+    }
+    return { status: "SENT", id };
+  } catch (error) {
+    return {
+      status: "FAILED",
+      reason: error instanceof Error ? error.message : "transport failed",
+    };
+  }
+}
+
+/* =====================================================================
+   AN OPERATOR HAS ASKED TO PAY, AND SOMEBODY HAS TO HEAR IT.
+
+   The 402 wall now names a price. Without this, saying yes to it
+   reached a database row and nobody's inbox — an operator waiting for
+   an answer that was never going to come, which is a worse outcome than
+   a wall with no button on it.
+
+   IT CARRIES NO SAFETY DATA. Only the operator's name, who asked, the
+   fleet size and the band. A commercial notice is not a place for a
+   narrative, a report count or anything a reporter wrote in confidence,
+   and the temptation to enrich it with "and they have 14 open hazards"
+   is exactly how confidential material ends up in a sales mailbox.
+   ===================================================================== */
+export function upgradeRequestSubject(orgName: string): string {
+  return `UsalamaSMS — ${orgName} has asked to upgrade`;
+}
+
+export function upgradeRequestBody(
+  orgName: string,
+  askedBy: string,
+  fleetSize: number | null,
+  band: { name: string; usdMonthly: number } | null,
+): string {
+  return [
+    `${orgName} has asked to move onto a paid subscription.`,
+    "",
+    `Asked by: ${askedBy}`,
+    fleetSize === null
+      ? "Fleet size: not recorded — ask before quoting, do not assume a band."
+      : `Fleet size: ${fleetSize}`,
+    band
+      ? `Band: ${band.name}, $${band.usdMonthly}/month`
+      : "Band: cannot be determined without a fleet size.",
+    "",
+    "NOTHING HAS BEEN GRANTED. Confirm payment however you normally do,",
+    "then grant the entitlement from the administration console. Until you",
+    "do, their safety office stays paused — their people can still file",
+    "reports and they can still export their whole record.",
+  ].join("\n");
+}
+
+/**
+ * Tell the platform administrator, or say precisely why nobody was told.
+ *
+ * ADDRESSED FROM THE ENVIRONMENT, and absent means NOT_CONFIGURED
+ * rather than a guess. Sending a commercial notice to an address
+ * nobody chose is how a customer's name ends up somewhere it was never
+ * meant to go.
+ */
+export async function sendUpgradeRequest(
+  orgName: string,
+  askedBy: string,
+  fleetSize: number | null,
+  band: { name: string; usdMonthly: number } | null,
+  config: MailConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MailOutcome> {
+  if (!config.apiKey) return { status: "NOT_CONFIGURED" };
+  if (!config.platformNotice) return { status: "NOT_CONFIGURED" };
+
+  try {
+    const response = await fetchImpl("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
+        to: config.platformNotice,
+        subject: upgradeRequestSubject(orgName),
+        text: upgradeRequestBody(orgName, askedBy, fleetSize, band),
+      }),
+    });
+    if (!response.ok) {
+      return { status: "FAILED", reason: `provider responded ${response.status}` };
+    }
+    let id = "";
+    try {
+      const payload = (await response.json()) as { id?: string };
+      id = payload.id ?? "";
+    } catch {
+      /* Accepted, unparseable. Still sent. */
+    }
+    return { status: "SENT", id };
+  } catch (error) {
+    return {
+      status: "FAILED",
+      reason: error instanceof Error ? error.message : "transport failed",
+    };
+  }
+}
+
 /**
  * Configuration from the environment, with the absent key left absent.
  *
@@ -308,5 +559,12 @@ export function mailConfigFromEnv(env: NodeJS.ProcessEnv = process.env): MailCon
     apiKey: env.RESEND_API_KEY || undefined,
     baseUrl: (env.PUBLIC_BASE_URL || "https://usalamasms.com").replace(/\/+$/, ""),
     from: "UsalamaSMS <safety@usalamasms.com>",
+    /* Set MAIL_REPLY_TO to a mailbox somebody actually reads. Until it
+       is set, no Reply-To is sent at all — which is honest: a reply
+       fails visibly rather than disappearing into a void the sender
+       believes is monitored. An empty string is not an address, so a
+       variable created and never filled in stays absent. */
+    replyTo: env.MAIL_REPLY_TO || undefined,
+    platformNotice: env.PLATFORM_NOTICE_EMAIL || undefined,
   };
 }

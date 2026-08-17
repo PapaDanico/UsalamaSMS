@@ -2314,6 +2314,28 @@ html { scroll-padding-top: var(--us-chrome); }
 .account-facts dt { color: var(--us-text-tertiary); min-width: 8rem; }
 .account-facts dd { margin: 0; color: var(--us-text-primary); }
 
+/* A CHECKBOX AND ITS QUESTION, SIDE BY SIDE.
+
+   The readiness check asks seven questions, each of which is a title
+   and a sentence describing what an operator must be able to SHOW. A
+   default label puts the box above two lines of prose and the reader
+   loses which box belongs to which question by the third one.
+
+   Grid rather than flex, so the text column wraps under itself and not
+   under the box — and `align-items: start` because a checkbox
+   vertically centred against a three-line question sits beside the
+   wrong line. */
+.check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .55rem .7rem;
+  align-items: start;
+  padding: .7rem 0;
+  border-top: 1px solid var(--us-rule, rgba(0, 0, 0, .1));
+}
+.check input { margin-top: .25rem; }
+.check > span { display: block; }
+
 .picture-list {
   margin: var(--us-space-3) 0;
   padding-left: var(--us-space-5);

@@ -45,7 +45,7 @@ import {
 } from "../../../packages/shared/src/disposition";
 import { unrecognised } from "../../../packages/shared/src/cictt";
 import { ADREP_FIELDS, isValidAdrepValue } from "../../../packages/shared/src/adrep";
-import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
+import { prisma, authenticate, appendAuditTx, tenantWhere , requireEntitlement } from "./core";
 
 const HISTORY_LIMIT = 200;
 const QUEUE_LIMIT = 500;
@@ -156,6 +156,17 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
     config: { rateLimit: { max: 120, timeWindow: "1 minute" } },
   };
 
+  /* THE PAID SIDE OF THIS FILE. A lapsed subscription pauses the
+     safety office's working surfaces and never touches filing,
+     reading your own record or exporting the whole record — see
+     requireEntitlement in core.ts for why those three are not
+     negotiable. The capability is named here rather than in a
+     central list, so the reason lives with the routes it gates. */
+  const paid = {
+    ...limited,
+    preHandler: [authenticate, requireEntitlement("TRIAGE")],
+  };
+
   /* ------------------------------------------------------------------
      THE ORGANISATION'S QUEUE, not this handset's.
 
@@ -253,7 +264,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
      for itself which buttons a role may press is a second copy of the
      permission matrix, and it is the copy that goes stale.
      ------------------------------------------------------------------ */
-  app.get("/api/v1/reports/:id/disposition", limited, async (req, reply) => {
+  app.get("/api/v1/reports/:id/disposition", paid, async (req, reply) => {
     const { id } = req.params as { id: string };
     const auth = req.auth!;
     if (!can(auth.role as never, "report.read.org")) {
@@ -443,7 +454,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
      and no column held one, so an occurrence that WAS notified and one
      that was forgotten were the same row.
      ------------------------------------------------------------------ */
-  app.post("/api/v1/reports/:id/notified", limited, async (req, reply) => {
+  app.post("/api/v1/reports/:id/notified", paid, async (req, reply) => {
     const { id } = req.params as { id: string };
     const auth = req.auth!;
 
@@ -584,7 +595,7 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
   /* ------------------------------------------------------------------
      Move it.
      ------------------------------------------------------------------ */
-  app.post("/api/v1/reports/:id/disposition", limited, async (req, reply) => {
+  app.post("/api/v1/reports/:id/disposition", paid, async (req, reply) => {
     const { id } = req.params as { id: string };
     const auth = req.auth!;
     const parsed = TransitionSchema.safeParse(req.body);

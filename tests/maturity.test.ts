@@ -294,7 +294,24 @@ describe('coverage', () => {
        about their regulatory position. */
     const s = coverageSummary();
     expect(s.elementsCovered).toBeLessThanOrEqual(s.built + s.partial);
-    expect(s.elementsCovered).toBeLessThan(s.total);
+
+    /* THIS USED TO BE `toBeLessThan(s.total)` — the figure may never
+       reach twelve — and it was a good guard for as long as it was
+       true. It said: whatever you do, do not tell an operator you have
+       covered the whole of Annex 19.
+
+       Both remaining partials closed, so it is now false as a RULE
+       rather than as an assertion, and changing it is deliberate. What
+       replaces it is the thing that made the old guard worth having:
+       the figure may equal twelve only when the table HONESTLY holds
+       twelve built, with nothing partial and nothing missing. Half
+       credit can no longer add up to a full claim. */
+    expect(s.elementsCovered).toBeLessThanOrEqual(s.total);
+    if (s.elementsCovered === s.total) {
+      expect(s.built, 'a full claim needs every element BUILT').toBe(s.total);
+      expect(s.partial, 'a full claim cannot rest on half credit').toBe(0);
+      expect(s.notBuilt + s.assessedOnly, 'a full claim cannot have gaps').toBe(0);
+    }
   });
 });
 

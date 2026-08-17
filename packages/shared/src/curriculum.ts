@@ -472,6 +472,13 @@ const INITIAL_KEYS = INITIAL_TOPICS.map((c) => c.key);
  * or fixes aircraft, they hold that role too.
  */
 const ADDITIONS_BY_ROLE: Readonly<Record<Role, readonly string[]>> = Object.freeze({
+  /* THE VENDOR IS NOT IN THE OPERATOR'S TRAINING MATRIX. A platform
+     administrator holds no post in an aviation organisation, so
+     CAA-AC-SMS011 has nothing to say about them — and an entry here
+     would put a permanent false gap on somebody's Appendix I band. The
+     empty array is the answer, and it is the same reasoning that keeps
+     REGULATOR_INSPECTOR empty. */
+  PLATFORM_ADMIN: Object.freeze([]),
   FRONTLINE: Object.freeze(["HAZARD_REPORTING"]),
   SAFETY_OFFICER: Object.freeze(["HAZARD_REPORTING", "RISK_ASSESSMENT"]),
   SAFETY_MANAGER: Object.freeze([
@@ -561,4 +568,68 @@ export function gapsFor(role: Role, heldCourseKeys: readonly string[]): readonly
  */
 export function unrecognisedIn(heldCourseKeys: readonly string[]): readonly string[] {
   return Object.freeze([...new Set(heldCourseKeys.filter((k) => courseFor(k) === undefined))]);
+}
+
+/* =====================================================================
+   BEING TOLD BEFORE IT LAPSES, WHICH IS THE HALF THAT MAKES A MATRIX
+   USEFUL.
+
+   Element 4.1 was PARTIAL for exactly this reason: the record was
+   here — who was trained, in what, when it expires — and the product
+   only ever answered the question AFTER the answer stopped being
+   useful. A safety manager told on the 2nd that a licence lapsed on
+   the 1st has been told about a grounding, not about a renewal.
+
+   NINETY DAYS, and it is not the seven that capa.ts uses. A corrective
+   action is a task somebody does; training is a COURSE somebody has to
+   find, book, travel to and sit, and the operators this product is for
+   send people abroad for some of it. Seven days' notice of a course
+   that runs quarterly is notice of nothing.
+
+   THE WINDOW IS ONE CONSTANT AND THE COMPARISON IS ONE FUNCTION,
+   because a threshold restated at each call site is a threshold that
+   disagrees with itself — and this repository has a DUE_SOON test that
+   went hollow once already when its second window disappeared.
+   ===================================================================== */
+
+/** How long before expiry a course starts being reported as due. */
+export const TRAINING_DUE_SOON_DAYS = 90;
+
+export type TrainingStanding = "CURRENT" | "DUE_SOON" | "LAPSED" | "NO_EXPIRY";
+
+/**
+ * Where one training record stands, as of a moment.
+ *
+ * NO_EXPIRY IS NOT "CURRENT". A record with no expiry date is one
+ * nobody has said anything about — an induction that genuinely never
+ * lapses, or a row somebody left incomplete — and reporting it as
+ * current would make the second case invisible. The caller decides
+ * what to do about not knowing.
+ */
+export function standingOf(
+  expiresOn: Date | string | null | undefined,
+  asOf: Date,
+): TrainingStanding {
+  if (expiresOn == null) return "NO_EXPIRY";
+  const at = expiresOn instanceof Date ? expiresOn.getTime() : Date.parse(String(expiresOn));
+  if (!Number.isFinite(at)) return "NO_EXPIRY";
+  const days = Math.ceil((at - asOf.getTime()) / 86_400_000);
+  if (days < 0) return "LAPSED";
+  if (days <= TRAINING_DUE_SOON_DAYS) return "DUE_SOON";
+  return "CURRENT";
+}
+
+/** Whole days until expiry — negative once it has passed, never clamped. */
+export function daysUntilExpiry(
+  expiresOn: Date | string | null | undefined,
+  asOf: Date,
+): number | null {
+  if (expiresOn == null) return null;
+  const at = expiresOn instanceof Date ? expiresOn.getTime() : Date.parse(String(expiresOn));
+  if (!Number.isFinite(at)) return null;
+  /* Not clamped at zero, for the reason daysUntilChange gives in
+     subscription.ts: "expires today" and "expired eleven days ago" are
+     different sentences and the caller must be able to tell them
+     apart. */
+  return Math.ceil((at - asOf.getTime()) / 86_400_000);
 }

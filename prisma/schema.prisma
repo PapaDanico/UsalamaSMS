@@ -32,6 +32,22 @@ enum Role {
   ACCOUNTABLE_EXECUTIVE
   REGULATOR_INSPECTOR
   SYSTEM_ADMIN
+
+  /// THE VENDOR, NOT THE OPERATOR, and the only role in this enum that
+  /// is not somebody in an aviation organisation.
+  ///
+  /// SYSTEM_ADMIN administers ONE tenant — it is the operator's own
+  /// account administrator. PLATFORM_ADMIN provisions tenants and
+  /// confirms what they have paid for, across all of them, and holds
+  /// NO safety permission whatsoever: not a narrative, not a hazard,
+  /// not an audit log, not an export. See permissions.ts, where a test
+  /// asserts that its set is disjoint from NARRATIVE_PERMISSIONS.
+  ///
+  /// The distinction is the product's own promise. An operator is
+  /// buying a place to put the thing their people are most reluctant
+  /// to write down; a vendor account that could read it would make the
+  /// confidentiality claim false no matter what the privacy page says.
+  PLATFORM_ADMIN
 }
 
 enum ReportType {
@@ -759,6 +775,28 @@ model Spi {
   // and a required target is how indicators go untracked.
   target       Float?
   owner        String
+  /// WHICH NATIONAL HIGH-RISK CATEGORY THIS INDICATOR BEARS ON, if any.
+  ///
+  /// Amendment 2 makes the link between an operator's indicators and
+  /// the State's safety plan the substance of performance-based
+  /// oversight rather than a courtesy. Kenya's NASP names six HRCs and
+  /// lists the indicators it counts under each; an operator filing a
+  /// number that lands in the same row as the national one can be read
+  /// side by side with it, and one that invents its own measure cannot.
+  ///
+  /// NULLABLE, AND IT STAYS NULLABLE. An operator's indicators are
+  /// theirs to choose — nothing in Kenya's plan is a requirement placed
+  /// on them, and `NASP_CAVEAT` says so on the screen. A required
+  /// column here would be this product inventing an obligation the
+  /// State did not make, and would force every existing indicator to
+  /// claim a category somebody never picked.
+  ///
+  /// A CODE FROM `HRC_CATEGORIES`, not free text, so the rollup cannot
+  /// be defeated by spelling. Not an enum in the database: the list is
+  /// declared once in taxonomy.ts and an enum here would be a second
+  /// copy that drifts — which is exactly how `LOC_I` and the plan's
+  /// `LOC-I` came to disagree.
+  hrc          String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -1241,6 +1279,32 @@ model ControlledDocument {
   title        String
   reference    String
   version      String
+
+  /// THE DOCUMENT ITSELF, WHICH IS WHY ELEMENT 1.5 WAS ONLY PARTIAL.
+  ///
+  /// This model has always carried what document CONTROL means as a
+  /// discipline — reference, revision, approver, review date,
+  /// supersession, and who has read the revision now in force. What it
+  /// could not do was produce the document, so an inspector asking
+  /// "show me revision 3" was sent to a shared drive, and the register
+  /// described a file it could not vouch for.
+  ///
+  /// Held the same way evidence is, for the same reasons and with the
+  /// same discipline: bytes in the row, a server-computed sha256 that
+  /// is re-checked on the way out, an allowlisted content type, and no
+  /// path ever built from a filename. A revision is immutable by
+  /// construction — @@unique([orgId, reference, version]) — so the
+  /// bytes never change under a version anybody has acknowledged.
+  ///
+  /// Nullable, because a register entry for a document held elsewhere
+  /// is still a true register entry. The screen says which it is
+  /// rather than implying every row has a file behind it.
+  data        Bytes?
+  contentType String?
+  bytes       Int?
+  sha256      String?
+  /// Display only, for the download filename. Nothing is built from it.
+  filename    String?
   approvedById String?
   approvedOn   DateTime?
   reviewBy     DateTime?
@@ -1501,6 +1565,28 @@ model ReportAttachment {
   /// What the reporter called it, for a human reading the list. Display
   /// ONLY — nothing is ever built from it, least of all a path.
   label String?
+
+  /// THE BYTES, WHEN THERE IS NO OBJECT STORE TO PUT THEM IN.
+  ///
+  /// Evidence is not optional to reporting — a hazard report about a
+  /// cracked bracket is worth a great deal less than the photograph of
+  /// it — so this product refuses to make it wait on a second
+  /// credential. When SUPABASE_SERVICE_ROLE_KEY is configured the file
+  /// goes to the bucket and this is null; when it is not, the file
+  /// lives here, in the database the API already holds.
+  ///
+  /// THAT IS NOT A COMPROMISE AT THIS SCALE. A cap of 3 MB and six
+  /// files a report puts the worst case at 18 MB per report for an
+  /// operator flying three to fifteen aircraft. Postgres stores it out
+  /// of line automatically and never reads it unless it is selected —
+  /// and no query in this product selects it except the one download
+  /// route. `OrgConfig.logo` already holds an image for the same
+  /// reason.
+  ///
+  /// It also makes the export genuinely complete and removes a whole
+  /// class of failure: one store, one credential, one place a
+  /// regulator's evidence can be.
+  data Bytes?
 
   uploadedById String?
   createdAt    DateTime @default(now())

@@ -1946,7 +1946,216 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    legal requirement earns a raise — and so does publishing a regulator's
    own syllabus that the product already carried privately. What still
    does not is a dependency, a polyfill or a component library. */
-const BUDGET = { entry: 224 * 1024, js: 576 * 1024, css: 80 * 1024 };
+/* TOTAL 576 -> 584 KB, for the vendor's console. ENTRY UNMOVED at
+   215.7 KB, and that is again the whole argument.
+
+   WHAT IT BOUGHT. The ability to take a customer. Until /admin the
+   only way to provision an operator was to write rows into production
+   by hand — no audit entry, no reason recorded, and a password that
+   existed in whatever terminal ran the INSERT. The console creates the
+   organisation and its first user, issues one password shown once,
+   starts the trial clock, and records payment against a required
+   reason that goes into the audit chain.
+
+   WHY IT IS NOT FAT, AND WHY THIS ONE IS THE CLEAREST CASE YET. It is
+   a lazy route that NO CUSTOMER EVER LOADS. Every previous raise
+   bought a screen some operator would eventually open; this chunk is
+   downloaded only by whoever runs UsalamaSMS. A reporter filing at a
+   strip pays nothing for it, an operator's safety manager pays nothing
+   for it, and the entry chunk moved 0.2 KB — the router entry, not the
+   page.
+
+   The stopping rule holds and gains a fifth precedent: a screen earns
+   a raise, a correctness fix on the target device earns a raise, a
+   legal requirement earns a raise, publishing a regulator's syllabus
+   earns a raise — and so does the machinery of being a business, when
+   it is carried entirely off the path every customer walks. What still
+   does not is a dependency, a polyfill or a component library. */
+/* TOTAL 584 -> 592 KB, for the Amendment 2 readiness check. ENTRY
+   moved 0.2 KB, to 215.9.
+
+   WHAT IT BOUGHT. A public page that tells an operator where they
+   stand against the changes that apply on 26 November 2026 — seven
+   questions, no account, no email, and a countdown that goes NEGATIVE
+   after the date rather than quietly reading zero for the rest of its
+   life. The whole regulated population of East African aviation has
+   fourteen weeks and most of them do not know it.
+
+   WHY IT IS NOT FAT. Lazy route, and the module it carries is a list
+   of seven changes and three newly-captured populations — prose, not
+   machinery. The entry chunk moved 0.2 KB, which is the router entry.
+
+   AND IT IS THE FIRST RAISE THAT PAYS FOR ITSELF IN LEADS rather than
+   in capability. Every previous one bought something an operator does
+   once they are a customer; this one is read by people who are not,
+   and answers honestly enough to be worth reading — one of the seven
+   changes is something this product does not do, and the page says so
+   beside the six it does.
+
+   The stopping rule holds and gains a sixth precedent: a screen earns
+   a raise, a correctness fix on the target device earns a raise, a
+   legal requirement earns a raise, publishing a regulator's syllabus
+   earns a raise, the machinery of being a business earns a raise — and
+   so does telling somebody the truth about a deadline they are inside.
+   What still does not is a dependency, a polyfill or a component
+   library. */
+/* TOTAL 592 -> 598 KB, for the handoff to KCAA's ICAAS portal. ENTRY
+   UNMOVED IN SUBSTANCE at 216.2 of 224, and CSS NOT RAISED AT ALL —
+   the screen was built out of classes that already had rules.
+
+   MEASURED, AND THE PARTS SUM TO THE TOTAL:
+
+     new /toolkits/icaas chunk               5,426
+     entry (one route registration, one
+       sitemap entry)                          281
+     picture (the link from the action the
+       pack is composed from)                  219
+     toolkits (one title and one blurb)        126
+                                            -------
+     total                                   6,052   = 5.91 KB
+
+   604,708 -> 610,760 bytes, measured by building the tree at HEAD with
+   `git stash push -u` and again with the change applied, identifying
+   each chunk BY ITS CONTENT rather than by its hash — the hashes all
+   move. The receipt two above this one records `git stash` without -u
+   leaving untracked files in place and producing a zero delta; -u also
+   stashes `dist/`, so the build has to be re-run after stashing rather
+   than measured from what is sitting there.
+
+   WHAT IT BUYS. An operator answering a KCAA Corrective Action Request
+   currently retypes, into ecitizen.kcaa.or.ke, what this product is
+   already holding: the finding, the action, the accountable post, the
+   target date, and the hash of every file they are about to upload.
+   The pack composes all of it from the record and links to the portal.
+
+   IT IS ALSO A FEATURE THAT WAS ALREADY PAID FOR AND COULD NOT BE
+   REACHED. `packages/shared/src/icaas.ts` and its fifteen assertions
+   shipped imported by nothing — no route, no screen, not the barrel.
+   Five and a half kilobytes is the cost of making code that already
+   existed available to the person it was written for, and
+   `check:claims` now fails when a shared module has no product
+   importer, so the next one cannot happen quietly.
+
+   THE ENTRY BUDGET IS WHY THIS IS AFFORDABLE AT ALL. A reporter at a
+   remote strip pays 281 bytes of it — a route registration — and
+   downloads the screen never. That is the whole argument for two
+   numbers instead of one: the total says something grew, and the entry
+   says it grew somewhere the person filing a hazard report does not
+   have to pay for. */
+/* TOTAL 598 -> 602 KB, for a worked example on a page that was selling
+   nothing. ENTRY UNMOVED AT 216.2, CSS UNMOVED.
+
+     /toolkits/icaas chunk   5,426 -> 8,530   +3,104 bytes
+
+   Nothing else moved; the whole 3.0 KB is one lazily-loaded screen.
+
+   WHAT IT BUYS, AND THE DEFECT WAS ONLY VISIBLE BY LOOKING. Every gate
+   passed on this screen — 82 smoke checks, 30 screens a11y-clean, 270
+   symmetry measurements — and then a screenshot at 1440 showed a
+   visitor with no account being handed "Nothing to compose. Sign in."
+   The page is in the public menu AND the footer, so it is reachable by
+   exactly the prospect it tells nothing. The single most Kenya-specific
+   thing this product does, described to the audience that cannot see
+   it. No gate can ask "is this page persuasive"; that is what looking
+   at it is for.
+
+   It now shows a fictional operator's Corrective Action Request
+   composed into a CAP — COMPOSED BY composeCap() RATHER THAN WRITTEN
+   OUT, so the example is the behaviour rather than a screenshot in
+   prose that goes stale silently.
+
+   AND THE EXAMPLE HAS NO TARGET DATE, ON PURPOSE. The persuasive move
+   was a perfect pack with every field filled. The honest one is a pack
+   that NAMES the field it will not invent — because the thing worth
+   proving to a safety manager is not that software can copy fields
+   across, it is that this one refuses to put a plausible date in front
+   of them to sign and carry to their regulator. A new smoke check
+   asserts the missing-list is still non-empty, so "tidying" the fixture
+   by giving it a date fails the build rather than quietly killing the
+   demonstration.
+
+   THE COMPARISON THAT SETTLES WHETHER IT IS WORTH 3 KB: /amendment is
+   the other page that answers a real question for somebody who will
+   never buy anything, and it is the best-performing thing in this
+   product. This is the same shape aimed at the same buyer, on the one
+   workflow no competitor covers for a Kenyan operator. */
+/* TOTAL 602 -> 606 KB, for the SSP rollup. ENTRY effectively unmoved
+   (216.2 -> 216.3, one route registration), CSS unmoved — the section
+   is built from .picture-list and .badge, which already had rules.
+
+   Amendment 2 turns the link between an operator's indicators and the
+   State Safety Programme from good practice into the substance of
+   performance-based oversight. Kenya's NASP names six High-Risk
+   Categories; /toolkits/spi now answers, from the operator's own
+   record, which of the six they can currently speak to.
+
+   THE WEIGHT IS ON THE INDICATOR SCREEN RATHER THAN A NEW ROUTE, and
+   that was the cheaper AND the better call. A seventh toolkit would
+   have cost a menu entry, a hint, a blurb, an a11y sweep and a
+   symmetry sweep — and it would have put the national comparison
+   somewhere other than where an operator manages the indicators it is
+   comparing.
+
+   WHAT IT REFUSES TO RENDER IS THE PART THAT COST DESIGN TIME. No
+   score, no percentage, no "4 of 6": not every category applies to
+   every operator, and a Wilson charter with no night operations has a
+   defensible reason to measure four. Rendering that as 67% would tell
+   their regulator they are a third non-compliant. tests/ssp.test.ts
+   asserts the shape has no score field, so somebody adding one has to
+   argue for it rather than ship it. */
+/* TOTAL 606 -> 610 KB, for a paywall that reads as a bill instead of a
+   fault. ENTRY UNMOVED AT 216.3, CSS unmoved.
+
+   THE SERVER HAS ANSWERED 402 SINCE requireEntitlement WAS WRITTEN AND
+   EXACTLY ONE SCREEN KNEW WHAT IT MEANT. Everywhere else it fell into a
+   generic catch and rendered "the safety office could not be reached" —
+   about a request the safety office had refused on purpose. A paywall
+   that reads as a malfunction produces a support ticket instead of a
+   payment, and an operator who thinks the product is broken does not
+   renew a thing they think is broken.
+
+   ONE MODULE, LAZILY IMPORTED AT THE MOMENT OF THE 402, so the weight
+   lands only on somebody who has actually hit the wall — every other
+   session pays nothing for it. Shared between the indicator screen and
+   the KCAA pack rather than written twice, because two surfaces
+   wording the same refusal differently is how one of them ends up
+   saying something the other would not.
+
+   WHAT IT BUYS, commercially: the wall now says what still works
+   (filing, reading, exporting — an operator whose subscription lapsed
+   must never believe their people cannot report a hazard), names the
+   band and price for THEIR fleet, and carries a button that records the
+   intention and tells the vendor. Before this, saying yes to the wall
+   meant finding the pricing page, working out your own band, and
+   composing an email — three steps, each a place to give up, at the
+   exact moment somebody was trying to work.
+
+   AND IT QUOTES NOTHING IT DOES NOT KNOW. The server sends band: null
+   when no fleet size was recorded, and the panel asks rather than
+   guesses. A wrong price is worse than no price: an operator budgets
+   against it and then somebody has to take it back. */
+/* TOTAL 610 -> 614 KB, and this one removes a dependency rather than
+   adding a feature. ENTRY UNMOVED AT 216.3, CSS unmoved.
+
+   THE UPGRADE REQUEST HAD EXACTLY ONE WAY OF REACHING THE VENDOR, AND
+   IT WAS AN ENVIRONMENT VARIABLE NOBODY HAD SET. A deployment without
+   PLATFORM_NOTICE_EMAIL recorded every request faithfully to the audit
+   chain and told nobody — so an operator pressed "ask to upgrade", was
+   honestly informed the notice had not gone, and the request sat in a
+   table no screen read. A customer trying to pay, reaching nobody, on
+   the one route whose entire purpose is revenue.
+
+   So the console reads them from the chain that already held them. The
+   email is now a convenience; the record is the channel. No new table,
+   because a second store of the same fact is a second thing to keep in
+   step — and an append-only hash-linked chain is a better record of
+   "who asked and when" than a mutable row.
+
+   The 4 KB is the admin screen's request list and the read route's
+   share of the console chunk. /admin is deliberately absent from the
+   menu and reachable by nobody in an operator's organisation, so this
+   is weight no customer ever downloads. */
+const BUDGET = { entry: 224 * 1024, js: 614 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

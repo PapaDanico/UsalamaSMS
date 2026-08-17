@@ -34,9 +34,17 @@ import {
   gapsFor,
   unrecognisedIn,
   CURRICULUM_VERIFIED_AGAINST_PRIMARY,
+  standingOf,
+  daysUntilExpiry,
+  TRAINING_DUE_SOON_DAYS,
   CURRICULUM_INSTRUMENT,
 } from "../../../packages/shared/src/curriculum";
 import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
+import { createHash } from "node:crypto";
+import type { Prisma } from "@prisma/client";
+import {
+  checkEvidence, isBase64, EVIDENCE_MAX_BODY_BYTES,
+} from "../../../packages/shared/src/evidence";
 
 const LIST_LIMIT = 200;
 
@@ -100,6 +108,13 @@ const DocumentInput = z.object({
   reference: z.string().min(1).max(80),
   version: z.string().min(1).max(40),
   reviewBy: iso.optional(),
+  /* THE DOCUMENT ITSELF, and it stays OPTIONAL. A register entry for a
+     manual held elsewhere is still a true register entry, and refusing
+     one would push an operator's real revisions out of the register
+     rather than into it. The screen says which rows carry a file. */
+  contentType: z.string().max(120).optional(),
+  data: z.string().max(EVIDENCE_MAX_BODY_BYTES).optional(),
+  filename: z.string().max(160).optional(),
 });
 
 const FindingInput = z.object({
@@ -551,10 +566,105 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(201).send({ acknowledgedAt: saved.acknowledgedAt, alreadyRead: false });
   });
 
+  /* THE DOCUMENT ITSELF, which is what element 1.5 was missing.
+
+     GATED ON document.read, NOT document.manage. Everybody who has to
+     ACKNOWLEDGE a revision has to be able to read it, and a register
+     that let only its administrator open the manual would be a
+     register nobody could comply with. Acknowledgement already works
+     that way; this matches it.
+
+     The hash is re-checked on the way out for the same reason evidence
+     is: a stored hash that is never compared is decoration. */
+  app.get("/api/v1/sms/documents/:id/file", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "document.read")) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+    const { id } = req.params as { id: string };
+    const row = await prisma.controlledDocument.findFirst({
+      /* Tenancy in the WHERE, never in a filter afterwards. */
+      where: { id, ...tenantWhere(req) },
+      /* `data` is selected ONLY here — no list, export or picture route
+         touches it, which is what keeps a bytea in the row costing
+         nothing anywhere else. */
+      select: {
+        data: true, contentType: true, sha256: true, filename: true,
+        reference: true, version: true,
+      },
+    });
+    if (!row) return reply.code(404).send({ error: "not_found" });
+    if (!row.data || !row.sha256) {
+      /* A register entry for a document held elsewhere. Said plainly,
+         because "404" would suggest the entry itself is missing. */
+      return reply.code(409).send({
+        error: "no_file_held",
+        message:
+          "This revision is registered but the document itself is held elsewhere. " +
+          "The register records its reference, revision, approver and review date.",
+      });
+    }
+    const buf = Buffer.from(row.data);
+    const actual = createHash("sha256").update(buf).digest("hex");
+    if (actual !== row.sha256) {
+      req.log.error({ id }, "controlled document hash mismatch");
+      return reply.code(409).send({
+        error: "hash_mismatch",
+        message:
+          "The stored document does not match the hash recorded when it was approved. " +
+          "It has not been served.",
+      });
+    }
+    /* attachment, and a filename built from the REFERENCE AND VERSION
+       rather than from anything a caller supplied. */
+    const safe = `${row.reference}-${row.version}`.replace(/[^A-Za-z0-9._-]+/g, "_");
+    return reply
+      .header("content-type", row.contentType ?? "application/octet-stream")
+      .header("content-disposition", `attachment; filename="${safe}"`)
+      .send(buf);
+  });
+
   app.post("/api/v1/sms/documents", limited, async (req, reply) => {
     if (!guard(req.auth!.role, "document.manage")) return reply.code(403).send({ error: "forbidden" });
     const body = DocumentInput.safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: "invalid_document" });
+
+    /* THE FILE, IF ONE CAME. Checked by the same function evidence is
+       checked by — the allowlist, the size, and the sniff that refuses
+       a PDF wearing an image's content type. A document store that
+       accepted whatever it was handed would be a file upload with a
+       version number, and SVG in particular is markup that can carry
+       script into the operator's own pages. */
+    /* Typed as Prisma's own create input rather than a hand-written
+       shape, so a column rename breaks here instead of at runtime. */
+    let file: Partial<Prisma.ControlledDocumentUncheckedCreateInput> = {};
+    if (body.data.data !== undefined) {
+      /* isBase64 FIRST. Buffer.from(x, "base64") never throws — it
+         silently drops anything it does not recognise — so a truncated
+         upload would otherwise be stored as a shorter, valid-looking
+         file with a hash over the wrong bytes. That exact catch-that-
+         cannot-fire was fixed once already in routes.attachments.ts. */
+      if (!isBase64(body.data.data)) {
+        return reply.code(400).send({
+          error: "rejected",
+          message: "That file did not arrive intact, so nothing was stored. Attach it again.",
+        });
+      }
+      const raw = Buffer.from(body.data.data, "base64");
+      const verdict = checkEvidence(body.data.contentType, raw);
+      if (!verdict.ok) {
+        return reply.code(400).send({ error: "rejected", message: verdict.message });
+      }
+      file = {
+        data: new Uint8Array(raw),
+        contentType: verdict.type,
+        bytes: verdict.bytes,
+        /* THE SERVER'S HASH, over the bytes it is about to write —
+           never one the client supplied. */
+        sha256: createHash("sha256").update(raw).digest("hex"),
+        filename: body.data.filename?.slice(0, 160),
+      };
+    }
+
     const row = await prisma.$transaction(async (tx) => {
       // A new version supersedes the old one under the same reference.
       await tx.controlledDocument.updateMany({
@@ -570,6 +680,7 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
           approvedById: req.auth!.sub,
           approvedOn: new Date(),
           reviewBy: toDate(body.data.reviewBy),
+          ...file,
         },
       });
       await appendAuditTx(tx, {
@@ -702,6 +813,17 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
       include: { user: { select: { name: true, role: true } } },
     });
 
+    /* WHERE EACH RECORD STANDS, computed rather than stored — the same
+       reason the subscription state is. A stored standing is one that
+       is wrong every morning until something rewrites it, and the
+       thing that rewrites it is a nightly job whose failure is silent. */
+    const now = new Date();
+    const standing = rows.map((t: { id: string; expiresOn: Date | null }) => ({
+      id: t.id,
+      standing: standingOf(t.expiresOn, now),
+      daysUntilExpiry: daysUntilExpiry(t.expiresOn, now),
+    }));
+
     /* ------------------------------------------------------------------
        WHO IS MISSING TRAINING THEIR ROLE REQUIRES.
 
@@ -786,6 +908,12 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
          shared module does not hold. */
       curriculumVerifiedAgainstPrimary: CURRICULUM_VERIFIED_AGAINST_PRIMARY,
       curriculumInstrument: CURRICULUM_INSTRUMENT.reference,
+      /* ELEMENT 4.1's OTHER HALF. The matrix said what had EXPIRED;
+         this says what is about to, which is the only version a safety
+         manager can act on. Ninety days, because training is a course
+         somebody has to find, book and travel to. */
+      standing,
+      dueSoonWindowDays: TRAINING_DUE_SOON_DAYS,
     });
   });
 

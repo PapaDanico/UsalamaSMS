@@ -27,7 +27,7 @@
 export const ABOUT = {
   eyebrow: 'About us',
   title: 'The whole safety management system, for the operators the incumbents priced out',
-  lede: `Eleven of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
+  lede: `Twelve of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
          operator in East and Central Africa — the one running an SMS on paper
          because the software market starts above what the operation earns. The
          two that are partial are named, on this page and on the coverage page,
@@ -62,12 +62,14 @@ export const ABOUT = {
       id: 'what',
       title: 'What this is',
       body: `
-        <p>UsalamaSMS runs <strong>eleven of the twelve elements ICAO Annex 19
+        <p>UsalamaSMS runs <strong>all twelve of the elements ICAO Annex 19
         defines</strong> — the safety policy and the accountabilities under it,
-        the appointments, the emergency response plan, hazard identification,
+        the appointments, the emergency response plan, the controlled document
+        register that holds the documents themselves, hazard identification,
         risk assessment, the performance indicators, management of change,
-        internal audit and its corrective actions, and the communication loop
-        back to the people who file. It takes a frontline report, classifies
+        internal audit and its corrective actions, the training matrix that
+        warns before a currency lapses rather than after, and the communication
+        loop back to the people who file. It takes a frontline report, classifies
         it, gives it the regulatory clock its jurisdiction actually sets, puts
         it against the ICAO Doc 9859 scale, and holds it on a record an auditor
         can verify.</p>
@@ -135,15 +137,25 @@ export const ABOUT = {
       title: 'What is still partial, and what no software can do for you',
       body: `
         <p>ICAO Annex 19 defines a safety management system as four components
-        and twelve elements. This product runs <strong>11 of 12</strong>: ten
-        built, and two partial.</p>
+        and twelve elements. This product runs <strong>12 of 12</strong>.</p>
 
-        <p><strong>The two partial ones, named rather than averaged away.</strong>
-        <em>SMS documentation (1.5)</em> holds controlled documents, their
-        revisions and who has acknowledged which — it does not author your
-        manual. <em>Training and education (4.1)</em> holds the training matrix,
-        currencies and expiry — it does not deliver the training or issue the
-        certificate.</p>
+        <p><strong>Two of them were only partial until recently, and what
+        changed is worth saying plainly.</strong>
+        <em>SMS documentation (1.5)</em> held the control — reference, revision,
+        approver, review date, and who acknowledged which — but not the
+        document, so an inspector asking to see revision 3 was sent to a shared
+        drive. The register now holds the file itself, hashed on the way in and
+        checked on the way out.
+        <em>Training and education (4.1)</em> held the matrix and told you what
+        had expired. It now tells you ninety days BEFORE, and the daily digest
+        puts it in an email — because a warning that waits for somebody to open
+        a screen is a warning that arrives after the grounding.</p>
+
+        <p><strong>What twelve of twelve does not mean.</strong> It does not mean
+        this product runs your safety management system. It holds the record,
+        computes what is derivable from it, and puts the result where an
+        inspector can check it. Somebody still has to identify the hazard, decide
+        the risk is tolerable, and sign their name to that.</p>
 
         <p><a href="/coverage">The coverage page</a> states every element, its
         status, and what is missing from it. Both figures are computed from the
@@ -469,12 +481,68 @@ export const FAQ = {
         },
         {
           q: 'What does it cost?',
-          a: `<p>Pricing is not set, and this page will not invent a number to
-              look complete. The market position it is built for is below the
-              roughly $300 a month at which the cheapest established product
-              starts, because above that figure a six-turboprop operator in the
-              region is not a price-sensitive customer — it is a non-customer
-              running its SMS on paper.</p>`
+          a: `<p>Bands by the size of the operation, priced per operator and
+              published in full on the pricing page. What matters more than the
+              figure is the shape: this is billed <strong>per operator</strong>,
+              not per user.</p>
+              <p>The established products in this market charge per seat, per
+              month. A safety manager, two safety officers and an accountable
+              executive is four seats — and four seats at the going rate is
+              several times what a whole operator pays here. That is not a
+              discount on the same model; it is the reason a six-turboprop
+              operator can afford an SMS at all, because under per-seat pricing
+              the sensible move is to give one person the licence and have
+              everyone else email them, which is how reporting dies.</p>
+              <p>Every Annex 19 element is in every band. What changes with
+              price is the size of the operation, never the obligation.</p>`
+        },
+        {
+          q: 'We answer to KCAA. Does it do anything specifically for us?',
+          a: `<p>Yes, and it is the part no international product does. When the
+              Authority raises a Corrective Action Request, the corrective action
+              plan is composed from the record you already hold — the finding,
+              the action, the accountable post, the target date, and the SHA-256
+              of every file you are about to upload — in the order the ICAAS
+              portal asks for them, with a link straight to it.</p>
+              <p>It does not submit on your behalf and never says it has. There
+              is no ICAAS API; the manual describes a portal a person signs into.
+              You sign in, you raise the CAP, and you know that you did. An
+              operator who believed software had filed something with their
+              regulator, and then met an inspector who had never seen it, would
+              be worse off than one who had never used this at all.</p>
+              <p>The deadlines are Kenya's own — L.N. 32 of 2026's three
+              class-dependent clocks, not a flat 24 hours — and the high-risk
+              categories are the six the National Aviation Safety Plan names,
+              in the plan's own vocabulary rather than a near-miss of it.</p>`
+        },
+        {
+          q: 'Can we show a regulator how our indicators line up with the national plan?',
+          a: `<p>That is a question Amendment 2 makes sharper, and the answer is
+              on the safety performance screen. Each of the six national
+              high-risk categories shows what your own records can currently
+              speak to: an indicator with periods behind it, reports tagged but
+              nothing measuring them, or nothing at all.</p>
+              <p>It is deliberately not a score. Several categories may not apply
+              to your operation — a Wilson-based charter with no night operations
+              has a defensible reason to measure four of six — and rendering that
+              as a percentage would tell your regulator you are a third
+              non-compliant. Deciding which apply is your call to make and to
+              justify; this supplies the facts you make it with.</p>
+              <p>Where a category is empty, the screen says what that does
+              <em>not</em> mean. No tagged CFIT reports is a statement about your
+              records, not about your operation.</p>`
+        },
+        {
+          q: 'Can a reporter attach a photograph?',
+          a: `<p>Yes. A hazard report about a cracked bracket is worth a great
+              deal less than the photograph of the bracket. Files are held
+              against the report with a SHA-256 computed by the server and
+              re-checked on every read, so a file that changed between upload and
+              download is refused rather than served.</p>
+              <p>It works on a deploy with no object storage configured — the
+              bytes fall back to the database the API already holds — because a
+              feature that ships disabled until somebody sets a second credential
+              is a feature that ships disabled.</p>`
         },
         {
           q: 'Is it certified or approved by a civil aviation authority?',

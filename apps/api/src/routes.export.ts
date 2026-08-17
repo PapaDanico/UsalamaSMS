@@ -66,6 +66,7 @@
 // =====================================================================
 import type { FastifyInstance } from "fastify";
 import { can, type Permission } from "@usalamasms/shared";
+import { composePack } from "../../../packages/shared/src/auditpack";
 import { prisma, authenticate, appendAudit, tenantWhere, verifyAuditChain } from "./core";
 
 /**
@@ -353,6 +354,32 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
          walks to verify the chain, and a number silently loses
          precision past 2^53 while a string never does. */
       const chainEntries = auditLog.map((e) => ({ ...e, seq: e.seq.toString() }));
+
+      /* THE AUDIT PACK IS THE SAME READ, RE-ORDERED — not a second
+         route with a second tenancy check.
+
+         A separate endpoint would have had to re-read every table, and
+         /api/v1/picture already taught this repository what happens
+         when a second place assembles the same records: the tenancy
+         was right in one and the permission wrong in the other for a
+         whole commit. `?pack=1` composes from the payload this route
+         has ALREADY gathered under org.export and this org's id, so
+         there is exactly one place either can be got wrong. */
+      if ((req.query as { pack?: string } | undefined)?.pack === "1") {
+        const pack = composePack(
+          {
+            org, users, reports, hazards, riskAssessments, policies, accountabilities,
+            appointments, exercises, documents, findings, training, communications,
+            auditLog: chainEntries, spis, spiPeriods, voluntaryScheme, changes, contacts,
+            actions, attachments, transitions, policyReads, documentReads, config,
+          },
+          new Date(),
+        );
+        const packName = `usalamasms-audit-pack-${req.auth!.org}.json`;
+        return reply
+          .header("content-disposition", `attachment; filename="${packName}"`)
+          .send({ format: EXPORT_FORMAT, pack });
+      }
 
       const filename = `usalamasms-export-${req.auth!.org}.json`;
       return reply

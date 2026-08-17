@@ -43,7 +43,7 @@
    ===================================================================== */
 
 export interface Band {
-  readonly id: "single" | "small" | "fleet";
+  readonly id: "starter" | "single" | "small" | "fleet";
   readonly name: string;
   /** The fleet size this band covers, as an operator would say it. */
   readonly fleet: string;
@@ -109,6 +109,18 @@ export interface Band {
    operator choosing between this and nothing at all. */
 export const BANDS: ReadonlyArray<Band> = Object.freeze([
   Object.freeze({
+    id: "starter",
+    name: "Starter",
+    fleet: "1 or 2, RPAS or a single heliport",
+    usdMonthly: 39,
+    who:
+      "A drone operator, a heliport, or a maintenance organisation serving one — " +
+      "captured by Annex 19 Amendment 2 and building an SMS from nothing.",
+    adds:
+      "Every Annex 19 element, same as every other band. What is smaller is the " +
+      "operation, not the obligation.",
+  }),
+  Object.freeze({
     id: "single",
     name: "Single aircraft",
     fleet: "1 aircraft",
@@ -157,11 +169,56 @@ export const EVERY_BAND_INCLUDES: ReadonlyArray<string> = Object.freeze([
  * page, in an invoice and in a renewal, or the first disagreement is
  * with a customer.
  */
+/* WHAT KIND OF ORGANISATION THIS IS, which Amendment 2 made a pricing
+   question for the first time.
+
+   Until 26 November 2026 every customer of this product held an AOC,
+   and fleet size described them completely. Amendment 2 extends the SMS
+   obligation to certified RPAS operators in international operations,
+   the maintenance organisations serving them, and certified heliports —
+   organisations for which "how many aircraft" is either the wrong
+   question or answers 2 and means something entirely different from a
+   charter operator with two King Airs. */
+export type OperatorKind = "AOC" | "RPAS" | "HELIPORT" | "MRO";
+
+/** The kinds Amendment 2 newly captures, and which therefore start small. */
+const NEWLY_CAPTURED: ReadonlySet<OperatorKind> = new Set<OperatorKind>([
+  "RPAS", "HELIPORT", "MRO",
+]);
+
 export function bandForFleet(aircraft: number): Band {
-  if (!Number.isFinite(aircraft) || aircraft < 1) return BANDS[0]!;
-  if (aircraft === 1) return BANDS[0]!;
-  if (aircraft <= 9) return BANDS[1]!;
-  return BANDS[2]!;
+  /* BANDS[0] IS NOW `starter`, SO THIS INDEXES BY ID RATHER THAN BY
+     POSITION. It read BANDS[0] for "one aircraft" and would have
+     silently started charging an owner-operator $39 instead of $79 the
+     moment a cheaper band was inserted above it — the classic
+     off-by-one that pays out in the wrong direction. */
+  const byId = (id: Band["id"]) => BANDS.find((b) => b.id === id)!;
+  if (!Number.isFinite(aircraft) || aircraft < 1) return byId("single");
+  if (aircraft === 1) return byId("single");
+  if (aircraft <= 9) return byId("small");
+  return byId("fleet");
+}
+
+/**
+ * The band for an organisation, given what kind it is and how big.
+ *
+ * AN AOC HOLDER NEVER LANDS ON STARTER, whatever its fleet size. A
+ * single-aircraft charter operator carries the same regulatory weight
+ * as a ten-aircraft one — scheduled or charter passenger operations,
+ * an accountable executive, a post holder structure — and pricing it at
+ * the drone rate would be underpricing the customer this product was
+ * built for, not winning a new one.
+ *
+ * Equally, a large RPAS operation is not a Starter. The tier is for the
+ * organisations Amendment 2 captured that are genuinely small; one
+ * running twenty aircraft has an operation to match.
+ */
+export function bandFor(kind: OperatorKind, scale: number): Band {
+  const byId = (id: Band["id"]) => BANDS.find((b) => b.id === id)!;
+  if (NEWLY_CAPTURED.has(kind) && Number.isFinite(scale) && scale >= 0 && scale <= 2) {
+    return byId("starter");
+  }
+  return bandForFleet(scale);
 }
 
 /** Annual cost, with the two months a yearly commitment saves. */
@@ -215,9 +272,22 @@ export function annualUsd(band: Band): number {
  *     the promise against the constant rather than against a number
  *     somebody retyped here.
  */
+/* THE TRIAL LENGTH LIVES HERE, and subscription.ts re-exports it as
+   TRIAL_DAYS rather than the other way round.
+
+   subscription.ts already imports this module for `bandForFleet`, so
+   declaring it there and importing it here would be a cycle. Putting
+   it beside the sentence that SELLS it also means the promise and the
+   number cannot drift: the string below is built from the constant,
+   which is charter rule 10 applied to a sales claim rather than to a
+   test count. */
+export const TRIAL_DAYS = 30;
+
 export const COMMITMENTS: ReadonlyArray<string> = Object.freeze([
-  "Sixty days to try it, with no card and no limit on what you file — long enough to " +
-    "take one hazard the whole way round the loop, which is the only way to judge an SMS.",
+  `${TRIAL_DAYS} days to try it, with no card and no limit on what you file — and ` +
+    "extended on request if you are part way round your first hazard. Taking one all " +
+    "the way round the loop is the only way to judge an SMS, and we would rather give " +
+    "you the time than have you decide on half of it.",
   "Your people file for free, always. There is no seat to buy, so there is no version " +
     "of this where leaving the line crew out saves you money.",
   "If a subscription ever lapses, your people can still file and you can still export " +

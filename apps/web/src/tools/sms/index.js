@@ -149,7 +149,28 @@ const SURFACES = {
     endpoint: '/api/v1/sms/training',
     collection: 'training',
     action: 'Record training',
-    permission: 'training.manage'
+    permission: 'training.manage',
+    /* THE ONE SURFACE WHOSE MOST IMPORTANT CONTENT IS NOT A RECORD.
+       Every other element here answers "what has been filed"; this one
+       also answers "who needs training that nothing on file covers",
+       and that second answer is computed from the curriculum and the
+       roster rather than read from a row.
+
+       Without this predicate the card fell back to "Nothing recorded
+       against this element yet" whenever the record list was empty —
+       and an operator on their first day, who has trained nobody and
+       therefore has the LONGEST gap list in the product, is exactly
+       the operator with an empty record list. The screen was silent in
+       the only state where it had something urgent to say. Measured:
+       one record and the gap block renders; zero records and it
+       disappeared along with the provenance line.
+
+       The renderer below already computes both halves separately, and
+       says why — "a matrix built only from records shows a clean sheet
+       for somebody who has had no training at all". This is that
+       sentence applied to whether the block is drawn at all. */
+    beyondRecords: (payload) =>
+      (payload?.curriculum ?? []).some((p) => p.gaps?.length || p.unrecognised?.length)
   },
   '4.2': {
     key: 'communications',
@@ -489,10 +510,18 @@ const RENDER = {
        unread. The product does not guess a mapping — a fuzzy match
        from "SMS refresher" to a curriculum key is invented compliance.
 
-       AND THE SOURCE IS STATED. Doc 9859's six initial topics were
-       read through a search index, not the instrument; the payload
-       carries that flag and this says so where somebody is acting on
-       the number. */
+       AND THE SOURCE IS STATED, WHICHEVER WAY IT FALLS. This comment
+       used to say the six initial topics came from a search index's
+       rendering of Doc 9859 rather than the instrument, and that was
+       true until somebody read CAA-AC-SMS011 itself — at which point
+       the flag flipped, the caveat stopped rendering, and NOTHING
+       replaced it. A reader went from being told the syllabus was
+       second-hand to being told nothing at all.
+
+       So both branches say something now: the caveat when the syllabus
+       was not read from the instrument, and the instrument's own
+       reference when it was. The route sends both the flag and the
+       reference, so this screen never has to know which is current. */
     const people = (payload?.curriculum ?? []).filter(
       (p) => p.gaps?.length || p.unrecognised?.length
     );
@@ -1245,6 +1274,11 @@ export async function render(outlet) {
           }
           const r = rowsFor(element.id);
           const count = r?.rows?.length ?? 0;
+          /* A surface may hold content that is computed rather than
+             filed — see `beyondRecords` on 4.1. The count still drives
+             the badge, because "nothing recorded" stays true about the
+             records; it just stops deciding whether the body renders. */
+          const computed = !r?.error && (surface.beyondRecords?.(r?.payload) ?? false);
           return html`<article class="card sms-el" id="element-${element.id}" data-element="${element.id}">
             <div class="cov__head">
               <h3><span class="mat-element__id">${element.id}</span> ${element.name}</h3>
@@ -1260,7 +1294,7 @@ export async function render(outlet) {
                     ? 'Your role does not include reading this part of the record.'
                     : 'This part of the record could not be read. That is not the same as it being empty — do not treat it as such.'}
                 </p>`
-              : count
+              : count || computed
                 ? html`<div class="rec-list">${RENDER[surface.key](r.rows, r.payload)}</div>`
                 : html`<p class="empty-state"><span>Nothing recorded against this element yet.</span></p>`}
 

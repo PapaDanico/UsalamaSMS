@@ -106,6 +106,11 @@ export const TOOLKITS = [
     routed: true
   },
   {
+    href: '/toolkits/icaas',
+    short: 'KCAA corrective action plan',
+    routed: true
+  },
+  {
     href: '/toolkits#classifier',
     short: 'occurrence classifier'
   },
@@ -291,6 +296,31 @@ export const SECTIONS = [
         label: 'SMS Documentation',
         short: 'Documentation',
         inHeader: true
+      },
+      {
+        /* IN ASSURANCE, because the motion is "the Authority has asked
+           me something and I have to answer it" — the same reach as
+           opening the documentation, not the same as running a tool on
+           a hypothetical.
+
+           A menu entry of its own rather than only a tile inside
+           Toolkits, and the smoke check that insisted on it was right:
+           this screen is reached under a deadline set by somebody else.
+           A safety manager holding a Corrective Action Request does not
+           browse for it. */
+        href: '/toolkits/icaas',
+        label: 'KCAA Corrective Action Plan',
+        short: 'KCAA pack'
+      },
+      {
+        /* THE LEAD MAGNET, AND IT BELONGS IN ASSURANCE RATHER THAN IN
+           REFERENCE. Somebody reaches for it when they have been told a
+           date and want to know where they stand — which is the same
+           motion as opening the maturity assessment, not the same as
+           looking something up. */
+        href: '/amendment',
+        label: 'Amendment 2 readiness',
+        short: 'Amendment 2'
       },
       {
         /* Element 4.1's syllabus, published rather than described. It

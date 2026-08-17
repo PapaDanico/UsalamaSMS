@@ -14,6 +14,12 @@ import { JURISDICTIONS, type Jurisdiction } from "./regulations";
 export const RoleEnum = z.enum([
   "FRONTLINE", "SAFETY_OFFICER", "SAFETY_MANAGER", "INVESTIGATOR",
   "KEY_MANAGEMENT", "ACCOUNTABLE_EXECUTIVE", "REGULATOR_INSPECTOR", "SYSTEM_ADMIN",
+  /* The vendor, not the operator — see permissions.ts. It is in this
+     enum because it is a value the Role column holds, and NOT in any
+     screen's role picker: an operator cannot create one, because a
+     tenant that could mint a platform administrator would be a tenant
+     that could read the others. */
+  "PLATFORM_ADMIN",
 ]);
 export type Role = z.infer<typeof RoleEnum>;
 

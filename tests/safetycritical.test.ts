@@ -5,7 +5,7 @@ import {
   reportingDeadline, deadlineStatus, isStale, isProvisional, isProvisionalObligation,
   MOR_OBLIGATIONS, JURISDICTIONS, PERMISSIONS, NARRATIVE_PERMISSIONS,
   RiskAssessInputSchema, CreateReportSchema,
-  type Severity, type Likelihood, type Role,
+  type Severity, type Likelihood, type Role, RoleEnum,
 } from "../packages/shared/src/index";
 import { SMS_ELEMENTS } from "../packages/shared/src/maturity";
 import { refuseSignature, bandsSignableBy } from "../packages/shared/src/signature";
@@ -482,10 +482,14 @@ describe("RBAC matrix", () => {
     // Charter rule 11 in miniature: a role added to the enum without a
     // permission set would return undefined from PERMISSIONS[role] and
     // throw inside can(). Better to fail here than at a request.
-    const roles: Role[] = [
-      "FRONTLINE","SAFETY_OFFICER","SAFETY_MANAGER","INVESTIGATOR",
-      "KEY_MANAGEMENT","ACCOUNTABLE_EXECUTIVE","REGULATOR_INSPECTOR","SYSTEM_ADMIN",
-    ];
+    // DISCOVERED, NOT LISTED. This list used to be typed out here, which
+    // meant the check only covered the roles somebody remembered to add
+    // to it — so a new role in the enum passed this test by not being
+    // mentioned, which is the opposite of what the comment above asks
+    // for. RoleEnum is the enum; reading it is how the assertion stays
+    // true of roles nobody has invented yet.
+    const roles = RoleEnum.options as Role[];
+    expect(roles.length).toBeGreaterThan(5);
     for (const r of roles) {
       expect(PERMISSIONS[r]).toBeInstanceOf(Set);
       expect(PERMISSIONS[r].size).toBeGreaterThan(0);

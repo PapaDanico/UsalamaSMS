@@ -403,9 +403,24 @@ router
     { title: 'What this covers', surface: 'tool' }
   )
   .register(
+    '/amendment',
+    (el) => lazy(el, () => import('./tools/amendment/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Annex 19 Amendment 2 readiness', surface: 'tool' }
+  )
+  .register(
     '/training',
     (el) => lazy(el, () => import('./tools/training/index.js').then((m) => (o) => m.render(o))),
     { title: 'The SMS training programme', surface: 'tool' }
+  )
+  .register(
+    '/toolkits/icaas',
+    (el) => lazy(el, () => import('./tools/icaas/index.js').then((m) => (o) => m.render(o))),
+    { title: 'KCAA corrective action plan', surface: 'tool' }
+  )
+  .register(
+    '/admin',
+    (el) => lazy(el, () => import('./tools/admin/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Platform administration', surface: 'tool' }
   )
   .register(
     '/glossary',

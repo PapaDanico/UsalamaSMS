@@ -60,6 +60,14 @@ jobs:
       # typecheck, brand gate, claims gate, tests — see package.json.
       - run: npm run check
 
+      # Does the database match the code? Against the CI Postgres this is
+      # trivially true — the point is that the SCRIPT is exercised on every
+      # PR, so it cannot rot between the rare occasions somebody points it
+      # at production. A diagnostic nobody runs is a diagnostic that is
+      # wrong when it matters.
+      - run: npx prisma migrate deploy
+      - run: npm run check:db
+
       # And the same code against a real database.
       - run: npm run test:integration
 
