@@ -123,6 +123,15 @@ function Panel() {
       <button type="button" class="btn btn-primary" id="export-run">
         Download the record
       </button>
+      <button type="button" class="btn btn-secondary" id="export-pack">
+        Download the audit pack
+      </button>
+      <p class="hint">
+        The audit pack is the same record in the order an inspector reads it —
+        element by element, with what you hold under each and, where you hold
+        nothing, a sentence saying so. It shows the empty elements on purpose:
+        finding them here is the point of generating it before the visit.
+      </p>
       <p class="field-error" id="export-status" role="status" aria-live="polite"></p>
     </section>
   `;
@@ -166,23 +175,28 @@ export function mount(root, role) {
 
   root.innerHTML = next + Panel().toString();
   const button = root.querySelector('#export-run');
+  const packButton = root.querySelector('#export-pack');
   const status = root.querySelector('#export-status');
   const say = (m) => {
     if (status) status.textContent = m;
   };
 
-  button.addEventListener('click', async () => {
+  /* ONE HANDLER, TWO BUTTONS. The pack and the export differ by a
+     query parameter and a filename; giving them separate handlers
+     would mean the disable-while-running discipline and the 403
+     wording existed twice, and one copy would drift. */
+  const download = (btn, endpoint, stem, busy) => async () => {
     /* Disabled while it runs. A safety manager who clicks twice on a
        slow connection would otherwise take two complete copies and
        write two disclosure entries for one intention. */
-    const label = button.textContent;
-    button.disabled = true;
-    button.textContent = 'Collecting the record…';
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = busy;
     say('');
 
-    let url;
+    let objectUrl;
     try {
-      const res = await authFetch('/api/v1/export');
+      const res = await authFetch(endpoint);
       if (!res.ok) {
         say(
           res.status === 403
@@ -192,18 +206,30 @@ export function mount(root, role) {
         return;
       }
       const blob = await res.blob();
-      url = URL.createObjectURL(blob);
+      objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `usalamasms-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.href = objectUrl;
+      a.download = `${stem}-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       say('Downloaded. Keep it somewhere the operator controls.');
     } catch {
       say('Could not reach the safety office. Nothing was downloaded — try again on a connection.');
     } finally {
-      if (url) URL.revokeObjectURL(url);
-      button.disabled = false;
-      button.textContent = label;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      btn.disabled = false;
+      btn.textContent = label;
     }
-  });
+  };
+
+  button.addEventListener(
+    'click',
+    download(button, '/api/v1/export', 'usalamasms-export', 'Collecting the record\u2026'),
+  );
+  if (packButton) {
+    packButton.addEventListener(
+      'click',
+      download(packButton, '/api/v1/export?pack=1', 'usalamasms-audit-pack',
+        'Composing the pack\u2026'),
+    );
+  }
 }

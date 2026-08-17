@@ -303,4 +303,49 @@ describe.skipIf(!hasDatabase)("the operator's own copy", () => {
       })).statusCode,
     ).toBe(401);
   });
+
+  /* ------------------------------------------------------------------
+     THE AUDIT PACK, through the real route.
+
+     It is the same read as the export, re-ordered by Annex 19 element,
+     and the property that matters is that it hides nothing: an
+     operator handed a pack that omitted its empty elements would find
+     out in the room. Asserted against an org with almost no data,
+     because that is the operator most likely to be surprised.
+     ------------------------------------------------------------------ */
+  it("AUDIT PACK SHOWS EVERY ELEMENT, INCLUDING THE EMPTY ONES", async () => {
+    const res = await app.inject({
+      method: "GET", url: "/api/v1/export?pack=1",
+      headers: { authorization: `Bearer ${tokenFor(managerId, orgId, "SAFETY_MANAGER")}` },
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    const { pack } = res.json();
+    expect(pack.sections).toHaveLength(12);
+    /* Named, with a sentence, rather than absent. */
+    for (const s of pack.sections.filter((x: { holding: string }) => x.holding === "NOTHING")) {
+      expect(s.gap, s.elementId).toBeTruthy();
+    }
+    expect(pack.operator).toBeTruthy();
+  });
+
+  it("and carries the chain hash so it is evidence rather than a printout", async () => {
+    const res = await app.inject({
+      method: "GET", url: "/api/v1/export?pack=1",
+      headers: { authorization: `Bearer ${tokenFor(managerId, orgId, "SAFETY_MANAGER")}` },
+    });
+    const { pack } = res.json();
+    expect(pack.verification.howToVerify).toMatch(/audit\/verify/);
+    expect(typeof pack.verification.entries).toBe("number");
+  });
+
+  it("is gated by the SAME permission as the export, not a weaker one", async () => {
+    /* The pack is the whole record in a friendlier order. A route that
+       opened it to a role the export refuses would be the export's
+       permission lost by re-ordering. */
+    const res = await app.inject({
+      method: "GET", url: "/api/v1/export?pack=1",
+      headers: { authorization: `Bearer ${tokenFor(frontlineId, orgId, "FRONTLINE")}` },
+    });
+    expect(res.statusCode).toBe(403);
+  });
 });
