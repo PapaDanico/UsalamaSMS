@@ -75,6 +75,7 @@ export const MENU_HINTS = {
 
   '/toolkits/spi': 'What regulation 9(5) requires you to have, and to be able to produce',
   '/sms': "Your operator's own evidence against all twelve elements",
+  '/amendment': 'Seven questions against the changes that apply from 26 November 2026',
   '/training': 'What the SMS course covers, who sits which version, and how long each runs',
   '/coverage': 'Element by element, what this product does and exactly where it stops',
 

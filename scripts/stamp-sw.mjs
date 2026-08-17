@@ -1971,7 +1971,35 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    earns a raise — and so does the machinery of being a business, when
    it is carried entirely off the path every customer walks. What still
    does not is a dependency, a polyfill or a component library. */
-const BUDGET = { entry: 224 * 1024, js: 584 * 1024, css: 80 * 1024 };
+/* TOTAL 584 -> 592 KB, for the Amendment 2 readiness check. ENTRY
+   moved 0.2 KB, to 215.9.
+
+   WHAT IT BOUGHT. A public page that tells an operator where they
+   stand against the changes that apply on 26 November 2026 — seven
+   questions, no account, no email, and a countdown that goes NEGATIVE
+   after the date rather than quietly reading zero for the rest of its
+   life. The whole regulated population of East African aviation has
+   fourteen weeks and most of them do not know it.
+
+   WHY IT IS NOT FAT. Lazy route, and the module it carries is a list
+   of seven changes and three newly-captured populations — prose, not
+   machinery. The entry chunk moved 0.2 KB, which is the router entry.
+
+   AND IT IS THE FIRST RAISE THAT PAYS FOR ITSELF IN LEADS rather than
+   in capability. Every previous one bought something an operator does
+   once they are a customer; this one is read by people who are not,
+   and answers honestly enough to be worth reading — one of the seven
+   changes is something this product does not do, and the page says so
+   beside the six it does.
+
+   The stopping rule holds and gains a sixth precedent: a screen earns
+   a raise, a correctness fix on the target device earns a raise, a
+   legal requirement earns a raise, publishing a regulator's syllabus
+   earns a raise, the machinery of being a business earns a raise — and
+   so does telling somebody the truth about a deadline they are inside.
+   What still does not is a dependency, a polyfill or a component
+   library. */
+const BUDGET = { entry: 224 * 1024, js: 592 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

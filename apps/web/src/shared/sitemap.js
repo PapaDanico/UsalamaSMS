@@ -293,6 +293,16 @@ export const SECTIONS = [
         inHeader: true
       },
       {
+        /* THE LEAD MAGNET, AND IT BELONGS IN ASSURANCE RATHER THAN IN
+           REFERENCE. Somebody reaches for it when they have been told a
+           date and want to know where they stand — which is the same
+           motion as opening the maturity assessment, not the same as
+           looking something up. */
+        href: '/amendment',
+        label: 'Amendment 2 readiness',
+        short: 'Amendment 2'
+      },
+      {
         /* Element 4.1's syllabus, published rather than described. It
            sits in assurance rather than in Reference because a safety
            manager reaches for it when asked to SHOW the programme, not

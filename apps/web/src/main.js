@@ -403,6 +403,11 @@ router
     { title: 'What this covers', surface: 'tool' }
   )
   .register(
+    '/amendment',
+    (el) => lazy(el, () => import('./tools/amendment/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Annex 19 Amendment 2 readiness', surface: 'tool' }
+  )
+  .register(
     '/training',
     (el) => lazy(el, () => import('./tools/training/index.js').then((m) => (o) => m.render(o))),
     { title: 'The SMS training programme', surface: 'tool' }
