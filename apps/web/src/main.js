@@ -413,6 +413,11 @@ router
     { title: 'The SMS training programme', surface: 'tool' }
   )
   .register(
+    '/toolkits/icaas',
+    (el) => lazy(el, () => import('./tools/icaas/index.js').then((m) => (o) => m.render(o))),
+    { title: 'KCAA corrective action plan', surface: 'tool' }
+  )
+  .register(
     '/admin',
     (el) => lazy(el, () => import('./tools/admin/index.js').then((m) => (o) => m.render(o))),
     { title: 'Platform administration', surface: 'tool' }

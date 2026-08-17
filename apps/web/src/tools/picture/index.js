@@ -791,6 +791,24 @@ function actionList(list) {
                 <button type="button" class="btn btn-ghost btn-sm"
                   data-cancel-action="${a.id}">Cancel it</button>
               </p>`}
+          ${/* THE HANDOFF, REACHED FROM THE RECORD IT IS COMPOSED FROM.
+                An operator answering a KCAA request has the corrective
+                action in front of them here; making them navigate to a
+                toolkit and identify it again is exactly the retyping
+                this feature exists to remove.
+
+                NOT OFFERED FOR A CANCELLED ACTION. composeCap refuses
+                one — "this action was cancelled, it is not an answer to
+                a CAR" — so the link would lead somewhere that only says
+                no. A verified action still gets it: implementation
+                evidence is uploaded AFTER the inspector approves the
+                CAP, which is the step that comes last. */ ''}
+          ${a.status === 'CANCELLED'
+            ? ''
+            : html`<p class="picture-action__do no-print">
+                <a href="/toolkits/icaas?action=${a.id}"
+                  >Compose the KCAA pack</a>
+              </p>`}
         </li>`
       )}
     </ul>

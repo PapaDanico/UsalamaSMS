@@ -92,6 +92,36 @@ describe("the pack fills nothing in", () => {
     expect(p.missing.join(" ")).toMatch(/cancelled/i);
   });
 
+  it("DISTINGUISHES A WITHHELD FINDING FROM AN ABSENT ONE", () => {
+    /* An audit finding sits behind `audit.read`, which a SAFETY_OFFICER
+       does not hold. If the route passed `finding: null` for that case,
+       the pack would tell them no CAR is linked and to pick one at the
+       portal — and there IS one, which this product could have named.
+       They would raise the CAP against the wrong CAR, or hunt for a
+       reference that was three feet away behind a permission. */
+    const withheld = composeCap({ ...COMPLETE, finding: null, findingWithheld: true });
+    const absent = composeCap({ ...COMPLETE, finding: null });
+
+    expect(withheld.readyToSubmit).toBe(false);
+    expect(absent.readyToSubmit).toBe(false);
+
+    /* Both incomplete, and for DIFFERENT stated reasons. An assertion
+       that only checked `readyToSubmit` would pass with the two cases
+       collapsed, which is the defect. */
+    expect(withheld.missing.join(" ")).toMatch(/cannot read it/i);
+    expect(withheld.missing.join(" ")).toMatch(/ask the safety manager or an auditor/i);
+    expect(absent.missing.join(" ")).toMatch(/pick the matching one yourself/i);
+    expect(withheld.missing.join(" ")).not.toMatch(/pick the matching one yourself/i);
+    expect(absent.missing.join(" ")).not.toMatch(/cannot read it/i);
+  });
+
+  it("and a readable finding is not reported as withheld", () => {
+    /* The other direction, or the flag could be stuck on. */
+    const p = composeCap(COMPLETE);
+    expect(p.missing).toHaveLength(0);
+    expect(p.finding).toMatch(/displaced threshold/);
+  });
+
   it("says when no CAR is linked, without treating it as fatal to the record", () => {
     /* An operator may raise a corrective action from their own hazard.
        The portal raises a CAP against a CAR, so they will have to pick

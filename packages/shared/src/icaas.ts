@@ -106,6 +106,24 @@ interface ActionLike {
   verifiedOn?: string | Date | null;
   cancelledOn?: string | Date | null;
   finding?: { finding?: string; auditRef?: string } | null;
+  /**
+   * THE CALLER MAY NOT READ THE LINKED FINDING — which is a different
+   * fact from there not being one, and conflating them would put a
+   * false sentence in front of an operator.
+   *
+   * An audit finding is gated on `audit.read`, and a SAFETY_OFFICER
+   * does not hold it. Passing `finding: null` for that case makes this
+   * function say "No audit finding is linked. The portal raises a CAP
+   * against a CAR, so you will need to pick the matching one
+   * yourself." Every clause of that is wrong when a finding IS linked:
+   * the operator goes to the portal hunting for a CAR that this
+   * product could have named, or raises the CAP against the wrong one.
+   *
+   * So the route sets this instead, and the pack says the reference is
+   * withheld and who can supply it. Absent and forbidden are not the
+   * same answer anywhere else in this product either.
+   */
+  findingWithheld?: boolean;
   attachments?: readonly { label?: string; sha256?: string }[];
 }
 
@@ -142,7 +160,16 @@ export function composeCap(a: ActionLike): CapPack {
   }
 
   const finding = a.finding?.finding?.trim() || null;
-  if (!finding) {
+  if (a.findingWithheld) {
+    /* There IS one, and this reader cannot see it. Saying so — and
+       saying who can — is the difference between an operator asking a
+       colleague for one reference and an operator guessing at the
+       portal. */
+    missing.push(
+      "An audit finding is linked to this action and your role cannot read it. Ask the " +
+        "safety manager or an auditor for the CAR reference before you raise the CAP.",
+    );
+  } else if (!finding) {
     /* Not fatal — an operator may raise a corrective action from their
        own hazard rather than from a CAR — but the portal's CAP is
        raised AGAINST a CAR, so this is worth saying. */

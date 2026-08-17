@@ -1999,7 +1999,50 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    so does telling somebody the truth about a deadline they are inside.
    What still does not is a dependency, a polyfill or a component
    library. */
-const BUDGET = { entry: 224 * 1024, js: 592 * 1024, css: 80 * 1024 };
+/* TOTAL 592 -> 598 KB, for the handoff to KCAA's ICAAS portal. ENTRY
+   UNMOVED IN SUBSTANCE at 216.2 of 224, and CSS NOT RAISED AT ALL —
+   the screen was built out of classes that already had rules.
+
+   MEASURED, AND THE PARTS SUM TO THE TOTAL:
+
+     new /toolkits/icaas chunk               5,426
+     entry (one route registration, one
+       sitemap entry)                          281
+     picture (the link from the action the
+       pack is composed from)                  219
+     toolkits (one title and one blurb)        126
+                                            -------
+     total                                   6,052   = 5.91 KB
+
+   604,708 -> 610,760 bytes, measured by building the tree at HEAD with
+   `git stash push -u` and again with the change applied, identifying
+   each chunk BY ITS CONTENT rather than by its hash — the hashes all
+   move. The receipt two above this one records `git stash` without -u
+   leaving untracked files in place and producing a zero delta; -u also
+   stashes `dist/`, so the build has to be re-run after stashing rather
+   than measured from what is sitting there.
+
+   WHAT IT BUYS. An operator answering a KCAA Corrective Action Request
+   currently retypes, into ecitizen.kcaa.or.ke, what this product is
+   already holding: the finding, the action, the accountable post, the
+   target date, and the hash of every file they are about to upload.
+   The pack composes all of it from the record and links to the portal.
+
+   IT IS ALSO A FEATURE THAT WAS ALREADY PAID FOR AND COULD NOT BE
+   REACHED. `packages/shared/src/icaas.ts` and its fifteen assertions
+   shipped imported by nothing — no route, no screen, not the barrel.
+   Five and a half kilobytes is the cost of making code that already
+   existed available to the person it was written for, and
+   `check:claims` now fails when a shared module has no product
+   importer, so the next one cannot happen quietly.
+
+   THE ENTRY BUDGET IS WHY THIS IS AFFORDABLE AT ALL. A reporter at a
+   remote strip pays 281 bytes of it — a route registration — and
+   downloads the screen never. That is the whole argument for two
+   numbers instead of one: the total says something grew, and the entry
+   says it grew somewhere the person filing a hazard report does not
+   have to pay for. */
+const BUDGET = { entry: 224 * 1024, js: 598 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

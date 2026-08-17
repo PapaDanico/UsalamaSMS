@@ -76,6 +76,10 @@ const BLURBS = {
     'The SMS training programme',
     'What the course covers, who sits which version, and how long each one runs'
   ],
+  '/toolkits/icaas': [
+    'KCAA corrective action plan',
+    'A corrective action composed into the pack the ICAAS portal asks for'
+  ],
   '/toolkits#classifier': [
     'Occurrence classifier',
     'Accident, serious incident or incident — and the clock it starts'

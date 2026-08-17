@@ -36,6 +36,19 @@ const read = (p) => {
   }
 };
 
+/**
+ * Every file under `dir` matching `pattern`, as ROOT-relative paths.
+ *
+ * The same `readdirSync(..., { recursive: true })` the web-source read
+ * further down already uses — collected here because a second gate now
+ * needs it, and two spellings of "walk a directory" is how two gates
+ * come to disagree about which files exist.
+ */
+const listFiles = (dir, pattern) =>
+  readdirSync(resolve(ROOT, dir), { recursive: true })
+    .filter((f) => typeof f === 'string' && pattern.test(f))
+    .map((f) => `${dir}/${f}`);
+
 const failures = [];
 const passes = [];
 
@@ -1280,6 +1293,120 @@ assert(
     `${unclaimed.join(", ")} — the API holds this and the coverage page does not say so. ` +
       "That is the 2.2 defect arriving by omission rather than by a false sentence: an " +
       "operator reads /coverage to know what it can evidence, and this is evidence it has",
+  );
+
+  /* ---- and the same question one layer down, where nothing asked it ----
+
+     THE ASSERTION ABOVE READS ROUTES, so a capability that never became
+     a route is invisible to it. That is not a hypothetical gap; it is
+     how `packages/shared/src/icaas.ts` came to exist.
+
+     The KCAA handoff was written, documented, and covered by fifteen
+     assertions in `tests/icaas.test.ts`. It composed a corrective action
+     into the pack KCAA's ICAAS portal asks for, named every field it
+     could not fill rather than inventing one, and refused to claim it
+     had submitted anything. All of it correct, all of it tested, and
+     **imported by nothing** — no route, no screen, not even the barrel.
+     Every gate in this repository was green with a whole feature
+     unreachable, because each one was looking at a layer it had not
+     reached yet.
+
+     A TEST IS NOT A CALLER. That is the distinction this measures, and
+     the reason the rule is worth stating precisely: `icaas.ts` had a
+     test file, so any check asking "is this module referenced anywhere"
+     would have passed. What it did not have was somebody in the product
+     who could run it. So `tests/` is excluded from what counts as
+     reaching a module — a module whose only importer is its own suite
+     is code the customer paid for and cannot use.
+
+     DISCOVERED, NOT LISTED, because a hardcoded roster stops covering
+     the moment somebody adds a file — this file says so about a
+     different check. Measured across all 39 modules at the time of
+     writing: 38 had a product importer and one did not. One true
+     positive, zero false, which is the discrimination that makes a rule
+     survive contact with people.
+
+     THE BARREL IS NOT THE TEST OF THIS, and getting that backwards
+     would break the bundle. Screens import shared modules by path
+     precisely so that `nasp.ts` and `pricing.ts` do NOT ride in the
+     entry chunk a ramp agent downloads before they can file — see the
+     SignupSchema note in `packages/shared/src/index.ts`. Absent from
+     `index.ts` is correct and deliberate. Absent from the product is
+     the defect.
+
+     MUTATION-CHECK THIS by adding an unimported module to
+     `packages/shared/src`, or by deleting the import in the route that
+     reaches one. Both go red and name the module. */
+  const SHARED_DIR = "packages/shared/src";
+  const sharedModules = readdirSync(resolve(ROOT, SHARED_DIR))
+    .filter((f) => f.endsWith(".ts") && f !== "index.ts")
+    .map((f) => f.slice(0, -3));
+
+  if (sharedModules.length < 20) {
+    console.error(
+      `check:claims — found only ${sharedModules.length} modules in ${SHARED_DIR}. ` +
+        "A gate that reads almost nothing passes almost everything. Refusing to.",
+    );
+    process.exit(1);
+  }
+
+  /* Everywhere a module could legitimately be reached FROM: the API,
+     the web app, the build and seed scripts, and its siblings. Not
+     tests — that is the whole point above. */
+  const callerText = [
+    ...listFiles("apps", /\.(ts|js|mjs)$/),
+    ...listFiles("scripts", /\.(mjs|js|ts)$/),
+    ...listFiles(SHARED_DIR, /\.ts$/),
+  ].map((p) => ({ path: p, text: read(p) }));
+
+  /* IMPORT SPECIFIERS, NOT RAW TEXT, and the first version of this gate
+     got that wrong in the way this file exists to prevent.
+
+     It tested whether the module's name appeared inside any quoted
+     string anywhere under apps/ or scripts/. The comment you are
+     reading names `icaas.ts` four times, in backticks, inside
+     scripts/ — so the gate reported zero orphans against the very tree
+     whose orphan it was written for. GREEN, FOREVER, and green in a way
+     that would have survived somebody deleting the real importer,
+     because the prose would still have been there.
+
+     A gate whose own documentation satisfies it is worse than no gate:
+     it also makes every module ever MENTIONED in prose permanently
+     invisible to the check.
+
+     So the module graph is read as a module graph. Only the specifier
+     of an actual `import`/`export … from` or `require()` counts, which
+     is the thing that makes a module reachable at runtime; prose about
+     a module cannot be one, whatever quotes it wears. */
+  const SPECIFIER = /(?:\bfrom\s*|\brequire\(\s*|\bimport\(\s*)["'`]([^"'`]+)["'`]/g;
+  const imported = new Map();
+  for (const f of callerText) {
+    for (const [, spec] of f.text.matchAll(SPECIFIER)) {
+      if (!imported.has(spec)) imported.set(spec, new Set());
+      imported.get(spec).add(f.path);
+    }
+  }
+
+  const orphans = sharedModules.filter((m) => {
+    const own = `${SHARED_DIR}/${m}.ts`;
+    /* `./nasp`, `../../packages/shared/src/nasp.ts` and
+       `@usalamasms/shared/nasp` are the three forms in use. All three
+       END in the module name at a path boundary, which distinguishes
+       `nasp` from `naspSomething` without needing to resolve the path. */
+    const named = new RegExp(`(^|[./])${m}(\\.ts)?$`);
+    for (const [spec, importers] of imported) {
+      if (!named.test(spec)) continue;
+      if ([...importers].some((p) => p !== own)) return false;
+    }
+    return true;
+  });
+
+  assert(
+    "NO SHARED MODULE EXISTS THAT ONLY ITS OWN TEST CAN REACH",
+    orphans.length === 0,
+    `${orphans.map((m) => `${SHARED_DIR}/${m}.ts`).join(", ")} — written, tested, and ` +
+      "imported by nothing in the product. A suite is not a caller: this is a capability " +
+      "the customer paid for and no route or screen can run",
   );
 }
 
