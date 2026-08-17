@@ -5821,6 +5821,123 @@ try {
     );
   });
 
+  /* ================================================================
+     ELEMENT 4.1 SAYS SOMETHING WHEN THERE ARE NO TRAINING RECORDS.
+
+     The card's body used to be drawn only when the record list was
+     non-empty, so an operator who had trained nobody — the operator
+     with the LONGEST gap list in the product — got "Nothing recorded
+     against this element yet" and neither the list of people needing
+     training nor the syllabus provenance.
+
+     The renderer already computes the two halves separately, and its
+     own comment says why: "a matrix built only from records shows a
+     clean sheet for somebody who has had no training at all." This
+     asserts that reasoning survives all the way to the screen.
+
+     BOTH DIRECTIONS ARE CHECKED. Asserting only that the gap block
+     appears with zero records would still pass if the card had simply
+     stopped being able to show an empty state at all — so the second
+     half drives a payload with no records AND no gaps and requires the
+     empty state back.
+     ================================================================ */
+  await check('4.1 names who needs training even with no records on file', async () => {
+    /* ITS OWN CONTEXT, WITH THE SERVICE WORKER BLOCKED. By this point
+       in the run a service worker is registered on this origin, and it
+       answers /api/v1/* from its own cache — so a page.route stub in
+       the shared context never reaches the app and this check asserted
+       against whatever the worker had. It failed for that reason
+       before it ever tested the fix, which is the useful kind of
+       failure to have had: the same stub passes here and passed in an
+       isolated driver. */
+    const ctx = await browser.newContext({
+      viewport: { width: 1440, height: 900 }, serviceWorkers: 'block',
+    });
+    const page = await ctx.newPage();
+    let payload = {};
+    await page.route('**/api/v1/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+    );
+    await page.route('**/api/v1/auth/refresh', (route) =>
+      route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({
+          accessToken: 'stub', refreshToken: 'stub2',
+          role: 'SAFETY_MANAGER', orgId: 'org-smoke',
+        }),
+      })
+    );
+    /* Registered LAST on purpose: Playwright matches the most recently
+       registered route first, so a catch-all added afterwards would
+       swallow this one and the check would assert against `{}`. */
+    await page.route('**/api/v1/sms/training*', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload) })
+    );
+
+    const load = async () => {
+      await page.goto(`${BASE}/sms`, { waitUntil: 'networkidle' });
+      await page.evaluate(() => {
+        localStorage.setItem('usalamasms.session',
+          JSON.stringify({ role: 'SAFETY_MANAGER', orgId: 'org-smoke' }));
+        localStorage.setItem('usalamasms.refresh', 'stub');
+      });
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(900);
+      /* THE CARD, NOT THE PAGE. An earlier version of this check read
+         400 characters of body text from indexOf('4.1') — a window
+         that runs straight into element 4.2, which is also empty and
+         also says "Nothing recorded against this element yet". The
+         empty-state half of this check therefore passed against a
+         build where the empty state was unreachable, which is the one
+         result that proves a check is not checking. Scoped to the
+         card's own node, it fails as it should. */
+      return page.evaluate(() => {
+        const card = document.querySelector('[data-element="4.1"]');
+        return card ? card.innerText : '';
+      });
+    };
+
+    try {
+      /* No records, one person with a gap. */
+      payload = {
+        scope: 'org',
+        training: [],
+        curriculum: [{
+          userId: 'u-1', name: 'A. Mwangi', required: ['SMS initial'],
+          held: [], gaps: ['SMS initial'], unrecognised: [],
+        }],
+        curriculumVerifiedAgainstPrimary: true,
+        curriculumInstrument: 'CAA-AC-SMS011',
+      };
+      let text = await load();
+      assert(
+        /no record covers/i.test(text),
+        'element 4.1 hid the training gap block when no training records existed — ' +
+          'the one state where it has the most to say'
+      );
+      assert(
+        text.includes('CAA-AC-SMS011'),
+        'element 4.1 dropped the syllabus provenance when no training records existed'
+      );
+
+      /* Nothing recorded AND nothing missing: the empty state is the
+         honest answer, and must still be reachable. */
+      payload = {
+        scope: 'org', training: [], curriculum: [],
+        curriculumVerifiedAgainstPrimary: true,
+        curriculumInstrument: 'CAA-AC-SMS011',
+      };
+      text = await load();
+      assert(
+        /Nothing recorded against this element yet/.test(text),
+        'element 4.1 lost its empty state — with no records and no gaps there is ' +
+          'genuinely nothing to show, and saying so is the point'
+      );
+    } finally {
+      await ctx.close();
+    }
+  });
+
   await check('no uncaught page errors across the whole run', async () => {
     assert(pageErrors.length === 0, `page errors: ${pageErrors.join('; ')}`);
   });
