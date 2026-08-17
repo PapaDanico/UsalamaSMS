@@ -5423,6 +5423,33 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   margin-bottom: var(--us-space-6);
 }
 
+/* IT SPANS THE GRID INSTEAD OF TAKING A COLUMN OF IT, and without this
+   line it broke every toolkit at 900px and up.
+
+   `.doc` is a two-column grid — a 15rem contents rail, then the body,
+   which is pinned to the last column by `.doc__body { grid-column: -2 /
+   -1 }`. The contents list has no placement of its own: it lands in the
+   rail because it is the first auto-placed child. Adding this row to
+   the top of every toolkit made it the first auto-placed child instead,
+   so the contents list was pushed into the SECOND column — the same one
+   as the body:
+
+     /about          rail: nav.toc      body 288..832   (correct)
+     /toolkits/spi   rail: nav.toolnav  nav.toc 288..1004, body 288..1004
+
+   And `.toc` is `position: sticky`, so the contents card pinned itself
+   over the working column and the form scrolled underneath it. On
+   /toolkits/spi that put "When it alerts" on top of the indicator
+   starters — text drawn through text, both unreadable. All four
+   toolkits, every width from 900px up, and invisible at scroll position
+   zero, which is why the first sweep of thirteen widths reported
+   nothing: a sticky element cannot overlap anything until you scroll.
+
+   Spanning every column makes this its own row and returns the contents
+   list to the rail it is placed by. scripts/smoke.mjs scrolls each
+   toolkit and asserts the two do not overlap. */
+.doc > .toolnav { grid-column: 1 / -1; }
+
 .toolnav__back {
   font-size: var(--us-text-sm);
   font-weight: var(--us-weight-medium);

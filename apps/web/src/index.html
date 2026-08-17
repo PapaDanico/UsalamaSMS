@@ -6,11 +6,16 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <title>UsalamaSMS — Safety intelligence for African skies</title>
-    <meta
-      name="description"
-      content="Aviation safety management for the operators the incumbents priced out. Offline-first, multi-jurisdiction, built against ICAO Annex 19 Amendment 2."
-    />
+    <title>UsalamaSMS — Proof, not paperwork</title>
+    <!-- THE DESCRIPTION IS DECLARED ONCE, further down with the og: set
+         it has to agree with. There were TWO name="description" tags in
+         this head — this one and the one below — saying different things
+         about the same page. Measured on the built page, the document
+         carried both; a crawler takes the first and the card takes the
+         second, so the product described itself two ways depending on
+         who asked. They are now one tag, beside the og:description it
+         mirrors, because that is the only arrangement where a change to
+         one is visibly a change to the other. -->
     <!-- Warm Sand, not charcoal. The status bar on a standalone PWA is
          the top of the app, and a dark bar above a light app reads as a
          browser that failed to hide rather than as a designed edge. -->
@@ -52,7 +57,10 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="UsalamaSMS" />
     <meta property="og:url" content="https://usalamasms.com/" />
-    <meta property="og:title" content="UsalamaSMS — Safety intelligence for African skies" />
+    <meta
+      property="og:title"
+      content="UsalamaSMS — Proof, not paperwork"
+    />
     <meta
       property="og:description"
       content="Eleven of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
@@ -64,12 +72,18 @@
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="UsalamaSMS — the whole safety management system, for operators the incumbents
-               priced out."
+      content="The UsalamaSMS share card: the gold crested-crane mark on a dark green
+               ground, headed Proof, not paperwork, above a line reading eleven of ICAO
+               Annex 19's twelve elements, built for the 3-to-15 aircraft operator in East
+               and Central Africa, and three marks reading files with the radio off,
+               deadlines computed never remembered, and a record an auditor can verify."
     />
     <meta property="og:locale" content="en_KE" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="UsalamaSMS — Safety intelligence for African skies" />
+    <meta
+      name="twitter:title"
+      content="UsalamaSMS — Proof, not paperwork"
+    />
     <meta
       name="twitter:description"
       content="Eleven of ICAO Annex 19's twelve elements, for the 3-to-15 aircraft operator in
@@ -97,21 +111,32 @@
          downscale it for the 16px slot better than keying at 16 does. -->
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="manifest" href="/manifest.json" />
-    <!-- ONE preload now, not two. DM Sans ships as a variable face
-         covering 400 to 700, so body text and the headline come out of
-         the same file — the second preload would have fetched the same
-         bytes again. Preloaded so a cold start does not render the
-         fallback and then reflow, which is the flash that makes a page
-         look like it is still arriving. The latin-ext file is not
-         preloaded: it is fetched only if a character needs it, and
-         preloading it would cost every cold start for the few reports
-         that carry one. -->
-    <link rel="preload" href="/fonts/dm-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <!-- One file is the whole interface. There was a second preload
-         here for a serif display face; the product now sets every
-         heading in this one, so the h1 at the top of every screen is
-         covered by the line above and there is nothing else to wait
-         for. -->
+    <!-- TWO preloads, because there are two faces now — and this line
+         spent a while naming a THIRD that does not exist.
+
+         It preloaded /fonts/dm-sans-latin.woff2 after DM Sans had been
+         replaced by Plus Jakarta Sans and Roboto and both dm-sans files
+         were DELETED in the same change. Measured against the built
+         page, that was a 404 on every cold start: a wasted round trip on
+         the one product whose whole claim is about bad links, spent
+         fetching a file the same commit had removed. Nothing failed
+         loudly, which is why it survived — a preload that 404s costs a
+         request and says nothing.
+
+         Both faces are preloaded because both are above the fold: the h1
+         on every screen is Plus Jakarta Sans and everything around it is
+         Roboto, so preloading one still reflows the other. The latin-ext
+         cuts are NOT preloaded — they are fetched only when a character
+         needs them, and preloading them would cost every cold start for
+         the few reports that carry one. -->
+    <link rel="preload" href="/fonts/roboto-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link
+      rel="preload"
+      href="/fonts/jakarta-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="stylesheet" href="./fonts.css" />
     <link rel="stylesheet" href="./style.css" />
     <style>
@@ -127,8 +152,15 @@
         background: #f5f0e8;
         color: #2c2c2c;
         min-height: 100dvh;
-        font-family: 'DM Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont,
-          'Segoe UI', Roboto, sans-serif;
+        /* Roboto, matching --us-font. This named 'DM Sans' for a while
+           after that face was deleted, so the block whose entire job is
+           to make the first paint honest was asking for a font the
+           product no longer had — and falling through to the system
+           sans, which is the reflow the preload above exists to
+           prevent. First paint and the stylesheet have to name the same
+           family or the critical CSS is decoration. */
+        font-family: 'Roboto', ui-sans-serif, -apple-system, BlinkMacSystemFont,
+          'Segoe UI', sans-serif;
       }
       .boot {
         display: flex;

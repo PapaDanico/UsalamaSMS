@@ -136,7 +136,10 @@ const TOTAL_BUDGET_KB = 330;
    manifest rather than from a list here. Two numbers, because they
    answer two questions, and the one a ramp agent cares about is this
    one. */
-const INSTALL_BUDGET_KB = 220;
+/* The install ceiling itself is enforced in scripts/check-dist.mjs,
+   which is the only place that can read the built worker. Named here
+   because this is where the two budgets are explained together. */
+// INSTALL_BUDGET_KB = 220 — see scripts/check-dist.mjs
 /* 300 -> 306 for the mono identifier subset. 6.3 KB, and it is the
    cheapest font in this directory by a factor of five — the full Latin
    cut of the same face would have been ~55 KB and would have taken this
@@ -168,7 +171,6 @@ function walk(dir, out = []) {
 }
 
 const problems = [];
-let installNote = '';
 const found = walk(PUBLIC).map((f) => relative(PUBLIC, f).split(/[\\/]/).join('/'));
 let total = 0;
 
@@ -209,94 +211,71 @@ for (const rel of DECLARED.keys()) {
   }
 }
 
-/* ============================================================
-   THE SHARE CARD MUST STAY OUT OF THE PRECACHE MANIFEST.
+/* THE PRECACHE EXCLUSION, THE DANGLING-REFERENCE CHECK AND INSTALL
+   WEIGHT ALL MOVED TO scripts/check-dist.mjs.
 
-   Its declaration above says it is not precached, and that sentence is
-   worth nothing on its own — the worker precaches by extension and
-   .jpg is one it would happily take. So the built worker is read and
-   its own manifest is checked.
+   They read dist/, and this file runs inside `npm run check`, which
+   `npm run build` executes BEFORE `vite build`. So they judged an
+   artefact that did not exist yet — or, on a machine where a dist from
+   an earlier commit survives into a new build, one that predates the
+   source beside them. Two of them degraded politely to "not measured",
+   which meant install weight was never enforced on a deploy at all,
+   only on the machine of whoever last ran it locally. The third failed
+   a build whose source was correct.
 
-   Read from dist/sw.js rather than from the filter in stamp-sw.mjs,
-   because what matters is what shipped rather than what the script
-   intended. If dist has not been built yet this is skipped and says so,
-   which is the honest answer to "there is nothing to check" — the build
-   runs this before it stamps, and the verify pass runs it after.
-   ============================================================ */
-{
-  const worker = resolve(ROOT, 'dist/sw.js');
-  if (existsSync(worker)) {
-    const src = readFileSync(worker, 'utf8');
-    const manifest = src.match(/const PRECACHE = (\[[^\]]*\]);/)?.[1];
-    if (!manifest) {
-      problems.push(
-        '  dist/sw.js has no PRECACHE manifest this check can read, so nothing was ' +
-          'verified about what a reporter downloads on install.',
-      );
-    } else if (manifest.includes('og-card.jpg')) {
-      problems.push(
-        '  og-card.jpg is IN the precache manifest. It is declared above as the one ' +
-          'asset here that is not, and it is only affordable because of that — every ' +
-          'reporter would download 62 KB on install for a card only link scrapers ' +
-          'fetch. Restore the filter in scripts/stamp-sw.mjs.',
-      );
-    }
-  }
-}
+   check:dist runs after stamp-sw and refuses to run without a dist.
+   What stays here is everything answerable from the repository alone:
+   the declaration of every file in public/, the served budget, and the
+   share card's staleness stamp. */
 
 /* ============================================================
-   INSTALL WEIGHT, from the worker's own manifest.
+   THE SHARE CARD IS STILL SET IN THE FACES THE SITE SHIPS.
 
-   Everything above measures what is SERVED. This measures what a
-   reporter at a remote strip waits for before the app is usable
-   offline, which is the number the offline promise is actually made
-   of. Read from dist/sw.js rather than from a list here, so the answer
-   is what shipped rather than what anybody intended.
+   THIS IS A REAL DEFECT THAT SHIPPED, not a precaution. og-card.jpg was
+   rendered by hand in DM Sans and committed as a finished JPEG. The type
+   system then moved to Plus Jakarta Sans and Roboto and DELETED both
+   dm-sans woff2 files — and the card kept the old face. Every gate
+   stayed green, because a JPEG with no generator has nothing that can
+   notice it has stopped being true. The first thing anybody saw when the
+   link was shared was set in a typeface the product no longer had.
 
-   Skipped when dist is absent, and it says so rather than passing
-   silently — a check that reports success about a build it could not
-   find is the shape this repository has been bitten by before. The
-   build runs check:assets before stamping and verify runs it after, so
-   the honest answer to a missing dist is "not measured".
+   scripts/make-og-card.mjs is now its source, and this is what makes
+   re-running it mandatory: the generator stamps a hash of its INPUTS —
+   both font files, the mark, the copy, the markup — and this recomputes
+   that hash and fails when it disagrees. Change the type system, or the
+   slogan, and the build stops until the card is re-rendered.
+
+   IT HASHES INPUTS, NOT THE JPEG. Two Chromium builds encode identical
+   pixels to different bytes, so comparing output would be a gate that
+   goes red for reasons that have nothing to do with the card. That is
+   the kind of check somebody deletes in six months, taking the real
+   protection with it.
    ============================================================ */
 {
-  const worker = resolve(ROOT, 'dist/sw.js');
-  if (!existsSync(worker)) {
-    console.log('  assets note      install weight not measured — dist/sw.js absent');
+  const stampPath = join(ROOT, 'scripts/og-card.stamp');
+  if (!existsSync(stampPath)) {
+    problems.push(
+      '  scripts/og-card.stamp is missing, so nothing proves og-card.jpg was rendered ' +
+        'from the faces this site ships. Run `npm run og-card`.',
+    );
   } else {
-    const manifest = readFileSync(worker, 'utf8').match(/const PRECACHE = (\[[^\]]*\]);/)?.[1];
-    if (!manifest) {
+    const recorded = readFileSync(stampPath, 'utf8').trim();
+    /* og-card-content.mjs, NOT make-og-card.mjs. This check runs inside
+       `npm run build`, which is the command Netlify executes on every
+       deploy, and the renderer imports `playwright` at module scope —
+       so importing it here put a browser-automation package on the
+       deploy path, which has no browsers and no reason to launch one.
+       The content module imports node:fs and node:crypto and nothing
+       else. */
+    const { stampFor } = await import('./og-card-content.mjs');
+    const actual = stampFor();
+    if (recorded !== actual) {
       problems.push(
-        '  dist/sw.js has no PRECACHE manifest this check can read, so nothing was ' +
-          'verified about what a reporter downloads on install.',
+        `  og-card.jpg is stale. Its inputs hash to ${actual.slice(0, 12)} and the ` +
+          `stamp records ${recorded.slice(0, 12)} — a font, the mark, the slogan or the ` +
+          'layout changed and the card was not re-rendered, so a shared link shows the ' +
+          'old one. Run `npm run og-card`.',
       );
-    } else {
-      const precached = new Set(JSON.parse(manifest));
-      let installKb = 0;
-      const carried = [];
-      for (const rel of found) {
-        if (!precached.has(`/${rel}`)) continue;
-        installKb += statSync(join(PUBLIC, rel)).size / 1024;
-        carried.push(rel);
-      }
-      if (carried.length < 5) {
-        problems.push(
-          `  only ${carried.length} of ${found.length} public files matched the precache ` +
-            'manifest, so install weight was computed from almost nothing and any number ' +
-            'it produced would be meaningless.',
-        );
-      }
-      if (installKb > INSTALL_BUDGET_KB) {
-        problems.push(
-          `  a reporter downloads ${installKb.toFixed(1)} KB from public/ on install, ` +
-            `against a ${INSTALL_BUDGET_KB} KB ceiling. This is the cold start on a bad ` +
-            'link, and it is the number the offline promise is made of.',
-        );
-      } else {
-        installNote =
-          `${installKb.toFixed(1)} KB of ${INSTALL_BUDGET_KB} KB downloaded on install ` +
-          `(${carried.length} of ${found.length} files precached)`;
-      }
     }
   }
 }
@@ -314,7 +293,6 @@ if (problems.length === 0) {
     `  assets ok        ${found.length} files declared, ${total.toFixed(1)} KB of ` +
       `${TOTAL_BUDGET_KB} KB served from public/`,
   );
-  if (installNote) console.log(`  install weight   ${installNote}`);
   process.exit(0);
 }
 
