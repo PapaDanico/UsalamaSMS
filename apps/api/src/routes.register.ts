@@ -40,7 +40,7 @@ import {
    downloads before they can file anything. Same reason permissions.ts
    was split out. */
 import { refuseSignature } from "../../../packages/shared/src/signature";
-import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
+import { prisma, authenticate, appendAuditTx, tenantWhere , requireEntitlement } from "./core";
 
 const LIST_LIMIT = 200;
 
@@ -147,7 +147,18 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
   };
 
-  app.get("/api/v1/register", limited, async (req, reply) => {
+  /* THE PAID SIDE OF THIS FILE. A lapsed subscription pauses the
+     safety office's working surfaces and never touches filing,
+     reading your own record or exporting the whole record — see
+     requireEntitlement in core.ts for why those three are not
+     negotiable. The capability is named here rather than in a
+     central list, so the reason lives with the routes it gates. */
+  const paid = {
+    ...limited,
+    preHandler: [authenticate, requireEntitlement("EDIT_REGISTER")],
+  };
+
+  app.get("/api/v1/register", paid, async (req, reply) => {
     if (!guard(req.auth!.role, "hazard.manage") && !guard(req.auth!.role, "report.read.org")) {
       return reply.code(403).send({ error: "forbidden" });
     }
@@ -231,7 +242,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ entries });
   });
 
-  app.post("/api/v1/register", limited, async (req, reply) => {
+  app.post("/api/v1/register", paid, async (req, reply) => {
     if (!guard(req.auth!.role, "hazard.manage")) {
       return reply.code(403).send({ error: "forbidden" });
     }
@@ -379,7 +390,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     alarpJustification: z.string().trim().max(4000).optional(),
   });
 
-  app.post("/api/v1/register/:assessmentId/accept", limited, async (req, reply) => {
+  app.post("/api/v1/register/:assessmentId/accept", paid, async (req, reply) => {
     if (!guard(req.auth!.role, "risk.accept.tolerable")) {
       return reply.code(403).send({ error: "forbidden" });
     }

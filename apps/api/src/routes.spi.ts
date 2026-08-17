@@ -28,7 +28,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { can, type Permission } from "@usalamasms/shared";
 import { periodWindow } from "../../../packages/shared/src/spi";
-import { prisma, authenticate, appendAuditTx, tenantWhere } from "./core";
+import { prisma, authenticate, appendAuditTx, tenantWhere , requireEntitlement } from "./core";
 
 const LIST_LIMIT = 200;
 
@@ -93,7 +93,18 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
     config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
   };
 
-  app.get("/api/v1/spi", limited, async (req, reply) => {
+  /* THE PAID SIDE OF THIS FILE. A lapsed subscription pauses the
+     safety office's working surfaces and never touches filing,
+     reading your own record or exporting the whole record — see
+     requireEntitlement in core.ts for why those three are not
+     negotiable. The capability is named here rather than in a
+     central list, so the reason lives with the routes it gates. */
+  const paid = {
+    ...limited,
+    preHandler: [authenticate, requireEntitlement("RECORD_INDICATOR_PERIOD")],
+  };
+
+  app.get("/api/v1/spi", paid, async (req, reply) => {
     if (!guard(req.auth!.role, "spi.read")) return reply.code(403).send({ error: "forbidden" });
 
     const indicators = await prisma.spi.findMany({
@@ -125,7 +136,7 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ indicators });
   });
 
-  app.post("/api/v1/spi", limited, async (req, reply) => {
+  app.post("/api/v1/spi", paid, async (req, reply) => {
     if (!guard(req.auth!.role, "spi.configure")) {
       return reply.code(403).send({ error: "forbidden" });
     }
@@ -185,7 +196,7 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
      response is a product whose numbers are kept in a spreadsheet
      instead. The screen asks; the API accepts either way.
      ===================================================================== */
-  app.post("/api/v1/spi/:id/periods/:periodId/action", limited, async (req, reply) => {
+  app.post("/api/v1/spi/:id/periods/:periodId/action", paid, async (req, reply) => {
     if (!guard(req.auth!.role, "spi.configure")) {
       return reply.code(403).send({ error: "forbidden" });
     }
@@ -301,7 +312,7 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  app.post("/api/v1/spi/:id/periods", limited, async (req, reply) => {
+  app.post("/api/v1/spi/:id/periods", paid, async (req, reply) => {
     if (!guard(req.auth!.role, "spi.configure")) {
       return reply.code(403).send({ error: "forbidden" });
     }
