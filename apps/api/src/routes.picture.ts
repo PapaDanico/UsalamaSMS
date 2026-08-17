@@ -54,6 +54,10 @@ const ACTION_LIMIT = 1000;
    this screen cannot fix by listing all of them. Truncation is reported
    like every other cap on this route. */
 const BARRIER_LIMIT = 300;
+/* How many degraded barriers travel with their text. The counts are the
+   answer; this list is the worst few, and a dashboard that shipped all
+   of them shipped 500 KB to render 12 of 1600. See the response block. */
+const DEGRADED_SHOWN = 12;
 
 const REPORT_STATES = [
   "SUBMITTED", "TRIAGED", "UNDER_INVESTIGATION", "ACTIONS_OPEN", "CLOSED",
@@ -75,6 +79,37 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
     if (!can(auth.role as never, "report.read.org")) {
       return reply.code(403).send({ error: "forbidden" });
     }
+
+    /* ----------------------------------------------------------------
+       AND THE SENTENCE ABOVE IS ONLY TRUE OF THE RECORDS IT WAS WRITTEN
+       ABOUT, which is a trap this route walked into once and must not
+       again.
+
+       "An aggregate of records this role can already read one at a
+       time" held while the route read reports, the register, indicators,
+       changes and actions — every one of which `report.read.org` also
+       opens one at a time. Barrier health then added TWO collections for
+       which it is false:
+
+         audit findings   /api/v1/sms/findings requires `audit.read`
+         training records /api/v1/sms/training returns ONLY the caller's
+                          own rows without `training.manage`
+
+       A SAFETY_OFFICER holds `report.read.org` and neither of those. So
+       for one commit this route answered 200 with the full text of an
+       audit finding that /api/v1/sms/findings answers 403 for, and with
+       a colleague's name and lapsed course that /api/v1/sms/training
+       deliberately withholds. Measured, both ways, before it was fixed.
+
+       The permission is therefore checked PER COLLECTION rather than
+       once at the door, and what a caller may not see is not silently
+       dropped — `withheld` names it, because a barrier count computed
+       over four of six records and presented as the operator's position
+       is the understating twin of the overstating defect /coverage
+       exists to prevent.
+       ---------------------------------------------------------------- */
+    const mayReadFindings = can(auth.role as never, "audit.read");
+    const mayReadTraining = can(auth.role as never, "training.manage");
 
     const asked = Number((req.query as { days?: string }).days ?? DEFAULT_WINDOW_DAYS);
     const days = Number.isFinite(asked)
@@ -230,22 +265,30 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
           },
         }),
 
-        prisma.trainingRecord.findMany({
-          where: { ...where, expiresOn: { lt: to } },
-          take: BARRIER_LIMIT,
-          orderBy: { expiresOn: "asc" },
-          select: {
-            id: true, course: true, expiresOn: true,
-            user: { select: { name: true } },
-          },
-        }),
+        /* NOT QUERIED AT ALL without the permission, rather than queried
+           and filtered afterwards. A row this caller may not see should
+           not cross the database boundary on their behalf — the cheapest
+           way to leak one is to load it and forget the filter later. */
+        mayReadTraining
+          ? prisma.trainingRecord.findMany({
+              where: { ...where, expiresOn: { lt: to } },
+              take: BARRIER_LIMIT,
+              orderBy: { expiresOn: "asc" },
+              select: {
+                id: true, course: true, expiresOn: true,
+                user: { select: { name: true } },
+              },
+            })
+          : [],
 
-        prisma.auditFinding.findMany({
-          where: { ...where, closedOn: null, dueBy: { lt: to } },
-          take: BARRIER_LIMIT,
-          orderBy: { dueBy: "asc" },
-          select: { id: true, auditRef: true, finding: true, dueBy: true },
-        }),
+        mayReadFindings
+          ? prisma.auditFinding.findMany({
+              where: { ...where, closedOn: null, dueBy: { lt: to } },
+              take: BARRIER_LIMIT,
+              orderBy: { dueBy: "asc" },
+              select: { id: true, auditRef: true, finding: true, dueBy: true },
+            })
+          : [],
 
         /* The overdue-review subset of the count above, as rows. The
            count stays a COUNT — it is exact, it appears in "what needs
@@ -341,13 +384,31 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
       to,
     );
 
+    /* The kinds this caller was not permitted to be shown. Named, so
+       the screen can say the picture is partial FOR THEM rather than
+       presenting four records out of six as the operator's position. */
+    const withheld = [
+      ...(mayReadFindings
+        ? []
+        : [{ kind: "AUDIT", source: "the internal audit findings" }]),
+      ...(mayReadTraining
+        ? []
+        : [{ kind: "COMPETENCE", source: "other people's training records" }]),
+    ];
+    const withheldKinds = withheld.map((w) => w.kind);
+
     /* Counted by kind here rather than in barriers.ts: the module
        returns findings, and how a screen chooses to aggregate them is
-       not a safety judgement. */
+       not a safety judgement.
+
+       A WITHHELD KIND IS ABSENT FROM THIS MAP, not zero. Zero on a
+       dashboard reads as a measurement — "no competence barriers are
+       down" — and the sentence it displaces is "you were not shown
+       this one". That is the rule the whole screen is built on. */
     const byKind = Object.fromEntries(
-      Object.keys(BARRIER_KINDS).map((k) => [
-        k, barriers.degraded.filter((d) => d.kind === k).length,
-      ]),
+      Object.keys(BARRIER_KINDS)
+        .filter((k) => !withheldKinds.includes(k))
+        .map((k) => [k, barriers.degraded.filter((d) => d.kind === k).length]),
     );
 
     /* The label beside the code, taken from the taxonomy rather than
@@ -417,11 +478,22 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
         byHrc,
         attribution: barriers.attribution,
         unattributed: barriers.unattributed.length,
-        /* The whole ranked list. Bounded by the four BARRIER_LIMITs
-           above and by the register's own cap, all of which are
-           reported — a barrier picture that silently stopped at a
-           ceiling would read as a shorter list of problems. */
-        degraded: barriers.degraded,
+        withheld,
+        /* THE WORST FEW, NOT ALL OF THEM, and the counts above are what
+           carry the totals.
+
+           This shipped as `barriers.degraded` entire. Measured against a
+           neglected operator — 400 of each record, every one overdue —
+           the response was 564 KB of which 500 KB was this array: 1600
+           findings, of which the screen renders twelve and discards the
+           rest. Eighty-nine per cent of the payload, on a page an
+           operator opens over a metered connection at a remote strip,
+           for an app whose entire entry chunk is 215 KB.
+
+           The list is ranked worst-first, so the top of it is the part
+           with any claim on the reader. `total` above is the real
+           figure and is unaffected by this cap. */
+        degraded: barriers.degraded.slice(0, DEGRADED_SHOWN),
         truncated:
           lateActions.length === BARRIER_LIMIT ||
           lapsedTraining.length === BARRIER_LIMIT ||

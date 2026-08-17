@@ -562,16 +562,37 @@ function attention({ register, indicators, changes, reporting, actions }) {
    could not — a confident number computed from a fraction of the
    evidence, which is exactly what the coverage page exists to prevent.
 
-   THE LIST IS CAPPED ON SCREEN AND THE REMAINDER IS COUNTED. A hundred
-   rows is a register, and there are already four of those to open. The
-   worst dozen by how late they are, and a sentence saying how many more
-   there are, is a dashboard.
-   ------------------------------------------------------------------ */
-const BARRIERS_SHOWN = 12;
+   THE LIST IS CAPPED BY THE SERVER AND THE REMAINDER IS COUNTED. A
+   hundred rows is a register, and there are already four of those to
+   open. The worst few by how late they are, and a sentence saying how
+   many more there are, is a dashboard.
 
+   The cap moved to the API after measurement: this file sliced to
+   twelve while the route sent every finding it had, which on a
+   neglected operator was 500 KB of a 564 KB response. Slicing on the
+   screen hides the cost rather than paying it — the bytes had already
+   crossed the reporter's connection by then.
+
+   WHAT THIS CALLER WAS NOT SHOWN IS PRINTED, NOT DROPPED. A
+   SAFETY_OFFICER may not read audit findings or anybody else's training
+   currency, so their barrier picture is genuinely narrower than the
+   operator's. Rendering that as a smaller number with no note is the
+   understating twin of overstating: they would read four records out of
+   six as the whole position.
+   ------------------------------------------------------------------ */
 function barrierPanel(b) {
+  const withheldNote = (b.withheld ?? []).length
+    ? html`<p class="notice">
+        Your role does not include reading
+        ${b.withheld.map((w) => w.source).join(' or ')}, so
+        ${b.withheld.length === 1 ? 'that record is' : 'those records are'}
+        not counted here. This is a narrower picture than the operator's,
+        not a healthier one.
+      </p>`
+    : '';
+
   if (b.total === 0) {
-    return html`<p class="lede">
+    return html`${withheldNote}<p class="lede">
       Nothing recorded as degraded. That is a statement about six
       records — mitigations, register review dates, training currency,
       change closeout, audit findings and indicators — and it is only as
@@ -580,11 +601,12 @@ function barrierPanel(b) {
     </p>`;
   }
 
-  const shown = b.degraded.slice(0, BARRIERS_SHOWN);
+  const shown = b.degraded;
   const rest = b.total - shown.length;
   const placed = b.total - b.unattributed;
 
   return html`
+    ${withheldNote}
     <p class="lede">
       ${b.total} defence${b.total === 1 ? ' is' : 's are'} currently down
       across six records the operator already keeps. This is the

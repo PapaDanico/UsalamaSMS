@@ -397,6 +397,129 @@ describe.skipIf(!hasDatabase)("the risk picture, through the real route", () => 
     expect(JSON.stringify(body)).not.toContain("Their overdue action");
   });
 
+  /* ==============================================================
+     THE PICTURE DOES NOT HAND A ROLE WHAT THE MATRIX REFUSES IT.
+
+     This route gates once, on `report.read.org`, and its own comment
+     explains why: everything here is an aggregate of records that
+     permission already opens one at a time, so a separate permission
+     would let an operator grant the summary while withholding the
+     detail — which is backwards.
+
+     THAT REASONING WAS LOAD-BEARING AND BARRIER HEALTH BROKE IT. It
+     added two collections `report.read.org` does NOT open:
+
+       /api/v1/sms/findings  needs `audit.read`
+       /api/v1/sms/training  returns only the CALLER'S OWN rows without
+                             `training.manage`
+
+     A SAFETY_OFFICER holds `report.read.org` and neither. Measured
+     before the fix: /api/v1/sms/findings answered 403 to that role
+     while /api/v1/picture answered 200 carrying the finding's full
+     text, and /api/v1/sms/training withheld a colleague's record while
+     /api/v1/picture named the person and the lapsed course.
+
+     A dashboard is the easiest place in a product to lose an
+     authorisation rule, because nobody reads it as a read of the
+     underlying table — it looks like arithmetic. This asserts the
+     refusal against the SAME ROW the permitted role can see, so it
+     cannot pass by the fixture being empty.
+     ============================================================== */
+  describe("what a role may see of the barrier picture", () => {
+    const SECRET_FINDING = "the release was signed by an unlicensed engineer";
+    const SECRET_COURSE = "Line check renewal";
+
+    beforeEach(async () => {
+      await prisma().auditFinding.create({
+        data: {
+          orgId, auditRef: "IA-2026-03", finding: SECRET_FINDING,
+          ownerPost: "SAFETY_MANAGER", dueBy: new Date(Date.now() - 20 * DAY),
+        },
+      });
+      await prisma().trainingRecord.create({
+        data: {
+          orgId, userId: frontlineId, course: SECRET_COURSE,
+          completedOn: new Date(Date.now() - 400 * DAY),
+          expiresOn: new Date(Date.now() - 30 * DAY),
+        },
+      });
+    });
+
+    it("a SAFETY_MANAGER sees both, because the matrix opens both to them", async () => {
+      /* THE OTHER HALF OF THE CHECK. Without it the assertions below
+         pass on a route that returns no barriers to anybody. */
+      const res = await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"));
+      expect(res.payload).toContain(SECRET_FINDING);
+      expect(res.payload).toContain(SECRET_COURSE);
+      expect(res.json().barriers.withheld).toEqual([]);
+      expect(res.json().barriers.total).toBe(2);
+    });
+
+    it("A SAFETY_OFFICER IS SHOWN NEITHER, and is TOLD they were not", async () => {
+      const officerId = (
+        await prisma().user.create({
+          data: {
+            orgId, email: "officer@a.test", passwordHash: "x",
+            name: "Officer", role: "SAFETY_OFFICER",
+          },
+        })
+      ).id;
+      const res = await picture(tokenFor(officerId, orgId, "SAFETY_OFFICER"));
+      const b = res.json().barriers;
+
+      expect(res.statusCode).toBe(200);
+      expect(
+        res.payload,
+        "the picture carried an audit finding to a role /api/v1/sms/findings answers 403 for",
+      ).not.toContain(SECRET_FINDING);
+      expect(
+        res.payload,
+        "the picture named a colleague's lapsed course, which /api/v1/sms/training withholds",
+      ).not.toContain(SECRET_COURSE);
+      expect(
+        res.payload,
+        "the picture named another user, whose training record this role may not read",
+      ).not.toContain("frontline@a.test");
+
+      /* SAID, NOT SILENTLY SMALLER. Zero barriers with no explanation
+         reads as a healthy operation to the one role most likely to be
+         looking. */
+      expect(b.total).toBe(0);
+      expect(b.withheld.map((w: { kind: string }) => w.kind).sort()).toEqual([
+        "AUDIT", "COMPETENCE",
+      ]);
+      /* And a withheld kind is ABSENT from the breakdown rather than
+         counted as zero, for the same reason. */
+      expect(Object.keys(b.byKind)).not.toContain("AUDIT");
+      expect(Object.keys(b.byKind)).not.toContain("COMPETENCE");
+      expect(Object.keys(b.byKind)).toContain("MITIGATION");
+    });
+  });
+
+  it("SENDS THE WORST FEW WITH THEIR TEXT, not every one of them", async () => {
+    /* Measured: shipping the whole ranked list put 500 KB of a 564 KB
+       response into an array the screen renders twelve of. `total` is
+       the answer; the list is the top of it. */
+    const r = await prisma().safetyReport.create({
+      data: { orgId, clientId: "many", type: "HAZARD", title: "t", narrative: "x" },
+    });
+    await prisma().correctiveAction.createMany({
+      data: Array.from({ length: 40 }, (_, i) => ({
+        orgId, reportId: r.id, action: `Action ${i}`, ownerPost: "SAFETY_MANAGER",
+        dueOn: new Date(Date.now() - (i + 1) * DAY),
+      })),
+    });
+
+    const b = (await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"))).json().barriers;
+    expect(b.total, "the count is the whole truth").toBe(40);
+    expect(
+      b.degraded.length,
+      "the whole ranked list travelled — 89% of this response is text nothing renders",
+    ).toBeLessThanOrEqual(12);
+    /* WORST-FIRST, so the few that travel are the few worth reading. */
+    expect(b.degraded[0].daysLate).toBe(40);
+  });
+
   it("requires a token", async () => {
     expect(
       (await app.inject({ method: "GET", url: "/api/v1/picture" })).statusCode,

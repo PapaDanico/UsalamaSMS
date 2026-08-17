@@ -4384,6 +4384,7 @@ try {
     const probe = await bare.newPage();
     let called = false;
     let text = '';
+    let narrowed = '';
 
     /* Two findings, one placeable and one not — the smallest body that
        can tell an honest section from a confident one. The training
@@ -4417,6 +4418,7 @@ try {
         byHrc: [{ code: 'BWI', label: 'Bird or wildlife strike', count: 1 }],
         attribution: 0.5,
         unattributed: 1,
+        withheld: [],
         degraded: [
           {
             kind: 'MITIGATION', id: 'a1', what: 'Re-brief crews on the displaced threshold',
@@ -4465,6 +4467,44 @@ try {
       await probe.reload({ waitUntil: 'networkidle' });
       await probe.waitForTimeout(700);
       text = await probe.evaluate(() => document.body.innerText);
+      /* AND THE NARROWED VIEW, which is a branch nothing else drives.
+
+         A SAFETY_OFFICER holds report.read.org and neither audit.read
+         nor training.manage, so the API withholds two of the six
+         records from them and says which. The screen must PRINT that:
+         a barrier picture that is quietly smaller for one role reads to
+         that role as a healthier operation, and they are the role most
+         likely to be looking.
+
+         Stubbed rather than driven through a real session, because the
+         property under test is that the screen renders what the API
+         tells it — the API's half is asserted against a real Postgres
+         in picture.route.integration.test.ts. */
+      await probe.unroute('**/api/v1/picture*');
+      await probe.route('**/api/v1/picture*', (r) =>
+        r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ...BODY,
+            barriers: {
+              ...BODY.barriers,
+              total: 1,
+              byKind: { MITIGATION: 1, CONTROL_REVIEW: 0, CHANGE: 0, PERFORMANCE: 0 },
+              degraded: [BODY.barriers.degraded[0]],
+              unattributed: 0,
+              attribution: 1,
+              withheld: [
+                { kind: 'AUDIT', source: 'the internal audit findings' },
+                { kind: 'COMPETENCE', source: "other people's training records" }
+              ]
+            }
+          })
+        })
+      );
+      await probe.reload({ waitUntil: 'networkidle' });
+      await probe.waitForTimeout(700);
+      narrowed = await probe.evaluate(() => document.body.innerText);
     } finally {
       await bare.close();
     }
@@ -4515,6 +4555,22 @@ try {
         faults.push(
           'the high-risk category is shown as its code rather than its name — the label ' +
             'is on the wire and was not used'
+        );
+      }
+
+      /* 4. AND A NARROWED VIEW SAYS IT IS NARROWED. */
+      if (!/internal audit findings/i.test(narrowed) ||
+          !/other people's training records/i.test(narrowed)) {
+        faults.push(
+          'the API withheld two of the six records from this role and the screen did not ' +
+            'say which. A barrier picture that is quietly smaller for one role reads to ' +
+            'that role as a healthier operation'
+        );
+      }
+      if (!/narrower picture|not counted here/i.test(narrowed)) {
+        faults.push(
+          'the withheld records are named but the screen never says the picture is ' +
+            'narrower than the operator\'s — naming a gap is not stating it'
         );
       }
     }
