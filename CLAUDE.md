@@ -316,3 +316,36 @@ The bundle budget is two numbers on purpose. The total says something
 grew; the **entry** says it grew in a place a reporter at a remote
 strip has to pay for. Raising either needs a receipt in
 `scripts/stamp-sw.mjs` saying what was bought.
+
+## An aggregate route must check the permission of every record it reads
+
+`/api/v1/picture` gates once, on `report.read.org`, and its own comment
+explains why: everything it reads is an aggregate of records that
+permission already opens one at a time, so a second permission would
+let an operator grant the summary while withholding the detail.
+
+**That reasoning is true of the records it was written for and false the
+moment somebody adds one.** Barrier health added two — audit findings
+(`audit.read`) and training records (`training.manage`, or you get only
+your own rows) — and for one commit a `SAFETY_OFFICER` got, from
+`/picture`, the full text of a finding that `/api/v1/sms/findings`
+answers **403** for, plus a colleague's name and lapsed course. A third,
+change-assessment titles behind `moc.create`/`moc.approve`, survived two
+readings of the diff and was found only by the gate.
+
+So the permission is checked **per collection**, not once at the door,
+and what a caller may not see is **named** rather than silently dropped
+— a barrier count taken over four of six records and presented as the
+operator's position is the understating twin of overstating.
+
+`npm run check:authz` compares, for every model, the roles each route
+discloses it to against the roles admitted by the route file that
+**writes** it. A model read outside its own file may not widen the
+audience. Ownership is the axis rather than width, because `/api/v1/export`
+reads nearly everything behind `org.export` and comparing peers made
+every primary endpoint look guilty — sixteen findings, fifteen of them
+noise. `org.export` is exempt by construction: it *is* the whole record.
+
+**A dashboard is the easiest place in a product to lose an authorisation
+rule**, because it does not read like a read of the underlying table —
+it reads like arithmetic.

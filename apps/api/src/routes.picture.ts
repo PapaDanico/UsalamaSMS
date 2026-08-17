@@ -110,6 +110,17 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
        ---------------------------------------------------------------- */
     const mayReadFindings = can(auth.role as never, "audit.read");
     const mayReadTraining = can(auth.role as never, "training.manage");
+    /* EITHER, because /api/v1/changes admits either — a disjunction,
+       and narrowing it here would withhold from roles the change
+       register itself serves. THIS ONE WAS FOUND BY THE GATE, not by
+       the review that found the other two: change assessments are read
+       by /api/v1/changes behind `moc.create` OR `moc.approve`, and
+       neither SAFETY_OFFICER nor INVESTIGATOR holds either, yet both
+       were being shown the titles of unreviewed changes here. Same
+       defect as the audit findings, one file further along, and reading
+       the diff twice did not surface it. */
+    const mayReadChanges =
+      can(auth.role as never, "moc.create") || can(auth.role as never, "moc.approve");
 
     const asked = Number((req.query as { days?: string }).days ?? DEFAULT_WINDOW_DAYS);
     const days = Number.isFinite(asked)
@@ -294,17 +305,19 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
            count stays a COUNT — it is exact, it appears in "what needs
            attention", and turning it into `rows.length` would silently
            convert an exact figure into a capped one. */
-        prisma.changeAssessment.findMany({
-          where: {
-            ...where,
-            status: "IN_EFFECT",
-            reviewedOn: null,
-            reviewDueOn: { lt: to },
-          },
-          take: BARRIER_LIMIT,
-          orderBy: { reviewDueOn: "asc" },
-          select: { id: true, title: true, reviewDueOn: true },
-        }),
+        mayReadChanges
+          ? prisma.changeAssessment.findMany({
+              where: {
+                ...where,
+                status: "IN_EFFECT",
+                reviewedOn: null,
+                reviewDueOn: { lt: to },
+              },
+              take: BARRIER_LIMIT,
+              orderBy: { reviewDueOn: "asc" },
+              select: { id: true, title: true, reviewDueOn: true },
+            })
+          : [],
       ]);
 
     /* FIRST closure per report. The query is ordered ascending, so the
@@ -394,6 +407,9 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
       ...(mayReadTraining
         ? []
         : [{ kind: "COMPETENCE", source: "other people's training records" }]),
+      ...(mayReadChanges
+        ? []
+        : [{ kind: "CHANGE", source: "the change assessments" }]),
     ];
     const withheldKinds = withheld.map((w) => w.kind);
 
