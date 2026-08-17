@@ -55,6 +55,7 @@ import { randomBytes } from "node:crypto";
 import { can } from "@usalamasms/shared";
 import { stateOn, trialEndsFrom } from "../../../packages/shared/src/subscription";
 import { prisma, authenticate, appendAuditTx } from "./core";
+import { sendInvitation, mailConfigFromEnv } from "./mail";
 
 function guard(role: string, permission: string): boolean {
   return can(role as never, permission as never);
@@ -216,6 +217,31 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       },
     }));
 
+    /* THE INVITATION, AFTER THE TRANSACTION AND OUTSIDE IT.
+
+       Deliberately not inside: a provider timeout inside the
+       transaction would roll back a created operator, and the failure
+       mode of "the customer exists but the email did not go" is
+       recoverable by a phone call while "the customer does not exist
+       and the administrator thinks they do" is not.
+
+       IT CARRIES NO PASSWORD. See mail.ts — the administrator hands
+       that over by whatever channel they and the customer already
+       trust, and the message says so before the reader goes hunting
+       for it.
+
+       THE OUTCOME IS REPORTED RATHER THAN SWALLOWED. The administrator
+       is the only person who can act on a failure: they are holding
+       the password and can pick up a phone. An invitation that
+       silently did not arrive is worse than one never attempted,
+       because it leaves somebody believing a customer is onboarded. */
+    const invitation = await sendInvitation(
+      email,
+      org.name,
+      org.trialEndsOn?.toISOString().slice(0, 10) ?? null,
+      mailConfigFromEnv(),
+    );
+
     return reply.code(201).send({
       id: org.id,
       name: org.name,
@@ -226,6 +252,12 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
          issues a password reset. */
       password,
       passwordShownOnce: true,
+      /* SENT / NOT_CONFIGURED / FAILED, never a boolean. "false" would
+         collapse "this deployment has no mail key" into "the provider
+         refused", and those need different actions from the person
+         reading the screen. */
+      invitation: invitation.status,
+      invitationReason: invitation.status === "FAILED" ? invitation.reason : undefined,
     });
   });
 

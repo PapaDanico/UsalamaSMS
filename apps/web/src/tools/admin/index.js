@@ -210,6 +210,18 @@ export async function render(outlet) {
             This is the only time this password is shown. It is not stored in a
             form anything can read back. If it is lost, the operator resets it.
           </p>
+          <p data-invitation>
+            ${out.invitation === 'SENT'
+              ? 'An invitation has been emailed to them with the sign-in link. It does ' +
+                'not contain the password — pass that on yourself.'
+              : out.invitation === 'NOT_CONFIGURED'
+                ? 'NO INVITATION WAS SENT: this deployment has no mail key set, so ' +
+                  'nothing reached them. They do not know the account exists until you ' +
+                  'tell them.'
+                : 'THE INVITATION FAILED TO SEND' +
+                  (out.invitationReason ? ` — ${out.invitationReason}` : '') +
+                  '. They do not know the account exists. Contact them directly.'}
+          </p>
         </div>`.toString();
       f.reset();
     } catch (err) {

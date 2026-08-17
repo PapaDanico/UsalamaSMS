@@ -297,6 +297,133 @@ export async function sendPasswordReset(
   }
 }
 
+/* =====================================================================
+   THE INVITATION AN OPERATOR GETS WHEN AN ADMINISTRATOR PROVISIONS THEM.
+
+   Until this existed, provisioning an operator sent NOTHING. The
+   generated password came back once in the administrator's response and
+   the new safety manager learned they had an account only if somebody
+   remembered to tell them. That is the gap between having a product and
+   being able to onboard a paying customer, and it was closed last.
+
+   ---------------------------------------------------------------
+   IT DOES NOT CARRY THE PASSWORD, AND THAT IS NOT AN OVERSIGHT.
+
+   routes.admin.ts already says the generated password is "never logged,
+   never emailed from here, and never returned again". A password in an
+   email is a password in a mailbox forever — searchable, forwarded,
+   backed up, and still valid months after the person has left. The
+   administrator hands it over by whatever channel they and the customer
+   already trust, and this message tells the recipient to expect that.
+
+   WHAT IT DOES CARRY is the thing an operator cannot get any other way:
+   confirmation that the account is real, the address it is under, and
+   an absolute link to sign in. A person who receives "your
+   administrator will send your password separately" from a domain that
+   passes DKIM is far harder to phish than one who receives a password.
+
+   ---------------------------------------------------------------
+   THE LINK IS BUILT FROM PUBLIC_BASE_URL, never from a request header,
+   for the reason the reset email records: a Host header is
+   attacker-controlled, and a sign-in link pointing wherever the
+   requester chooses is a credential-harvesting campaign sent from our
+   own domain with our own return address.
+   ===================================================================== */
+export function invitationSubject(orgName: string): string {
+  return `UsalamaSMS — your safety management account for ${orgName}`;
+}
+
+export function invitationBody(
+  orgName: string,
+  email: string,
+  baseUrl: string,
+  trialEndsOn: string | null,
+): string {
+  return [
+    `An account has been created for ${orgName} on UsalamaSMS.`,
+    "",
+    `Sign in at: ${baseUrl}/login`,
+    `Your username is this address: ${email}`,
+    "",
+    /* SAID BEFORE THEY GO LOOKING FOR IT. The single most likely
+       failure of this email is somebody hunting for a password that is
+       deliberately not in it, deciding the message is broken, and
+       filing it. */
+    "Your password is not in this email, on purpose — a password sent by",
+    "email stays in a mailbox long after it should. Your administrator has",
+    "it and will pass it to you directly. If you have not been given one,",
+    "ask them rather than requesting a reset.",
+    "",
+    ...(trialEndsOn
+      ? [`Your trial runs until ${trialEndsOn}. Everything is available during it.`, ""]
+      : []),
+    "What to do first: file one report, so the system holds something real,",
+    "and open Annex 19 Conformance to see where you stand against the twelve",
+    "elements.",
+    "",
+    "This product holds your safety record. It does not run your safety",
+    "management system — somebody still has to identify the hazard, decide",
+    "the risk is tolerable, and sign their name to that.",
+  ].join("\n");
+}
+
+/**
+ * Send the invitation, or say precisely why it was not sent.
+ *
+ * THE OUTCOME IS RETURNED RATHER THAN SWALLOWED, and the provisioning
+ * route reports it to the administrator, because the administrator is
+ * the only person who can act on a failure — they are holding the
+ * password and can pick up a phone. An invitation that silently did not
+ * arrive is worse than one that was never attempted: it leaves somebody
+ * believing the customer has been onboarded.
+ */
+export async function sendInvitation(
+  to: string,
+  orgName: string,
+  trialEndsOn: string | null,
+  config: MailConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MailOutcome> {
+  if (!config.apiKey) return { status: "NOT_CONFIGURED" };
+
+  try {
+    const response = await fetchImpl("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: config.from,
+        to,
+        subject: invitationSubject(orgName),
+        text: invitationBody(orgName, to, config.baseUrl, trialEndsOn),
+      }),
+    });
+
+    if (!response.ok) {
+      /* The status, never the body — a provider error can echo the
+         request back, and this request carries an Authorization header
+         in the same object a careless log line would serialise. */
+      return { status: "FAILED", reason: `provider responded ${response.status}` };
+    }
+
+    let id = "";
+    try {
+      const payload = (await response.json()) as { id?: string };
+      id = payload.id ?? "";
+    } catch {
+      /* Accepted, unparseable. Still sent. */
+    }
+    return { status: "SENT", id };
+  } catch (error) {
+    return {
+      status: "FAILED",
+      reason: error instanceof Error ? error.message : "transport failed",
+    };
+  }
+}
+
 /**
  * Configuration from the environment, with the absent key left absent.
  *

@@ -14,6 +14,7 @@
    writing a new route.
    ===================================================================== */
 import { describe, it, expect } from "vitest";
+import { invitationBody, invitationSubject } from "../apps/api/src/mail";
 import {
   PERMISSIONS, NARRATIVE_PERMISSIONS, can, type Permission,
 } from "../packages/shared/src/permissions";
@@ -96,5 +97,59 @@ describe("the trial the console grants", () => {
        entitled must not be indistinguishable from one in trial. */
     expect(stateOn({ trialEndsOn: new Date(0), paidThrough: null }, new Date()))
       .toBe("LAPSED");
+  });
+});
+
+/* =====================================================================
+   THE INVITATION, AND THE ONE THING IT MUST NEVER CONTAIN.
+
+   Provisioning generates a password and returns it to the
+   administrator ONCE. The invitation goes to the customer. If those two
+   ever meet, a live credential is sitting in a mailbox — searchable,
+   forwardable, backed up, and still valid long after the person has
+   left. routes.admin.ts has said "never emailed from here" since it was
+   written; this is the assertion that keeps it true when somebody helpful
+   decides the onboarding would be smoother with the password in it.
+   ===================================================================== */
+describe("the provisioning invitation", () => {
+  const body = () =>
+    invitationBody("Strip Air", "m@strip.test", "https://usalamasms.com", "2026-09-16");
+
+  it("NEVER CARRIES A PASSWORD, AND SAYS SO BEFORE THE READER LOOKS", () => {
+    const text = body();
+    expect(text).toMatch(/password is not in this email/i);
+    /* Not merely "no password field" — no word that would let somebody
+       add one and still pass. */
+    expect(text).not.toMatch(/your password is\s*:/i);
+    expect(text).not.toMatch(/temporary password/i);
+  });
+
+  it("tells them where the password IS, so they do not reset it", () => {
+    /* The likeliest failure of this email is somebody hunting for a
+       credential that is deliberately absent, deciding the message is
+       broken, and requesting a reset — which invalidates the password
+       the administrator is holding. */
+    expect(body()).toMatch(/administrator has/i);
+    expect(body()).toMatch(/ask them rather than requesting a reset/i);
+  });
+
+  it("names the organisation, the address and an absolute sign-in link", () => {
+    const text = body();
+    expect(text).toMatch(/Strip Air/);
+    expect(text).toMatch(/m@strip\.test/);
+    expect(text).toMatch(/https:\/\/usalamasms\.com\/login/);
+    expect(invitationSubject("Strip Air")).toMatch(/Strip Air/);
+  });
+
+  it("states the trial end date when there is one, and omits the line when there is not", () => {
+    expect(body()).toMatch(/2026-09-16/);
+    const none = invitationBody("Strip Air", "m@strip.test", "https://usalamasms.com", null);
+    expect(none).not.toMatch(/trial runs until/i);
+  });
+
+  it("AND IT STILL SAYS WHAT THE PRODUCT DOES NOT DO", () => {
+    /* Charter rule 7 reaches the first thing a customer ever reads from
+       us. An onboarding email is exactly where a vendor overclaims. */
+    expect(body()).toMatch(/does not run your safety/i);
   });
 });
