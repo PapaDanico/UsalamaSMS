@@ -85,6 +85,8 @@ describe.skipIf(!hasDatabase)("safety performance indicators, through the real r
     app.inject({ method: "POST", url: path, headers: { authorization: `Bearer ${token}` }, payload: body as never });
   const get = (path: string, token: string) =>
     app.inject({ method: "GET", url: path, headers: { authorization: `Bearer ${token}` } });
+  const put = (path: string, token: string, body: unknown) =>
+    app.inject({ method: "PUT", url: path, headers: { authorization: `Bearer ${token}` }, payload: body as never });
 
   it("stores an indicator and reads it back with its periods", async () => {
     const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
@@ -378,5 +380,102 @@ describe.skipIf(!hasDatabase)("safety performance indicators, through the real r
       })
     ).json();
     expect(body.total).toBe(0);
+  });
+
+  /* ===================================================================
+     APPENDIX II — the submission half, over the wire.
+
+     CAA-AC-SMS009 §7.6.3: the operator files each indicator on form
+     AC-SMS009 and the Authority answers with an acceptance letter.
+     These answers are the operator's definition of the indicator, and
+     the route stores them partially — the form fills over weeks.
+     =================================================================== */
+  it("stores the Appendix II answers partially, and a later PUT does not blank the rest", async () => {
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const created = await post("/api/v1/spi", manager, INDICATOR);
+    const id = created.json().indicator.id as string;
+
+    const first = await put(`/api/v1/spi/${id}/submission`, manager, {
+      description: "Unstable approaches per thousand approaches, from the FDM programme.",
+      indicatorType: "ACTIVITY",
+    });
+    expect(first.statusCode).toBe(200);
+
+    /* The second write touches ONE field. If the route treated the
+       body as the whole record, the description would come back null
+       and nine answers would be hostage to every save. */
+    const second = await put(`/api/v1/spi/${id}/submission`, manager, {
+      rationale: "Approach stability is the operator's leading measure for runway excursion.",
+    });
+    expect(second.statusCode).toBe(200);
+    const after = second.json().indicator;
+    expect(after.description).toContain("FDM programme");
+    expect(after.indicatorType).toBe("ACTIVITY");
+    expect(after.rationale).toContain("runway excursion");
+  });
+
+  it("FIELD 3 IS THE OPERATOR'S ANSWER — the route never fills it from kind", async () => {
+    /* The finding that cost something in the reading: kind is how RARE
+       the events are, field 3 is WHEN in the causal chain the indicator
+       measures, and a LOWER_CONSEQUENCE indicator splits both ways. */
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const created = await post("/api/v1/spi", manager, INDICATOR);
+    const id = created.json().indicator.id as string;
+
+    const saved = await put(`/api/v1/spi/${id}/submission`, manager, {
+      description: "A described indicator with no type chosen.",
+    });
+    expect(saved.json().indicator.indicatorType).toBeNull();
+
+    const bad = await put(`/api/v1/spi/${id}/submission`, manager, { indicatorType: "LEADING" });
+    expect(bad.statusCode).toBe(400);
+  });
+
+  it("records Part E as the letter said it, and null clears a mistranscription", async () => {
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const created = await post("/api/v1/spi", manager, INDICATOR);
+    const id = created.json().indicator.id as string;
+
+    const accepted = await put(`/api/v1/spi/${id}/submission`, manager, {
+      submittedOn: "2026-08-01",
+      acceptance: "ACCEPTED",
+      acceptedOn: "2026-08-15",
+    });
+    expect(accepted.statusCode).toBe(200);
+    expect(accepted.json().indicator.acceptance).toBe("ACCEPTED");
+
+    const cleared = await put(`/api/v1/spi/${id}/submission`, manager, {
+      acceptance: null,
+      acceptedOn: null,
+    });
+    expect(cleared.json().indicator.acceptance).toBeNull();
+    expect(cleared.json().indicator.acceptedOn).toBeNull();
+  });
+
+  it("ANOTHER OPERATOR'S SUBMISSION ANSWERS CANNOT BE WRITTEN, and the row's existence does not leak", async () => {
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const stranger = tokenFor(otherManagerId, otherOrgId, "SAFETY_MANAGER");
+    const created = await post("/api/v1/spi", manager, INDICATOR);
+    const id = created.json().indicator.id as string;
+
+    const attempt = await put(`/api/v1/spi/${id}/submission`, stranger, {
+      description: "overwritten from another tenancy",
+    });
+    /* 404, not 403: a guessed id from another operator must read as
+       "no such indicator", because "forbidden" confirms it exists. */
+    expect(attempt.statusCode).toBe(404);
+
+    const mine = await get("/api/v1/spi", manager);
+    expect(mine.json().indicators[0].description).not.toBe("overwritten from another tenancy");
+  });
+
+  it("an empty body and an unknown field are both refused", async () => {
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const created = await post("/api/v1/spi", manager, INDICATOR);
+    const id = created.json().indicator.id as string;
+    expect((await put(`/api/v1/spi/${id}/submission`, manager, {})).statusCode).toBe(400);
+    expect(
+      (await put(`/api/v1/spi/${id}/submission`, manager, { alertLevel: 3 })).statusCode,
+    ).toBe(400);
   });
 });

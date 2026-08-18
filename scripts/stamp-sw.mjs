@@ -2350,7 +2350,29 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    they were separated to do. The moment entry starts climbing with
    total is the moment to take something out instead of buying more,
    and it has not arrived. */
-const BUDGET = { entry: 224 * 1024, js: 650 * 1024, css: 80 * 1024 };
+
+/* 650 -> 658, 18 August 2026 — THE APPENDIX II SUBMISSION RECORD.
+
+   WHAT WAS BOUGHT. CAA-AC-SMS009 §7.6.3, read against the document
+   the owner supplied: every indicator is filed with the Authority on
+   form AC-SMS009, and the Authority answers with an acceptance
+   letter. The form asks for the indicator's DEFINITION — description,
+   type, rationale, limitations, terms, data custody — and this
+   product held the arithmetic half and none of that. The weight is
+   the field registry (the Authority's own thirteen captions and the
+   reasoning each carries), the composed printable record, and the
+   form that fills it.
+
+   WHERE IT LANDS. All of it in the lazy /toolkits/spi chunk. ENTRY
+   DID NOT MOVE — 219.1 KB before and after, sixth reading in two
+   days — so the reporter at a remote strip pays nothing for a form
+   only the safety manager files. Total 648.3 -> 656.8 against the
+   new 658.
+
+   The stopping condition above stands: the day entry starts climbing
+   with total is the day to take something out instead of buying
+   more. */
+const BUDGET = { entry: 224 * 1024, js: 658 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

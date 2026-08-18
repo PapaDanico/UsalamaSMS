@@ -44,6 +44,58 @@ function guard(role: string, permission: Permission): boolean {
 const KINDS = ["LOWER_CONSEQUENCE", "HIGHER_CONSEQUENCE"] as const;
 const DIRECTIONS = ["LOWER_IS_BETTER", "HIGHER_IS_BETTER"] as const;
 
+/* =====================================================================
+   THE SUBMISSION HALF — Appendix II of CAA-AC-SMS009, §7.6.3.
+
+   The Authority's form asks for an indicator's DEFINITION, not its
+   numbers: description, rationale, limitations, terms, data custody.
+   These are the operator's answers, stored so the form composes from
+   the record instead of being retyped at a desk.
+
+   EVERY FIELD OPTIONAL AND NULLABLE. Optional because the form fills
+   over time; nullable because clearing an answer must be expressible —
+   the same reasoning as `hrc` in IndicatorSchema below. A field absent
+   from the body means "leave it alone"; null means "blank it".
+
+   `indicatorType` IS VALIDATED AGAINST THE TWO ANSWERS AND NEVER
+   COMPUTED. Field 3 (activity- against outcome-related) is a different
+   axis from `kind` (how rare the events are); a route that defaulted
+   one from the other would file leading indicators as lagging.
+
+   `acceptance` RECORDS WHAT THE LETTER SAID. This product does not
+   submit to the Authority and does not claim to — the icaas module
+   draws that line and it is the same line here. Part E is transcribed
+   by the operator from the acceptance letter, dated, and shown as
+   theirs.
+   ===================================================================== */
+const text = (max: number) => z.string().trim().max(max).nullable().optional();
+const isoDay = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((d) => !Number.isNaN(Date.parse(d)), "not a date")
+  .nullable()
+  .optional();
+const SubmissionSchema = z
+  .object({
+    areaOfOperations: text(160),
+    description: text(2000),
+    indicatorType: z.enum(["ACTIVITY", "OUTCOME"]).nullable().optional(),
+    rationale: text(2000),
+    limitations: text(2000),
+    definitionOfTerms: text(2000),
+    dataSets: text(1000),
+    dataProvider: text(160),
+    dataCustodian: text(160),
+    submittedOn: isoDay,
+    acceptance: z.enum(["ACCEPTED", "NOT_ACCEPTED"]).nullable().optional(),
+    acceptedOn: isoDay,
+  })
+  .strict()
+  .refine((b) => Object.keys(b).length > 0, { message: "empty update" })
+  .refine((b) => !(b.acceptedOn && b.acceptance === undefined), {
+    message: "an acceptance date needs an acceptance",
+  });
+
 const IndicatorSchema = z.object({
   name: z.string().trim().min(1).max(160),
   kind: z.enum(KINDS),
@@ -271,6 +323,59 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return reply.code(201).send({ indicator: { ...created, periods: [] } });
+  });
+
+  /* =====================================================================
+     THE APPENDIX II ANSWERS, updated as the operator writes them.
+
+     Behind `spi.configure`, the same permission that creates the
+     indicator — the submission record IS configuration, and a second
+     permission here would let an operator grant the arithmetic while
+     withholding the paperwork, which is the /picture lesson inverted.
+
+     PARTIAL ON PURPOSE. The form is filled across weeks; a route that
+     demanded the whole thing at once would hold nine answers hostage
+     to the tenth. Absent key = untouched, null = blanked — the hrc
+     convention, applied to eleven more fields.
+     ===================================================================== */
+  app.put("/api/v1/spi/:id/submission", paid, async (req, reply) => {
+    if (!guard(req.auth!.role, "spi.configure")) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+    const { id } = req.params as { id: string };
+    const parsed = SubmissionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid", detail: parsed.error.flatten() });
+    }
+
+    /* Tenancy first, as everywhere: the row must be this operator's
+       before anything is written to it. updateMany carries the orgId
+       into the WHERE, so a guessed id from another tenancy updates
+       zero rows and answers 404 rather than leaking that it exists. */
+    const data: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(parsed.data)) {
+      if (v !== undefined) data[k] = v === null ? null : v;
+    }
+    /* An ISO day becomes a Date at the edge, where zod proved its shape. */
+    for (const k of ["submittedOn", "acceptedOn"]) {
+      if (typeof data[k] === "string") data[k] = new Date(`${data[k]}T00:00:00.000Z`);
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const r = await tx.spi.updateMany({ where: { ...tenantWhere(req), id }, data });
+      if (r.count === 0) return null;
+      await appendAuditTx(tx, {
+        orgId: req.auth!.org,
+        userId: req.auth!.sub,
+        action: "spi.configure",
+        entityType: "Spi",
+        entityId: id,
+      });
+      return tx.spi.findFirst({ where: { ...tenantWhere(req), id } });
+    });
+
+    if (!updated) return reply.code(404).send({ error: "not_found" });
+    return reply.send({ indicator: updated });
   });
 
   /* =====================================================================
