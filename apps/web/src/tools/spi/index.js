@@ -66,7 +66,9 @@ import {
   spiVerdict,
   canAppendPeriod,
   periodOrder,
-  rate
+  rate,
+  appendixTwoGaps,
+  INDICATOR_TYPES
 } from '../../../../../packages/shared/src/spi.ts';
 import { SAFETY_ROLES } from '../../../../../packages/shared/src/posts.ts';
 import { NASP_HIGH_RISK } from '../../../../../packages/shared/src/taxonomy.ts';
@@ -103,6 +105,23 @@ function normalise(raw_) {
        in the rollup — a gap that reads as a gap in the operator's SMS
        rather than in a stale string. */
     hrc: NASP_HIGH_RISK.some((c) => c.code === raw_.hrc) ? raw_.hrc : null,
+    /* The Appendix II answers ride along unvalidated-as-arithmetic:
+       they are the operator's prose, and the only two that gate
+       anything downstream are checked against their vocabularies. */
+    areaOfOperations: raw_.areaOfOperations || null,
+    description: raw_.description || null,
+    indicatorType: INDICATOR_TYPES.some((t) => t.key === raw_.indicatorType)
+      ? raw_.indicatorType
+      : null,
+    rationale: raw_.rationale || null,
+    limitations: raw_.limitations || null,
+    definitionOfTerms: raw_.definitionOfTerms || null,
+    dataSets: raw_.dataSets || null,
+    dataProvider: raw_.dataProvider || null,
+    dataCustodian: raw_.dataCustodian || null,
+    submittedOn: raw_.submittedOn ? String(raw_.submittedOn).slice(0, 10) : null,
+    acceptance: ['ACCEPTED', 'NOT_ACCEPTED'].includes(raw_.acceptance) ? raw_.acceptance : null,
+    acceptedOn: raw_.acceptedOn ? String(raw_.acceptedOn).slice(0, 10) : null,
     periods: Array.isArray(raw_.periods)
       ? raw_.periods
           .filter((p) => p && typeof p === 'object')
@@ -180,6 +199,18 @@ const fromServer = (indicators) =>
       target: i.target ?? undefined,
       owner: i.owner,
       hrc: i.hrc ?? null,
+      areaOfOperations: i.areaOfOperations,
+      description: i.description,
+      indicatorType: i.indicatorType,
+      rationale: i.rationale,
+      limitations: i.limitations,
+      definitionOfTerms: i.definitionOfTerms,
+      dataSets: i.dataSets,
+      dataProvider: i.dataProvider,
+      dataCustodian: i.dataCustodian,
+      submittedOn: i.submittedOn,
+      acceptance: i.acceptance,
+      acceptedOn: i.acceptedOn,
       periods: i.periods ?? []
     })
   );
@@ -278,6 +309,116 @@ function PeriodTable(ind, verdict) {
   </div>`;
 }
 
+// The submission half of an indicator — Appendix II of CAA-AC-SMS009,
+// read against the document on 18 August 2026. §7.6.3: the operator
+// files each indicator on form AC-SMS009 and the Authority answers
+// with an acceptance letter. The form asks for the indicator's
+// DEFINITION, no numbers — so this panel composes it from the record
+// and names what is still blank, and the printed page IS the form's
+// content in the form's numbering. Field 3 (activity- against
+// outcome-related) is the operator's answer and is never derived from
+// the consequence class: a lower-consequence indicator splits both
+// ways, and a derivation would file leading indicators as lagging.
+// This product does not submit to the Authority and does not claim to
+// — the same line the ICAAS pack draws.
+const A2_TEXT = [
+  ['areaOfOperations', 'Area of operations', 0],
+  ['description', '2. Description', 1],
+  ['rationale', '4. Rationale', 1],
+  ['limitations', '5. Limitations', 1],
+  ['definitionOfTerms', '6. Definition of terms', 1],
+  ['dataSets', '8. Data set(s)', 0],
+  ['dataProvider', '9. Provider', 0],
+  ['dataCustodian', '10. Custodian', 0]
+];
+
+function SubmissionPanel(ind) {
+  const gaps = appendixTwoGaps(ind);
+  const t = INDICATOR_TYPES.find((x) => x.key === ind.indicatorType);
+  const partE = ind.acceptance
+    ? `${ind.acceptance === 'ACCEPTED' ? 'Accepted' : 'Not accepted'}${
+        ind.acceptedOn ? ` on ${ind.acceptedOn}` : ''
+      }`
+    : 'no acceptance letter recorded yet';
+  return html`<details class="spi-a2" data-a2="${ind.id}">
+    <summary>
+      Appendix II submission record —
+      ${gaps.operatorMustSupply.length
+        ? `${gaps.operatorMustSupply.length} answers still yours`
+        : 'complete, pending the Authority'}
+    </summary>
+    <p class="hint">
+      CAA-AC-SMS009 §7.6.3: each indicator is filed with the Authority on form
+      AC-SMS009, and the Authority answers with an acceptance letter. This page
+      composes the form's content; filing it is yours, and Part D is signed on
+      the printed sheet.
+    </p>
+    <dl class="spi-a2__record">
+      <dt>1. Indicator</dt>
+      <dd>${ind.name}</dd>
+      <dt>3. Indicator type</dt>
+      <dd>${t ? t.label : 'not answered — your call, never inferred from consequence class'}</dd>
+      <dt>7. Calculation</dt>
+      <dd>events ÷ ${ind.exposureUnit} × ${ind.per}</dd>
+      ${A2_TEXT.map(([k, label]) =>
+        ind[k] ? html`<dt>${label}</dt><dd>${ind[k]}</dd>` : ''
+      )}
+      ${ind.submittedOn ? html`<dt>Filed</dt><dd>${ind.submittedOn}</dd>` : ''}
+      <dt>Part E — the Authority</dt>
+      <dd>${partE}</dd>
+    </dl>
+    ${gaps.operatorMustSupply.length
+      ? html`<p class="cov__missing">
+          <strong>Still blank:</strong> ${gaps.operatorMustSupply.join(' · ')}.
+        </p>`
+      : ''}
+    <form class="spi-a2__form no-print" data-submission="${ind.id}" novalidate>
+      <label class="field">
+        <span class="field-label">3. Indicator type</span>
+        <select class="input-field" name="indicatorType">
+          <option value="">Not answered</option>
+          ${INDICATOR_TYPES.map(
+            (x) => html`<option value="${x.key}" ${x.key === ind.indicatorType ? 'selected' : ''}>
+              ${x.label}
+            </option>`
+          )}
+        </select>
+      </label>
+      ${A2_TEXT.map(([k, label, long]) =>
+        long
+          ? html`<label class="field field--full">
+              <span class="field-label">${label}</span>
+              <textarea class="input-field" name="${k}" rows="2">${ind[k] ?? ''}</textarea>
+            </label>`
+          : html`<label class="field">
+              <span class="field-label">${label}</span>
+              <input class="input-field" name="${k}" value="${ind[k] ?? ''}" />
+            </label>`
+      )}
+      <label class="field">
+        <span class="field-label">Filed with the Authority on</span>
+        <input class="input-field" name="submittedOn" type="date" value="${ind.submittedOn ?? ''}" />
+      </label>
+      <label class="field">
+        <span class="field-label">Part E — what the letter said</span>
+        <select class="input-field" name="acceptance">
+          <option value="">No letter yet</option>
+          <option value="ACCEPTED" ${ind.acceptance === 'ACCEPTED' ? 'selected' : ''}>Accepted</option>
+          <option value="NOT_ACCEPTED" ${ind.acceptance === 'NOT_ACCEPTED' ? 'selected' : ''}>
+            Not accepted
+          </option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">Letter dated</span>
+        <input class="input-field" name="acceptedOn" type="date" value="${ind.acceptedOn ?? ''}" />
+      </label>
+      <button type="submit" class="btn btn-secondary btn-sm">Save submission record</button>
+      <p class="field-error" data-a2-error="${ind.id}" role="status" aria-live="polite"></p>
+    </form>
+  </details>`;
+}
+
 function IndicatorCard(ind) {
   const verdict = spiVerdict(ind);
   const kind = INDICATOR_KINDS.find((k) => k.key === ind.kind);
@@ -337,6 +478,8 @@ function IndicatorCard(ind) {
             }`}</span
       >
     </p>
+
+    ${SubmissionPanel(ind)}
 
     <form class="spi-period no-print" data-add-period="${ind.id}" novalidate>
       <label class="field">
@@ -586,11 +729,11 @@ export function render(outlet) {
      last confirmed rather than left holding an optimistic row — an
      indicator that looks saved and is not is the failure this whole
      move was meant to end. */
-  const send = async (url, body) => {
+  const send = async (url, body, method = 'POST') => {
     if (source !== 'server') return { ok: true, offline: true };
     try {
       const res = await authFetch(url, {
-        method: 'POST',
+        method,
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body)
       });
@@ -778,6 +921,49 @@ export function render(outlet) {
   });
 
   list.addEventListener('submit', (event) => {
+    const subId = event.target?.dataset?.submission;
+    if (subId) {
+      event.preventDefault();
+      const f = event.target.elements;
+      const say = (m) => {
+        const region = list.querySelector(`[data-a2-error="${subId}"]`);
+        if (region) region.textContent = m;
+      };
+      /* The form is PRE-FILLED with the current answers, so sending
+         every field with empty-as-null is whole-form semantics from a
+         form that carries the whole record — clearing a box clears the
+         answer, deliberately. The API also takes partial bodies; this
+         screen just never needs to send one. */
+      const val = (n) => {
+        const x = f[n].value.trim();
+        return x ? x : null;
+      };
+      const body = {
+        areaOfOperations: val('areaOfOperations'),
+        description: val('description'),
+        indicatorType: f.indicatorType.value || null,
+        rationale: val('rationale'),
+        limitations: val('limitations'),
+        definitionOfTerms: val('definitionOfTerms'),
+        dataSets: val('dataSets'),
+        dataProvider: val('dataProvider'),
+        dataCustodian: val('dataCustodian'),
+        submittedOn: f.submittedOn.value || null,
+        acceptance: f.acceptance.value || null,
+        acceptedOn: f.acceptedOn.value || null
+      };
+      send(`/api/v1/spi/${subId}/submission`, body, 'PUT').then((r) => {
+        if (!r.ok) {
+          say(r.message);
+          return;
+        }
+        const ind = state.indicators.find((i) => i.id === subId);
+        if (ind) Object.assign(ind, body);
+        persist();
+        repaint();
+      });
+      return;
+    }
     const id = event.target?.dataset?.addPeriod;
     if (!id) return;
     event.preventDefault();

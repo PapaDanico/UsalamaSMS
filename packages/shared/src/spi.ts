@@ -133,7 +133,44 @@ export interface Period {
   readonly exposure: number;
 }
 
-export interface Indicator {
+/**
+ * THE SUBMISSION HALF of an indicator — the operator's answers to
+ * Appendix II, stored so the form can be composed instead of retyped.
+ * Every field optional: the form is filled over time and
+ * appendixTwoGaps() names what is still blank.
+ */
+export interface IndicatorSubmission {
+  readonly areaOfOperations?: string | null;
+  readonly description?: string | null;
+  /**
+   * Field 3, THE OPERATOR'S ANSWER AND NEVER DERIVED. Activity- against
+   * outcome-related is a different axis from `kind` (how rare the
+   * events are), and a LOWER_CONSEQUENCE indicator splits both ways.
+   */
+  readonly indicatorType?: IndicatorType | null;
+  readonly rationale?: string | null;
+  readonly limitations?: string | null;
+  readonly definitionOfTerms?: string | null;
+  readonly dataSets?: string | null;
+  readonly dataProvider?: string | null;
+  readonly dataCustodian?: string | null;
+  /** When the operator filed the form. Theirs to record; we do not submit. */
+  readonly submittedOn?: string | null;
+  /** Part E, transcribed from the Authority's acceptance letter. */
+  readonly acceptance?: "ACCEPTED" | "NOT_ACCEPTED" | null;
+  readonly acceptedOn?: string | null;
+}
+
+export type IndicatorType = "ACTIVITY" | "OUTCOME";
+
+/** Field 3's two answers, in the form's own words. */
+export const INDICATOR_TYPES: ReadonlyArray<{ key: IndicatorType; label: string }> =
+  Object.freeze([
+    { key: "ACTIVITY", label: "Activity-related (predictive or leading)" },
+    { key: "OUTCOME", label: "Outcome-related (reactive or lagging)" },
+  ]);
+
+export interface Indicator extends IndicatorSubmission {
   readonly id: string;
   readonly name: string;
   readonly kind: IndicatorKind;
@@ -241,36 +278,43 @@ export interface AppendixTwoField {
   readonly source: "HELD" | "DERIVED" | "OPERATOR" | "AUTHORITY";
   /** How it is answered, or why it cannot be. */
   readonly note: string;
+  /**
+   * Which stored answer fills an OPERATOR field, where one now exists.
+   * Part D has none on purpose: completed-by and approved-by are wet-ink
+   * signatures on the printed sheet, and a product that stored them
+   * would be claiming an approval it cannot witness.
+   */
+  readonly key?: keyof IndicatorSubmission;
 }
 
 export const APPENDIX_II_FIELDS: readonly AppendixTwoField[] = Object.freeze([
-  { ref: "Area", label: "Area of operations", source: "OPERATOR",
+  { key: "areaOfOperations", ref: "Area", label: "Area of operations", source: "OPERATOR",
     note: "The operator's own scope. Nothing on an Indicator records it." },
   { ref: "A.1", label: "Indicator", source: "HELD", note: "Indicator.name." },
-  { ref: "A.2", label: "Description", source: "OPERATOR",
+  { key: "description", ref: "A.2", label: "Description", source: "OPERATOR",
     note: "A sentence saying what the indicator watches. The name is not a description." },
-  { ref: "B.3", label: "Indicator type — activity-related (predictive or leading) or outcome-related (reactive or lagging)",
+  { key: "indicatorType", ref: "B.3", label: "Indicator type — activity-related (predictive or leading) or outcome-related (reactive or lagging)",
     source: "OPERATOR",
     note:
       "NOT derivable from `kind`. That axis is high- against lower-consequence — how rare " +
       "the events are — and a LOWER_CONSEQUENCE indicator can be either activity- or " +
       "outcome-related. Deriving it would file a leading indicator as lagging.",
   },
-  { ref: "B.4", label: "Rationale", source: "OPERATOR",
+  { key: "rationale", ref: "B.4", label: "Rationale", source: "OPERATOR",
     note: "Why this indicator, for this operator, now. A judgement nothing here holds." },
-  { ref: "B.5", label: "Limitations", source: "OPERATOR",
+  { key: "limitations", ref: "B.5", label: "Limitations", source: "OPERATOR",
     note:
       "What the indicator cannot see. This product knows ONE limitation and says so: " +
       "fewer than MIN_BASELINE periods and the alert level is not meaningful.",
   },
-  { ref: "B.6", label: "Definition of technical or specific terms", source: "OPERATOR",
+  { key: "definitionOfTerms", ref: "B.6", label: "Definition of technical or specific terms", source: "OPERATOR",
     note: "The operator's vocabulary — what counts as an unstable approach here." },
   { ref: "B.7", label: "Calculation method / formula", source: "DERIVED",
     note: "events ÷ exposure × `per`, in the operator's own exposureUnit. See rate()." },
-  { ref: "C.8", label: "Data set(s)", source: "OPERATOR",
+  { key: "dataSets", ref: "C.8", label: "Data set(s)", source: "OPERATOR",
     note: "Which records feed it. This product is one such source and is rarely the only one." },
-  { ref: "C.9", label: "Provider", source: "OPERATOR", note: "Who supplies the data." },
-  { ref: "C.10", label: "Custodian", source: "OPERATOR", note: "Who holds it." },
+  { key: "dataProvider", ref: "C.9", label: "Provider", source: "OPERATOR", note: "Who supplies the data." },
+  { key: "dataCustodian", ref: "C.10", label: "Custodian", source: "OPERATOR", note: "Who holds it." },
   { ref: "D", label: "Completed by / Approved by, with dates", source: "OPERATOR",
     note: "Indicator.owner is one post and the form wants two signatures with dates." },
   { ref: "E", label: "Accepted / not accepted, by whom, on what date", source: "AUTHORITY",
@@ -281,7 +325,13 @@ export const APPENDIX_II_FIELDS: readonly AppendixTwoField[] = Object.freeze([
   },
 ]);
 
-/** What the operator must still supply for one indicator, named rather than left blank. */
+/**
+ * What the operator must still supply for one indicator, named rather
+ * than left blank — PER INDICATOR, not per form. An OPERATOR field the
+ * operator has since answered moves to `held`, so the list on screen
+ * shrinks as the record fills and the form composes from what is
+ * actually there rather than from a static complaint.
+ */
 export function appendixTwoGaps(indicator: Indicator): {
   readonly held: readonly string[];
   readonly operatorMustSupply: readonly string[];
@@ -289,12 +339,24 @@ export function appendixTwoGaps(indicator: Indicator): {
   /** The one limitation this product can state on the operator's behalf. */
   readonly statedLimitation: string | null;
 } {
-  const by = (k: AppendixTwoField["source"]) =>
-    APPENDIX_II_FIELDS.filter((f) => f.source === k).map((f) => `${f.ref} ${f.label}`);
+  const name = (f: AppendixTwoField) => `${f.ref} ${f.label}`;
+  const answered = (f: AppendixTwoField) => {
+    if (!f.key) return false;
+    const v = indicator[f.key];
+    return typeof v === "string" && v.trim().length > 0;
+  };
+  const held: string[] = [];
+  const operatorMustSupply: string[] = [];
+  const authorityFills: string[] = [];
+  for (const f of APPENDIX_II_FIELDS) {
+    if (f.source === "AUTHORITY") authorityFills.push(name(f));
+    else if (f.source === "HELD" || f.source === "DERIVED" || answered(f)) held.push(name(f));
+    else operatorMustSupply.push(name(f));
+  }
   return {
-    held: [...by("HELD"), ...by("DERIVED")],
-    operatorMustSupply: by("OPERATOR"),
-    authorityFills: by("AUTHORITY"),
+    held,
+    operatorMustSupply,
+    authorityFills,
     statedLimitation:
       indicator.periods.length < MIN_BASELINE
         ? `Fewer than ${MIN_BASELINE} periods, so no alert level is computed and the ` +

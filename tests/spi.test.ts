@@ -648,4 +648,30 @@ describe("Appendix II of CAA-AC-SMS009", () => {
     })) as unknown as Indicator["periods"];
     expect(appendixTwoGaps({ ...base, periods }).statedLimitation).toBeNull();
   });
+
+
+  it("AN ANSWERED FIELD LEAVES THE GAP LIST — the form composes from the record", () => {
+    /* The list on screen must shrink as the operator writes, or it is
+       a static complaint rather than a account of this indicator. */
+    const bare: Indicator = {
+      id: "i1", name: "Unstable approaches", kind: "LOWER_CONSEQUENCE",
+      exposureUnit: "approaches", per: 1000, direction: "LOWER_IS_BETTER",
+      owner: "SM", periods: [],
+    };
+    const before = appendixTwoGaps(bare);
+    const after = appendixTwoGaps({
+      ...bare,
+      rationale: "Approach stability is the leading measure for runway excursion.",
+      indicatorType: "ACTIVITY",
+    });
+    expect(after.operatorMustSupply.length).toBe(before.operatorMustSupply.length - 2);
+    expect(after.held.some((f) => f.startsWith("B.4"))).toBe(true);
+    expect(after.held.some((f) => f.startsWith("B.3"))).toBe(true);
+    /* Whitespace is not an answer — the voluntary-scheme rule, again. */
+    const spaces = appendixTwoGaps({ ...bare, rationale: "   " });
+    expect(spaces.operatorMustSupply.length).toBe(before.operatorMustSupply.length);
+    /* And Part D never moves: signatures are wet ink on the printed
+       sheet, not something this product can hold on anyone's behalf. */
+    expect(after.operatorMustSupply.some((f) => f.startsWith("D "))).toBe(true);
+  });
 });

@@ -3980,6 +3980,33 @@ html { scroll-padding-top: var(--us-chrome); }
   padding-top: var(--us-space-3);
   border-top: 1px solid var(--us-border);
 }
+
+/* Appendix II — the submission record disclosure on /toolkits/spi.
+   The print block at the top of this file forces every <details> open
+   and hides its summary, so the printed page carries the form's
+   content in the form's own numbering with no tap first. */
+.spi-a2 {
+  margin-top: var(--us-space-3);
+  padding-top: var(--us-space-3);
+  border-top: 1px solid var(--us-border);
+}
+.spi-a2 > summary { cursor: pointer; font-weight: 600; }
+.spi-a2__record {
+  margin: var(--us-space-2) 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--us-space-1) var(--us-space-3);
+}
+.spi-a2__record dt { font-weight: 600; }
+.spi-a2__record dd { margin: 0; }
+.spi-a2__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--us-space-2);
+  align-items: flex-end;
+  margin-top: var(--us-space-3);
+}
+.field--full { flex-basis: 100%; }
 .spi-period .field { flex: 1 1 7rem; margin: 0; }
 /* Full width, so a refusal sits under the row that caused it rather
    than being squeezed between two buttons. */

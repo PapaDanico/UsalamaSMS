@@ -841,6 +841,49 @@ model Spi {
   /// copy that drifts — which is exactly how `LOC_I` and the plan's
   /// `LOC-I` came to disagree.
   hrc          String?
+  // =====================================================================
+  // THE SUBMISSION HALF — Appendix II of CAA-AC-SMS009, read against
+  // the document on 18 August 2026.
+  //
+  // §7.6.3: an operator submits each indicator to the Authority on
+  // form AC-SMS009, and the Authority answers with an acceptance
+  // letter. THE FORM ASKS FOR NO NUMBERS — no target, no alert level,
+  // no period. It registers what the indicator IS: its description,
+  // rationale, limitations, terms, formula and data custody. This
+  // model held the arithmetic half and none of that, so the product
+  // could compute an indicator the operator could not submit.
+  //
+  // ALL NULLABLE, deliberately. The form is filled over time and the
+  // screen names what is still blank (`appendixTwoGaps` in
+  // packages/shared/src/spi.ts); a required column would refuse the
+  // indicator until the paperwork was done, which is how numbers end
+  // up kept in a spreadsheet instead.
+  //
+  // `indicatorType` IS THE OPERATOR'S ANSWER, NEVER DERIVED. Field 3
+  // asks activity-related (leading) or outcome-related (lagging) —
+  // a different axis from `kind`, which is how RARE the events are.
+  // A LOWER_CONSEQUENCE indicator splits both ways, so a derivation
+  // would file leading indicators as lagging for a whole submission.
+  // "ACTIVITY" | "OUTCOME", validated in the route against the list
+  // in packages/shared/src/spi.ts — not a database enum, for the
+  // reason `hrc` above gives: a second copy drifts.
+  areaOfOperations  String?
+  description       String?
+  indicatorType     String?
+  rationale         String?
+  limitations       String?
+  definitionOfTerms String?
+  dataSets          String?
+  dataProvider      String?
+  dataCustodian     String?
+  // Part E is the AUTHORITY'S box. These record what the acceptance
+  // letter said, as transcribed by the operator — the product does
+  // not submit and does not claim to (the same line icaas.ts draws).
+  // `acceptance` is "ACCEPTED" | "NOT_ACCEPTED", null until a letter
+  // exists; `submittedOn` is when the operator filed the form.
+  submittedOn  DateTime?
+  acceptance   String?
+  acceptedOn   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
