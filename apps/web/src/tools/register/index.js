@@ -65,6 +65,9 @@
    ============================================================ */
 
 import { html, raw } from '../../shared/html.js';
+import {
+  ROUTES, METHODS, balance, evidencesCombination
+} from '../../../../../packages/shared/src/discovery.ts';
 import { ToolNav } from '../../shared/tool-nav.js';
 import { attachPrintId } from '../../shared/print-id.js';
 import { isSignedIn, authFetch } from '../../shared/session.js';
@@ -314,6 +317,62 @@ function Row(entry) {
   </article>`;
 }
 
+/* ---------------------------------------------------------------------
+   WHAT THIS REGISTER CAN EVIDENCE, which is the question an auditor
+   actually asks.
+
+   Annex 19 does not ask a service provider to identify hazards. It asks
+   for a formal process "based on a combination of reactive, proactive
+   and predictive methods of safety data collection", and the word doing
+   the work is combination. A register of forty hazards all found the
+   same way answers that question in the negative.
+
+   THE MISSING METHODS ARE NAMED RATHER THAN LEFT TO BE COUNTED, for the
+   reason /picture gives about withheld barrier records: a set of bars
+   where one is absent reads as a small number, not as an absence, and
+   the operator walks into the audit without knowing which question they
+   cannot answer.
+
+   UNKNOWN IS SHOWN SEPARATELY AND IS NOT A METHOD. Entries recorded
+   before the field existed, or typed without an answer, are genuinely
+   unclassified — presenting them as proactive would manufacture the
+   evidence being asked for.
+   ------------------------------------------------------------------ */
+function methodBalance(entries) {
+  const b = balance(entries.map((e) => e.discovery ?? (e.fromReportId ? 'REPORT' : null)));
+  const ok = evidencesCombination(b);
+  return html`
+    <section class="card" data-method-balance>
+      <h3>How these hazards were found</h3>
+      <dl class="stat-strip">
+        ${Object.entries(b.counts).map(
+          ([m, n]) => html`<div class="stat">
+            <dt class="stat__value">${n}</dt>
+            <dd class="stat__label">${METHODS[m].label}</dd>
+          </div>`
+        )}
+        ${b.unknown
+          ? html`<div class="stat">
+              <dt class="stat__value">${b.unknown}</dt>
+              <dd class="stat__label">Method not recorded</dd>
+            </div>`
+          : ''}
+      </dl>
+      ${ok
+        ? html`<p class="hint">
+            All three methods are represented, which is what Annex 19 asks a
+            service provider to be able to show.
+          </p>`
+        : html`<p class="notice">
+            <strong>${b.missing.map((m) => METHODS[m].label).join(' and ')}</strong>
+            ${b.missing.length === 1 ? 'is' : 'are'} not represented here. Annex 19 asks
+            for a process built on a combination of all three, so this is the part of
+            the question this register cannot yet answer.
+            ${b.missing.map((m) => METHODS[m].means).join(' ')}
+          </p>`}
+    </section>`.toString();
+}
+
 export function render(outlet) {
   /* null means the store could not be read — see load(). Held
      separately so every consumer below still gets an array and nothing
@@ -393,6 +452,23 @@ export function render(outlet) {
             <span class="field-label">The hazard *</span>
             <input class="input-field" name="hazard" required />
           </label>
+          ${fromReportId
+            ? ''
+            : html`<label class="field">
+                <span class="field-label">How was it found?</span>
+                <select class="input-field" name="discovery">
+                  <option value="">Not recorded</option>
+                  ${ROUTES.filter((r) => r.key !== 'REPORT').map(
+                    (r) => html`<option value="${r.key}">${r.label}</option>`
+                  )}
+                </select>
+                <span class="field-hint">
+                  Annex 19 asks for a process built on a combination of reactive,
+                  proactive and predictive methods. This is the field that lets you
+                  show one — it is optional, and left blank it counts as unknown
+                  rather than as a method you did not use.
+                </span>
+              </label>`}
           <label class="field">
             <span class="field-label">If it happens, what is the consequence? *</span>
             <textarea class="input-field" name="consequence" rows="2" required></textarea>
@@ -551,7 +627,7 @@ export function render(outlet) {
           will be typing on top of entries you cannot see.</span>
         </p>`.toString()
       : entries.length
-        ? entries.map(Row).join('')
+        ? methodBalance(entries) + entries.map(Row).join('')
         : html`<p class="empty-state">
             <span>Nothing on the register yet. The first entry is usually the hazard
             behind the last report somebody filed.</span>
@@ -639,7 +715,9 @@ export function render(outlet) {
         owner,
         reviewBy,
         status: f.status.value,
-        ...(fromReportId ? { fromReportId, source: 'REPORT' } : {}),
+        ...(fromReportId
+          ? { fromReportId, source: 'REPORT', discovery: 'REPORT' }
+          : (f.discovery?.value ? { discovery: f.discovery.value } : {})),
         createdAt: new Date().toISOString()
       },
       ...entries

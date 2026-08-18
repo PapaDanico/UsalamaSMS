@@ -22,6 +22,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import jwt from "jsonwebtoken";
 import type { FastifyInstance } from "fastify";
 import { riskScore, tolerability } from "../../packages/shared/src/risk";
+import { methodOf } from "../../packages/shared/src/discovery";
 import { prisma, reset, migrate, disconnect, hasDatabase } from "./db.setup";
 
 const JWT_SECRET = "integration-test-secret-not-a-real-one";
@@ -101,6 +102,48 @@ describe.skipIf(!hasDatabase)("the risk register, through the real route", () =>
     expect(entry.reviewBy).toBe("2026-12-01");
     expect(entry.status).toBe("MITIGATED");
     expect(entry.controls).toContain("bird control log");
+  });
+
+  /* -------------------------------------------------------------------
+     HOW THE HAZARD WAS FOUND, which the record could not say.
+
+     Annex 19 asks for a hazard identification process "based on a
+     combination of reactive, proactive and predictive methods". Before
+     this, `Hazard.source` held two values — REPORT and REGISTER — and
+     REGISTER meant only "somebody typed it", which is equally true of a
+     workshop finding and of a note from a meeting. The combination was
+     not evidenceable from the record.
+     ---------------------------------------------------------------- */
+  it("RECORDS THE METHOD A HAZARD WAS FOUND BY, and gives it back", async () => {
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const res = await post("/api/v1/register", manager, { ...ENTRY, discovery: "WORKSHOP" });
+    expect(res.statusCode, res.body).toBe(201);
+
+    const [entry] = (await get("/api/v1/register", manager)).json().entries;
+    expect(entry.discovery).toBe("WORKSHOP");
+    expect(methodOf(entry.discovery)).toBe("PROACTIVE");
+
+    const row = await prisma().hazard.findFirstOrThrow({ where: { orgId } });
+    expect(row.discovery, "the response echoed a method nothing stored").toBe("WORKSHOP");
+  });
+
+  it("LEAVES IT UNKNOWN WHEN NOBODY SAID, rather than defaulting to a method", async () => {
+    /* The assertion the whole module rests on. Defaulting an unrecorded
+       method to PROACTIVE would manufacture exactly the evidence an
+       operator is asked to produce at an audit. */
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    await post("/api/v1/register", manager, ENTRY);
+
+    const row = await prisma().hazard.findFirstOrThrow({ where: { orgId } });
+    expect(row.discovery, "an unrecorded method was given a value").toBeNull();
+    expect(methodOf(row.discovery)).toBeNull();
+  });
+
+  it("refuses a method that is not one of the declared routes", async () => {
+    const manager = tokenFor(managerId, orgId, "SAFETY_MANAGER");
+    const res = await post("/api/v1/register", manager, { ...ENTRY, discovery: "TEA_LEAVES" });
+    expect(res.statusCode).toBe(400);
+    expect(await prisma().hazard.count({ where: { orgId } })).toBe(0);
   });
 
   it("SCORES FROM THE SAME MATRIX /methodology RENDERS", async () => {

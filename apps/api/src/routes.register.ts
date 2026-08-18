@@ -40,6 +40,7 @@ import {
    downloads before they can file anything. Same reason permissions.ts
    was split out. */
 import { refuseSignature } from "../../../packages/shared/src/signature";
+import { DISCOVERY_KEYS } from "../../../packages/shared/src/discovery";
 import { prisma, authenticate, appendAuditTx, tenantWhere , requireEntitlement } from "./core";
 
 const LIST_LIMIT = 200;
@@ -122,6 +123,13 @@ const EntrySchema = z.object({
      officer abstracts from one or more reports, not a copy of one.
      ------------------------------------------------------------------ */
   fromReportId: z.string().uuid().optional(),
+  /* HOW IT WAS FOUND, against ICAO's three methods. Optional, because a
+     register entry typed in a hurry is still a register entry and
+     refusing it would cost the record the hazard to gain a label. What
+     it must not do is default to something — an unrecorded method is
+     reported as unknown rather than guessed. See
+     packages/shared/src/discovery.ts. */
+  discovery: z.enum(DISCOVERY_KEYS).optional(),
 }).refine(
   (e) => Boolean(e.residualSeverity) === Boolean(e.residualLikelihood),
   { message: "A residual position needs both a severity and a likelihood, or neither." },
@@ -220,6 +228,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
              that cannot tell a typed hazard from a reported one cannot.
              The report's ID travels; nothing of its content does. */
           source: h.source,
+          discovery: h.discovery ?? null,
           fromReportId: h.reportId ?? undefined,
           consequence: a.consequence,
           severity: a.severity,
@@ -308,6 +317,13 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
              proportion of its register came from its own people. */
           ...(e.fromReportId ? { reportId: e.fromReportId } : {}),
           source: e.fromReportId ? "REPORT" : "REGISTER",
+          /* A HAZARD ON A REPORT IS REACTIVE BY DEFINITION, and the
+             fact is in the row rather than inferred, so the link wins
+             over anything the client said. Otherwise take what was
+             recorded, and leave it null when nothing was — an operator
+             evidencing a combination it does not have is the one
+             outcome this column exists to prevent. */
+          discovery: e.fromReportId ? "REPORT" : (e.discovery ?? null),
         },
       });
       const assessment = await tx.riskAssessment.create({
@@ -342,6 +358,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         assessmentId: created.assessment.id,
         hazard: created.hazard.title,
         source: created.hazard.source,
+        discovery: created.hazard.discovery ?? null,
         fromReportId: created.hazard.reportId ?? undefined,
         consequence: created.assessment.consequence,
         severity: created.assessment.severity,
