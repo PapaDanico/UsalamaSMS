@@ -302,6 +302,47 @@ wrapped in a `pg_roles` existence check because `anon`, `authenticated`
 and `service_role` are Supabase's and the same migration runs against a
 bare Postgres in the integration suite.
 
+## A zero-state is measured by where it sends you, not by its class
+
+`class="empty-state"` says nothing about whether a zero-state works.
+Measured across `apps/web/src` on 18 August 2026:
+
+- **/picture and /today carry the best zero-states in the product** —
+  each names what the emptiness *means* and links to where the first
+  record is made — and **neither uses the class**;
+- **/triage and /fatigue both used it, and both were dead ends.** The
+  reporting queue is the first screen a new operator opens, it said
+  "Nothing on this device yet", and `href="/report"` appeared **nowhere
+  in the file**. The one path the whole product exists to start had no
+  way forward on the screen that is empty of it.
+
+So `npm run check:empty-states` holds a different property: the first
+record is made somewhere, and the screen empty of it either IS that
+somewhere or SAYS where. `WAY_FORWARD` in the gate is the declaration —
+a route, or `null` with a note saying creation is on this screen.
+
+**The gate cannot tell that a form on the screen creates the thing the
+list is empty of, and its header says so.** /triage renders forms and
+POSTs from them, so any "does this file have a form" test would have
+passed it while it *was* the defect. What the gate does instead is force
+the decision to be written down and stop it rotting: an undeclared
+zero-state fails, a declared route the router does not register fails, a
+declared route the file does not link to fails, and an entry for a file
+that no longer has a zero-state fails.
+
+### A link inside a zero-state fails contrast, and check:a11y found it
+
+`.empty-state` body text is `--us-text-tertiary` on purpose, so a link
+in it lands at **4.44 on Warm Sand at 14px** — under AA. `--us-teal-text`
+already exists for exactly this and is 6.38 there. The rule also
+underlines, because WCAG 1.4.1: inside a paragraph that quiet, colour
+alone does not say the words are a link.
+
+That was caught by `npm run check:a11y` on /triage rather than reasoned
+about — and /fatigue's identical link is **not** covered, because its
+zero-state needs a session and the a11y sweep renders signed out. One
+CSS rule fixes both; only one of them is gated.
+
 ## Where the instrument has not been read, the operator declares it
 
 Charter rule 12. A figure with legal force is either read from the
