@@ -426,8 +426,16 @@ async function runFlush(fetcher: typeof fetch): Promise<FlushOutcome> {
           await db.reports.where("clientId").equals(r.clientId)
             .modify({
               syncState: "error",
+              /* NOT ABOUT THE TYPE, and saying so sent people round a
+                 loop. `forbidden` means the signed-in role does not
+                 hold report.create at all, so trying a different kind
+                 of report — which is what "this report type" invites —
+                 fails identically. Found when an accountable executive,
+                 the only account a new operator has, filed and was told
+                 to try another type. */
               lastError: r.status === "forbidden"
-                ? "your role cannot submit this report type"
+                ? "the account you are signed in as may not file reports — " +
+                  "sign in as someone who can, and this report will send"
                 : "rejected by server validation",
             });
           outcome.rejected++;
