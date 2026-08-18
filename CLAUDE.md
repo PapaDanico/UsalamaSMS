@@ -229,6 +229,35 @@ That is a deliberate architectural decision and it needs the grants,
 the policies, the removal of this backstop, and a test that a second
 tenant cannot read the first one's reports — in the same change.
 
+### The refusal was a SENTENCE, and sentences do not hold
+
+Everything above was true and none of it was enforced. On 18 August
+2026 the Netlify Supabase extension proposed, in its own onboarding
+text, `createClient(SUPABASE_DATABASE_URL, SUPABASE_ANON_KEY)` — a
+reasonable thing for it to say and the wrong thing for this codebase.
+The pressure to paste it does not stop, and a posture that survives
+only while everybody remembers the reasoning is one hire away from not
+existing.
+
+`npm run check:data-api` refuses `createClient(`, any `@supabase/*`
+import or dependency, and any read of `SUPABASE_ANON_KEY` or
+`SUPABASE_PUBLISHABLE_KEY`, over **125 sources**. Three other things
+would already break if somebody pasted it — zero grants, the deny-all,
+and `connect-src 'self'` in the site's CSP — but all three fail at
+runtime, after an afternoon. This one fails in the pull request.
+
+It does not forbid the Data API forever, it forbids adopting it by
+accident: whoever makes that change deletes the gate as part of it,
+which is a decision with a diff rather than a drift.
+
+**Its first run was a false positive, and the fix is the general
+lesson.** The gate stripped comments before searching, and reported
+`apps/api/src/core.ts` — where `createClient()` appears inside an
+**error message string**, the most useful diagnostic in the file. A
+source scanner that strips comments and not string literals has only
+done half the job, because the interesting names live in both. The
+stripper now blanks backtick, single- and double-quoted literals too.
+
 ## A green build here says nothing about the build on Netlify
 
 `npm run check` and `npm run verify` run against this machine's
@@ -337,6 +366,53 @@ look exactly like this. Clearing it is a dashboard action; no MCP tool
 does it, and `deploy-site` is not the substitute — it uploads a local
 directory and would publish production from somebody's working tree
 instead of from git.
+
+### It recovered on its own, and that is why a WATCHDOG is the answer
+
+Production published `8d3db96` and then `811b1a1` on the afternoon of
+18 August, both `state: ready` with `commit_ref` matching the merge,
+and the preview for `9b068a7` published at 15:31. **Nothing in this
+repository changed between the builds that failed and the builds that
+worked.** The empty commit had already proved the tree was not the
+variable, so there is no fix to make and no diagnosis to write down.
+
+A platform-side fault that clears itself is the worst kind to plan
+against: it leaves no artefact, it will happen again, and the only
+thing under this repository's control is **how long it goes unnoticed**.
+Last time that was ninety minutes, and the only reason it ended is that
+somebody happened to be reading a pull request.
+
+So the durable answer is not an explanation, it is a detector:
+
+- **`scripts/stamp-build-id.mjs`** writes `dist/build-id.txt` from
+  Netlify's own `COMMIT_REF`, falling back to `git rev-parse HEAD`
+  locally and to the literal `unknown` where there is no git — an id
+  the watchdog can never match is honest, a fabricated one is not;
+- **`.github/workflows/deploy-watchdog.yml`** polls
+  `https://usalamasms.com/build-id.txt` for fifteen minutes after every
+  push to main, cache-busted per attempt, and reports **three** distinct
+  outcomes: the merged SHA is live, the old SHA is still live after
+  fifteen minutes, or something else entirely is being served.
+
+Three things about it are load-bearing:
+
+- **It is stamped AFTER `prerender`**, for the same reason prerender
+  runs last: a precached build id is the first version a browser ever
+  saw, frozen, and would make the watchdog assert that a deploy from
+  six weeks ago is still live.
+- **It is not `stamp-sw`'s build id.** That one is a hash of the ASSET
+  LIST — content, not provenance. Two commits whose output is
+  byte-identical stamp identically, which is right for cache
+  invalidation and useless for "is the commit I merged the one being
+  served". A documentation-only change is exactly the case that would
+  defeat it, and this repository ships those.
+- **The check must run somewhere this environment is not.** `WebFetch`
+  cannot reach `usalamasms.com` from here (see the WebSearch section),
+  so an agent in this container can never confirm a deploy by looking
+  at the site. GitHub Actions egresses elsewhere and can. Netlify can
+  also email on a failed deploy, but that is a dashboard toggle no API
+  reaches, and a control that depends on somebody remembering to switch
+  it on is not a control.
 
 ## Migrations do not apply themselves on deploy
 
@@ -681,15 +757,34 @@ middle. The gate therefore seeds the org cache and asserts the
 all six as unattributed, and was the probe being wrong rather than the
 product.
 
-## Two things are blocked on a person, and neither is a code problem
+## One thing is blocked on a person, and it is not a code problem
 
-**Evidence upload needs one secret pasted.** The bucket exists,
-`SUPABASE_URL` and `SUPABASE_EVIDENCE_BUCKET` are set in the Netlify
-production environment, and `routes.attachments.ts` answers without
-storage rather than failing. `SUPABASE_SERVICE_ROLE_KEY` is **absent** —
-checked against the live environment, not assumed. Use an `sb_secret_…`
-key, never a legacy `service_role` JWT, for the reason the RLS section
-above gives, and redeploy after setting it.
+**Evidence upload is unblocked.** `SUPABASE_SERVICE_ROLE_KEY` was set
+on 18 August 2026 with an `sb_secret_…` key — marked secret, production
+only, scoped to functions and runtime — and the 14:35 deploy carried it
+into the Functions environment. Never a legacy `service_role` JWT, for
+the reason the RLS section above gives.
+
+**That the key is set does not mean the feature works, so the storage
+side was read rather than assumed.** From production, `storage.buckets`
+for `evidence`: not public, `file_size_limit` 3145728 — exactly
+`EVIDENCE_MAX_BYTES` — and `allowed_mime_types` exactly `EVIDENCE_TYPES`.
+Both halves agree to the byte and to the entry, **and neither knows the
+other exists**. That is the same shape `evidence.ts` was written about
+one layer down, where `server.ts` capped JSON at 1 MB against this
+module's 3 MB rule and gave an effective ceiling of 786 KB.
+
+Lower the bucket to 1 MB in the dashboard and a 2 MB photograph passes
+every check in this repository and is refused by Supabase, so the
+reporter gets STORAGE's error for a file the product told them was
+fine. **The bucket must be the LOOSER of the two**, so this module
+refuses first with an explanation a reporter can act on.
+
+It is deliberately NOT gated: a CI gate would need a Supabase
+credential to read the bucket, and putting a secret in CI to check a
+constant is the worse trade. Our half is pinned by `tests/evidence.test.ts`,
+so a change made in this repository is caught; a change made in the
+dashboard is caught by whoever reads the comment.
 
 **The KCAA submission shape is behind a login.** The portal is
 `https://ecitizen.kcaa.or.ke` — not the path the task originally named.
@@ -804,6 +899,27 @@ about — and /fatigue's identical link is **not** covered, because its
 zero-state needs a session and the a11y sweep renders signed out. One
 CSS rule fixes both; only one of them is gated.
 
+## A screen can be routed, listed, and reachable from nothing
+
+`shared/tool-nav.js` exists because the way back out of a toolkit was
+measured and found missing: on `/toolkits/maturity` the only visible
+link to the index sat at **9,893px down a 10,317px page** — eleven
+screens of scrolling to leave an assessment.
+
+The component was then added to five screens **by hand**, and
+`/training` was the sixth routed toolkit and did not get it. It is in
+the `TOOLKITS` registry, it appears in the toolkits index, and it
+appears in the menu hint that is *computed from that registry* — and
+the screen itself linked to **nothing internal at all**. A person who
+arrived there left by the browser's back button or not at all.
+
+Nothing noticed, because *"did somebody remember to add the import"* is
+not a question any gate was asking. `npm run check:wiring` asks it now,
+**from the registry rather than from a list typed into the gate**, so
+the seventh toolkit is covered on the day it is added. The parser
+guards its own subject — fewer than four routed toolkits discovered
+fails, because a check over an empty list passes perfectly.
+
 ## Where the instrument has not been read, the operator declares it
 
 Charter rule 12. A figure with legal force is either read from the
@@ -844,6 +960,27 @@ counts, assertion counts, jurisdiction counts, the coverage figure.
 When a gate fails on a count, the fix is to read the real number and
 write that. It is not to adjust the assertion.
 
+### Every count it guarded was a NUMERAL, and prose spells numbers
+
+`/about` said the trial ran **"sixty days"** while `TRIAL_DAYS` is 30,
+and 108 assertions ran green over it for weeks. Not one of them could
+have caught it: every figure the gate compares is written as digits,
+and the one place a length gets spelled out is the sentence a
+prospective customer actually reads.
+
+The gate now reads the trial length **as a word** and maps it through
+`TRIAL_WORDS` before comparing. The hole is not specific to trials —
+anywhere a number appears in prose it will appear as a word, and a
+guard that only understands digits is blind to exactly the copy a
+human wrote by hand.
+
+The same pass found a claim broken in the other direction: the `/about`
+lede said "the two that are partial" while **zero** capabilities were
+in the PARTIAL state. The existing gate checked one direction only —
+every PARTIAL must be named — which over an empty list iterates nothing
+and passes. A present-tense claim about a state now requires that state
+to exist.
+
 ## A check that cannot fail is worse than no check
 
 This has bitten four times in this repository, and each one is
@@ -857,11 +994,36 @@ recorded where it happened:
   `Africa/Nairobi`;
 - a `DUE_SOON` proportionality test that lost its second window when
   the EU jurisdiction was removed, leaving a rule about proportion
-  with nothing to be proportional to.
+  with nothing to be proportional to;
+- a culture test that asserted a `reduce` picked the weakest dimension
+  and was actually asserting **array order**. The fixture tied two
+  dimensions at 1.0, `reduce` keeps the first on a tie, and the weakest
+  one happened to be first in `DIMENSIONS`. The mutation that should
+  have reddened it PASSED. The fixture now makes the intended
+  dimension strictly worse — 2.0 against 1.0 — and the ordering is
+  asserted before anything else reads it.
 
 **When you write a check, put the defect back and confirm it goes
 red.** Every fix in this repo that claims to be verified was
 mutation-checked that way.
+
+### THE MUTATION MATRIX ITSELF CAN BE INVALID, and it fails silently
+
+Six mutations were run against a new module and every one reported the
+expected red. The matrix was worthless: **the file was untracked**, so
+the `git checkout --` after each mutation restored nothing, and the
+six mutations STACKED. Every run after the first was measuring a file
+carrying all the damage before it, so a mutation that could not fail
+alone was indistinguishable from one that could.
+
+`git checkout -- <path>` on an untracked file exits **0** and does
+nothing. It does not warn, and the next mutation applies cleanly on
+top.
+
+So for a file not yet in the index, take a real copy first — `cp
+<file> /tmp/<name>.orig`, restore from it, and **confirm the restored
+file is byte-identical** before the next mutation. The confirmation is
+the part that matters: it is the only step that would have caught this.
 
 ## An HTML comment inside a template literal is not a comment
 
