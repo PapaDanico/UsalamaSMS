@@ -82,11 +82,38 @@
  */
 export type DiscoveryMethod = "REACTIVE" | "PROACTIVE" | "PREDICTIVE";
 
+/**
+ * THE THREE METHODS NOW CARRY THEIR PUBLISHED DEFINITIONS.
+ *
+ * `means` is this product's plain-language gloss, written for an
+ * operator reading a screen, and it was for a long time ALL there was
+ * — because this environment's egress proxy refuses icao.int, so no
+ * definition could be quoted and none was invented.
+ *
+ * `definition` is now the published wording, quoted verbatim from the
+ * SM ICG Safety Terminology document supplied by the owner on 18
+ * August 2026, entries 41, 44 and 45. The two are kept apart rather
+ * than merged: a gloss written to be understood and a definition
+ * written to be relied on are different objects, and collapsing them
+ * is how a paraphrase ends up wearing a citation.
+ *
+ * WHAT THIS DOES NOT CHANGE. The MAPPING of this product's six routes
+ * onto the three methods is still this product's judgement, argued
+ * route by route in the header above. A definition tells you what
+ * PREDICTIVE means; it does not tell you that a degraded barrier is
+ * one. That argument stays ours and stays visible.
+ */
 export interface MethodNote {
   readonly label: string;
   /** What the method is, in the words an auditor would recognise. */
   readonly means: string;
+  /** The published definition, quoted. */
+  readonly definition: string;
 }
+
+/** Where every `definition` below comes from. One source, named once. */
+export const METHOD_DEFINITION_SOURCE =
+  "SM ICG, Safety Terminology — entries 41 (Predictive), 44 (Proactive) and 45 (Reactive)";
 
 export const METHODS: Readonly<Record<DiscoveryMethod, MethodNote>> = Object.freeze({
   REACTIVE: Object.freeze({
@@ -94,18 +121,26 @@ export const METHODS: Readonly<Record<DiscoveryMethod, MethodNote>> = Object.fre
     means:
       "Found because something already happened — an occurrence, an incident, " +
       "a report somebody filed.",
+    definition:
+      "Any method that responds to past occurrences.",
   }),
   PROACTIVE: Object.freeze({
     label: "Proactive",
     means:
       "Found by looking, before anything happened — an audit, a workshop, a " +
       "survey, an assessment of a change.",
+    definition:
+      "Any method that actively searches for potential safety risks through the "  +
+      "analysis of an organization's activities prior to occurrence.",
   }),
   PREDICTIVE: Object.freeze({
     label: "Predictive",
     means:
       "Found by watching the system's own behaviour for where it is drifting — " +
       "indicator trends, degraded defences.",
+    definition:
+      "Any method that continuously analyzes current and historical information to "  +
+      "forecast potential future occurrences.",
   }),
 });
 
