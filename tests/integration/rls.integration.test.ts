@@ -197,7 +197,90 @@ describe.skipIf(!hasDatabase)("row-level security posture", () => {
     );
     expect(
       withoutOrg.map((t) => t.table_name),
+
       "a tenant-owned table has no orgId, so nothing can scope a query against it",
+    ).toEqual([]);
+  });
+
+  /* ==================================================================
+     THE TWO ASSERTIONS ABOVE PROTECT THE POLICY. THIS FILE HAD NONE
+     PROTECTING THE CONTROL.
+
+     CLAUDE.md is unambiguous about which is which: `service_role`
+     carries rolbypassrls, so a RESTRICTIVE deny-all "never restrained
+     service_role and never could — the revoke is the control." That
+     was mutation-checked against production: with SELECT granted back
+     on SafetyReport alone, service_role read all seven real reports
+     straight through the deny-all.
+
+     So the load-bearing half of this posture was the one half nothing
+     asserted. Both tests below fix that, and each states a property
+     rather than a number so neither has to be edited when the schema
+     grows.
+     ================================================================== */
+
+  it("GRANTS NOTHING IN public TO THE BYPASSRLS ROLES, which is the actual control", async () => {
+    /* Discovered, not listed. A hardcoded role list stops covering the
+       moment Supabase adds one, and this suite also runs against a bare
+       Postgres where none of the three exist — so the roles are read
+       from pg_roles and the count is asserted, because a query over
+       zero roles returns zero grants and passes perfectly. */
+    const present = await prisma().$queryRawUnsafe<Array<{ rolname: string }>>(
+      `SELECT rolname FROM pg_roles
+        WHERE rolname IN ('anon', 'authenticated', 'service_role')`,
+    );
+
+    if (present.length === 0) {
+      /* A bare Postgres. Nothing to revoke and nothing to prove — say
+         so out loud rather than reporting a pass, because a silent skip
+         here reads identically to a real check. */
+      expect(present, "no Supabase roles in this database — nothing to assert").toEqual([]);
+      return;
+    }
+
+    const grants = await prisma().$queryRawUnsafe<
+      Array<{ grantee: string; table_name: string; privilege_type: string }>
+    >(
+      `SELECT grantee, table_name, privilege_type
+         FROM information_schema.role_table_grants
+        WHERE table_schema = 'public'
+          AND grantee IN ('anon', 'authenticated', 'service_role')
+        ORDER BY grantee, table_name, privilege_type`,
+    );
+
+    expect(
+      grants.map((g) => `${g.grantee} ${g.privilege_type} ${g.table_name}`),
+      "a BYPASSRLS role holds a privilege in public. The RESTRICTIVE deny-all does not " +
+        "restrain it — a token signed with the project JWT secret would read these rows " +
+        "straight through the policy. The revoke is the control; it has come undone",
+    ).toEqual([]);
+  });
+
+  it("keeps every table owned by the role the API connects as", async () => {
+    /* WHY THIS IS PART OF THE SAME PROPERTY. RLS does not apply to a
+       table's owner, which is the entire reason the deny-all does not
+       lock the API out of its own data. A table owned by anybody else
+       is a table the API reads through the policy — and the policy
+       denies everything.
+
+       It is also the missing half of the default-privileges revoke.
+       That revoke applies to objects created BY the owner; Supabase's
+       own defaults, granted by supabase_admin, still hand all three
+       roles full privileges on anything supabase_admin creates. This
+       assertion is what notices such a table arriving. */
+    const rows = await prisma().$queryRawUnsafe<Array<{ tablename: string; tableowner: string }>>(
+      `SELECT tablename, tableowner FROM pg_tables WHERE schemaname = 'public'`,
+    );
+    expect(rows.length, "no tables found in public — this check has lost its subject").toBeGreaterThan(10);
+
+    const me = await prisma().$queryRawUnsafe<Array<{ me: string }>>(`SELECT current_user AS me`);
+    const owner = me[0]!.me;
+
+    expect(
+      rows.filter((r) => r.tableowner !== owner).map((r) => `${r.tablename} owned by ${r.tableowner}`),
+      `a table in public is not owned by ${owner}, the role this connection uses. RLS ` +
+        "applies to a non-owner, so the deny-all policy denies the API its own rows — and " +
+        "an object created by another role arrives carrying that role's default grants",
     ).toEqual([]);
   });
 });

@@ -98,6 +98,41 @@ Applied 16 August 2026. `postgres` keeps its 196 — the API connects as
 the owner. The `storage` schema is untouched, so evidence upload is
 unaffected.
 
+### The revoke covers what the OWNER creates, and that is not everything
+
+Measured on 18 August 2026, after the Netlify Supabase extension
+re-provisioned its variables and the whole posture was re-read:
+
+| default privileges granted by | applies to objects created by | anon / authenticated / service_role |
+|---|---|---|
+| `postgres` | `postgres` | **nothing** — the revoke below |
+| `supabase_admin` | `supabase_admin` | `arwdDxtm` on tables, `rwU` on sequences, `X` on functions |
+
+`ALTER DEFAULT PRIVILEGES` is keyed on the role that CREATES the
+object, and `postgres` cannot alter `supabase_admin`'s. So the revoke
+is complete for everything this product makes — all 30 tables are
+owned by `postgres`, checked rather than assumed — and it says nothing
+about a table created by `supabase_admin`, which would arrive granting
+all three roles everything.
+
+**This is why `rls.integration.test.ts` now asserts OWNERSHIP as well
+as grants.** A table owned by another role is two failures at once: RLS
+applies to a non-owner, so the deny-all denies the API its own rows,
+and the object carries that role's default grants to a role that
+bypasses RLS. The ownership assertion is what notices one arriving.
+
+The grants assertion is the one that matters most and it was the one
+nothing checked. Both were mutation-checked:
+
+| mutation | result |
+|---|---|
+| `GRANT SELECT ON "SafetyReport" TO service_role` | **FAIL, alone** |
+| revoke it again, role still present | PASS |
+| a table owned by another role, RLS and policy and orgId all correct | **FAIL, alone** |
+
+The first is the same mutation this section already records against
+production. It now has a gate.
+
 **IT WAS MUTATION-CHECKED AGAINST PRODUCTION, and the result is the
 strongest evidence in this file.** With `SELECT` granted back on
 `SafetyReport` alone, `service_role` read **all seven real reports**
