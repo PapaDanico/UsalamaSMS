@@ -84,6 +84,10 @@ const BLURBS = {
     'KCAA corrective action plan',
     'A corrective action composed into the pack the ICAAS portal asks for'
   ],
+  '/toolkits/risk-picture': [
+    'Risk picture dashboard',
+    'Tolerability breakdown, severity distribution, and action status across the register'
+  ],
   '/toolkits#classifier': [
     'Occurrence classifier',
     'Accident, serious incident or incident — and the clock it starts'

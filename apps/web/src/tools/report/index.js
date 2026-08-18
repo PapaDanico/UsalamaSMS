@@ -304,6 +304,7 @@ export function render(outlet) {
       <div class="report__actions">
         <button type="submit" class="btn btn-primary btn-block">Send report</button>
         <p class="report__status" id="report-status" role="status" aria-live="polite"></p>
+        <p class="hint no-print" id="report-kbd-hint">Tip: Ctrl+Enter to submit, Esc to clear</p>
       </div>
     </form>
   `.toString();
@@ -538,6 +539,48 @@ function wire(outlet) {
 
   renderCount();
   renderDeadline();
+
+  /* Hide the keyboard hint on touch-first devices. navigator.maxTouchPoints
+     is 0 on desktops; >0 covers phones, tablets and hybrid devices. */
+  const kbdHint = outlet.querySelector('#report-kbd-hint');
+  if (kbdHint && navigator.maxTouchPoints > 0) kbdHint.hidden = true;
+
+  function isDirty() {
+    const f = form.elements;
+    return !!(
+      (f.title?.value ?? '').trim() ||
+      (f.narrative?.value ?? '').trim() ||
+      (f.reporterRecommendation?.value ?? '').trim()
+    );
+  }
+
+  function clearForm() {
+    form.reset();
+    renderCount();
+    renderDeadline();
+  }
+
+  function onKeydown(event) {
+    if (!document.contains(form)) {
+      document.removeEventListener('keydown', onKeydown);
+      return;
+    }
+    const ctrl = event.ctrlKey || event.metaKey;
+    if (ctrl && event.key === 'Enter') {
+      event.preventDefault();
+      form.requestSubmit();
+      return;
+    }
+    if (event.key === 'Escape') {
+      if (isDirty()) {
+        if (window.confirm('Discard this report?')) clearForm();
+      } else {
+        clearForm();
+      }
+    }
+  }
+
+  document.addEventListener('keydown', onKeydown);
 }
 
 /** Build a CreateReportInput from the form. */

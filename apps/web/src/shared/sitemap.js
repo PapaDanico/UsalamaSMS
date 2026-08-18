@@ -116,6 +116,11 @@ export const TOOLKITS = [
     routed: true
   },
   {
+    href: '/toolkits/risk-picture',
+    short: 'risk picture dashboard',
+    routed: true
+  },
+  {
     href: '/toolkits#classifier',
     short: 'occurrence classifier'
   },

@@ -103,6 +103,7 @@ const DESCRIPTIONS = {
   '/today': 'What needs you today: the reports, actions, reviews and lapses with a date against them.',
   '/toolkits': 'The instruments: occurrence classification, risk assessment, the register, indicators, maturity and the KCAA corrective action plan.',
   '/toolkits/icaas': 'Assemble a corrective action plan in the shape KCAA’s ICAAS portal asks for, from the record you already hold.',
+  '/toolkits/risk-picture': 'Your operator’s risk landscape in one view: tolerability breakdown, severity distribution, open actions and average time to close.',
   '/toolkits/culture': 'Fourteen questions about whether your people will actually file a report. Scored on the device, and never sent anywhere.',
   '/toolkits/maturity': 'Assess your safety management system against the SM ICG maturity ladder, without a score that flatters you.',
   '/toolkits/register': 'The risk register regulation 9 asks for, held for the operator rather than on one device.',

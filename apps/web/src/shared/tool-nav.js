@@ -68,6 +68,7 @@ const LABEL = {
   '/toolkits/register': 'Risk register',
   '/toolkits/spi': 'Indicators',
   '/toolkits/maturity': 'Maturity',
+  '/toolkits/risk-picture': 'Risk picture',
 };
 
 const sentenceCase = (s) => s.charAt(0).toUpperCase() + s.slice(1);

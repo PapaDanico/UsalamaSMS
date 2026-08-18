@@ -244,6 +244,13 @@ function Row(entry) {
         : ''}
     </p>
 
+    ${shown?.t === 'INTOLERABLE' && entry.status !== 'ACCEPTED'
+      ? html`<p class="notice notice--urgent">
+          This risk is classified as INTOLERABLE. The controls must change before it
+          can be closed — no signature at any level can accept it as it stands.
+        </p>`
+      : ''}
+
     ${entry.controls
       ? html`<p class="cov__missing"><strong>Controls:</strong> ${entry.controls}</p>`
       : ''}
@@ -304,11 +311,19 @@ function Row(entry) {
             ${entry.acceptedAt}</span
           >`
         : entry.assessmentId
-          ? html`<button
-              type="button"
-              class="btn btn-secondary btn-sm"
-              data-accept="${entry.assessmentId}"
-            >Accept this risk</button>`
+          ? shown?.t === 'INTOLERABLE'
+            ? html`<button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                data-accept="${entry.assessmentId}"
+                disabled
+                title="Controls must change — this risk cannot be accepted at any level"
+              >Accept this risk</button>`
+            : html`<button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                data-accept="${entry.assessmentId}"
+              >Accept this risk</button>`
           : html`<span class="reg-entry__nores"
               >On this device only — acceptance is signed at the safety office.</span
             >`}

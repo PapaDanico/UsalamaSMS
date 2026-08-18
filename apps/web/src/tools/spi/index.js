@@ -789,10 +789,17 @@ export function render(outlet) {
 
     list.innerHTML = state.indicators.length
       ? state.indicators.map(IndicatorCard).join('')
-      : html`<p class="empty-state">
-          <span>No indicators yet. The first one is usually the occurrence type
-          your last three safety meetings kept coming back to.</span>
-        </p>`.toString();
+      : html`<div class="empty-state">
+          <h3>Start measuring what matters</h3>
+          <p>Safety Performance Indicators show whether your SMS is working.
+          Start with one leading indicator (something you can control, like
+          "reports filed per month") and one lagging indicator (something that
+          already happened, like "days since last incident").</p>
+          <p class="mat-actions no-print">
+            <a class="btn btn-primary btn-sm" href="#spi-new">Create your first SPI</a>
+            <a class="btn btn-ghost btn-sm" href="/tutorials">Read the SPI tutorial</a>
+          </p>
+        </div>`.toString();
   };
 
   wireSelects(form);

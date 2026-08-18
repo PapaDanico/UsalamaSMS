@@ -68,6 +68,7 @@ const WAY_FORWARD = {
   'tools/glossary/index.js': [null, 'a search that matched nothing, not a record set — the input is on this screen'],
   'tools/login/team-panel.js': [null, 'colleagues are added from the form on this panel'],
   'tools/register/index.js': [null, 'the register entry form is on this screen'],
+  'tools/risk-picture/index.js': ['/toolkits/register', 'this screen is read-only; entries are made in the risk register'],
   'tools/sms/index.js': [null, "each element's own add form is behind the disclosure on this screen"],
   'tools/spi/index.js': [null, 'the indicator form is on this screen'],
   'tools/sra/index.js': [null, 'hazards are added to the assessment on this screen'],
@@ -126,6 +127,7 @@ const TOOLKIT_ZERO_STATE = {
   '/toolkits/maturity': [null, 'the assessment is answered on this screen'],
   '/toolkits/culture': [null, 'responses are collected on this screen and never leave the device'],
   '/toolkits/icaas': ['/picture', 'it composes a pack from records made elsewhere, and its zero-state links to the risk picture'],
+  '/toolkits/risk-picture': [null, 'there is no creation on this read-only screen — the register and actions are made elsewhere'],
   '/training': [false, 'reference content — the KCAA syllabus. No form, no control, no collection to be empty of'],
 };
 

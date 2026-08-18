@@ -898,6 +898,31 @@ function bindOnce(outlet) {
         copy.textContent = 'Cannot copy — select the text above';
       }
     }
+
+    const copyLink = event.target.closest?.('[data-copy-link]');
+    if (copyLink) {
+      const url = `${window.location.origin}/report/${copyLink.dataset.copyLink}`;
+      const original = copyLink.textContent;
+      try {
+        await navigator.clipboard.writeText(url);
+        copyLink.textContent = 'Link copied';
+      } catch {
+        /* Clipboard unavailable — execCommand is the legacy fallback. */
+        try {
+          const area = document.createElement('textarea');
+          area.value = url;
+          area.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(area);
+          area.select();
+          document.execCommand('copy');
+          document.body.removeChild(area);
+          copyLink.textContent = 'Link copied';
+        } catch {
+          copyLink.textContent = 'Cannot copy';
+        }
+      }
+      setTimeout(() => { copyLink.textContent = original; }, 2000);
+    }
   });
 }
 
@@ -1128,6 +1153,14 @@ function row(r) {
             >
               Raise a hazard
             </a>
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              data-copy-link="${r.clientId}"
+              aria-label="Copy link to this report"
+            >
+              Copy link
+            </button>
           </div>
           <details class="queue__capa">
             <summary>Record a corrective action</summary>

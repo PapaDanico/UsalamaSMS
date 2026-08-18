@@ -439,6 +439,11 @@ router
     { title: 'KCAA corrective action plan', surface: 'tool' }
   )
   .register(
+    '/toolkits/risk-picture',
+    (el) => lazy(el, () => import('./tools/risk-picture/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Risk picture dashboard', surface: 'tool' }
+  )
+  .register(
     '/admin',
     (el) => lazy(el, () => import('./tools/admin/index.js').then((m) => (o) => m.render(o))),
     { title: 'Platform administration', surface: 'tool' }
