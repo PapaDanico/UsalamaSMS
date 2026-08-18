@@ -4,7 +4,7 @@
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
-  "description": "UsalamaSMS \u2014 aviation safety management for operators the incumbents priced out. Offline-first, Annex 19 Amendment 2 native.",
+  "description": "UsalamaSMS — aviation safety management for operators the incumbents priced out. Offline-first, Annex 19 Amendment 2 native.",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -20,7 +20,7 @@
     "check": "npm run prisma:generate && npm run typecheck && npm run check:brand && npm run check:assets && npm run check:claims && npm run check:css && npm run check:glyphs && npm run check:prose && npm run check:retraction && npm run check:authz && npm run check:wiring && npm run check:data-api && npm run check:switches && npm run check:empty-states && npm run test",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "npm run check && npm run icons && vite build --config apps/web/vite.config.js && npm run stamp-sw && npm run check:dist && npm run prerender && npm run stamp-build-id",
+    "build": "npm run check && npm run icons && vite build --config apps/web/vite.config.js && npm run stamp-sw && npm run check:dist && npm run prerender && npm run stamp-build-id && npm run check:build-id",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "typecheck": "tsc --noEmit",
@@ -51,6 +51,7 @@
     "check:db": "node scripts/check-db-state.mjs",
     "seed:platform-admin": "node scripts/seed-platform-admin.mjs",
     "stamp-build-id": "node scripts/stamp-build-id.mjs",
+    "check:build-id": "node scripts/check-build-id.mjs",
     "check:data-api": "node scripts/check-data-api.mjs"
   },
   "devDependencies": {
