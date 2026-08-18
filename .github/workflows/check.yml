@@ -228,6 +228,28 @@ jobs:
             exit 1
           fi
 
+      - name: A trial length typed on /about that disagrees with TRIAL_DAYS must be rejected
+        run: |
+          cp apps/web/src/content/pages.js /tmp/pages.bak
+          sed -i 's/and thirty days in which/and sixty days in which/' apps/web/src/content/pages.js
+          if node scripts/check-claims.mjs > /dev/null 2>&1; then
+            echo "::error::The claims gate ACCEPTED /about promising sixty days while TRIAL_DAYS is 30. Every count this gate guards is a numeral, and a spelled-out number is how this one shipped."
+            cp /tmp/pages.bak apps/web/src/content/pages.js
+            exit 1
+          fi
+          cp /tmp/pages.bak apps/web/src/content/pages.js
+
+      - name: A present-tense partial claim with no PARTIAL element must be rejected
+        run: |
+          cp apps/web/src/content/pages.js /tmp/pages.bak
+          sed -i "s/title: 'What twelve of twelve does not mean, and/title: 'What is still partial, and/" apps/web/src/content/pages.js
+          if node scripts/check-claims.mjs > /dev/null 2>&1; then
+            echo "::error::The claims gate ACCEPTED /about saying an element IS partial while the coverage table grades none. The existing assertion only checks that PARTIAL elements are named — with zero of them it iterates an empty list and passes."
+            cp /tmp/pages.bak apps/web/src/content/pages.js
+            exit 1
+          fi
+          cp /tmp/pages.bak apps/web/src/content/pages.js
+
       - name: And the restored sources must pass
         run: |
           node scripts/check-brand.mjs

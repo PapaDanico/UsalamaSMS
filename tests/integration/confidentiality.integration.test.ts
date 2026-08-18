@@ -50,8 +50,8 @@ async function applySyncedReport(params: {
         entityType: "safetyReport",
         op: "CREATE",
         ...(params.isAnonymous
-          ? { deviceHash: hmac(params.deviceId), userId: null, deviceId: null }
-          : { deviceId: params.deviceId, userId: params.userId, deviceHash: null }),
+          ? { userId: null, deviceId: null }
+          : { deviceId: params.deviceId, userId: params.userId }),
       },
     });
 
@@ -108,10 +108,70 @@ describe.skipIf(!hasDatabase)("anonymity survives the database", () => {
     });
     expect(receipt.userId).toBeNull();
     expect(receipt.deviceId).toBeNull();
-    // The keyed hash may exist — it is what makes duplicate detection
-    // possible without identifying the handset.
-    expect(receipt.deviceHash).not.toBeNull();
-    expect(receipt.deviceHash).not.toContain("device-abc");
+    // AND NOTHING DERIVED FROM THE DEVICE EITHER. A keyed hash used to
+    // sit here on the reasoning that it identified nobody; the test
+    // below runs the unmasking it made possible.
+    expect(Object.values(receipt)).not.toContain(hmac("device-abc"));
+  });
+
+  it("THE HASH IS A JOIN KEY — one handset, one anonymous report, one named", async () => {
+    // The defect the file above fixed was a join on clientId. This is
+    // the same join one layer over, and the fix is what created it.
+    //
+    // A device that files ANONYMOUSLY leaves hmac(deviceId).
+    // The same device filing under a NAME leaves deviceId in cleartext,
+    // in the same column of the same table.
+    //
+    // So the candidate set is not guessed — it is SELECT DISTINCT
+    // "deviceId". Hash each one, match it against deviceHash, and the
+    // anonymous receipt's clientId is the anonymous REPORT's clientId.
+    await applySyncedReport({
+      orgId, userId, deviceId: "device-shared",
+      clientId: "44444444-4444-4444-8444-444444444444",
+      isAnonymous: true,
+      narrative: "The captain has been flying unfit and everybody knows.",
+    });
+    await applySyncedReport({
+      orgId, userId, deviceId: "device-shared",
+      clientId: "55555555-5555-4555-8555-555555555555",
+      isAnonymous: false,
+      narrative: "Chock left on stand 4.",
+    });
+
+    // Exactly what somebody holding the key would run. No guessing:
+    // the candidate devices are the cleartext ones in the same column.
+    const named = await prisma().syncReceipt.findMany({
+      where: { deviceId: { not: null } },
+      select: { deviceId: true, userId: true },
+    });
+    const rainbow = new Map(named.map((r) => [hmac(r.deviceId!), r.userId]));
+
+    // Every receipt for an anonymous report, and every value on it.
+    // Read as raw rows rather than through the Prisma client, so a
+    // column reintroduced in the database but absent from the schema
+    // is still seen — which is the shape this defect had.
+    const anon = await prisma().$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT s.* FROM "SyncReceipt" s
+         JOIN "SafetyReport" r ON r."clientId" = s."clientId"
+        WHERE r."isAnonymous" = true`,
+    );
+
+    const unmasked: Array<{ narrative: string; userId: string | null }> = [];
+    for (const a of anon) {
+      const hit = Object.values(a).find((v) => typeof v === "string" && rainbow.has(v));
+      if (hit === undefined) continue;
+      const report = await prisma().safetyReport.findFirst({
+        where: { clientId: String(a.clientId), isAnonymous: true },
+        select: { narrative: true },
+      });
+      if (report) unmasked.push({ narrative: report.narrative, userId: rainbow.get(hit as string)! });
+    }
+
+    expect(
+      unmasked,
+      "an anonymous report was matched to its author by hashing the cleartext " +
+        "deviceId stored beside it — the deviceHash is a join key, not a mask",
+    ).toHaveLength(0);
   });
 
   it("still records the reporter for a NON-anonymous report", async () => {

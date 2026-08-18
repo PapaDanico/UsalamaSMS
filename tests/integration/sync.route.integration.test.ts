@@ -313,7 +313,11 @@ describe.skipIf(!hasDatabase)("POST /api/v1/sync/batch — a report arrives", ()
       where: { orgId, conflict: true },
     });
     expect(receipt.resolution).toBe("server_wins");
-    expect(receipt.deviceHash, "the device is still recognisable as a duplicate").not.toBeNull();
+    // The duplicate is recognised by (orgId, clientId), which is the
+    // unique key — not by anything derived from the handset. A keyed
+    // device hash used to sit here and was removed: it was a join key
+    // against the cleartext deviceId in the same column.
+    expect(receipt.deviceId, "an anonymous conflict names no device").toBeNull();
   });
 
   it("still records the reporter on a conflict for a NAMED report", async () => {

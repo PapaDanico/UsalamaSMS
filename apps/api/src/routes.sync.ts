@@ -8,7 +8,7 @@ import {
   SyncBatchSchema, CreateReportSchema, can,
   type Permission,
 } from "@usalamasms/shared";
-import { prisma, authenticate, appendAuditTx, hmac } from "./core";
+import { prisma, authenticate, appendAuditTx } from "./core";
 
 type ItemResult = {
   clientId: string;
@@ -209,8 +209,8 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
               entityType: "safetyReport",
               op: "CREATE",
               ...(d.isAnonymous
-                ? { deviceHash: hmac(deviceId), userId: null, deviceId: null }
-                : { deviceId, userId: auth.sub, deviceHash: null }),
+                ? { userId: null, deviceId: null }
+                : { deviceId, userId: auth.sub }),
             },
           });
 
@@ -301,8 +301,8 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
                 // the client sent.
                 // ======================================================
                 ...(current.isAnonymous
-                  ? { deviceHash: hmac(deviceId), userId: null, deviceId: null }
-                  : { deviceId, userId: auth.sub, deviceHash: null }),
+                  ? { userId: null, deviceId: null }
+                  : { deviceId, userId: auth.sub }),
               },
             });
           } catch (err) {
@@ -436,8 +436,8 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
                    is written rather than assumed, because the reason it
                    cannot is four lines away and could move. */
                 ...(current.isAnonymous
-                  ? { deviceHash: hmac(deviceId), userId: null, deviceId: null }
-                  : { deviceId, userId: auth.sub, deviceHash: null }),
+                  ? { userId: null, deviceId: null }
+                  : { deviceId, userId: auth.sub }),
               },
             });
 
