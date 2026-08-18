@@ -302,6 +302,53 @@ wrapped in a `pg_roles` existence check because `anon`, `authenticated`
 and `service_role` are Supabase's and the same migration runs against a
 bare Postgres in the integration suite.
 
+## An empty record is not a clear one
+
+`/today` answers "is everything all right?", and to a brand-new operator
+it answered **"Nothing needs you today"** over a lede saying no deadline
+was open, no currency lapsing, nothing awaiting triage and no action
+overdue. Every clause was true. Together they told somebody who had done
+nothing at all that everything was fine.
+
+The digest is computed over an empty record, correctly finds nothing,
+and the screen rendered that absence as a clean bill of health.
+
+**`today.ts` already contained the right argument, unextended.**
+`reporterIsClear` refuses to call an UNKNOWN clear and says why — *"a
+screen whose job is to answer 'is everything all right' saying the most
+reassuring possible thing at the moment it knows least is the failure
+this product exists to refuse."* EMPTY deserved the same and never got
+it.
+
+So `/api/v1/digest` now returns a `scale` — three counts, not a flag,
+because the screen has to know WHICH step is next — and `establishment()`
+grades it EMPTY / STARTED / ESTABLISHED. `npm run check:first-run`
+renders `/today` in **three** states and asserts all of them, because
+two of the four mutations that matter are about not over-correcting:
+
+- an empty operator must not read the all-clear, and must get the
+  sequence with a link to `/report`;
+- an operator already running must **not** be offered the first step —
+  a sequence that never stops is a nag;
+- and a settled operator with genuinely nothing outstanding must **still
+  get the all-clear**, or the fix has replaced one wrong answer with
+  another.
+
+The three renders must also differ from each other. A fixture that
+quietly stopped taking would otherwise make every assertion above pass
+over one screen measured three times.
+
+### The retraction gate made the decision explicit, which was right
+
+`computeRecordScale` counts reports **without** `retractedAt: null`, on
+the reasoning that filing something and correcting it is a working
+reporting culture rather than an empty one. `npm run check:retraction`
+refused that until it carried a `RETRACTION-INCLUDES-DELIBERATELY`
+marker saying so. Nothing downstream of that number acts on a report —
+it decides only whether `/today` greets somebody with a sequence or with
+their record — and every query that DOES act on reports still excludes
+retracted rows.
+
 ## A document is measured on the page, not in the DOM
 
 `npm run check:deliverables` renders the six handover documents — the

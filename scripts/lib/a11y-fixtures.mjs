@@ -53,6 +53,10 @@ const DIGEST = {
     ],
     urgency: "NOW",
   },
+  /* An operator well past day one. Without this the screen sees no
+     scale at all and falls back to the pre-first-run behaviour, which
+     is exactly what check:first-run must not be able to pass against. */
+  scale: { reports: 7, indicators: 2, registerEntries: 4 },
   wouldSend: true,
   delivery: "NOT_CONFIGURED",
   computedAt: ISO,
@@ -183,4 +187,48 @@ export const SESSION = { role: "SAFETY_MANAGER", orgId: "org-1" };
 export function bodyFor(url) {
   for (const [prefix, body] of FIXTURES) if (url.includes(prefix)) return body;
   return {};
+}
+
+/* =====================================================================
+   THE SAME OPERATOR, ON DAY ONE. Signed in, org exists, not one record
+   anywhere. check:first-run renders /today against this and against the
+   populated set above, and asserts the two do not read the same.
+
+   The populated fixtures deliberately do NOT double as this: an empty
+   record is the state the screen could not see, so a gate that only
+   ever renders a full one is a gate that would never have found it. */
+export const EMPTY_RECORD = {
+  scale: { reports: 0, indicators: 0, registerEntries: 0 },
+  digest: { items: [], urgency: null },
+};
+
+export function emptyBodyFor(url) {
+  if (url.includes("/api/v1/auth/refresh")) return bodyFor(url);
+  if (url.includes("/api/v1/auth/me")) return bodyFor(url);
+  if (url.includes("/api/v1/digest")) {
+    return {
+      digest: EMPTY_RECORD.digest,
+      scale: EMPTY_RECORD.scale,
+      wouldSend: false,
+      delivery: "NOT_CONFIGURED",
+      computedAt: "2026-08-18T05:00:00.000Z",
+    };
+  }
+  return {};
+}
+
+/* An operator well past day one with genuinely nothing wrong. The
+   all-clear is CORRECT here and must survive — a first-run rule that
+   suppressed it would have replaced one wrong answer with another. */
+export function clearBodyFor(url) {
+  if (url.includes("/api/v1/digest")) {
+    return {
+      digest: { items: [], urgency: null },
+      scale: { reports: 7, indicators: 2, registerEntries: 4 },
+      wouldSend: false,
+      delivery: "NOT_CONFIGURED",
+      computedAt: "2026-08-18T05:00:00.000Z",
+    };
+  }
+  return bodyFor(url);
 }

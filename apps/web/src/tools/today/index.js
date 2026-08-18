@@ -63,7 +63,10 @@ import {
   VERDICT,
   whenText,
   viewFor,
-  reporterIsClear
+  reporterIsClear,
+  establishment,
+  nextStep,
+  FIRST_RUN
 } from '../../../../../packages/shared/src/today.ts';
 
 /* The digest's four kinds in an operator's words, and the screen each
@@ -405,26 +408,61 @@ export async function render(outlet) {
   const digest = payload.digest ?? { items: [], urgency: null };
   const verdict = digest.urgency ? VERDICT[digest.urgency] : null;
 
+  /* AN EMPTY RECORD IS NOT A CLEAR ONE, and until this the screen could
+     not tell them apart: the digest correctly finds nothing wrong with
+     an operator that has done nothing, and "Nothing needs you today"
+     was rendered over the top of it. The argument is in today.ts; the
+     `scale` comes from the same route as the digest so the browser is
+     not deriving a second opinion about the record. */
+  const scale = payload.scale ?? null;
+  const empty = scale ? establishment(scale) === 'EMPTY' : false;
+  const step = scale ? nextStep(scale) : null;
+
   outlet.innerHTML = html`
     <section class="band-dark">
       <div class="wrap">
         <span class="eyebrow">Today</span>
-        <h1>${verdict ? verdict.line : 'Nothing needs you today'}</h1>
+        <h1>
+          ${verdict ? verdict.line
+            : empty ? 'Your safety management system is not running yet'
+            : 'Nothing needs you today'}
+        </h1>
         <p class="lede">
           ${verdict
             ? `${digest.items.length} ${digest.items.length === 1 ? 'thing' : 'things'} in your operator's record are asking for attention.`
-            : 'No reporting deadline is open, no currency is lapsing, nothing is waiting to be triaged and no corrective action is overdue.'}
+            : empty
+              ? html`Nothing has been filed, no indicator is defined and the register is
+                  empty, so there is nothing yet for this screen to read. That is not the
+                  same as a quiet week — it is the state before the first record.`
+              : 'No reporting deadline is open, no currency is lapsing, nothing is waiting to be triaged and no corrective action is overdue.'}
         </p>
       </div>
     </section>
 
     <section class="panel wrap">
-      ${digest.items.length
-        ? html`<div class="picture-grid">${digest.items.map(item)}</div>`
-        : html`<p class="hint">
-            This is computed from the record every time you open it, so it cannot go
-            stale against the screens it links to.
-          </p>`}
+      ${empty
+        ? html`
+            <h2 class="section-title">The first fifteen minutes</h2>
+            <ol class="next-list" data-first-run>
+              ${FIRST_RUN.map(
+                (s) => html`<li>
+                  <strong>${s.does}</strong> — ${s.why}
+                  ${step && step.key === s.key
+                    ? html` <a class="btn btn-primary btn-sm" href="${s.where}">${s.action}</a>`
+                    : html` <a href="${s.where}">${s.action}</a>`}
+                </li>`
+              )}
+            </ol>
+            <p class="hint">
+              Three steps, in that order, because each one is what makes the next worth
+              doing. Nothing here has to be read first.
+            </p>`
+        : digest.items.length
+          ? html`<div class="picture-grid">${digest.items.map(item)}</div>`
+          : html`<p class="hint">
+              This is computed from the record every time you open it, so it cannot go
+              stale against the screens it links to.
+            </p>`}
 
       <div class="sms-scheme">
         <h2 class="section-title">Where to go next</h2>

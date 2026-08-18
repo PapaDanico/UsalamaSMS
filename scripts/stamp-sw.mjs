@@ -2218,7 +2218,56 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    so the operator declares what binds it and names the instrument. A
    limit table nobody has read the instrument for is the one kind of
    wrong this product cannot ship. */
-const BUDGET = { entry: 224 * 1024, js: 634 * 1024, css: 80 * 1024 };
+/* TOTAL 634 -> 638 KB FOR THE FIRST FIFTEEN MINUTES. ENTRY DID NOT
+   MOVE, and that is the number this receipt is really about.
+
+   MEASURED, by building the tree with and without the change:
+
+     js (entry)   218.7 -> 218.7 KB   unmoved
+     js (total)   633.8 -> 635.6 KB   +1.8
+     css           73.2 ->  73.2 KB   unmoved
+
+   Every byte is in the lazily-imported /today chunk, which is 12 KB and
+   is fetched by somebody who has signed in and opened a dashboard. A
+   reporter filing a bird strike at a remote strip downloads the entry
+   chunk and never this.
+
+   WHAT IT BUYS. A brand-new operator opened /today and read "Nothing
+   needs you today", over a lede listing four things that were not
+   wrong. Every clause was true; together they told somebody who had
+   done nothing at all that everything was fine. The digest is computed
+   over an empty record, correctly finds nothing, and the screen
+   rendered that absence as a clean bill of health.
+
+   today.ts had already refused to call an UNKNOWN clear, and said why —
+   "a screen whose job is to answer 'is everything all right' saying the
+   most reassuring possible thing at the moment it knows least is the
+   failure this product exists to refuse". The argument had never been
+   extended to EMPTY. The weight is that extension: the three-step
+   sequence, the prose that says which obligation each step answers, and
+   the predicate that stops offering a step once it is taken.
+
+   CONSOLIDATION WAS TRIED FIRST, because the previous receipt said the
+   next raise here needed one rather than a number. It did not pay: the
+   only slack found in the touched files was a no-op ternary, removed,
+   and worth nothing measurable. The alternative to raising was cutting
+   the prose that names L.N. 32 regulation 9(5) on the indicator step,
+   which is precisely the part that makes this an instrument rather than
+   a nag.
+
+   FOUR RATHER THAN TWO, so the next feature is not made to pay for this
+   one at the wall. The 0.2 KB of headroom the last raise left is what
+   turned an ordinary addition into a budget event, and a ceiling that
+   sits one byte above the tree is a ceiling that reports the next
+   change rather than the next problem.
+
+   THE RULE IS UNCHANGED, and is the reason total moved while entry did
+   not: the total says something grew, the ENTRY says whether it grew in
+   a place a reporter on one bar of signal has to pay for. Entry
+   beginning to track total is the moment to take something out rather
+   than buy more, and after eleven raises entry stands where it did six
+   raises ago. */
+const BUDGET = { entry: 224 * 1024, js: 638 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
