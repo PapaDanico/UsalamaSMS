@@ -268,9 +268,11 @@ export function annualUsd(band: Band): number {
  *     by the compiler through Record<Capability, boolean>;
  *   · the record stays exportable — the same table, same enforcement;
  *   · no element behind a tier — EVERY_BAND_INCLUDES, above;
- *   · sixty days — TRIAL_DAYS, and tests/subscription.test.ts asserts
- *     the promise against the constant rather than against a number
- *     somebody retyped here.
+ *   · the trial length — TRIAL_DAYS, and tests/subscription.test.ts
+ *     asserts the promise against the constant rather than against a
+ *     number somebody retyped here. THIS LINE SAID "sixty days" for as
+ *     long as TRIAL_DAYS said 30, which is the drift the sentence
+ *     beneath it claims cannot happen — a comment is prose too.
  */
 /* THE TRIAL LENGTH LIVES HERE, and subscription.ts re-exports it as
    TRIAL_DAYS rather than the other way round.
