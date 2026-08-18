@@ -3863,6 +3863,12 @@ html { scroll-padding-top: var(--us-chrome); }
 .empty-state { padding: var(--us-space-8) var(--us-space-4); text-align: center; color: var(--us-text-tertiary); }
 .empty-state :is(h1, h3) { font-size: var(--us-text-md); color: var(--us-charcoal); margin-bottom: var(--us-space-2); }
 .empty-state p { max-width: 44ch; margin-inline: auto; font-size: var(--us-text-sm); }
+/* A zero-state's way forward. The body is deliberately tertiary, so a link
+   in it lands at 4.44 on sand at 14px — caught by check:a11y on /triage,
+   not reasoned about. The accessible teal is 6.38 there, and the underline
+   is WCAG 1.4.1: inside a paragraph this quiet, colour alone is not enough
+   to say the words are a link. */
+.empty-state a { color: var(--us-teal-text); text-decoration: underline; }
 
 /* Buttons the app names that JK's set does not. Secondary is JK's
    .btn-ghost with a surface behind it — a paired action beside a

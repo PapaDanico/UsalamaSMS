@@ -47,6 +47,17 @@ const STORAGE_KEY = process.env["SUPABASE_SERVICE_ROLE_KEY"] ?? "";
 const BUCKET = process.env["SUPABASE_EVIDENCE_BUCKET"] ?? "evidence";
 
 /**
+ * How many attachment ROWS one report's list returns.
+ *
+ * Not the same bound as EVIDENCE_MAX_FILES, which limits a single
+ * upload request. This limits the accumulated total a list read will
+ * return, and truncation is reported rather than absorbed — a caller
+ * shown nine of two hundred photographs, with nothing saying so, would
+ * reasonably conclude nine is all there are.
+ */
+const ATTACHMENT_LIMIT = 200;
+
+/**
  * WHETHER THIS DEPLOY CAN STORE A FILE AT ALL.
  *
  * Checked before anything is written, and the refusal says which piece
@@ -88,6 +99,19 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
          evidence. */
       where: { ...tenantWhere(req), reportId: id },
       orderBy: [{ createdAt: "asc" }],
+      /* BOUNDED, and EVIDENCE_MAX_FILES does not do it. That constant
+         caps files per UPLOAD REQUEST — `checkEvidenceCount` applies it
+         to one batch — so a report accumulating uploads over months has
+         no ceiling on either the query or the response. Every other
+         read route in this API carries a take and reports truncation;
+         this one carried neither, which an audit found rather than a
+         reviewer.
+
+         The number is deliberately generous. An investigation into a
+         serious occurrence can legitimately gather a lot of
+         photographs, and a cap that bit in that case would cut evidence
+         out of the one report it mattered most on. */
+      take: ATTACHMENT_LIMIT,
       /* The key is deliberately NOT returned. It is a storage path, and
          a client has no use for one it cannot fetch directly anyway —
          every fetch goes through the route below by row id. */
@@ -117,6 +141,12 @@ export async function attachmentRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({
       attachments: rows,
       max: EVIDENCE_MAX_FILES,
+      /* SAID, NOT ABSORBED — the rule /api/v1/picture and the fatigue
+         picture already follow. A panel showing two hundred of four
+         hundred photographs with nothing saying so lets an investigator
+         conclude two hundred is all there are, on the one record where
+         a missing photograph is the point. */
+      truncated: rows.length === ATTACHMENT_LIMIT,
       storage: storageReady().ok,
     });
   });

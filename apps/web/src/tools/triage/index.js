@@ -463,7 +463,8 @@ export async function render(outlet) {
       ${rows.length === 0
         ? html`<p class="empty-state">
             <span>Nothing on this device yet. Reports filed here appear
-            immediately, before they have been sent.</span>
+            immediately, before they have been sent.
+            <a href="/report">File the first one</a>.</span>
           </p>`
         : html`
             <p class="lede">

@@ -185,7 +185,9 @@ export async function render(outlet) {
       <h2>The reports</h2>
       ${data.reports.length
         ? html`<div class="rec-list">${data.reports.map(Report)}</div>`
-        : html`<p class="empty-state"><span>No fatigue reports in this window.</span></p>`}
+        : html`<p class="empty-state"><span>No fatigue reports in this window.
+            A fatigue report is filed like any other, with the duty block on the
+            form — <a href="/report">file one</a>.</span></p>`}
     </section>
   `.toString();
 
