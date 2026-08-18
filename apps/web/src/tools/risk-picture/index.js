@@ -3,7 +3,6 @@ import { isSignedIn, authFetch } from '../../shared/session.js';
 import { ToolNav } from '../../shared/tool-nav.js';
 import {
   tolerability,
-  riskScore,
   SEVERITY_SCALE
 } from '../../../../../packages/shared/src/risk.ts';
 
@@ -50,7 +49,6 @@ function severityDistribution(entries) {
 }
 
 function actionSummary(actions) {
-  const now = Date.now();
   let open = 0;
   let closed = 0;
   let overdue = 0;
@@ -151,7 +149,7 @@ async function load(body) {
     const maxDistrib = Math.max(...Object.values(distribution), 1);
 
     body.innerHTML = html`
-      <div class="stat-strip">
+      <dl class="stat-strip">
         ${TOLERABILITY_ORDER.map((t) => html`
           <div class="stat" data-tone="${t === 'INTOLERABLE' && breakdown[t] > 0 ? 'alert' : ''}">
             <dt class="stat__value">${breakdown[t]}</dt>
@@ -165,7 +163,7 @@ async function load(body) {
           <dt class="stat__value">${overdue}</dt>
           <dd class="stat__label">Overdue actions</dd>
         </div>
-      </div>
+      </dl>
 
       <section class="doc-section">
         <h2>Tolerability breakdown</h2>
@@ -216,7 +214,7 @@ async function load(body) {
                   </tr>
                 </thead>
                 <tbody>
-                  ${SEVERITY_ORDER.filter((s) => s in distribution).map((s) => html`<tr>
+                  ${SEVERITY_ORDER.map((s) => html`<tr>
                     <td>${s.charAt(0) + s.slice(1).toLowerCase()}</td>
                     <td>${distribution[s]}</td>
                     <td>

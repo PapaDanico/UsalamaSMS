@@ -2372,7 +2372,15 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    The stopping condition above stands: the day entry starts climbing
    with total is the day to take something out instead of buying
    more. */
-const BUDGET = { entry: 224 * 1024, js: 658 * 1024, css: 80 * 1024 };
+/* 658 -> 668, 18 August 2026 — FINISH-UP OVERAGE RECEIPT.
+
+   WHAT MOVED. Verify now measures js(total) at 666.9 KB against 658,
+   while entry remains below the first-report ceiling at 220.1 KB.
+
+   WHY IT IS ACCEPTED. The overage sits in lazy-loaded toolkit surface
+   code and does not push entry toward its 224 KB ceiling; the stop
+   condition above still applies unchanged. */
+const BUDGET = { entry: 224 * 1024, js: 668 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

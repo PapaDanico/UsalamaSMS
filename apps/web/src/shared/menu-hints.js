@@ -67,6 +67,8 @@ export const MENU_HINTS = {
   '/triage': "Everything the operator has filed, and what has not left this handset",
 
   '/picture': 'Where the operator stands: reporting, register, indicators, in one page',
+  '/toolkits/risk-picture':
+    "Tolerability, severity and action closure in one operator-level risk dashboard",
 
   '/toolkits/sra': "Doc 9859's five steps, from the hazard to a decision somebody signs",
   '/toolkits/register':

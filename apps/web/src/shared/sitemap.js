@@ -297,6 +297,11 @@ export const SECTIONS = [
         inHeader: true
       },
       {
+        href: '/toolkits/risk-picture',
+        label: 'Risk Picture Dashboard',
+        short: 'Risk picture'
+      },
+      {
         href: '/toolkits/spi',
         label: 'Safety Performance Indicators',
         short: 'Indicators'

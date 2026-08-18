@@ -3896,7 +3896,7 @@ html { scroll-padding-top: var(--us-chrome); }
    not reasoned about. The accessible teal is 6.38 there, and the underline
    is WCAG 1.4.1: inside a paragraph this quiet, colour alone is not enough
    to say the words are a link. */
-.empty-state a { color: var(--us-teal-text); text-decoration: underline; }
+.empty-state a:not(.btn) { color: var(--us-teal-text); text-decoration: underline; }
 
 /* Buttons the app names that JK's set does not. Secondary is JK's
    .btn-ghost with a surface behind it — a paired action beside a
