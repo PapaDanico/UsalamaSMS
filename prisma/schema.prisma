@@ -684,6 +684,22 @@ model Hazard {
   description String  @db.Text
   source      String
 
+  /// HOW THIS HAZARD WAS FOUND, against ICAO's three methods.
+  ///
+  /// `source` above answers a different question — whether a hazard
+  /// arrived on a report or somebody typed it — and collapses a
+  /// workshop finding, an audit finding, an indicator trend and a
+  /// change assessment into one value meaning "not a report". Annex 19
+  /// asks for a formal process based on a COMBINATION of reactive,
+  /// proactive and predictive methods, and that combination could not
+  /// be evidenced from two values.
+  ///
+  /// NULLABLE ON PURPOSE. A hazard recorded before this column existed
+  /// has an unknown method, not a proactive one. See
+  /// packages/shared/src/discovery.ts: backfilling the unknowns would
+  /// manufacture exactly the evidence an operator is asked to produce.
+  discovery   String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

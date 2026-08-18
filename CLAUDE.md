@@ -302,6 +302,55 @@ wrapped in a `pg_roles` existence check because `anon`, `authenticated`
 and `service_role` are Supabase's and the same migration runs against a
 bare Postgres in the integration suite.
 
+## Two values cannot evidence a combination of three methods
+
+Annex 19 does not ask a service provider to identify hazards. It asks
+for a formal process **"based on a combination of reactive, proactive
+and predictive methods of safety data collection"** — and the word doing
+the work is *combination*.
+
+`Hazard.source` was set in one expression:
+
+```ts
+source: e.fromReportId ? "REPORT" : "REGISTER"
+```
+
+That answers a real question — what proportion of the register came from
+the operator's own people — and it is **not the instrument's question**.
+`REGISTER` means "somebody typed it", which is equally true of a
+workshop finding, an audit finding, an indicator trend and a change
+assessment: four methods, two proactive and one predictive, in one
+bucket meaning "not a report". An operator asked at an audit to evidence
+its combination could show reported against typed and nothing else.
+
+`Hazard.discovery` now records which of ICAO's three, and
+`packages/shared/src/discovery.ts` holds the six routes this product
+offers to them. Three things are worth keeping:
+
+- **ICAO names methods, not features.** Mapping a surface to a method is
+  this product's judgement, so the argument for every row is written in
+  the module header and `tests/discovery.test.ts` reads the file and
+  fails when a route has no line in it.
+- **The backfill left everything but reports NULL.** A hazard carrying a
+  `reportId` is reactive by definition and the fact is in the row.
+  Mapping `REGISTER` to PROACTIVE would have manufactured exactly the
+  evidence the operator is being asked to produce.
+- **The missing methods are named, not left to be counted.** A set of
+  bars where one is absent reads as a small number rather than as an
+  absence — the same objection `/picture` makes about withheld barrier
+  records.
+
+### A guard that could not fire, caught by its own mutation
+
+`evidencesCombination` read `b.total > 0 && b.missing.length === 0`. The
+mutation written to prove an empty register does not vacuously satisfy
+the requirement **left the suite green**: an empty register has every
+count at zero, so `missing` already lists all three and the first clause
+never decides anything. It was removed rather than kept as
+belt-and-braces — a condition that looks load-bearing and cannot execute
+is a gate that cannot fail, one layer down. Emptying `missing` reddens
+three tests, which is where the property actually lives.
+
 ## An empty record is not a clear one
 
 `/today` answers "is everything all right?", and to a brand-new operator

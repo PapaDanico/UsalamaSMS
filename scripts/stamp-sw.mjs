@@ -2267,7 +2267,53 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    beginning to track total is the moment to take something out rather
    than buy more, and after eleven raises entry stands where it did six
    raises ago. */
-const BUDGET = { entry: 224 * 1024, js: 638 * 1024, css: 80 * 1024 };
+/* TOTAL 638 -> 642 KB, AND THE PREVIOUS RAISE WAS UNDER-SIZED. That is
+   the honest reading and it belongs at the top of this receipt rather
+   than buried: 634 -> 638 was written one hour earlier, said "raised by
+   four so the next feature is not made to pay for this one at the
+   wall", and the next feature hit the wall anyway. Four was the wrong
+   number for a tree that had already spent 1.8 of it on arrival.
+
+   MEASURED, with and without the change:
+
+     js (entry)   218.7 -> 218.7 KB   unmoved, a third consecutive raise
+     js (total)   637.6 -> 639.0 KB   +1.4 net
+     css           73.2 ->  73.2 KB   unmoved
+
+   CONSOLIDATION WAS FOUND THIS TIME AND IS ALREADY IN THE NUMBER above.
+   `DiscoveryRoute.why` carried the argument for mapping each of this
+   product's surfaces to one of ICAO's three methods — about 700 bytes
+   shipped to every browser that opens the register, and NO SCREEN
+   RENDERED IT. It reads for a developer or an auditor looking at the
+   source, so it moved into the module header as a mapping table, and
+   tests/discovery.test.ts now asserts that table names every route so a
+   route cannot be added without its argument. Gross cost was 2.2 KB;
+   net is 1.4.
+
+   WHAT THE REMAINING 1.4 KB BUYS. Annex 19 does not ask a service
+   provider to identify hazards. It asks for a formal process "based on
+   a combination of reactive, proactive and predictive methods of safety
+   data collection", and `Hazard.source` held two values — REPORT and
+   REGISTER — where REGISTER meant "somebody typed it" and collapsed a
+   workshop finding, an audit finding, an indicator trend and a change
+   assessment into one bucket. An operator asked at an audit to evidence
+   its combination could show reported against typed and nothing else.
+
+   The weight is the three methods, the six routes this product offers
+   to them, the balance, and the sentence naming which methods a
+   register cannot yet evidence. It is in the register and picture
+   chunks, which an operator opens and a reporter filing at a strip
+   never fetches.
+
+   THE STOPPING CONDITION IS STILL NOT MET, and after three raises in
+   one day it is worth writing why rather than assuming. ENTRY has not
+   moved through any of them: 218.7 before the fatigue work, 218.7 now.
+   Everything bought today lands on screens a safety manager opens.
+   The rule is unchanged — the total says something grew, the entry says
+   whether it grew where a reporter on one bar of signal pays for it,
+   and entry beginning to track total is the moment to take something
+   out rather than buy more. */
+const BUDGET = { entry: 224 * 1024, js: 642 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
