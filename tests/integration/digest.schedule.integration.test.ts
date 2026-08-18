@@ -97,6 +97,27 @@ describe.skipIf(!hasDatabase)("the scheduled digest", () => {
     expect(digest!.items.some((i) => i.kind === "DEADLINE")).toBe(true);
   });
 
+  it("includes contacts that have never been verified without disclosing who they are", async () => {
+    await prisma().emergencyContact.create({
+      data: {
+        orgId,
+        name: "Duty officer",
+        role: "Authority contact",
+        phone: "+254700000000",
+      },
+    });
+    const digest = await computeDigest(prisma() as never, orgId, NOW);
+    const contact = digest!.items.find((item) => item.kind === "CONTACT");
+    expect(contact).toEqual({
+      kind: "CONTACT",
+      urgency: "TODAY",
+      count: 1,
+      soonestDays: null,
+      href: "/sms",
+    });
+    expect(JSON.stringify(contact)).not.toMatch(/duty officer|authority contact|254700000000/i);
+  });
+
   /* The operator with no reports at all. A daily message saying nothing
      is the failure this rule exists to prevent. */
   it("has nothing to say for an operator with an empty record, and sends nothing", async () => {

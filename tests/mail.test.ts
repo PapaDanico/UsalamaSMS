@@ -28,9 +28,10 @@ const busy = digestFor({
   currencies: [{ state: "DUE_SOON", daysLeft: 11 }],
   untriaged: 3,
   overdueActions: [{ daysLeft: -5 }],
+  contacts: [{ state: "STALE", daysLeft: -8 }],
 });
 
-const quiet = digestFor({ deadlines: [], currencies: [], untriaged: 0, overdueActions: [] });
+const quiet = digestFor({ deadlines: [], currencies: [], untriaged: 0, overdueActions: [], contacts: [] });
 
 /** A fetch that records the call and reports success. */
 function spyFetch(status = 200, body: unknown = { id: "abc-123" }) {
@@ -168,26 +169,26 @@ describe("the subject line", () => {
   });
 
   it("softens when nothing is urgent", () => {
-    const calm = digestFor({ deadlines: [], currencies: [], untriaged: 2, overdueActions: [] });
+    const calm = digestFor({ deadlines: [], currencies: [], untriaged: 2, overdueActions: [], contacts: [] });
     expect(subjectFor(calm)).toContain("Safety record update");
   });
 
   it("counts subjects, never their contents", () => {
-    expect(subjectFor(busy)).toContain("4 items");
+    expect(subjectFor(busy)).toContain("5 items");
     expect(subjectFor(busy)).not.toMatch(/[0-9a-f]{8}-/i);
   });
 });
 
 describe("wording", () => {
   it("agrees in number for one and for many", () => {
-    const one = digestFor({ deadlines: [], currencies: [], untriaged: 1, overdueActions: [] });
+    const one = digestFor({ deadlines: [], currencies: [], untriaged: 1, overdueActions: [], contacts: [] });
     expect(bodyFor(one, "https://x.test")).toContain("1 report is waiting");
     expect(bodyFor(busy, "https://x.test")).toContain("3 reports are waiting");
   });
 
   it("says today and tomorrow rather than making somebody subtract", () => {
-    const today = digestFor({ deadlines: [{ status: "DUE_SOON", daysLeft: 0 }], currencies: [], untriaged: 0, overdueActions: [] });
-    const tomorrow = digestFor({ deadlines: [{ status: "DUE_SOON", daysLeft: 1 }], currencies: [], untriaged: 0, overdueActions: [] });
+    const today = digestFor({ deadlines: [{ status: "DUE_SOON", daysLeft: 0 }], currencies: [], untriaged: 0, overdueActions: [], contacts: [] });
+    const tomorrow = digestFor({ deadlines: [{ status: "DUE_SOON", daysLeft: 1 }], currencies: [], untriaged: 0, overdueActions: [], contacts: [] });
     expect(bodyFor(today, "https://x.test")).toContain("soonest is today");
     expect(bodyFor(tomorrow, "https://x.test")).toContain("soonest is tomorrow");
   });

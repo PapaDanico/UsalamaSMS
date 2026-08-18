@@ -17,6 +17,7 @@ const empty: DigestInput = {
   currencies: [],
   untriaged: 0,
   overdueActions: [],
+  contacts: [],
 };
 
 const of = (over: Partial<DigestInput>): DigestInput => ({ ...empty, ...over });
@@ -45,6 +46,7 @@ describe("saying nothing", () => {
           { state: "CURRENT", daysLeft: 200 },
           { state: "NO_EXPIRY", daysLeft: null },
         ],
+        contacts: [{ state: "CURRENT", daysLeft: 120 }],
       })
     );
     expect(isWorthSending(d)).toBe(false);
@@ -71,6 +73,27 @@ describe("grouping", () => {
     const currency = d.items.filter((i) => i.kind === "CURRENCY");
     expect(currency).toHaveLength(1);
     expect(currency[0]!.count).toBe(11);
+  });
+
+  it("groups contacts needing verification without naming them", () => {
+    const d = digestFor(
+      of({
+        contacts: [
+          { state: "NEVER_VERIFIED", daysLeft: null },
+          { state: "STALE", daysLeft: -4 },
+          { state: "DUE_SOON", daysLeft: 12 },
+        ],
+      })
+    );
+    expect(d.items).toEqual([
+      {
+        kind: "CONTACT",
+        urgency: "TODAY",
+        count: 3,
+        soonestDays: -4,
+        href: "/sms",
+      },
+    ]);
   });
 
   it("reports the soonest of a group, not the average or the last", () => {
@@ -174,10 +197,11 @@ describe("what a digest may never carry", () => {
     currencies: [{ state: "LAPSED", daysLeft: -30 }],
     untriaged: 7,
     overdueActions: [{ daysLeft: -5 }],
+    contacts: [{ state: "STALE", daysLeft: -8 }],
   });
 
   it("emits only count, kind, urgency, days and a path — no free text", () => {
-    expect(populated.items).toHaveLength(4);
+    expect(populated.items).toHaveLength(5);
     for (const item of populated.items) {
       expect(Object.keys(item).sort()).toEqual(
         ["count", "href", "kind", "soonestDays", "urgency"].sort()

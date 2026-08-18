@@ -98,6 +98,7 @@ const PHRASE: Readonly<Record<DigestItem["kind"], (n: number) => string>> = Obje
   CURRENCY: (n) => (n === 1 ? "1 training currency is lapsing" : `${n} training currencies are lapsing`),
   UNTRIAGED: (n) => (n === 1 ? "1 report is waiting to be triaged" : `${n} reports are waiting to be triaged`),
   ACTION_OVERDUE: (n) => (n === 1 ? "1 corrective action is overdue" : `${n} corrective actions are overdue`),
+  CONTACT: (n) => (n === 1 ? "1 emergency contact needs verification" : `${n} emergency contacts need verification`),
 });
 
 /**
