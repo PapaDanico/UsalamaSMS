@@ -120,6 +120,64 @@ export const KCAA_SERVICES = Object.freeze({
   voluntaryReport: "https://eservices.kcaa.or.ke/Pages/VORSY/VORSY_AppForm.aspx",
 });
 
+/**
+ * The Authority's safety hazards mailbox.
+ *
+ * NOT IN KCAA_SERVICES, AND A TEST IS WHY. That map holds eServices
+ * URLs and tests/circulars.test.ts asserts exactly that; the first
+ * draft of this change put the mailbox inside it and the test caught
+ * the category error within a minute of it existing. An email address
+ * is a different kind of destination from a portal — no session, no
+ * form, no receipt — and a screen that treats the two as one list
+ * will eventually render a mailto: where a filing UI was promised.
+ *
+ * SUPPLIED BY THE OPERATOR OF THIS PRODUCT on 18 August 2026, NOT read
+ * from a circular. Charter rule 12 in its smaller form: an address a
+ * product routes a safety report toward is a fact with consequences,
+ * and "somebody told us" is a different standing from "the instrument
+ * prints it". The provenance below says which one this is.
+ */
+export const KCAA_SAFETY_MAILBOX = "safety@kcaa.or.ke";
+
+/** What this product has read from an instrument, and what it has not. */
+export const SERVICE_PROVENANCE = Object.freeze({
+  mandatoryOccurrence: "CAA-AC-SMS004A §3.3.1.1",
+  voluntaryReport: "CAA-AC-SMS003A §5.1.1",
+  safetyMailbox:
+    "supplied by the operator, 18 August 2026 — not printed in a circular this product has read",
+});
+
+/* ---------------------------------------------------------------
+   WHAT VORSY IS CALLED, AND THE SENTENCE WORTH KNOWING.
+
+   The repository held the URL and nothing else. The system's name is
+   the VOLUNTARY REPORTING SYSTEM (VRS) — VORSY is only the path
+   segment — and the Authority describes it as "a voluntary,
+   non-punitive and confidential reporting system", aligned to ICAO
+   Annexes 17 AND 19 rather than 19 alone. The security annex is there
+   because the same channel takes security deficiencies.
+
+   THE PART THAT MATTERS TO THIS PRODUCT: the Authority states that
+   VRS administrators DE-IDENTIFY information before entering it into
+   the VRS database. This product de-identifies before a narrative
+   leaves the operator, and until now that was argued purely from L.N.
+   32's safeguard and from first principles. The receiving system does
+   the same thing at its end, which is the strongest kind of support a
+   design decision can get — the other side of the handover already
+   works that way.
+
+   PROVENANCE: a search index's rendering of the VRS page, 18 August
+   2026. The portal itself is behind a login and refused at this
+   environment's egress proxy. So this is corroboration, not a reading
+   — enough to name the system correctly and to record the alignment,
+   not enough to describe the form's fields.
+   --------------------------------------------------------------- */
+export const VRS_NAME = "Voluntary Reporting System (VRS)";
+export const VRS_CHARACTER =
+  "A voluntary, non-punitive and confidential reporting system, aligned to ICAO Annexes 17 and 19, " +
+  "whose administrators de-identify information before it enters the VRS database.";
+export const VRS_VERIFIED_AGAINST_PRIMARY = false;
+
 export interface AdvisoryCircular {
   /** The reference an inspector recognises, exactly as printed. */
   readonly reference: string;

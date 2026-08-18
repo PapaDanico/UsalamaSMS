@@ -21,6 +21,11 @@ import {
   CIRCULARS_CAVEAT,
   CIRCULARS_THAT_CHANGED_AN_ANSWER,
   KCAA_SERVICES,
+  KCAA_SAFETY_MAILBOX,
+  SERVICE_PROVENANCE,
+  VRS_NAME,
+  VRS_CHARACTER,
+  VRS_VERIFIED_AGAINST_PRIMARY
 } from "../packages/shared/src/circulars";
 import { SMS_COMPONENTS } from "../packages/shared/src/maturity";
 
@@ -147,5 +152,41 @@ describe("the two service addresses", () => {
     for (const url of Object.values(KCAA_SERVICES)) {
       expect(url).toMatch(/^https:\/\/eservices\.kcaa\.or\.ke/);
     }
+  });
+});
+
+describe("the safety mailbox and the VRS, supplied and corroborated on 18 August 2026", () => {
+  it("the mailbox is an email address and lives OUTSIDE the URL map", () => {
+    /* The first draft put it inside KCAA_SERVICES and the assertion
+       above caught the category error within a minute. An email is a
+       different kind of destination from a portal — no session, no
+       form, no receipt — and keeping the kinds apart is what stops a
+       screen rendering a mailto: where a filing UI was promised. */
+    expect(KCAA_SAFETY_MAILBOX).toMatch(/^[^\s@]+@kcaa\.or\.ke$/);
+    expect(Object.values(KCAA_SERVICES)).not.toContain(KCAA_SAFETY_MAILBOX);
+  });
+
+  it("its provenance says SUPPLIED, because no circular this product has read prints it", () => {
+    /* Charter rule 12 in its smaller form. The two portal addresses
+       each quote the paragraph that prints them; the mailbox cannot,
+       and pretending otherwise would be a fabricated citation in a
+       file whose entire purpose is citation. */
+    expect(SERVICE_PROVENANCE.safetyMailbox).toMatch(/supplied by the operator/i);
+    expect(SERVICE_PROVENANCE.safetyMailbox).not.toMatch(/CAA-AC/);
+    expect(SERVICE_PROVENANCE.mandatoryOccurrence).toMatch(/CAA-AC-SMS004A/);
+    expect(SERVICE_PROVENANCE.voluntaryReport).toMatch(/CAA-AC-SMS003A/);
+  });
+
+  it("the VRS is named, characterised, and NOT claimed as read", () => {
+    /* The sentence that matters to this product: the Authority
+       de-identifies before entering data into the VRS database — the
+       receiving end of the handover already works the way this
+       product's de-identifier does. Corroborated from a search
+       rendering; the portal is behind a login, so the flag stays
+       false the same way CICTT's does. */
+    expect(VRS_NAME).toMatch(/Voluntary Reporting System/);
+    expect(VRS_CHARACTER).toMatch(/non-punitive/);
+    expect(VRS_CHARACTER).toMatch(/de-identify/);
+    expect(VRS_VERIFIED_AGAINST_PRIMARY).toBe(false);
   });
 });
