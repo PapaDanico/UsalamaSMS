@@ -3896,7 +3896,7 @@ html { scroll-padding-top: var(--us-chrome); }
    not reasoned about. The accessible teal is 6.38 there, and the underline
    is WCAG 1.4.1: inside a paragraph this quiet, colour alone is not enough
    to say the words are a link. */
-.empty-state a { color: var(--us-teal-text); text-decoration: underline; }
+.empty-state a:not(.btn) { color: var(--us-teal-text); text-decoration: underline; }
 
 /* Buttons the app names that JK's set does not. Secondary is JK's
    .btn-ghost with a surface behind it — a paired action beside a
@@ -4017,6 +4017,13 @@ html { scroll-padding-top: var(--us-chrome); }
    readable on a 320px screen. */
 .oblig-table th { font-size: var(--us-text-2xs); text-transform: uppercase; letter-spacing: .08em; }
 .oblig-table td:first-child { font-weight: 600; }
+.risk-picture__bar {
+  display: block;
+  width: min(12rem, 100%);
+  height: 0.5rem;
+  border-radius: var(--us-radius-pill);
+  background: linear-gradient(90deg, var(--us-teal) var(--w, 0%), var(--us-surface-2) var(--w, 0%));
+}
 /* ---- The two reference tables on a handset -------------------------
 
    Both overflowed. .table-scroll made them scrollable, which is not

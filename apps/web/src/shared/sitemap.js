@@ -116,6 +116,11 @@ export const TOOLKITS = [
     routed: true
   },
   {
+    href: '/toolkits/risk-picture',
+    short: 'risk picture dashboard',
+    routed: true
+  },
+  {
     href: '/toolkits#classifier',
     short: 'occurrence classifier'
   },
@@ -290,6 +295,11 @@ export const SECTIONS = [
         label: 'Safety Performance',
         short: 'Performance',
         inHeader: true
+      },
+      {
+        href: '/toolkits/risk-picture',
+        label: 'Risk Picture Dashboard',
+        short: 'Risk picture'
       },
       {
         href: '/toolkits/spi',
