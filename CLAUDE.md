@@ -57,6 +57,44 @@ from 11 August. Nothing in this codebase ever read it; the Netlify
 Supabase extension created it. It has been deleted, along with
 `SUPABASE_ANON_KEY`, which was exposed the same way and equally unused.
 
+### DELETING THEM DOES NOT HOLD. The extension re-creates them.
+
+`SUPABASE_JWT_SECRET` and `SUPABASE_ANON_KEY` were deleted on 16
+August. **On 18 August at 13:03 they were back**, both `is_secret:
+false`, both in cleartext, `updated_source_type: "extension"` — along
+with `SUPABASE_SERVICE_ROLE_KEY` (a **legacy** `service_role` JWT, the
+one kind this file warns against) and `SUPABASE_DATABASE_URL`.
+
+That is not a mistake anybody made. The Netlify Supabase extension
+lists those four variables as what it sets, and it sets them again
+whenever it re-syncs. Deleting them treats a symptom that regenerates.
+
+**THE EXTENSION SUPPLIES NOTHING THIS PRODUCT USES.** Measured:
+
+| variable | who reads it |
+|---|---|
+| `SUPABASE_JWT_SECRET` | nothing — docs only |
+| `SUPABASE_ANON_KEY` | nothing — it appears inside one comment |
+| `SUPABASE_DATABASE_URL` | `api.mts`, only to REJECT it by scheme |
+| `SUPABASE_SERVICE_ROLE_KEY` | `routes.attachments.ts` — but it needs an `sb_secret_…` key, which the extension does not issue |
+
+The variables this product actually depends on — `DATABASE_URL`,
+`JWT_SECRET`, `DEIDENT_SALT`, `SUPABASE_URL`,
+`SUPABASE_EVIDENCE_BUCKET` — were all set by hand and are untouched by
+the extension.
+
+The extension's own documentation shows what it is for:
+`createClient(SUPABASE_DATABASE_URL, SUPABASE_ANON_KEY)` — the client
+SDK path the first section of this file says this architecture does not
+use. It is tooling for a different architecture, and the price of
+leaving it installed is that a cleartext JWT secret reappears on its
+schedule rather than on ours.
+
+**So the durable fix is to disconnect it** (Extensions → the Supabase
+card → Danger zone), then set `SUPABASE_SERVICE_ROLE_KEY` by hand with
+an `sb_secret_…` key marked secret. Until that happens, treat any
+audit of these variables as a snapshot with a short shelf life.
+
 **Deleting it is not rotating it**, and no MCP tool can rotate it — that
 is a Supabase dashboard action. Until it happened, anyone who had read
 the value held a token they could sign at will.
