@@ -215,6 +215,19 @@ jobs:
           fi
           rm -f apps/web/src/tools/coverage/zero-probe.js
 
+      # A pack whose identity block is PRESENT but not PAINTED. The first
+      # version of check:deliverables counted DOM nodes and this exact
+      # mutation left it green — the element was there, the pack printed
+      # anonymous, and existence cannot tell those apart. It needs the
+      # built bundle, so it runs after the build in the verify job rather
+      # than here; this step guards the source rule instead.
+      - name: The deliverables gate must measure paint, not DOM presence
+        run: |
+          if ! grep -q "getBoundingClientRect" scripts/check-deliverables.mjs; then
+            echo "::error::check-deliverables.mjs no longer measures a bounding box. A gate that counts elements passes over a print identity block hidden by display:none — mutation-checked, it did."
+            exit 1
+          fi
+
       - name: And the restored sources must pass
         run: |
           node scripts/check-brand.mjs

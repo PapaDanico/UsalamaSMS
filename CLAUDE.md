@@ -302,6 +302,55 @@ wrapped in a `pg_roles` existence check because `anon`, `authenticated`
 and `service_role` are Supabase's and the same migration runs against a
 bare Postgres in the integration suite.
 
+## A document is measured on the page, not in the DOM
+
+`npm run check:deliverables` renders the six handover documents — the
+risk assessment, the register, the indicators, the maturity assessment,
+the twelve-element record and the risk picture — at **A4 with the media
+emulated to print**, and asserts each names the operator, carries its
+mark, and fits the width.
+
+The first version counted `querySelectorAll('.print-id').length`, and
+its own mutation matrix caught it: adding
+`.print-id { display: none }` inside the print block left the gate
+**green**. The element was in the DOM, the pack printed anonymous, and a
+check on existence cannot tell those apart. Both are now measured by
+bounding box, which is zero for `display:none`, `visibility:hidden` and
+a zero-height container alike — and the zero-size variant is its own
+mutation, because it is the one somebody reaches for when a logo looks
+too big.
+
+**`attachPrintId` defaults to `allowFetch: false` and that is a
+decision, not an oversight.** The register, the risk assessment and the
+maturity assessment work with NO SESSION AT ALL, so an operator can use
+them while deciding whether to trust this product; a screen that phones
+home during that has answered the question being asked of it, in the
+wrong direction. Attribution there is opportunistic — cached name, or no
+header at all — and `smoke.mjs` already refuses the half-attributed
+middle. The gate therefore seeds the org cache and asserts the
+*reachable* property. A first attempt seeded only the session, reported
+all six as unattributed, and was the probe being wrong rather than the
+product.
+
+## Two things are blocked on a person, and neither is a code problem
+
+**Evidence upload needs one secret pasted.** The bucket exists,
+`SUPABASE_URL` and `SUPABASE_EVIDENCE_BUCKET` are set in the Netlify
+production environment, and `routes.attachments.ts` answers without
+storage rather than failing. `SUPABASE_SERVICE_ROLE_KEY` is **absent** —
+checked against the live environment, not assumed. Use an `sb_secret_…`
+key, never a legacy `service_role` JWT, for the reason the RLS section
+above gives, and redeploy after setting it.
+
+**The KCAA submission shape is behind a login.** The portal is
+`https://ecitizen.kcaa.or.ke` — not the path the task originally named.
+WebSearch reaches the governing circular and not the form: `spi.ts`
+already cites CAA-AC-SMS009 §8.4 and §8.5 paragraph by paragraph, so the
+COMPUTATION is grounded, including the STDEVP alert-level method. What
+nobody has seen is which fields the portal asks an operator to fill.
+That is one person, one login, one screenshot — and until then the
+export shape is unverified rather than wrong.
+
 ## A sweep that renders signed out has not seen the product
 
 `check:a11y` reported "32 screens, no WCAG 2.2 AA violations" for weeks
