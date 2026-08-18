@@ -247,6 +247,75 @@ changed.
 - **BLOCKED** — a failed or rolled-back row is present. Nothing applies
   until it is resolved.
 
+## `migrate dev` proposes drift that is not drift, and it breaks inserts
+
+Running `prisma migrate dev` for a feature will very likely also propose
+statements you did not ask for. On 18 August 2026 a fatigue migration
+came back carrying six:
+
+```
+DROP INDEX "VoluntaryScheme_orgId_idx";
+ALTER TABLE "Org"       ALTER COLUMN "fleetTypes" DROP DEFAULT, ...
+ALTER TABLE "OrgConfig" ALTER COLUMN "aerodromes" DROP DEFAULT, ...
+ALTER TABLE "SafetyReport" ALTER COLUMN "cicttCodes" DROP DEFAULT;
+```
+
+**Five of those six are breaking, and the reasoning that they were safe
+is the trap.** The argument was that Prisma supplies the value on every
+insert it makes, so the database-side DEFAULT is unreachable. That is
+false: Prisma OMITS a scalar list it was not given and relies on the
+column default. Drop the default and the column is NOT NULL with nothing
+to fall back on. Driven straight at Postgres:
+
+```
+insert into "Org" (id,name,jurisdiction,"trialEndsOn") values (...)
+ERROR: null value in column "fleetTypes" violates not-null constraint
+```
+
+Twenty-nine auth integration tests went red at once, every one on
+`org.create` in a `beforeEach`. In production it would have made
+creating an operator impossible.
+
+The empty-array default is Prisma's own convention for a scalar list —
+created at the database, never declared in the schema — so `migrate
+diff` proposing to drop it is an artefact of that asymmetry rather than
+real drift. **It will be proposed again. Do not accept it.**
+
+**SPLIT ANYTHING A FEATURE MIGRATION PROPOSES THAT IS NOT THE FEATURE**,
+into a migration named for what it does. That is the only reason the
+above was caught: a migration named `fatigue_limits_and_report_detail`
+that also reshapes three unrelated tables gets read as "fatigue" and
+merged. The one statement that survived — the redundant
+`VoluntaryScheme` index, measured against production where a UNIQUE
+index on the same column serves every lookup — is in a migration that
+says so.
+
+## A new table needs the deny-all posture in the same migration
+
+`rls.integration.test.ts` asserts the RLS posture over every table
+"including ones added later", and that wording is load-bearing: a new
+model ships without it every time unless the migration carries it.
+`ALTER TABLE ... ENABLE ROW LEVEL SECURITY`, the RESTRICTIVE
+`deny_all_not_owner` policy, and the guarded REVOKE — copy the block
+from `20260818033214_fatigue_limits_and_report_detail`. The REVOKE is
+wrapped in a `pg_roles` existence check because `anon`, `authenticated`
+and `service_role` are Supabase's and the same migration runs against a
+bare Postgres in the integration suite.
+
+## Where the instrument has not been read, the operator declares it
+
+Charter rule 12. A figure with legal force is either read from the
+primary instrument and dated, or supplied by the operator together with
+the instrument it comes from — and the source is REQUIRED, because a
+declared figure with no instrument named is a number somebody typed.
+
+**No flight-time table for any State ships**, and `packages/shared/src/
+fatigue.ts` carries the argument. This is not the same as the reporting
+deadline: a deadline runs a countdown, so the product is telling the
+operator what the law requires and must have read it; a duty limit is a
+comparison against a figure the operator supplied. Decide which shape a
+new capability has before opening any instrument.
+
 ## Two different connection strings, for two different jobs
 
 | Job | Endpoint | Why |

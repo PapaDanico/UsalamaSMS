@@ -120,6 +120,35 @@ explicit branch for "the thing I examine is no longer here". Silence
 from a guard whose subject has been deleted is indistinguishable from
 success, which is worse than having no guard.
 
+**12. Where the instrument has not been read, the operator declares it
+and names its source.** A figure with legal force — a reporting window,
+a duty limit, a retention period — is either read from the primary
+instrument and recorded with the date it was checked, or it is supplied
+by the operator together with the instrument it comes from. There is no
+third option, and in particular a table assembled from secondary
+sources is not one: it tells a customer they are compliant on the
+strength of something nobody opened.
+
+This is a rule about honesty first, and it turns out to be the better
+architecture second. An operator whose AOC conditions are tighter than
+the regulation is measured against what actually binds it; one whose
+operations manual promises more than the law is held to its own
+promise; and an operator in a jurisdiction nobody has researched is
+served on the day it signs up rather than when a table is written for
+it. `docs/09-GAP-ANALYSIS.md` §2.1 calls one-jurisdiction the largest
+strategic gap in the product; this is the shape of the answer.
+
+The source is REQUIRED, not encouraged. A declared figure with no
+instrument named is a number somebody typed, which is the defect this
+rule exists to prevent wearing the operator's clothes instead of ours.
+
+Two implementations, both live: the tolerability decision levels in
+tenant configuration, where the operator names who may accept a risk
+at each band; and the fatigue duty limits, where it names the flight
+time, duty period and rest that bind it. A jurisdiction that HAS been
+read stays hardcoded and carries its date — Kenya's reporting windows
+under L.N. 32/2026 are read, and stay in the registry.
+
 ---
 
 ## Deviations, and why

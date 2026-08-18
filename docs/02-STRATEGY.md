@@ -135,7 +135,8 @@ can appear on a marketing page without a route behind it (charter rule
 
 | Module | Why |
 |---|---|
-| Occurrence reporting (MOR / VCR / hazard / near-miss / fatigue) | The intake. Offline-first, thirty seconds, anonymous option |
+| Occurrence reporting (MOR / VCR / hazard / near-miss) | The intake. Offline-first, thirty seconds, anonymous option |
+| Fatigue as a managed hazard | Annex 6 gives an operator prescriptive duty limits **and** fatigue hazards managed through the SMS, or a State-approved FRMS. Ours are all on the first, and the second half of it is an SMS obligation nobody else is serving. Not an FRMS, deliberately |
 | Regulatory deadline tracking | Computed per jurisdiction from awareness — the thing the scaffold got wrong |
 | Triage and investigation workflow | Report → hazard → risk → action |
 | Hazard register and 5×5 risk assessment | Doc 9859, with named acceptance authorities per tolerability |
@@ -163,24 +164,54 @@ can appear on a marketing page without a route behind it (charter rule
 
 ### Frozen
 
-Training records and competency tracking. Adjacent, genuinely wanted,
-and a different product. JK & Associates froze its Build track for the same
-reason; the discipline is what kept it at 114 KB.
+Nothing, currently — and the entry that used to be here is worth keeping
+visible rather than deleting.
+
+**It said training records and competency tracking were frozen**:
+"adjacent, genuinely wanted, and a different product". That was a
+defensible call when it was made and it stopped being true without
+anybody amending this file. The product ships `TrainingRecord`, the
+`training.manage` permission, a `/training` screen, and a curriculum
+module — and, decisively, **barrier health reads training records as one
+of its six inputs**. The freeze was not merely stale; it pointed the
+wrong way. Somebody honouring it would have removed an input to the
+predictive layer.
+
+The lesson is about this document rather than about training. A freeze
+is a decision with a shelf life, and one nobody re-reads becomes an
+instruction to undo shipped work. When something is frozen again, it
+gets a reason and a condition that would unfreeze it.
 
 ---
 
 ## 4. Sequencing
 
-| Phase | Content | Gate to the next |
-|---|---|---|
-| **0 — now** | Brand system, charter, regulatory engine, corrected core, guards | The gates pass and the claims are checkable |
-| **1 — to Nov 2026** | Tier 1 complete. One design partner AOC in Kenya, live | A frontline user files a report offline and it arrives |
-| **2 — to mid 2027** | Tier 2. SPIs, board pack, regulator view | An operator passes a KCAA audit using it |
-| **3 — 2027+** | Tier 3, governance first | Ten operators, one year of use, and a consent architecture that survives a hostile read |
+| Phase | Content | Gate to the next | State |
+|---|---|---|---|
+| **0** | Brand system, charter, regulatory engine, corrected core, guards | The gates pass and the claims are checkable | **Met** |
+| **1** | Tier 1 complete. One design partner AOC in Kenya, live | A frontline user files a report offline and it arrives | **Met in code, open on the customer** |
+| **2** | Tier 2. SPIs, safety intelligence, board pack, regulator view | An operator passes a KCAA audit using it | **Largely built, ungated** |
+| **3 — 2027+** | Tier 3, governance first | Ten operators, one year of use, and a consent architecture that survives a hostile read | Not started |
 
-**Phase 1's gate is deliberately behavioural rather than featural.** The
-documented failure mode is report volume collapsing, not features
-missing. If frontline staff will not file, nothing in Tier 2 matters.
+**THE DATES CAME OFF PHASES 0 TO 2, and that is the correction rather
+than a softening.** This table read "1 — to Nov 2026" and "2 — to mid
+2027" while three of Phase 2's four items — indicators, the safety
+intelligence dashboard, the audit pack — were already shipping. A
+sequence whose dates are behind its own repository teaches the reader to
+ignore the dates, and then the one date that matters is ignored too.
+
+**PHASE 1 IS NOT COMPLETE, AND ITS GATE IS WHY.** The gate is
+behavioural: *a frontline user files a report offline and it arrives*.
+Both halves are verified in CI against a real browser and a real
+Postgres — and CI is not a frontline user. `docs/09-GAP-ANALYSIS.md`
+§3.2 states the same thing more bluntly: nobody has used it. Every
+feature in Tier 2 shipping ahead of a Phase 1 gate that is open is the
+risk this table exists to keep visible, because the documented failure
+mode is report volume collapsing rather than features missing.
+
+**So the sequencing constraint is now a customer, not a feature.** What
+Phase 2 needs is not more of Tier 2; it is one design partner filing
+real reports.
 
 ---
 

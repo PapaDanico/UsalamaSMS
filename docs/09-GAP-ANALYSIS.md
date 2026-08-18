@@ -126,6 +126,40 @@ each instrument** — and the repository's own rule is that a figure
 which has not been read against the primary source does not enter the
 registry. That rule should not bend for market coverage.
 
+---
+
+**UPDATE, 18 AUGUST 2026 — THE GAP HAS A SECOND SHAPE, AND IT SHIPS.**
+
+Everything above stands for the reporting deadline, which is a figure
+the product ASSERTS and must therefore have read. It does not follow
+that every regulated figure has to be asserted.
+
+Fatigue was built on the opposite footing and it is now charter rule 12:
+where the instrument has not been read, **the operator declares the
+figure and names its source**. Kenya's flight and duty time limits could
+not be read — `kcaa.or.ke` is blocked at the egress proxy and the
+numbers did not come back from search — so no limit table ships for any
+State, and the operator states what binds it.
+
+That answers this gap for a whole class of figure without reading
+anything, and it is better than a table rather than a substitute for
+one. An operator whose AOC conditions are tighter than the regulation is
+measured against what actually binds it; one whose operations manual
+promises more than the law is held to its own promise; and an operator
+in Tanzania or Nigeria is served on the day it signs up.
+
+**It does NOT dissolve the gap, and the distinction is the whole
+point.** A reporting deadline runs a countdown and drives a
+notification — the product is telling the operator what the law
+requires, so the product has to have read the law. A duty limit is a
+comparison the operator asked for against a figure the operator
+supplied. The first cannot be delegated; the second never should have
+been asserted.
+
+So the grading stands at MATERIAL for `MOR_OBLIGATIONS`, and the
+question for each new capability is now which of the two shapes it has
+before any instrument is opened.
+
 ### 2.2 · Annex 13 notification — CLOSED, 14 August 2026
 
 The report form now tells a reporter that an accident or serious
