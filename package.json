@@ -72,5 +72,8 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.23.0",
     "zod": "^3.23.8"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.1"
   }
 }

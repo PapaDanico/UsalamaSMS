@@ -24,6 +24,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { digestFor, type Digest } from "../../../packages/shared/src/digest";
 import { currencyOf } from "../../../packages/shared/src/currency";
+import { daysUntilStale, freshnessOf } from "../../../packages/shared/src/erp";
 import type { RecordScale } from "../../../packages/shared/src/today";
 import {
   deadlineStatus,
@@ -49,6 +50,7 @@ const DEADLINE_LOOKBACK_DAYS = 90;
 
 const ROW_LIMIT = 500;
 const TRAINING_LIMIT = 2000;
+const CONTACT_LIMIT = 300;
 
 /** Null when the org does not exist — the caller decides what that means. */
 export async function computeDigest(
@@ -62,7 +64,7 @@ export async function computeDigest(
   });
   if (!org) return null;
 
-  const [open, training, untriaged, overdue] = await Promise.all([
+  const [open, training, untriaged, overdue, contacts] = await Promise.all([
     prisma.safetyReport.findMany({
       where: {
         orgId,
@@ -102,6 +104,15 @@ export async function computeDigest(
       select: { dueOn: true },
       orderBy: { dueOn: "asc" },
       take: ROW_LIMIT,
+    }),
+    prisma.emergencyContact.findMany({
+      where: { orgId },
+      select: { verifiedOn: true },
+      orderBy: [
+        { verifiedOn: { sort: "asc", nulls: "first" } },
+        { createdAt: "asc" },
+      ],
+      take: CONTACT_LIMIT,
     }),
   ]);
 
@@ -144,6 +155,10 @@ export async function computeDigest(
     untriaged,
     overdueActions: overdue.map((a) => ({
       daysLeft: Math.ceil((a.dueOn!.getTime() - now.getTime()) / 86_400_000),
+    })),
+    contacts: contacts.map((contact) => ({
+      state: freshnessOf(contact, now),
+      daysLeft: daysUntilStale(contact, now),
     })),
   });
 }

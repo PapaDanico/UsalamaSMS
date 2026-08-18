@@ -18,7 +18,7 @@ Ordered by what should be done first, with the reasoning, not by size.
 
 ## 1. Things with no other record — do these before anything new
 
-### 1.1 The demo passwords are still live · SECURITY · oldest open item
+### 1.1 ~~The demo passwords are still live~~ · CLOSED BY OWNER DECISION
 
 Two demo credentials (`samuel@`, `amina@`) travelled through a chat log
 during development. What was done at the time: every live refresh token
@@ -26,9 +26,12 @@ they held was revoked. What was **deliberately not** done: invalidating
 the password hashes, because that locks the account holder out and it
 was their call to make.
 
-So the passwords are still valid. `npm run seed:demo -- --rotate`
-exists precisely for this — it re-issues, revokes live sessions, and
-prints the new password once into the terminal of whoever runs it.
+**Closed 15 August 2026 on the owner's call.** These are intentionally
+public demo accounts rather than credentials protecting operator data,
+so their continued validity is not treated as a security incident.
+`npm run seed:demo -- --rotate` remains available if that decision ever
+changes: it re-issues, revokes live sessions, and prints the new password
+once into the terminal of whoever runs it.
 
 **It must be run by a person, not by an agent**, because the new
 password must not travel through a chat log the way the old one did.
@@ -220,13 +223,12 @@ that block a feature comparison.
   that is the finished state rather than a half-measure: an indicator
   counts a particular thing, and a quarter's report count is not that
   thing unless the operator says so. What remains is not a gap.
-- **Nothing tells anybody a contact has gone stale** unless they open
-  /sms. The directory computes it; nobody is notified. Same shape as
-  4.1's training warning, and it closes on the same channel — so these
-  two are one piece of work, not two. **No longer blocked on a person**:
-  as of 15 August 2026 that channel is email through `mail.ts`, which is
-  configured and sending. What remains is a coding task — teaching the
-  digest to carry a stale-contact item — rather than a registration.
+- ~~**Nothing tells anybody a contact has gone stale** unless they open
+  /sms.~~ **Closed 18 August 2026.** The daily digest now groups stale,
+  never-verified and soon-to-lapse contacts into one counts-only warning
+  linked back to the protected directory. It does not put a person's
+  name, role, number or address into email; the recipient opens /sms,
+  where the existing tenant and role checks still apply.
 - ~~The operator cannot use its own words.~~ **Closed 14 August 2026.**
   Post titles, risk-scale wording, aerodromes, aircraft and the review
   cycle are the operator's. What must never be configurable is enforced

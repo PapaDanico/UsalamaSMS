@@ -59,6 +59,7 @@
    is ignored too. `isWorthSending` exists so the caller cannot forget.
    ===================================================================== */
 import type { CurrencyState } from "./currency";
+import type { ContactFreshness } from "./erp";
 import type { DeadlineStatus } from "./regulations";
 
 /** What a digest line is about. Closed set — see the note on free text. */
@@ -70,7 +71,9 @@ export type DigestKind =
   /** Reports that have arrived and nobody has looked at. */
   | "UNTRIAGED"
   /** A corrective action past its due date. */
-  | "ACTION_OVERDUE";
+  | "ACTION_OVERDUE"
+  /** Emergency contacts that need verification. */
+  | "CONTACT";
 
 /**
  * How much of somebody's attention this deserves.
@@ -100,7 +103,7 @@ export interface DigestItem {
   /**
    * Whole days until the soonest of them matters; negative if the
    * soonest has already passed. Null where the kind has no clock, which
-   * today is only UNTRIAGED.
+   * today is UNTRIAGED and a contact that has never been verified.
    */
   readonly soonestDays: number | null;
   /** Where in the product to go. A path, never a deep link with data in it. */
@@ -139,6 +142,8 @@ export interface DigestInput {
    * days" — a number the reader would act on, invented here.
    */
   readonly overdueActions: readonly { daysLeft: number }[];
+  /** Emergency-contact verification verdicts across the call-out directory. */
+  readonly contacts: readonly { state: ContactFreshness; daysLeft: number | null }[];
 }
 
 const RANK: Readonly<Record<DigestUrgency, number>> = Object.freeze({
@@ -176,6 +181,13 @@ const CURRENCY_URGENCY: Readonly<Record<CurrencyState, DigestUrgency | null>> = 
   DUE_SOON: "SOON",
   CURRENT: null,
   NO_EXPIRY: null,
+});
+
+const CONTACT_URGENCY: Readonly<Record<ContactFreshness, DigestUrgency | null>> = Object.freeze({
+  NEVER_VERIFIED: "TODAY",
+  STALE: "TODAY",
+  DUE_SOON: "SOON",
+  CURRENT: null,
 });
 
 /**
@@ -275,6 +287,17 @@ export function digestFor(input: DigestInput): Digest {
       count: input.overdueActions.length,
       soonestDays: soonest(input.overdueActions.map((a) => a.daysLeft)),
       href: "/toolkits/register",
+    });
+  }
+
+  const contacts = input.contacts.filter((contact) => CONTACT_URGENCY[contact.state] !== null);
+  if (contacts.length) {
+    items.push({
+      kind: "CONTACT",
+      urgency: worst(contacts.map((contact) => CONTACT_URGENCY[contact.state]!))!,
+      count: contacts.length,
+      soonestDays: soonest(contacts.map((contact) => contact.daysLeft)),
+      href: "/sms",
     });
   }
 

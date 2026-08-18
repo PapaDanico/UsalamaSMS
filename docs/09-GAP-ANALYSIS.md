@@ -451,12 +451,11 @@ Ordered by leverage, not by size.
    2026** on the owner's call — the demo credentials are not treated as
    sensitive. The mechanism was verified against a throwaway database
    and is ready if that ever changes; see `seed:demo -- --rotate`.
-2. ~~**A person registers the sender ID.**~~ **Superseded 15 August
-   2026.** The channel is email, `mail.ts` is configured, and the
-   scheduled function sends at 05:00 UTC. What remains is a coding
-   task — teaching the digest to carry the warnings that are computed
-   and not yet delivered — rather than a registration blocked on a
-   person. See §2.2 of docs/08-OPEN-WORK.md.
+2. ~~**A person registers the sender ID.**~~ **Closed 18 August
+   2026.** The channel is email, `mail.ts` is configured, the scheduled
+   function sends at 05:00 UTC, and the digest now carries both training
+   currency and emergency-contact verification warnings without putting
+   a person's details into email. See §5 of docs/08-OPEN-WORK.md.
 3. ~~**Delete synchronisation**~~ **Closed 15 August 2026** — a
    retraction is a tombstone with an audit entry, never a hard delete,
    and the export still carries a retracted report so it cannot be used
