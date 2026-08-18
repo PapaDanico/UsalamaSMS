@@ -189,6 +189,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
         org, users, reports, hazards, riskAssessments, policies, accountabilities,
         appointments, exercises, documents, findings, training, communications, auditLog,
         spis, spiPeriods, voluntaryScheme, changes, contacts, actions, attachments, transitions,
+        fatigueLimits,
         policyReads, documentReads, config,
       ] = await Promise.all([
         prisma.org.findUnique({
@@ -243,6 +244,13 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
            so the payload shape does not change with its presence, and a
            reader parses one collection rather than a nullable object. */
         prisma.voluntaryScheme.findMany({ where, take: PROBE }),
+        /* THE DECLARED DUTY LIMITS. Tenant-owned, so the terms' promise
+           of the operator's own copy covers it — and it is one of the
+           few rows in this export an operator would notice missing,
+           because it is the statement of what binds them and where that
+           came from. check:claims caught its absence rather than a
+           reviewer. */
+        prisma.fatigueLimit.findMany({ where, take: PROBE }),
         prisma.changeAssessment.findMany({ where, take: PROBE, orderBy: [{ assessedOn: "asc" }] }),
         prisma.emergencyContact.findMany({ where, take: PROBE, orderBy: [{ callOrder: "asc" }] }),
         prisma.correctiveAction.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
@@ -371,6 +379,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
             org, users, reports, hazards, riskAssessments, policies, accountabilities,
             appointments, exercises, documents, findings, training, communications,
             auditLog: chainEntries, spis, spiPeriods, voluntaryScheme, changes, contacts,
+            fatigueLimits,
             actions, attachments, transitions, policyReads, documentReads, config,
           },
           new Date(),

@@ -292,6 +292,15 @@ export const SECTIONS = [
         short: 'Indicators'
       },
       {
+        /* Under safety performance rather than under reporting, and
+           that placement is the point: a fatigue report is an intake,
+           but what this screen shows is whether the duty limits are
+           protecting anybody — which is a performance question. */
+        href: '/fatigue',
+        label: 'Fatigue',
+        short: 'Fatigue'
+      },
+      {
         href: '/sms',
         label: 'SMS Documentation',
         short: 'Documentation',

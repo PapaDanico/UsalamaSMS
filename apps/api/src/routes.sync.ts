@@ -143,6 +143,22 @@ export async function syncRoutes(app: FastifyInstance): Promise<void> {
               aircraftType: d.aircraftType,
               phase: d.phase,
               hrcTags: d.hrcTags,
+              /* THE DUTY THE REPORTER WAS TIRED ON, flattened out of the
+                 nested block the wire carries. Nested on the request
+                 because the fields are meaningless off a FATIGUE report
+                 and the schema says so; flat in the table because the
+                 fatigue picture aggregates across them and a JSON column
+                 cannot be indexed or averaged without unpacking every
+                 row. CreateReportSchema has already refused a block on
+                 any other type, so no guard is needed here. */
+              fatigueFlightTimeHours: d.fatigue?.flightTimeHours,
+              fatigueDutyHours: d.fatigue?.dutyHours,
+              fatigueRestBeforeHours: d.fatigue?.restBeforeHours,
+              fatigueSectors: d.fatigue?.sectors,
+              fatigueSleepPrior24: d.fatigue?.sleepPrior24Hours,
+              fatigueStartLocalHour: d.fatigue?.startLocalHour,
+              fatigueEndLocalHour: d.fatigue?.endLocalHour,
+              fatigueSamnPerelli: d.fatigue?.samnPerelli,
               isAnonymous: d.isAnonymous,
               reporterId: d.isAnonymous ? null : auth.sub,
               // NOTE: no regulatorDeadline column is written. Charter

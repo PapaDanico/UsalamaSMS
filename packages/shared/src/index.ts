@@ -142,6 +142,36 @@ export const CreateReportSchema = z.object({
    * volume dies.
    */
   reporterRecommendation: z.string().max(2000).optional(),
+  /**
+   * WHAT A FATIGUE REPORT CARRIES THAT NO OTHER REPORT DOES.
+   *
+   * NESTED RATHER THAN FLAT, unlike location and aircraftType above,
+   * and the nesting is the point: every one of these is meaningless
+   * unless the type is FATIGUE, and an optional object says that in the
+   * shape rather than in a comment. The refinement below then makes it
+   * impossible to attach a duty to a bird strike.
+   *
+   * EVERY FIELD IS OPTIONAL INSIDE IT. A crew member who cannot
+   * remember their rest to the half hour must still be able to file —
+   * a form that refuses an incomplete fatigue report converts a report
+   * into silence, which is the one outcome this product cannot afford.
+   * fatigue.ts reports the shortfall as INCOMPLETE rather than guessing.
+   */
+  fatigue: z.object({
+    flightTimeHours: z.number().min(0).max(24).optional(),
+    dutyHours: z.number().min(0).max(48).optional(),
+    restBeforeHours: z.number().min(0).max(168).optional(),
+    sectors: z.number().int().min(0).max(40).optional(),
+    sleepPrior24Hours: z.number().min(0).max(24).optional(),
+    /* LOCAL hours, 0..23. The window of circadian low belongs to the
+       reporter's body clock, so a UTC timestamp would need an
+       acclimatisation model this product does not have. */
+    startLocalHour: z.number().int().min(0).max(23).optional(),
+    endLocalHour: z.number().int().min(0).max(23).optional(),
+    /* Samn-Perelli. Bounded to the scale so a client cannot invent an
+       eighth level that every threshold comparison then mis-reads. */
+    samnPerelli: z.number().int().min(1).max(7).optional(),
+  }).optional(),
   isAnonymous: z.boolean().default(false),
 }).refine(
   (r) => r.type !== "MOR" || r.occurredAt !== undefined,
@@ -149,6 +179,15 @@ export const CreateReportSchema = z.object({
 ).refine(
   (r) => !r.awareAt || !r.occurredAt || r.awareAt.getTime() >= r.occurredAt.getTime(),
   { message: "awareAt cannot precede occurredAt", path: ["awareAt"] },
+).refine(
+  /* A DUTY CANNOT BE ATTACHED TO A BIRD STRIKE. The fatigue block is
+     read by the fatigue picture and by nothing else, so a block riding
+     on a HAZARD would be data that no screen displays and no query
+     counts — invisible rather than wrong, which is worse. Rejected at
+     the door with a message naming the field, rather than silently
+     dropped on the way to the database. */
+  (r) => !r.fatigue || r.type === "FATIGUE",
+  { message: "duty details belong to a FATIGUE report", path: ["fatigue"] },
 );
 export type CreateReportInput = z.infer<typeof CreateReportSchema>;
 

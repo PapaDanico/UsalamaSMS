@@ -2178,7 +2178,47 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    rejects teaches an administrator the product is broken; a screen
    offering MORE than the server allows is the dangerous half of the
    same bug. */
-const BUDGET = { entry: 224 * 1024, js: 622 * 1024, css: 80 * 1024 };
+/* TOTAL 622 -> 634 KB, for the report type that nothing acted on.
+   ENTRY 216.5 -> 218.7, CSS unmoved.
+
+   `FATIGUE` had been in the ReportType enum since the first migration
+   and appeared in exactly three places in the repository: that enum, a
+   label in taxonomy.ts, and ReportTypeEnum. NOTHING READ IT. A crew
+   member too tired to fly safely filed a row indistinguishable from a
+   bird strike — no fatigue-specific question asked, nothing aggregated,
+   nothing that could become a finding. The literature names that exact
+   failure as a policy-practice gap "in closing the loop from fatigue
+   reports to corrective action"; this product had the open half of the
+   loop and none of the closing half.
+
+   The 12 KB is fatigue.ts, the /fatigue screen and the lazy duty block.
+   Every byte of it is on a lazy chunk: the screen is read by the safety
+   office and the duty block is fetched only by somebody who has
+   actually chosen FATIGUE.
+
+   AND THE ENTRY BUDGET DID ITS JOB AGAIN, which is the reason to record
+   this rather than merely raise the number. The duty block first went
+   inline in the report form and cost 3.8 KB OF ENTRY — charged to every
+   ramp agent filing a bird strike, for eight questions they would never
+   see. Measured at 220.3 KB, under the 224 ceiling, so nothing would
+   have failed and nobody would have looked. It was the TOTAL breaching
+   that prompted the reading which found it. The block moved to
+   ./fatigue-block.js and entry fell to 218.7.
+
+   The 2.2 KB of entry that remains is the type-change toggle, the draft
+   restore for the lazy fields, and the payload helper that strips the
+   duty block from every non-FATIGUE report — all of which have to be
+   present before the chunk is fetched, and the last of which is a
+   correctness guard rather than a convenience: CreateReportSchema
+   refuses a duty on a bird strike.
+
+   NO FLIGHT-TIME TABLE FOR ANY STATE IS IN THAT 12 KB, and that is a
+   decision rather than an omission. Kenya's limits were searched for
+   and did not come back, and kcaa.or.ke is blocked at the egress proxy,
+   so the operator declares what binds it and names the instrument. A
+   limit table nobody has read the instrument for is the one kind of
+   wrong this product cannot ship. */
+const BUDGET = { entry: 224 * 1024, js: 634 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
