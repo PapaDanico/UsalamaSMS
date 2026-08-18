@@ -208,6 +208,7 @@ model Org {
   reportMoves       ReportTransition[]
   actions           CorrectiveAction[]
   config            OrgConfig?
+  fatigueLimit      FatigueLimit?
   attachments       ReportAttachment[]
 }
 
@@ -456,6 +457,33 @@ model SafetyReport {
   /// this goes wrong is one query somebody forgets, which is why
   /// tests/retraction.test.ts asserts over the read paths rather than
   /// over a list of them.
+  // ===================================================================
+  // WHAT A FATIGUE REPORT CARRIES THAT NO OTHER REPORT DOES.
+  //
+  // `FATIGUE` was in the ReportType enum from the first migration and
+  // nothing ever read it, so a crew member too tired to fly safely
+  // filed a row indistinguishable from a bird strike. These are the
+  // facts that make such a report analysable rather than anecdotal, and
+  // every one is NULLABLE because they are asked only when the type is
+  // FATIGUE and because a reporter who does not remember their rest
+  // must be able to file anyway — a form that refuses an incomplete
+  // fatigue report is a form that converts a report into silence.
+  //
+  // LOCAL HOURS, not timestamps. The window of circadian low is a
+  // property of the reporter's body clock, so what matters is the hour
+  // it felt like to them. A UTC timestamp would need an acclimatisation
+  // model this product does not have and should not guess at.
+  // ===================================================================
+  fatigueFlightTimeHours Float?
+  fatigueDutyHours       Float?
+  fatigueRestBeforeHours Float?
+  fatigueSectors         Int?
+  fatigueSleepPrior24    Float?
+  fatigueStartLocalHour  Int?
+  fatigueEndLocalHour    Int?
+  /// Samn-Perelli, 1..7. See packages/shared/src/fatigue.ts for the scale.
+  fatigueSamnPerelli     Int?
+
   retractedAt     DateTime?
   /// Null for an anonymous report, exactly as reporterId is. A
   /// retraction must not become the identifier the filing refused to
@@ -1598,4 +1626,55 @@ model ReportAttachment {
   /// scoped to one operator before it is narrowed to one report, so a
   /// composite in that order serves the query as written.
   @@index([orgId, reportId])
+}
+
+// =====================================================================
+// THE DUTY LIMITS THIS OPERATOR IS BOUND BY, IN ITS OWN WORDS.
+//
+// THIS PRODUCT SHIPS NO FLIGHT-TIME TABLE FOR ANY STATE, and that is a
+// decision rather than an omission. Kenya's flight and duty time
+// limitations were searched for and the numbers did not come back;
+// kcaa.or.ke is blocked at the egress proxy, so the instrument could
+// not be opened either. A limit table nobody has read the instrument
+// for is the one kind of wrong this product cannot ship — the same
+// sentence CICTT_VERIFIED_AGAINST_PRIMARY carries — and here it would
+// produce a screen telling an operator it is legal when it is not.
+//
+// So the operator declares what binds it and NAMES THE INSTRUMENT.
+// `instrument` is non-nullable for that reason: a limit with no source
+// is a number somebody typed, and the whole point of this row is that
+// somebody can go and check it.
+//
+// It is strictly better than a table would have been. An operator whose
+// AOC conditions are tighter than the regulation is measured against
+// what actually binds it; an operator whose operations manual promises
+// more than the law is held to its own promise; and an operator outside
+// Kenya is served on the day it signs up.
+//
+// ONE PER ORG, and the numbers are all optional so an operator part-way
+// through writing its OM can declare what it knows. A blank is reported
+// as "not declared" and never as unlimited — see fatigue.ts, where
+// treating a blank as unlimited is the check that cannot fail.
+// =====================================================================
+model FatigueLimit {
+  id    String @id @default(uuid())
+  orgId String @unique
+
+  maxFlightTimeHours      Float?
+  maxDutyHours            Float?
+  minRestHours            Float?
+  maxFlightTime7DaysHours Float?
+
+  /// "KCAR 2025 Operation of Aircraft, Eighth Schedule", "OM-A 7.1",
+  /// "AOC condition 4" — whatever the operator can be held to.
+  instrument String
+
+  /// Bare id rather than a relation, following retractedById and
+  /// reportedToAuthorityById above. A user row cannot be deleted while
+  /// the audit log names it, so the id stays resolvable.
+  declaredById String?
+  declaredOn   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  org Org @relation(fields: [orgId], references: [id], onDelete: Cascade)
 }

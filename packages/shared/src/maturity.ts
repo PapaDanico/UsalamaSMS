@@ -753,6 +753,16 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
          can evidence needs to see it here. */
       "/api/v1/reports/:id/attachments",
       "/api/v1/attachments/:id",
+      /* FATIGUE, declared here rather than as an element of its own,
+         and the placement is the argument. Annex 6 gives an operator
+         two routes: prescriptive duty limits PLUS fatigue hazards
+         managed through the SMS, or a State-approved FRMS. This product
+         serves the first, and the SMS process a fatigue hazard is
+         managed through IS hazard identification — so it belongs in
+         2.1 and not in a twelfth-and-a-half element that would imply an
+         FRMS nobody here holds. */
+      "/api/v1/fatigue",
+      "/api/v1/fatigue/limits",
     ],
     has:
       "Occurrence and hazard reporting, offline, anonymous by choice, on an append-only " +
@@ -767,7 +777,13 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "product's six report types — with more than one code where more than one applies, " +
       "because that is the taxonomy's own rule. The discharge is recorded too — when the " +
       "authority was told and by whom, which is a claim about a call this product did not " +
-      "place rather than proof of one, so a reported occurrence stops counting down.",
+      "place rather than proof of one, so a reported occurrence stops counting down. " +
+      "A fatigue report is asked the questions that make it analysable rather than " +
+      "anecdotal — the duty, the rest, the sleep, the sectors and a Samn-Perelli rating " +
+      "— and read against the duty limits the operator has DECLARED, naming the " +
+      "instrument they come from. The figure that leads is the count of duties that " +
+      "stayed inside every declared limit and still produced a report, which is the " +
+      "finding staying inside the limits cannot produce on its own.",
     missing:
       "Proactive identification — surveys, audits sampled for hazards rather than " +
       "conformity, and the analysis Doc 10159 asks for. PREDICTIVE IS NOW PART-ANSWERED " +

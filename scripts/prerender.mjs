@@ -87,6 +87,7 @@ const DESCRIPTIONS = {
   '/admin': 'The supplier’s console. Operators do not appear here.',
   '/amendment': 'What ICAO Annex 19 Amendment 2 changes from 26 November 2026, and which of it an operator has to answer for.',
   '/coverage': 'Element by element against Annex 19’s twelve: what this product holds, and what it deliberately does not.',
+  '/fatigue': 'What your fatigue reports say, read against the duty limits you declared \u2014 including the duties that stayed inside them and still left somebody too tired to fly.',
   '/faq': 'Straight answers on price, data, the regulator, offline filing and what happens if you stop paying.',
   '/glossary': 'The vocabulary a safety management system is written in, in the words a regulator uses.',
   '/methodology': 'The risk matrix and the reporting deadlines, rendered from the modules that compute them rather than typed beside them.',

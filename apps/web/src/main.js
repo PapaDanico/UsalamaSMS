@@ -360,6 +360,14 @@ router
   /* LAZY, and it must be. The risk picture reads every table the
      product has and a reporter at a strip never opens it — it is the
      screen a safety manager shows to somebody else. */
+  /* LAZY, like every screen a ramp agent never opens. Fatigue is read
+     by the safety office, and its weight has no claim on the chunk
+     somebody downloads to file a hazard over a bad link. */
+  .register(
+    '/fatigue',
+    (el) => lazy(el, () => import('./tools/fatigue/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Fatigue', surface: 'tool' }
+  )
   .register(
     '/picture',
     (el) => lazy(el, () => import('./tools/picture/index.js').then((m) => (o) => void m.render(o))),

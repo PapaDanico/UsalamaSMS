@@ -122,6 +122,22 @@ export function render(outlet) {
         hint: 'An occurrence carries a reporting deadline; the others do not.'
       })}
 
+      ${/* THE DUTY BLOCK IS NOT HERE, and its absence is the point.
+
+            It is eight inputs and a seven-level scale, asked only of a
+            FATIGUE report — and this file is the ENTRY CHUNK, which is
+            what a ramp agent downloads over a bad link before they can
+            file anything at all. Rendered inline it cost 3.8 KB of
+            entry, measured, charged to every reporter filing a bird
+            strike for questions they will never see. That is precisely
+            what the two-number bundle budget exists to surface, and the
+            answer is to move the weight rather than to raise the
+            number.
+
+            So this is an empty shell, filled by ./fatigue-block.js the
+            first time somebody actually chooses FATIGUE. */''}
+      <section data-fatigue-only hidden></section>
+
       ${/* THE ANNEX 13 NOTIFICATION, which is not the report this form
             files. Never populated with a telephone number — see
             renderAccidentNotification().
@@ -390,6 +406,32 @@ function wire(outlet) {
   // citation.
   function renderDeadline() {
     const type = form.elements.type.value;
+    /* THE DUTY BLOCK FOLLOWS THE TYPE. Shown for FATIGUE and hidden
+       otherwise — and `hidden` rather than removed, so a reporter who
+       fills it in, changes the type by mistake and changes it back does
+       not lose what they typed. The payload strips it for every other
+       type regardless, so a hidden-but-filled block cannot leak onto a
+       hazard. */
+    const duty = form.querySelector('[data-fatigue-only]');
+    if (duty) {
+      duty.hidden = type !== 'FATIGUE';
+      /* FILLED ON FIRST CHOOSING, not on every change — render() is
+         idempotent behind its own flag, so switching type back and
+         forth neither re-fetches the chunk nor wipes what was typed.
+         The draft is re-applied AFTER the fields exist, because
+         restoring into an empty shell writes to nothing. */
+      if (type === 'FATIGUE') {
+        import('./fatigue-block.js')
+          .then((m) => { m.render(duty); restoreDuty(form); })
+          .catch(() => {
+            /* Offline, first visit, chunk not cached. The rest of the
+               form still files — a fatigue report with a narrative and
+               no duty figures is worth far more than a refusal, and
+               fatigue.ts reports it as INCOMPLETE rather than guessing. */
+            duty.hidden = true;
+          });
+      }
+    }
     if (type !== 'MOR' || !occurredAt.value) {
       deadlineHint.textContent = '';
       /* THE ANNEX 13 NOTICE IS NOT CLEARED HERE, and clearing it was the
@@ -527,8 +569,67 @@ function collect(form) {
     aircraftType: resolve(data, 'aircraftType'),
     phase: String(data.get('phase') ?? '') || undefined,
     hrcTags: data.getAll('hrcTags'),
+    /* ONLY ON A FATIGUE REPORT, and only when something was filled in.
+       CreateReportSchema rejects a duty block on any other type, and an
+       object of eight undefineds would store a row of nulls that reads,
+       on the fatigue screen, exactly like a duty somebody described. */
+    ...fatigueDetail(data),
     isAnonymous: data.get('isAnonymous') === 'on'
   };
+}
+
+/**
+ * Put drafted duty figures back once the lazy block has rendered.
+ *
+ * Separate from the main draft restore because those fields do not
+ * exist when the form first paints — restoring into the empty shell
+ * would write to nothing and silently lose what a reporter typed
+ * before they lost signal, which is the one failure this product is
+ * least allowed to have.
+ */
+function restoreDuty(form) {
+  let draft;
+  try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null'); } catch { return; }
+  if (!draft) return;
+  for (const name of [
+    'fatigueSamnPerelli', 'fatigueFlightTimeHours', 'fatigueDutyHours',
+    'fatigueRestBeforeHours', 'fatigueSectors', 'fatigueSleepPrior24',
+    'fatigueStartLocalHour', 'fatigueEndLocalHour'
+  ]) {
+    const el = form.elements[name];
+    if (el && draft[name] != null && draft[name] !== '') el.value = draft[name];
+  }
+}
+
+/**
+ * The duty block, or nothing at all.
+ *
+ * Returns `{}` rather than `{ fatigue: {} }` when the type is not
+ * FATIGUE or when the reporter filled in none of it — the server
+ * refuses the first, and the second would store a duty of eight nulls
+ * that is indistinguishable on the fatigue screen from a duty somebody
+ * actually described.
+ */
+function fatigueDetail(data) {
+  if (String(data.get('type') ?? '') !== 'FATIGUE') return {};
+  const fields = {
+    flightTimeHours: 'fatigueFlightTimeHours',
+    dutyHours: 'fatigueDutyHours',
+    restBeforeHours: 'fatigueRestBeforeHours',
+    sectors: 'fatigueSectors',
+    sleepPrior24Hours: 'fatigueSleepPrior24',
+    startLocalHour: 'fatigueStartLocalHour',
+    endLocalHour: 'fatigueEndLocalHour',
+    samnPerelli: 'fatigueSamnPerelli'
+  };
+  const fatigue = {};
+  for (const [key, field] of Object.entries(fields)) {
+    const raw = String(data.get(field) ?? '').trim();
+    if (raw === '') continue;
+    const n = Number(raw);
+    if (Number.isFinite(n)) fatigue[key] = n;
+  }
+  return Object.keys(fatigue).length ? { fatigue } : {};
 }
 
 /**
@@ -639,6 +740,19 @@ function saveDraft(form) {
         phase: data.get('phase'),
         jurisdiction: data.get('jurisdiction'),
         hrcTags: data.getAll('hrcTags'),
+        /* THE DUTY IS DRAFTED TOO. This product's whole claim is that a
+           report survives a bad link, and a fatigue report that lost
+           its duty figures on the way through a dead spot would be the
+           offline promise holding for the narrative and quietly failing
+           for the half that makes the report analysable. */
+        fatigueSamnPerelli: data.get('fatigueSamnPerelli'),
+        fatigueFlightTimeHours: data.get('fatigueFlightTimeHours'),
+        fatigueDutyHours: data.get('fatigueDutyHours'),
+        fatigueRestBeforeHours: data.get('fatigueRestBeforeHours'),
+        fatigueSectors: data.get('fatigueSectors'),
+        fatigueSleepPrior24: data.get('fatigueSleepPrior24'),
+        fatigueStartLocalHour: data.get('fatigueStartLocalHour'),
+        fatigueEndLocalHour: data.get('fatigueEndLocalHour'),
         isAnonymous: data.get('isAnonymous') === 'on',
         detailsOpen: form.querySelector('.report__more')?.open ?? false
       })

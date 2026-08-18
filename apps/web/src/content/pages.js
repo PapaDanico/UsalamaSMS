@@ -443,6 +443,29 @@ const TUTORIAL_SECTIONS = [
         operator regardless. A person reviews every report before it is shared
         beyond the safety office, and the de-identification pass is available
         before anything circulates.</p>`
+    },
+    {
+      id: 'fatigue',
+      title: 'Fatigue — what to declare before the reports arrive',
+      body: `
+        <p>A fatigue report is only readable against something. Go to
+        <a href="/fatigue">Fatigue</a> and declare the duty limits your
+        operation is bound by — flight time, duty period, rest before duty —
+        and <strong>name where they come from</strong>: the regulation, the
+        operations manual section, or an AOC condition. The screen refuses a
+        figure with no source, because a limit nobody can check is
+        indistinguishable from a wrong one.</p>
+
+        <p>The reports then read themselves against those figures. The number
+        to watch is <strong>not</strong> the breaches — a duty past a limit
+        already has an owner and a process. It is the count of duties that
+        stayed <em>inside</em> every limit and still left somebody too tired to
+        fly safely: the finding staying within the limits cannot produce on its
+        own, and the reason Annex 6 asks for fatigue to be managed through your
+        SMS as well as by the clock.</p>
+
+        <p>This is not an FRMS — that is a separate undertaking your authority
+        approves. Nothing here checks your limits against the law.</p>`
     }
 ];
 
@@ -660,6 +683,35 @@ export const FAQ = {
               European figure is Regulation (EU) No 376/2014, Article 4(6), at
               72 hours from awareness. Every figure and its source is on the
               <a href="/#deadlines">regulatory basis</a> section.</p>`
+        },
+        {
+          q: 'Does this give me a Fatigue Risk Management System?',
+          a: `<p><strong>No, and it should not.</strong> ICAO Annex 6 gives a
+              State two routes for fatigue and your operation is on one of
+              them: stay inside prescriptive flight and duty time limits
+              <em>and</em> manage fatigue hazards through the SMS processes you
+              already run, or operate an FRMS delivering an equivalent level of
+              safety. An FRMS needs your authority's explicit approval and its
+              own scientific analysis; for a three-to-fifteen aircraft operator
+              it is rarely the right instrument, and a vendor selling one as a
+              module is selling a roster tool with a different label.</p>
+
+              <p>This does the second half of the first route, which is a
+              standing obligation and exactly what an SMS is for: fatigue
+              reports carry the duty, rest, sleep and a Samn-Perelli rating,
+              read against the limits you declare.</p>`
+        },
+        {
+          q: 'Why does it not know my country\'s flight and duty time limits?',
+          a: `<p>Because nobody here has read the instrument that sets them,
+              and a limit table assembled from secondary sources would tell you
+              that you are legal when you are not.</p>
+
+              <p>So you declare what binds you and name its source — better
+              than a built-in table in three ways you feel immediately: your
+              AOC conditions may be tighter than the regulation, your
+              operations manual may commit to more than either, and an operator
+              outside Kenya is served on the day it signs up.</p>`
         },
         {
           q: 'My authority is not listed. What does the product tell me?',

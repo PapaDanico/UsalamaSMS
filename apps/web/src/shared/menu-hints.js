@@ -74,6 +74,7 @@ export const MENU_HINTS = {
   '/toolkits': TOOLKITS_HINT,
 
   '/toolkits/spi': 'What regulation 9(5) requires you to have, and to be able to produce',
+  '/fatigue': 'Whether the duty limits you declared are actually protecting anybody',
   '/sms': "Your operator's own evidence against all twelve elements",
   '/toolkits/icaas':
     'Answer a KCAA request with the plan composed from your own record, not retyped',

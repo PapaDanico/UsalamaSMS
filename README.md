@@ -130,6 +130,24 @@ particular thing and a quarter's report count is not that thing unless
 the operator says so. The series is held for the operator rather than
 on one device, which is what regulation 9(5) of L.N. 32/2026 asks for.
 
+**Fatigue is now a managed hazard rather than a report type nothing read.**
+`FATIGUE` had been in the enum since the first migration and appeared in
+exactly three places in the repository, none of which acted on it — a crew
+member too tired to fly safely filed a row indistinguishable from a bird
+strike. A fatigue report now carries the duty, the rest, the sleep, the
+sectors and a Samn-Perelli rating, and is read against the duty limits the
+operator **declares**, naming the instrument they come from.
+
+No flight-time table for any State ships, and that is a decision rather
+than a gap: Kenya's limits could not be read from the primary instrument,
+and a limit table nobody has read is the one kind of wrong this product
+cannot ship. The figure the screen leads on is not the breaches but the
+duties that stayed inside every declared limit and still produced a
+report — the finding staying within the limits cannot produce on its own,
+and the reason Annex 6 asks for fatigue hazards to be managed through the
+SMS as well as by the clock. It is **not** an FRMS, which needs a State's
+approval, and the screen says so rather than footnoting it.
+
 **What is still absent is delivery.** Nothing in this product tells
 anybody anything: no alert when an indicator crosses, when training
 lapses, when an emergency contact goes stale or when an action falls
@@ -148,11 +166,11 @@ npm run check:assets   # every file served from public/ is declared, with a ceil
 npm run check:claims   # 105 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm run check:authz    # no route shows a model to a role its own endpoint refuses
-npm test               # 847 unit tests
+npm test               # 866 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 7 checks across TWO versions — the PWA update path
-npm run test:integration   # 443 checks against a real Postgres
+npm run test:integration   # 456 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
