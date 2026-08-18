@@ -14,6 +14,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   METHODS, ROUTES, DISCOVERY_KEYS, methodOf, balance, evidencesCombination,
+  METHOD_DEFINITION_SOURCE
 } from "../packages/shared/src/discovery";
 
 describe("the three methods and this product's routes to them", () => {
@@ -106,5 +107,38 @@ describe("what the register can evidence", () => {
     const b = balance([null, null, "REGISTER"]);
     expect(b.unknown).toBe(3);
     expect(evidencesCombination(b)).toBe(false);
+  });
+});
+
+describe("the three methods carry their published definitions", () => {
+  it("every method has one, and it is not the plain-language gloss", () => {
+    /* Kept apart on purpose. A gloss written to be understood and a
+       definition written to be relied on are different objects, and
+       merging them is how a paraphrase ends up wearing a citation. */
+    for (const key of ["REACTIVE", "PROACTIVE", "PREDICTIVE"] as const) {
+      const m = METHODS[key];
+      expect(m.definition.length).toBeGreaterThan(30);
+      expect(m.definition).not.toBe(m.means);
+    }
+  });
+
+  it("quotes the source rather than paraphrasing it", () => {
+    /* The distinguishing words of each published definition. If somebody
+       rewrites one into their own words, the citation below stops being
+       true and this is what says so. */
+    expect(METHODS.REACTIVE.definition).toMatch(/responds to past occurrences/);
+    expect(METHODS.PROACTIVE.definition).toMatch(/prior to occurrence/);
+    expect(METHODS.PREDICTIVE.definition).toMatch(/forecast potential future occurrences/);
+    expect(METHOD_DEFINITION_SOURCE).toMatch(/SM ICG/);
+  });
+
+  it("THE MAPPING IS STILL OURS, and the header still argues it", () => {
+    /* A definition says what PREDICTIVE means. It does not say that a
+       degraded barrier is one — that is this product's judgement, and
+       acquiring a citation for the vocabulary must not quietly launder
+       the mapping into somebody else's authority. */
+    const src = readFileSync("packages/shared/src/discovery.ts", "utf8");
+    const header = src.slice(0, src.indexOf("export type DiscoveryMethod"));
+    expect(header).toMatch(/judgement|ours/i);
   });
 });

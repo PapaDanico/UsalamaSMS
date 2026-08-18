@@ -19,6 +19,8 @@ import {
   CICTT_CAVEAT,
   CICTT_VERSION,
   CICTT_VERIFIED_AGAINST_PRIMARY,
+  CICTT_PRIMARY_READING,
+  CICTT_PRIMARY_UNREACHABLE,
 } from "../packages/shared/src/cictt";
 
 describe("the taxonomy is internally consistent", () => {
@@ -95,12 +97,42 @@ describe("an unknown code is REPORTED, not refused", () => {
 });
 
 describe("the partial position is stated, not implied", () => {
-  it("declares that the primary document has NOT been read", () => {
-    /* Flipping this to true is a claim that somebody opened CICTT 4.8
-       beside the module and checked every row. If that is ever done,
-       this assertion is what makes them change the flag deliberately
-       rather than find it already true. */
-    expect(CICTT_VERIFIED_AGAINST_PRIMARY).toBe(false);
+  it("THE FLAG IS DERIVED FROM THE EVIDENCE, so the two cannot disagree", () => {
+    /* THIS USED TO ASSERT THE LITERAL `false`, AND THAT WAS THE WEAKER
+       TEST. It reddens on an honest flip and a dishonest one
+       identically, so the only thing it actually taught was to edit
+       the assertion — which is the failure mode rule 10 names and this
+       repository has recorded four times.
+
+       The property is not "the flag is false". It is "the flag says
+       exactly what the record says", which stays true after somebody
+       genuinely reads CICTT 4.8 and is the reason this test does not
+       need changing on that day. */
+    expect(CICTT_VERIFIED_AGAINST_PRIMARY).toBe(CICTT_PRIMARY_READING !== null);
+  });
+
+  it("A CLAIMED READING CARRIES ITS PROVENANCE, or it is not a reading", () => {
+    /* Runs as a no-op today and is the whole point of the change: the
+       day somebody sets CICTT_PRIMARY_READING, these are the fields
+       they must fill, and an empty `changed` fails. A reading of the
+       primary that corrected nothing is a claim — the last re-check of
+       this list against SECONDARY sources alone moved thirteen
+       categories, one of them runway incursion. */
+    const r = CICTT_PRIMARY_READING;
+    if (r === null) {
+      expect(CICTT_PRIMARY_UNREACHABLE).toMatch(/egress|refused/i);
+      return;
+    }
+    expect(r.document.length).toBeGreaterThan(10);
+    expect(r.version.length).toBeGreaterThan(0);
+    expect(r.obtainedBy.length).toBeGreaterThan(0);
+    expect(r.readOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(Number.isNaN(Date.parse(r.readOn))).toBe(false);
+    expect(
+      r.changed.length,
+      "a reading of the primary that changed nothing in this module is a claim, not a reading",
+    ).toBeGreaterThan(0);
+    for (const c of r.changed) expect(c.trim().length).toBeGreaterThan(0);
   });
 
   it("carries no definitions, only codes and names", () => {

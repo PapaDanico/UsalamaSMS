@@ -160,6 +160,203 @@ export interface Indicator {
  *
  * Six is a judgement, stated as a judgement everywhere it is shown.
  */
+/* =====================================================================
+   THE AUTHORITY'S FORM, READ. Appendix II of CAA-AC-SMS009.
+
+   WHERE THEY GO. Not eServices — that portal's six services are
+   enumerated in circulars.ts and none takes an indicator. §7.6.3 of
+   this circular says it plainly: "For submission of SPIs to the
+   Authority, service providers are required to fill in the KCAA
+   indicator form:AC-SMS009 (Appendix II) for both State and
+   organization-specific SPIs. The Authority will review the submitted
+   SPIs and issue an acceptance letter after agreement with the service
+   provider."
+
+   Note the paragraph number. An earlier pass placed this requirement
+   in §8.4 on the strength of a search summary; it is §7.6.3, and the
+   difference is the whole reason the document had to be opened.
+
+   ---------------------------------------------------------------
+   THE FORM ASKS FOR NO NUMBERS, WHICH REFRAMES THE WHOLE TASK.
+
+   There is no target on it, no alert level, no period, no data point.
+   Appendix II registers what an indicator IS — its definition, its
+   rationale, its formula, and who holds the data — once, and the
+   Authority accepts it or does not. The measurements come afterwards,
+   on the annual cycle.
+
+   So "our SPI export" was the wrong object. What the Authority wants
+   at submission is the DEFINITION, and this product models the
+   ARITHMETIC. Those are different halves of the same indicator and
+   this product held one of them.
+
+   ---------------------------------------------------------------
+   FIELD 3 IS A DIFFERENT AXIS FROM `kind`, AND CANNOT BE DERIVED
+   FROM IT. This is the finding that costs something.
+
+   The form asks whether an indicator is activity-related (predictive
+   or leading) or outcome-related (reactive or lagging). `kind` here
+   is Doc 9859's HIGH_CONSEQUENCE / LOWER_CONSEQUENCE — a statement
+   about how RARE the events are, which is why the two are treated
+   differently by the trending arithmetic.
+
+   The two axes are not the same question and one does not imply the
+   other. High-consequence is outcome-related by construction, so that
+   corner is safe. LOWER_CONSEQUENCE splits BOTH WAYS: "unstable
+   approaches per 1,000 approaches" measures an activity before an
+   occurrence, and "ground damage events per 1,000 turnarounds"
+   measures an outcome after one. Mapping `kind` onto field 3 would
+   put a leading indicator in the lagging box for a whole submission
+   and nobody downstream would ever see the substitution.
+
+   So field 3 is NOT computed. It is listed as an operator answer, and
+   `appendixTwoGaps` names it.
+
+   ---------------------------------------------------------------
+   PROVENANCE. Read from the PDF supplied by the owner of this product
+   on 18 August 2026 — this environment's egress proxy refuses
+   kcaa.or.ke, so it could not have been fetched. The §8.4, §8.5 and
+   §8.7 passages this file already quoted were checked word for word
+   against it and are correct; only the submission paragraph moved.
+   ===================================================================== */
+
+/** What Appendix II asks for, in the Authority's own numbering and wording. */
+export interface AppendixTwoField {
+  /** The form's own number, or the part label where it has none. */
+  readonly ref: string;
+  /** The field's caption, as printed. */
+  readonly label: string;
+  /**
+   * Whether this product can fill it from what it already holds.
+   *
+   *   HELD      — a value on the Indicator answers it directly.
+   *   DERIVED   — computable from what is held, and the derivation is
+   *               stated so an operator can check it.
+   *   OPERATOR  — nothing here answers it. Naming it is the product's
+   *               whole contribution, because a form submitted with a
+   *               blank the operator did not know about is one the
+   *               Authority sends back.
+   *   AUTHORITY — the regulator fills it, not the operator.
+   */
+  readonly source: "HELD" | "DERIVED" | "OPERATOR" | "AUTHORITY";
+  /** How it is answered, or why it cannot be. */
+  readonly note: string;
+}
+
+export const APPENDIX_II_FIELDS: readonly AppendixTwoField[] = Object.freeze([
+  { ref: "Area", label: "Area of operations", source: "OPERATOR",
+    note: "The operator's own scope. Nothing on an Indicator records it." },
+  { ref: "A.1", label: "Indicator", source: "HELD", note: "Indicator.name." },
+  { ref: "A.2", label: "Description", source: "OPERATOR",
+    note: "A sentence saying what the indicator watches. The name is not a description." },
+  { ref: "B.3", label: "Indicator type — activity-related (predictive or leading) or outcome-related (reactive or lagging)",
+    source: "OPERATOR",
+    note:
+      "NOT derivable from `kind`. That axis is high- against lower-consequence — how rare " +
+      "the events are — and a LOWER_CONSEQUENCE indicator can be either activity- or " +
+      "outcome-related. Deriving it would file a leading indicator as lagging.",
+  },
+  { ref: "B.4", label: "Rationale", source: "OPERATOR",
+    note: "Why this indicator, for this operator, now. A judgement nothing here holds." },
+  { ref: "B.5", label: "Limitations", source: "OPERATOR",
+    note:
+      "What the indicator cannot see. This product knows ONE limitation and says so: " +
+      "fewer than MIN_BASELINE periods and the alert level is not meaningful.",
+  },
+  { ref: "B.6", label: "Definition of technical or specific terms", source: "OPERATOR",
+    note: "The operator's vocabulary — what counts as an unstable approach here." },
+  { ref: "B.7", label: "Calculation method / formula", source: "DERIVED",
+    note: "events ÷ exposure × `per`, in the operator's own exposureUnit. See rate()." },
+  { ref: "C.8", label: "Data set(s)", source: "OPERATOR",
+    note: "Which records feed it. This product is one such source and is rarely the only one." },
+  { ref: "C.9", label: "Provider", source: "OPERATOR", note: "Who supplies the data." },
+  { ref: "C.10", label: "Custodian", source: "OPERATOR", note: "Who holds it." },
+  { ref: "D", label: "Completed by / Approved by, with dates", source: "OPERATOR",
+    note: "Indicator.owner is one post and the form wants two signatures with dates." },
+  { ref: "E", label: "Accepted / not accepted, by whom, on what date", source: "AUTHORITY",
+    note:
+      "The Authority's own box. It is the acceptance letter §7.6.3 describes, and it means " +
+      "an indicator has a standing with the regulator — proposed, accepted, neither — that " +
+      "this product does not model at all.",
+  },
+]);
+
+/** What the operator must still supply for one indicator, named rather than left blank. */
+export function appendixTwoGaps(indicator: Indicator): {
+  readonly held: readonly string[];
+  readonly operatorMustSupply: readonly string[];
+  readonly authorityFills: readonly string[];
+  /** The one limitation this product can state on the operator's behalf. */
+  readonly statedLimitation: string | null;
+} {
+  const by = (k: AppendixTwoField["source"]) =>
+    APPENDIX_II_FIELDS.filter((f) => f.source === k).map((f) => `${f.ref} ${f.label}`);
+  return {
+    held: [...by("HELD"), ...by("DERIVED")],
+    operatorMustSupply: by("OPERATOR"),
+    authorityFills: by("AUTHORITY"),
+    statedLimitation:
+      indicator.periods.length < MIN_BASELINE
+        ? `Fewer than ${MIN_BASELINE} periods, so no alert level is computed and the ` +
+          `trend is not yet meaningful — ${indicator.periods.length} recorded.`
+        : null,
+  };
+}
+
+/**
+ * WHAT A READING CONSISTS OF. Same shape and same reason as
+ * CICTT_PRIMARY_READING in cictt.ts: the flag is derived from the
+ * record, so a claim of verification cannot be typed without evidence.
+ */
+export interface SpiPrimaryReading {
+  readonly document: string;
+  readonly version: string;
+  readonly readOn: string;
+  readonly obtainedBy: string;
+  readonly changed: readonly string[];
+}
+
+export const SPI_PRIMARY_READING: SpiPrimaryReading | null = Object.freeze({
+  document: "KCAA Advisory Circular CAA-AC-SMS009, Safety Performance Management",
+  version: "January 2023",
+  readOn: "2026-08-18",
+  obtainedBy: "PDF supplied by the owner of this product; kcaa.or.ke is refused at this environment's egress proxy",
+  changed: Object.freeze([
+    "The submission requirement is §7.6.3, not §8.4 as a search summary had implied.",
+    "Appendix II's thirteen captions are recorded verbatim in APPENDIX_II_FIELDS.",
+    "The form carries no target, no alert level and no period — it registers a definition, not a measurement.",
+    "Field 3 is activity- against outcome-related, a different axis from `kind`, and is not derived.",
+    "Part E is the Authority's acceptance box, so an indicator has a regulator-facing standing this product does not model.",
+    "§8.4, §8.5 and §8.7 as already quoted were confirmed word for word.",
+  ]),
+});
+
+/** DERIVED, never typed. */
+export const SPI_SUBMISSION_SHAPE_VERIFIED: boolean = SPI_PRIMARY_READING !== null;
+
+/** Where indicators are submitted. */
+export const SPI_SUBMISSION_INSTRUMENT =
+  "KCAA Advisory Circular CAA-AC-SMS009 (January 2023) §7.6.3 and Appendix II, form AC-SMS009 — " +
+  "for both State and organisation-specific SPIs.";
+
+/** The regulator's side of the loop, from §7.6.3 and Part E of the form. */
+export const SPI_SUBMISSION_LOOP: readonly string[] = Object.freeze([
+  "The service provider completes form AC-SMS009 for each indicator.",
+  "It is completed and approved internally — Part D wants both, with dates.",
+  "The Authority reviews the submitted SPIs and agrees them with the service provider.",
+  "The Authority marks Part E accepted or not accepted, and issues an acceptance letter.",
+]);
+
+/**
+ * SM ICG's definition of the thing alertLevels() computes, quoted
+ * rather than paraphrased. Read from the SM ICG Safety Terminology
+ * document supplied 18 August 2026, entry 7.
+ */
+export const ALERT_LEVEL_DEFINITION =
+  "An established level or criteria value outside of the normal operating range or " +
+  "out-of-control region that triggers a warning that an adjustment or evaluation is needed.";
+export const ALERT_LEVEL_DEFINITION_SOURCE = "SM ICG, Safety Terminology, entry 7 (Alert Level)";
+
 export const MIN_BASELINE = 6;
 
 /**

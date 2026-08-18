@@ -158,6 +158,31 @@ const ACTIONS = {
 
 /* Keyed longest-prefix-first, because /api/v1/fatigue/limits must not be
    served the /api/v1/fatigue body. */
+/* One composed corrective action pack, for check:deliverables.
+   WRITTEN FROM THE COMPONENT, NOT THE ROUTE — the lesson this file
+   already carries three times over: the screen reads `data.pack`,
+   `data.withheld` as objects with a `source`, and a `steps` list, and
+   a fixture shaped from the API's field names renders "undefined or
+   undefined" rather than throwing. */
+const CAP = {
+  portal: "https://ecitizen.kcaa.or.ke",
+  prerequisites: ["A KCAA customer account with a valid email address."],
+  steps: ["Sign in at the portal as the organisation."],
+  withheld: [],
+  pack: {
+    reference: "CAR-2026-014",
+    finding: "Ground handling procedure not followed on stand 4.",
+    action: "Re-brief all ground crew and add a stand-entry check to the turnaround card.",
+    ownerPost: "Ground Operations Manager",
+    targetDate: "2026-09-30",
+    completedOn: null,
+    verifiedOn: null,
+    evidence: [{ label: "Briefing sheet.pdf", sha256: "a".repeat(64) }],
+    missing: [],
+    readyToSubmit: true,
+  },
+};
+
 export const FIXTURES = [
   ["/api/v1/auth/refresh", { accessToken: "a", refreshToken: "b", role: "SAFETY_MANAGER", orgId: "org-1" }],
   ["/api/v1/auth/me", { name: "Wanjiru Kamau", email: "sm@strip.test", role: "SAFETY_MANAGER", orgName: "Strip Air" }],
@@ -166,6 +191,7 @@ export const FIXTURES = [
   ["/api/v1/fatigue", FATIGUE],
   ["/api/v1/picture", PICTURE],
   ["/api/v1/actions", ACTIONS],
+  ["/api/v1/icaas/cap/", CAP],
   ["/api/v1/digest", DIGEST],
 ];
 

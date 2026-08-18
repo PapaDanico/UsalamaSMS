@@ -38,6 +38,11 @@ import {
   correlation,
   isFlat,
   DUPLICATE_CORRELATION,
+  APPENDIX_II_FIELDS,
+  appendixTwoGaps,
+  SPI_PRIMARY_READING,
+  SPI_SUBMISSION_SHAPE_VERIFIED,
+  SPI_SUBMISSION_INSTRUMENT
 } from "../packages/shared/src/spi";
 
 const periods = (events: number[], exposure = 1000): Period[] =>
@@ -565,5 +570,82 @@ describe("retirement advice, from CAA-AC-SMS009 §8.4", () => {
         .toBeGreaterThan(40);
       expect(advice.consider).not.toMatch(/\byou must\b|\bretire this\b|\bdelete\b/i);
     }
+  });
+});
+
+/* =====================================================================
+   APPENDIX II — the Authority's form, read on 18 August 2026.
+
+   These assert the PROPERTY that survives a re-reading, not the
+   snapshot. The field count is derived from the module, so adding a
+   field the Authority adds does not redden a test that was never
+   about the number.
+   ===================================================================== */
+describe("Appendix II of CAA-AC-SMS009", () => {
+  it("THE VERIFICATION FLAG IS DERIVED FROM THE READING, not typed", () => {
+    expect(SPI_SUBMISSION_SHAPE_VERIFIED).toBe(SPI_PRIMARY_READING !== null);
+  });
+
+  it("a claimed reading carries its provenance and says what changed", () => {
+    const r = SPI_PRIMARY_READING;
+    expect(r).not.toBeNull();
+    if (r === null) return;
+    expect(r.document).toMatch(/CAA-AC-SMS009/);
+    expect(r.readOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(r.obtainedBy.length).toBeGreaterThan(0);
+    /* A reading that changed nothing is a claim, not a reading. */
+    expect(r.changed.length).toBeGreaterThan(0);
+    for (const c of r.changed) expect(c.trim().length).toBeGreaterThan(0);
+  });
+
+  it("cites the SUBMISSION paragraph, which is 7.6.3 and not 8.4", () => {
+    /* The whole reason the document had to be opened. A search summary
+       put this requirement in the 8.x range; it is 7.6.3, and a
+       citation that is confidently one paragraph off is the kind this
+       product exists to refuse. */
+    expect(SPI_SUBMISSION_INSTRUMENT).toContain("7.6.3");
+    expect(SPI_SUBMISSION_INSTRUMENT).toContain("Appendix II");
+  });
+
+  it("FIELD 3 IS NEVER DERIVED FROM `kind` — they are different axes", () => {
+    /* The finding that costs something. `kind` is high- against
+       lower-consequence: how RARE the events are. Field 3 is activity-
+       against outcome-related: WHEN in the causal chain the indicator
+       measures. A LOWER_CONSEQUENCE indicator can be either, so a
+       derivation would file leading indicators as lagging for a whole
+       submission with nothing downstream to notice. */
+    const field3 = APPENDIX_II_FIELDS.find((f) => f.ref === "B.3");
+    expect(field3).toBeDefined();
+    expect(field3?.source).toBe("OPERATOR");
+    expect(field3?.note).toMatch(/not derivable/i);
+  });
+
+  it("names what the operator must supply rather than leaving it blank", () => {
+    const indicator: Indicator = {
+      id: "i1", name: "Unstable approaches", kind: "LOWER_CONSEQUENCE",
+      exposureUnit: "approaches", per: 1000, direction: "LOWER_IS_BETTER",
+      owner: "Safety Manager", periods: [],
+    };
+    const gaps = appendixTwoGaps(indicator);
+    expect(gaps.held.length).toBeGreaterThan(0);
+    expect(gaps.operatorMustSupply.length).toBeGreaterThan(gaps.held.length);
+    expect(gaps.authorityFills.length).toBe(1);
+    /* Every field is accounted for in exactly one bucket. A form with a
+       field in no bucket is a blank the operator meets at the portal. */
+    expect(gaps.held.length + gaps.operatorMustSupply.length + gaps.authorityFills.length)
+      .toBe(APPENDIX_II_FIELDS.length);
+  });
+
+  it("states the one limitation it can, and only when it is true", () => {
+    const base: Indicator = {
+      id: "i1", name: "x", kind: "LOWER_CONSEQUENCE", exposureUnit: "sectors",
+      per: 1000, direction: "LOWER_IS_BETTER", owner: "SM", periods: [],
+    };
+    expect(appendixTwoGaps(base).statedLimitation).toMatch(/no alert level/i);
+
+    const periods = Array.from({ length: MIN_BASELINE }, (_, i) => ({
+      label: `2026-${String(i + 1).padStart(2, "0")}`, events: 1, exposure: 1000,
+    })) as unknown as Indicator["periods"];
+    expect(appendixTwoGaps({ ...base, periods }).statedLimitation).toBeNull();
   });
 });

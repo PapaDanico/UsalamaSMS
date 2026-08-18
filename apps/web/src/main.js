@@ -404,6 +404,11 @@ router
     { title: 'SMS maturity assessment', surface: 'tool' }
   )
   .register(
+    '/toolkits/culture',
+    (el) => lazy(el, () => import('./tools/culture/index.js').then((m) => (o) => m.render(o))),
+    { title: 'Safety culture survey', surface: 'tool' }
+  )
+  .register(
     '/templates',
     (el) => lazy(el, () => import('./tools/templates/index.js').then((m) => (o) => m.render(o))),
     { title: 'Templates and source documents' }

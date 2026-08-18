@@ -79,6 +79,7 @@ export const MENU_HINTS = {
   '/toolkits/icaas':
     'Answer a KCAA request with the plan composed from your own record, not retyped',
   '/amendment': 'Seven questions against the changes that apply from 26 November 2026',
+  '/toolkits/culture': 'Will your people actually file? Fourteen questions, scored on the device',
   '/training': 'What the SMS course covers, who sits which version, and how long each runs',
   '/coverage': 'Element by element, what this product does and exactly where it stops',
 

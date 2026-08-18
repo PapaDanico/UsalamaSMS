@@ -72,6 +72,10 @@ const BLURBS = {
     'SMS maturity assessment',
     'Twelve elements of Annex 19, scored against evidence'
   ],
+  '/toolkits/culture': [
+    'Safety culture survey',
+    'Whether your people will actually file — fourteen questions, nothing leaves the device'
+  ],
   '/training': [
     'The SMS training programme',
     'What the course covers, who sits which version, and how long each one runs'

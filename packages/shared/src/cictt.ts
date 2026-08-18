@@ -46,6 +46,24 @@
    its highest-frequency serious category does not fail loudly — it
    produces confidently mis-coded data, which is worse than none.
 
+   RE-CHECKED AGAIN 18 AUGUST 2026, AND THE LIST GREW BY ONE. EXTL,
+   external load related occurrences, was corroborated by a usage note
+   quoted verbatim from the primary: "Rotorcraft External Load
+   operations involving loss of control related to the external load
+   should be coded as LOC-I as well as External Load Related
+   Occurrences (EXTL)." That is the same standard of evidence the
+   thirteen added on 14 August met, and the category matters in this
+   market — sling and aerial-work operations are ordinary rotorcraft
+   business in Kenya, and an operator classifying one had nothing that
+   fitted.
+
+   MED WAS LOOKED FOR AND NOT FOUND, AND IS THEREFORE NOT HERE. A
+   medical category is plausible, several taxonomies carry one, and no
+   search returned a CICTT definition or usage note for it. Adding a
+   code on the strength of it being likely is precisely how a taxonomy
+   stops being the Authority's, so it is recorded as searched-for
+   rather than added. Whoever reads the primary settles it in a line.
+
    THE PRIMARY STILL HAS NOT BEEN READ, and the flag below still says
    so. Network egress from this environment blocks icao.int,
    intlaviationstandards.org, ntsb.gov, enac.gov.it, cast-safety.org and
@@ -87,14 +105,76 @@ export const CICTT_SOURCE =
   "as the ECCAIRS taxonomy.";
 
 /**
+ * WHY THE PRIMARY IS UNREAD, and the route that would change it.
+ *
+ * The document is public. It is this ENVIRONMENT that cannot fetch it:
+ * every mirror found so far — icao.int, cast-safety.org,
+ * intlaviationstandards.org, ntsb.gov, faa.gov — is refused at the
+ * egress proxy before the request leaves, which is an organisation
+ * policy rather than a broken tool. No amount of searching from here
+ * turns that into a reading.
+ *
+ * The route that works is the one the ICAAS manual already took:
+ * somebody outside supplies the PDF, it is read against this file row
+ * by row, and CICTT_PRIMARY_READING below records that it happened.
+ */
+export const CICTT_PRIMARY_UNREACHABLE =
+  "CICTT 4.8 is refused at this environment's egress proxy on every mirror tried. " +
+  "Supply the PDF the way the ICAAS External Portal User Manual was supplied, and " +
+  "the reading can be done against this file.";
+
+/**
+ * WHAT A READING CONSISTS OF, recorded rather than asserted.
+ *
+ * THIS REPLACED A HAND-TYPED BOOLEAN, and the reason is the one this
+ * repository keeps meeting. `CICTT_VERIFIED_AGAINST_PRIMARY = false`
+ * was a value somebody could set to `true` — believing they had read
+ * it, or to quiet the caveat on screen — and the only thing standing
+ * in the way was a test asserting the literal `false`, which reddens
+ * on the honest flip and the dishonest one identically. A gate whose
+ * failure mode is "edit the assertion" is the failure this repository
+ * has recorded four times over.
+ *
+ * FIVE OTHER MODULES CITE THIS FLAG as the precedent for their own
+ * unread instrument — nasp.ts, fatigue.ts, curriculum.ts,
+ * circulars.ts and the switches doc. A wrong flip does not mislead
+ * about one taxonomy; it propagates a claim about how this product
+ * treats every instrument it has not read.
+ *
+ * So verification is now a RECORD, and the flag is derived from it.
+ * Claiming the reading means writing down which document, which
+ * version, on what date, how it was obtained, and what changed in this
+ * module as a result — and `changed` may not be empty, because a
+ * reading that altered nothing is a reading nobody did.
+ */
+export interface PrimaryReading {
+  /** The document, exactly as it titles itself. */
+  readonly document: string;
+  /** The version and date printed on it, not the one we expected. */
+  readonly version: string;
+  /** ISO date it was read against this file. */
+  readonly readOn: string;
+  /** How it was obtained. This environment cannot fetch it — see above. */
+  readonly obtainedBy: string;
+  /**
+   * What changed here as a result. NEVER EMPTY. The first compilation
+   * of this list gained thirteen categories on a secondary-source
+   * re-check, one of them runway incursion; a reading of the primary
+   * that finds nothing to correct is not a reading, it is a claim.
+   */
+  readonly changed: readonly string[];
+}
+
+/** Null until somebody has actually done it. */
+export const CICTT_PRIMARY_READING: PrimaryReading | null = null;
+
+/**
  * Whether this product has read the primary document.
  *
- * FALSE, and shown as such wherever the codes appear. Flip it when
- * somebody has the PDF open beside this file and has checked every row
- * — and add the definitions in the same change, because that is the
- * work that verification actually consists of.
+ * DERIVED, never typed. The flag and the evidence cannot disagree,
+ * because there is only one place to write.
  */
-export const CICTT_VERIFIED_AGAINST_PRIMARY = false;
+export const CICTT_VERIFIED_AGAINST_PRIMARY: boolean = CICTT_PRIMARY_READING !== null;
 
 export interface OccurrenceCategory {
   /** The code a State files. */
@@ -125,6 +205,7 @@ export const OCCURRENCE_CATEGORIES: ReadonlyArray<OccurrenceCategory> = Object.f
   { code: "ICE", label: "Icing", group: "In flight" },
   { code: "BIRD", label: "Birdstrike", group: "In flight" },
   { code: "CTOL", label: "Collision with obstacle(s) during take-off or landing, while airborne", group: "In flight" },
+  { code: "EXTL", label: "External load related occurrences", group: "In flight" },
 
   // ---- Runway and landing ----
   { code: "RE", label: "Runway excursion", group: "Runway and landing" },
