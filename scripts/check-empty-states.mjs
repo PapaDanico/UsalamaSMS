@@ -74,6 +74,106 @@ const WAY_FORWARD = {
   'tools/triage/index.js': ['/report', 'the queue lists reports; a report is filed on the report form'],
 };
 
+/* =====================================================================
+   THE CLASS IS WHAT THIS GATE COULD SEE, AND IT WAS NEVER ALL OF THEM.
+
+   Discovery below matches `class="empty-state"`. The header of this
+   file already admits the consequence — /picture and /today carry the
+   best zero-states in the product and NEITHER uses the class, so
+   neither was ever checked here.
+
+   That was a known two. On 18 August it became four without anybody
+   noticing, which is the part that matters. Measured across the seven
+   routed toolkits:
+
+     toolkit              class   declared
+     /toolkits/sra          yes      yes
+     /toolkits/register     yes      yes
+     /toolkits/spi          yes      yes
+     /toolkits/maturity      no       no
+     /toolkits/icaas         no       no
+     /training               no       no
+     /toolkits/culture       no       no      <- shipped that morning
+
+   Four of seven outside the gate, and the gate reporting ok. A new
+   toolkit joins the blind set by default, because the only thing that
+   enrols a screen is a styling choice somebody made for other reasons.
+
+   SO THE SUBJECT IS THE REGISTRY, NOT THE CLASS — the same correction
+   check:wiring made for ToolNav. Every routed toolkit must carry a
+   decision here, and the eighth is covered on the day it is added
+   rather than whenever somebody happens to reach for the class.
+
+   THREE ANSWERS ARE ALLOWED and the third is why this is a table
+   rather than a boolean:
+
+     a route  — the first record is made on another screen, named.
+     null     — it is made HERE, on this screen.
+     false    — there is no collection to be empty OF. Reference
+                content. /training is the KCAA syllabus: no form, no
+                control, nothing to accumulate. Forcing it to name a
+                way forward would invent a workflow it does not have.
+
+   `false` is the entry somebody will be tempted to use to make this
+   gate quiet. It is not free — the assertion below requires a screen
+   claiming it to have NO form and NO control, which is a fact about
+   the file rather than an opinion about it.
+   ===================================================================== */
+const TOOLKIT_ZERO_STATE = {
+  '/toolkits/sra': [null, 'hazards are added to the assessment on this screen'],
+  '/toolkits/register': [null, 'the register entry form is on this screen'],
+  '/toolkits/spi': [null, 'the indicator form is on this screen'],
+  '/toolkits/maturity': [null, 'the assessment is answered on this screen'],
+  '/toolkits/culture': [null, 'responses are collected on this screen and never leave the device'],
+  '/toolkits/icaas': ['/picture', 'it composes a pack from records made elsewhere, and its zero-state links to the risk picture'],
+  '/training': [false, 'reference content — the KCAA syllabus. No form, no control, no collection to be empty of'],
+};
+
+const sitemapSrc = readFileSync(resolve(WEB, 'shared/sitemap.js'), 'utf8');
+const routedToolkits = [
+  ...sitemapSrc.matchAll(/href:\s*'([^']+)',\s*\n\s*short:[^\n]*\n\s*routed:\s*true/g),
+].map((m) => m[1]);
+
+/* Rule 11 from the side that bites: a parser that has lost its subject
+   asserts nothing over an empty list, perfectly. */
+assert(
+  'the routed-toolkit discovery found a plausible number',
+  routedToolkits.length >= 4,
+  `only ${routedToolkits.length} routed toolkit(s) parsed out of sitemap.js — the registry ` +
+    'shape changed and this whole section would assert nothing'
+);
+
+const unclassified = routedToolkits.filter((h) => !(h in TOOLKIT_ZERO_STATE));
+assert(
+  'every routed toolkit has a zero-state decision recorded',
+  unclassified.length === 0,
+  `${unclassified.join(', ')} is routed and carries no entry in TOOLKIT_ZERO_STATE. ` +
+    'Say where its first record is made, or that it has none — see this section header'
+);
+
+const rotted = Object.keys(TOOLKIT_ZERO_STATE).filter((h) => !routedToolkits.includes(h));
+assert(
+  'no entry describes a toolkit that is no longer routed',
+  rotted.length === 0,
+  `${rotted.join(', ')} is declared here and is not a routed toolkit any more`
+);
+
+/* `false` is a claim about the FILE, so it is checked against the file. */
+for (const [href, [where, why]] of Object.entries(TOOLKIT_ZERO_STATE)) {
+  const dir = href.replace(/^\/(toolkits\/)?/, '').split('#')[0];
+  const file = resolve(WEB, `tools/${dir}/index.js`);
+  assert(`${href} declares a reason`, typeof why === 'string' && why.length > 12, 'the note is empty or too short to be one');
+  if (where === false) {
+    const src = readFileSync(file, 'utf8');
+    assert(
+      `${href} claims no collection, and genuinely has no controls`,
+      !/<form|<input|<select|<textarea|<button/.test(src),
+      'it declares `false` — no collection to be empty of — while rendering a form or a control. ' +
+        'That is the escape hatch being used to quiet this gate rather than to describe the screen'
+    );
+  }
+}
+
 /* ---- discovery: every file in the web app that renders a zero-state ---- */
 const walk = (dir) =>
   readdirSync(dir).flatMap((name) => {
