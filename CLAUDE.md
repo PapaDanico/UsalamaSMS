@@ -156,6 +156,101 @@ That is a deliberate architectural decision and it needs the grants,
 the policies, the removal of this backstop, and a test that a second
 tenant cannot read the first one's reports — in the same change.
 
+## A green build here says nothing about the build on Netlify
+
+`npm run check` and `npm run verify` run against this machine's
+`node_modules`. Netlify runs against **its own build cache**, and the
+two disagree in a way no amount of local green can detect.
+
+Measured on 18 August 2026:
+
+| build | result |
+|---|---|
+| #69's preview, `2c74c52` | published 11:33:21 |
+| #69 merged to main, `07162e7` | **no production deploy published** |
+| #70's preview, `3ecadd6` | **failed**, `Build script returned non-zero exit code: 2` |
+| #70's preview, `45e7341` — an EMPTY commit | **failed**, identically |
+| the same tree, clean clone, fresh `npm ci`, Node 22 | **exit 0** |
+| the same tree, `npm run verify` locally | **exit 0** |
+
+**THE EMPTY COMMIT IS THE INSTRUMENT.** A build that fails on a commit
+carrying changes is ambiguous: the changes are the obvious suspect and
+they are usually right. Pushing a commit with NO source change at all
+and watching it fail identically separates the tree from the platform
+in one ninety-second experiment, and it is the only cheap way to do it.
+Reading the source harder cannot answer this question, because the
+source is not where the difference lives.
+
+**FOUR THINGS EACH LOOKED LIKE CONFIRMATION AND WERE NOT.** CI was
+green — a different machine, a different install, not the one that
+publishes. The webhooks were arriving — netlify[bot] opened a preview
+seconds after every push, so nothing was disconnected. The site was
+serving — the last good deploy stays up, which is the whole point of
+atomic deploys and the reason a failed build is silent. And
+`currentDeploy.state` read `"ready"` throughout, because it describes
+the deploy that IS published rather than the one that was meant to be.
+
+So the only reading that settles it is `currentDeploy.commit_ref`
+against the SHA you merged. Nothing else in the Netlify response
+changes when a build fails.
+
+**`get-projects` IS THE ENDPOINT THAT ANSWERS.** Through this
+environment's proxy, `get-project`, `get-deploy` and
+`get-deploy-for-site` return Cloudflare 502 most of the time —
+intermittently, so a single success proves nothing about the next call.
+`get-projects` with a name search has answered every time. It carries
+the published deploy id and no deploy list, which is why the SHA has to
+be chased through `get-deploy` on an id learned from the netlify[bot]
+comment on a pull request.
+
+Where the failure sits is known and its cause is not. Every gate passes
+ON NETLIFY — the brand gate's 56 assertions, the claims gate's 105, all
+900 tests, and `npm run icons` — and the build then dies inside `vite
+build`, after `103 modules transformed`, during `rendering chunks`. The
+production build from `main` at 13:03 and the two preview builds fail
+at the same point, so it is neither PR-specific nor merge-specific.
+
+**AND IT IS NOT THE BUILD SCRIPT EITHER, WHICH TOOK A MATRIX TO SAY.**
+Netlify reports `Build script returned non-zero exit code: 2`. Every
+way this build can fail was driven at a real failure and its code read:
+
+| failure | exit |
+|---|---|
+| `stamp-sw` over the bundle budget | 1 |
+| `vite build` on an unresolvable import | 1 |
+| `check:dist` with an asset missing | 1 |
+| `prerender` with no `dist/index.html` | 1 |
+| `npm run build` with the chain broken at vite | 1 |
+| `npm run` a script that itself exits 2 | **2** |
+
+npm propagates a code faithfully — the last row proves the channel is
+open — and **no command in the chain produces 2**. `exit(2)` appears
+nowhere in `scripts/`, `apps/` or `packages/`, and the vite config
+carries no custom plugin that could raise one. So the 2 does not come
+from this repository at all. It comes from the builder: npm's own
+environment, or the process being terminated.
+
+That is the difference between "our build is broken" and "the machine
+running it is", and it is worth the ten minutes it takes to measure.
+Guessing at the stage from the last log line points at vite; the exit
+code rules vite out.
+
+**IT IS NOT A GATE, WHICH IS THE PART WORTH KNOWING.** Every check this
+repository owns runs and passes on the machine that publishes. The
+thing that breaks is the bundler, in the one phase this repo has no
+gate over because it is not this repo's code.
+
+The build cache remains the standing suspect and is UNTESTED: every
+failing build logged `Building with cache` with `npm ci` completing in
+under a second, which is a restore rather than an install, and the same
+log shows a cache MISS one line earlier — the Playwright browser gone
+from `/opt/buildhome/.cache/ms-playwright/`, so `build-icons` fell back
+to verifying the committed PNGs. A restore that is partly stale would
+look exactly like this. Clearing it is a dashboard action; no MCP tool
+does it, and `deploy-site` is not the substitute — it uploads a local
+directory and would publish production from somebody's working tree
+instead of from git.
+
 ## Migrations do not apply themselves on deploy
 
 `netlify.toml` runs `npm run build`. It does **not** run
