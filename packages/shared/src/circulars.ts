@@ -64,6 +64,55 @@
  * Where an operator actually files, quoted from the circulars that
  * print these addresses rather than found by searching.
  */
+/* ---------------------------------------------------------------
+   WHAT eSERVICES ACTUALLY CARRIES, and the thing it does not.
+
+   An open task asked whether this product's SPI export matched
+   "KCAA's eServices submission shape". It does not need to, because
+   THERE IS NO INDICATOR SERVICE ON eSERVICES. The portal's own quick
+   links enumerate six:
+
+     AAITS  Advanced Air Transport Information System
+     AIMe   aeronautical information management
+     AIP    Aeronautical Information Publication
+     MOR    Mandatory Occurrence Reporting        <- cited below
+     ROMS   RPAS/UAS Operations Management System
+     VOR    Voluntary Reporting                   <- cited below
+
+   Two of the six are the two this file already names, and they are
+   both about individual OCCURRENCES. Safety performance indicators
+   are submitted on Appendix II of CAA-AC-SMS009 — see spi.ts, which
+   quotes that circular for §8.4 and §8.5 already.
+
+   A NEGATIVE FINDING IS WORTH RECORDING PRECISELY BECAUSE NOTHING
+   ELSE WILL. "We checked and the destination is not there" leaves no
+   artefact unless somebody writes it down, and the next person to ask
+   the question pays the same cost. The enumeration is what makes it
+   checkable rather than an assertion that nothing was found.
+
+   PROVENANCE: the search index's rendering of the portal's quick-links
+   page, 18 August 2026, not the portal itself — it is behind a login
+   and this environment's egress proxy refuses the host. So this is
+   corroboration of the same standard as the CICTT list, and it is
+   enough to rule a destination OUT while not enough to describe a form.
+   --------------------------------------------------------------- */
+
+/** The six services the portal's quick links enumerate. None is an indicator submission. */
+export const ESERVICES_SERVICES: readonly string[] = Object.freeze([
+  "AAITS — Advanced Air Transport Information System",
+  "AIMe — aeronautical information management",
+  "AIP — Aeronautical Information Publication",
+  "MOR — Mandatory Occurrence Reporting",
+  "ROMS — RPAS/UAS Operations Management System",
+  "VOR — Voluntary Reporting",
+]);
+
+/**
+ * FALSE, and it is the answer to a question that was open for days.
+ * Indicators do not go through this portal.
+ */
+export const ESERVICES_CARRIES_INDICATORS = false;
+
 export const KCAA_SERVICES = Object.freeze({
   /** CAA-AC-SMS004A §3.3.1.1 — the mandatory occurrence reporting system. */
   mandatoryOccurrence: "https://eservices.kcaa.or.ke",

@@ -166,9 +166,10 @@ export interface Indicator {
 
    THE TASK THIS ANSWERS ASKED US TO CHECK THE EXPORT AGAINST "KCAA'S
    eSERVICES SUBMISSION SHAPE", and that is not where SPIs go. The
-   eServices addresses this product already cites (circulars.ts) are
-   the mandatory-occurrence system and the voluntary reporting form —
-   both about individual OCCURRENCES. The indicator submission is a
+   portal carries six services — `ESERVICES_SERVICES` in circulars.ts
+   enumerates them — and NONE is an indicator submission. The two this
+   product already cites, mandatory occurrence reporting and voluntary
+   reporting, are both about individual OCCURRENCES. The indicator submission is a
    FORM IN A CIRCULAR THIS FILE ALREADY QUOTES: Appendix II of
    CAA-AC-SMS009, the same document §8.4 and §8.5 above come from.
 
