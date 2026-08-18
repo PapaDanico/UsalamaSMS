@@ -302,6 +302,69 @@ wrapped in a `pg_roles` existence check because `anon`, `authenticated`
 and `service_role` are Supabase's and the same migration runs against a
 bare Postgres in the integration suite.
 
+## A sweep that renders signed out has not seen the product
+
+`check:a11y` reported "32 screens, no WCAG 2.2 AA violations" for weeks
+and every word of it was true. It had also never rendered a screen with
+a session. Measured on 18 August 2026, elements under `main`:
+
+| route | signed out | signed in |
+|---|---|---|
+| /sms | 39 | **522** |
+| /account | 44 | 98 |
+| /admin | 5 | 40 |
+| /account/profile | 6 | 32 |
+| /account/team | 5 | 21 |
+
+Nearly six hundred nodes of the record a safety manager works in every
+day, never swept. The sweep now runs **both states**, and the first
+signed-in run found four violations — including `.stat__label` at
+**1.09:1 on white**, which is not low contrast but INVISIBLE: four
+labels on /fatigue where the figures showed and the words saying what
+each figure counted did not.
+
+That one is the shape worth remembering. `.stat-strip` is a dark-ground
+component whose ink came with it; `[data-surface='tool']` reused it on
+white and overrode the value's colour but not the label's. The print
+block forces `#000`, so it printed correctly, and the only reader who
+would ever have met it was one looking at the screen.
+
+### The growth guard is the load-bearing half
+
+A stub whose shape is wrong renders an error state, axe finds no
+violation in the emptiness, and the sweep prints `ok` twice — a gate
+reporting 64 screens while checking 32. **That is worse than not adding
+the pass, because it retires the suspicion.**
+
+So `MUST_GROW` in `scripts/lib/a11y-fixtures.mjs` names every route
+whose signed-in render must be strictly larger, and the gate fails
+naming the route. It is not theoretical: /today, /fatigue and /picture
+all SHRANK under a bare `{}` body, and that is how the real shapes were
+found rather than guessed. Remove the session seeding and seven of nine
+routes render identically — mutation-checked.
+
+**Write a fixture from the component, not from the API route.** Three of
+the four fixture bugs were fields the screen reads and the route names
+differently — `createdAt` not `occurredAt`, `c.withinDeclared` not the
+enum key, `d.hrcs` not `d.hrc`. And `withheld` is a list of objects with
+a `source`: a list of strings renders "undefined or undefined" rather
+than throwing, which is the quieter half of the same lesson.
+
+## A validator tested at the unit level says nothing about the route
+
+55 routes are declared in `apps/api/src/routes*.ts`. On 18 August 2026
+54 appeared somewhere under `tests/` and one did not —
+`PUT /api/v1/config/logo`. `tests/logo.test.ts` exists, which is exactly
+what hid it: it imports `checkLogo` from `packages/shared` and asserts
+the VALIDATOR.
+
+A validator is perfect in a route that never calls it. That sentence is
+already in this repository — `reset-escalation.integration.test.ts`
+opens with it — so the rule is general: **a shared checker earns a unit
+test, and the route that must apply it earns one over HTTP.** Deleting
+the `checkLogo` call reddens four tests; deleting the `config.manage`
+guard reddens two.
+
 ## A zero-state is measured by where it sends you, not by its class
 
 `class="empty-state"` says nothing about whether a zero-state works.

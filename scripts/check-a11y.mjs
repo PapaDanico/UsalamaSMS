@@ -40,6 +40,7 @@
    ===================================================================== */
 import { chromium } from 'playwright';
 import { findChromium } from './lib/chromium.mjs';
+import { FIXTURES, MUST_GROW, SESSION, bodyFor } from './lib/a11y-fixtures.mjs';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, dirname, resolve } from 'node:path';
@@ -55,6 +56,9 @@ const BASE = `http://127.0.0.1:${PORT}`;
    sixty-five were fixed rather than excused. An entry here is a
    decision on the record, not a way to make the gate quiet. */
 const ACCEPTED = new Map();
+
+/* route|signedIn -> element count under <main>. The growth guard reads it. */
+const rendered = new Map();
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -146,9 +150,13 @@ try {
     process.exit(1);
   }
 
-  console.log(`check:a11y — WCAG 2.2 AA over ${routes.length} rendered screens\n`);
+  console.log(
+    `check:a11y — WCAG 2.2 AA over ${routes.length} rendered screens, ` +
+    `signed out and signed in\n`
+  );
 
   for (const route of routes) {
+   for (const signedIn of [false, true]) {
     /* A fresh context per route, with service workers blocked. The
        lesson recorded twice in smoke.mjs: a service worker serves the
        precached shell, and a check that reads it is a check that has
@@ -159,6 +167,20 @@ try {
     });
     const page = await ctx.newPage();
     try {
+      if (signedIn) {
+        /* The record, stubbed. See lib/a11y-fixtures.mjs for why this is
+           stubbed rather than served by a real API, and for the measured
+           node counts that made the second pass worth having. */
+        await page.route('**/api/v1/**', (r) => r.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify(bodyFor(r.request().url())),
+        }));
+        await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+        await page.evaluate((s) => {
+          localStorage.setItem('usalamasms.session', JSON.stringify(s));
+          localStorage.setItem('usalamasms.refresh', 'stub');
+        }, SESSION);
+      }
       await page.goto(BASE + route, { waitUntil: 'networkidle' });
       /* Lazily-loaded chunks and the org fetch both land after
          networkidle on some screens. Asserting before the screen has
@@ -207,12 +229,20 @@ try {
       checked += 1;
       nodesScanned += result.passes?.length ?? 0;
 
+      /* WHAT THE SWEEP ACTUALLY REACHED, recorded so the growth guard
+         below can tell a screen that rendered the record from one that
+         rendered an error where the record should be. */
+      rendered.set(`${route}|${signedIn}`, await page.evaluate(
+        () => document.querySelectorAll('main *').length
+      ));
+
+      const label = `${route}${signedIn ? '  (signed in)' : ''}`;
       const violations = result.violations.filter((v) => !ACCEPTED.has(v.id));
       if (violations.length === 0) {
-        console.log(`  ok   ${route}`);
+        console.log(`  ok   ${label}`);
       } else {
         failed += 1;
-        console.log(`  FAIL ${route}`);
+        console.log(`  FAIL ${label}`);
         for (const v of violations) {
           console.log(`         [${v.impact}] ${v.id} — ${v.help} (${v.nodes.length} node(s))`);
           for (const n of v.nodes.slice(0, 3)) {
@@ -227,9 +257,13 @@ try {
       }
     } catch (err) {
       failed += 1;
-      console.log(`  FAIL ${route} — could not be swept: ${err.message.split('\n')[0]}`);
+      console.log(
+        `  FAIL ${route}${signedIn ? '  (signed in)' : ''} — could not be swept: ` +
+        err.message.split('\n')[0]
+      );
     }
     await ctx.close();
+   }
   }
 } finally {
   await browser.close();
@@ -244,6 +278,43 @@ if (checked === 0) {
   process.exit(1);
 }
 
+/* THE GROWTH GUARD, and the reason the second pass is a check rather
+   than a claim.
+
+   A stub whose shape is wrong renders an error state, or nothing —
+   the screen gets SMALLER signed in, axe finds no violation in the
+   emptiness, and the sweep prints "ok" twice. The gate would then
+   report sixty-four screens while genuinely checking thirty-two, which
+   is worse than never having added the pass: it retires the suspicion.
+
+   Measured before this existed, under a bare `{}` body: /today 23->19,
+   /fatigue 5->2 and /picture 24->5 all SHRANK. Those three numbers are
+   why lib/a11y-fixtures.mjs holds real shapes, and why this runs. */
+const shortfall = [];
+for (const route of MUST_GROW) {
+  const out = rendered.get(`${route}|false`);
+  const inn = rendered.get(`${route}|true`);
+  if (out === undefined || inn === undefined) {
+    shortfall.push(`${route} — not swept in both states`);
+  } else if (inn <= out) {
+    shortfall.push(`${route} — ${out} elements signed out, ${inn} signed in`);
+  }
+}
+if (shortfall.length > 0) {
+  console.error(
+    `\ncheck:a11y FAILED — ${shortfall.length} screen(s) declared record-bearing did not ` +
+      'render more signed in than signed out:\n'
+  );
+  for (const f of shortfall) console.error(`  · ${f}`);
+  console.error(
+    '\nThe fixture in scripts/lib/a11y-fixtures.mjs no longer matches what the screen ' +
+      'reads, so the signed-in pass swept an error state and reported it clean. Fix the ' +
+      'fixture. Removing the route from MUST_GROW needs a reason: a screen that stopped ' +
+      "reading the operator's record is a product change, not a test change."
+  );
+  process.exit(1);
+}
+
 if (failed > 0) {
   console.error(
     `\ncheck:a11y FAILED — ${failed} of ${checked} screens carry a WCAG 2.2 AA violation.\n` +
@@ -253,7 +324,12 @@ if (failed > 0) {
   process.exit(1);
 }
 
+const grew = [...MUST_GROW].filter(
+  (r) => (rendered.get(`${r}|true`) ?? 0) > (rendered.get(`${r}|false`) ?? 0)
+).length;
 console.log(
-  `\ncheck:a11y passed — ${checked} screens, no WCAG 2.2 AA violations` +
-    `${ACCEPTED.size ? `, ${ACCEPTED.size} rule(s) accepted with a reason` : ''}.`
+  `\ncheck:a11y passed — ${checked} renders, no WCAG 2.2 AA violations` +
+    `${ACCEPTED.size ? `, ${ACCEPTED.size} rule(s) accepted with a reason` : ''}.\n` +
+    `  ${grew} of ${MUST_GROW.size} record-bearing screens confirmed to render the ` +
+    'record in the signed-in pass.'
 );
