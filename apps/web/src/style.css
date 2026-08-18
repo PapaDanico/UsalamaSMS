@@ -5641,3 +5641,48 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-weight: var(--us-weight-medium);
   cursor: default;
 }
+
+/* ============================================================
+   THE SAFETY CULTURE SURVEY.
+
+   THE CHOICES ARE FULL-WIDTH ROWS, NOT A HORIZONTAL LIKERT STRIP.
+   The realistic device is one tablet or phone passed around a crew
+   room, and a five-point strip at 390px puts the labels at a size
+   nobody reads, so people tap the middle. A stacked row keeps each
+   option at a full target and the label at body size.
+
+   Targets are 44px minimum — WCAG 2.2 target size asks for 24, and
+   this is a form filled by someone standing on a ramp.
+
+   The bands reuse the risk scale's inks rather than inventing a third
+   traffic light: WEAK is the intolerable ochre, STRONG the acceptable
+   green. check:brand already holds those against their grounds.
+   ============================================================ */
+.culture-items { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--us-space-5); }
+.culture-item fieldset { border: 0; margin: 0; padding: 0; }
+.culture-item legend {
+  font-weight: 600; color: var(--us-charcoal);
+  margin-block-end: var(--us-space-2); padding: 0;
+}
+.culture-choice {
+  display: flex; align-items: center; gap: var(--us-space-3);
+  min-height: 44px; padding-inline: var(--us-space-3);
+  border: 1px solid var(--us-border); border-radius: 4px;
+  margin-block-end: var(--us-space-1); cursor: pointer;
+}
+.culture-choice:hover { border-color: var(--us-teal); }
+.culture-choice:focus-within { outline: 2px solid var(--us-teal); outline-offset: 2px; }
+.culture-count { color: var(--us-text-tertiary); margin-block-start: var(--us-space-3); }
+
+.culture-results { margin: 0; display: grid; gap: var(--us-space-4); }
+.culture-row {
+  display: grid; gap: var(--us-space-1);
+  padding-block-end: var(--us-space-4);
+  border-block-end: 1px solid var(--us-border);
+}
+.culture-row dt { font-weight: 600; color: var(--us-charcoal); }
+.culture-row dd { margin: 0; }
+.culture-remedy { color: var(--us-text-tertiary); margin-block-start: var(--us-space-2); }
+.badge--weak { background: var(--us-risk-intolerable); color: var(--us-risk-intolerable-on); }
+.badge--mixed { background: var(--us-risk-tolerable); color: var(--us-risk-tolerable-on); }
+.badge--strong { background: var(--us-risk-acceptable); color: var(--us-risk-acceptable-on); }

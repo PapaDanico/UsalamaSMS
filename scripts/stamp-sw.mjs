@@ -2313,7 +2313,44 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    whether it grew where a reporter on one bar of signal pays for it,
    and entry beginning to track total is the moment to take something
    out rather than buy more. */
-const BUDGET = { entry: 224 * 1024, js: 642 * 1024, css: 80 * 1024 };
+/* 18 AUGUST 2026, RAISE FIVE — the safety culture survey.
+
+     js (entry)   218.8 -> 219.1 KB   +0.3
+     js (total)   639.2 -> 648.1 KB   +8.9
+     css           73.2 ->  74.4 KB   +1.2
+
+   WHAT IT BUYS, and it is the question everything else in this product
+   assumes an answer to. The deadline engine computes from an occurrence
+   somebody reported. The register fills from hazards somebody raised.
+   Barrier health reads degradations somebody recorded. An operator with
+   a perfect installation of this product and a workforce that will not
+   report has an empty system that passes every check in this
+   repository — and nothing here could tell them that was their
+   situation.
+
+   The evidence says it is a real situation: 58% of personnel in small
+   commercial airlines engaged in regular hazard reporting, fear of
+   punitive action the primary barrier, ahead of training and ahead of
+   system access (Barrameda, Florencondia & Villar, IRE Journals,
+   2024). That is exactly this product's market.
+
+   So the weight is fourteen questions, five dimensions, the scoring,
+   and a screen that runs the survey on one device and scores it there.
+
+   WHERE IT LANDS. `/toolkits/culture` is lazily imported like every
+   other toolkit, so the 8.9 KB sits in its own chunk. ENTRY MOVED 0.3
+   KB, and that 0.3 is the route registration itself — the reporter
+   filing at a strip downloads the line that says the route exists and
+   never the survey.
+
+   THE STOPPING CONDITION, checked again rather than assumed. Entry
+   across five raises in one day: 218.7, 218.7, 218.7, 218.8, 219.1 —
+   against a 224 KB ceiling it has not begun to track. Total has moved
+   a great deal more, which is the two numbers doing exactly the job
+   they were separated to do. The moment entry starts climbing with
+   total is the moment to take something out instead of buying more,
+   and it has not arrived. */
+const BUDGET = { entry: 224 * 1024, js: 650 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

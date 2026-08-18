@@ -185,6 +185,64 @@ for (const m of screen.matchAll(/query[Ss]elector(?:All)?\(\s*`([^`]*)`/g)) {
   }
 }
 
+/* ------------------------------------------------------------------
+   EVERY ROUTED TOOLKIT MUST OFFER THE WAY BACK TO THE TOOLKITS.
+
+   shared/tool-nav.js exists because that way back was measured and
+   found missing: on /toolkits/maturity the only visible link to the
+   index sat at 9,893px down a 10,317px page — eleven screens of
+   scrolling to leave an assessment. Its header records the numbers.
+
+   The component was then added to five screens BY HAND, and /training
+   was the sixth routed toolkit and did not get it. It is in the
+   TOOLKITS registry, it appears in the toolkits index and in the menu
+   hint that is computed from that registry — and the screen itself
+   linked to NOTHING internal at all. A person who arrived there left
+   by the browser's back button or not at all.
+
+   Nothing noticed, because "did somebody remember to add the import"
+   is not a thing any gate asked. This asks it, from the REGISTRY
+   rather than from a list typed here, so the seventh toolkit is
+   covered on the day it is added.
+   ------------------------------------------------------------------ */
+const sitemapSrc = readFileSync('apps/web/src/shared/sitemap.js', 'utf8');
+const routedHrefs = [
+  ...sitemapSrc.matchAll(/href:\s*'([^']+)',\s*\n\s*short:[^\n]*\n\s*routed:\s*true/g),
+].map((m) => m[1]);
+
+if (routedHrefs.length < 4) {
+  problems.push(
+    `only ${routedHrefs.length} routed toolkits were discovered out of sitemap.js — ` +
+      'the parser has lost its subject, and a check over an empty list passes perfectly'
+  );
+} else {
+  for (const href of routedHrefs) {
+    /* /toolkits/sra -> tools/sra, /training -> tools/training. The
+       last path segment is the screen directory in every case so far;
+       a toolkit that breaks that convention fails here rather than
+       being silently skipped, which is the direction that matters. */
+    const dir = href.replace(/^\/(toolkits\/)?/, '').split('#')[0];
+    const file = `apps/web/src/tools/${dir}/index.js`;
+    let src;
+    try {
+      src = readFileSync(file, 'utf8');
+    } catch {
+      problems.push(
+        `${href} is a routed toolkit and ${file} does not exist. Either the screen ` +
+          'moved or the registry is wrong; this check cannot tell which, and both are bugs.'
+      );
+      continue;
+    }
+    if (!/ToolNav\s*\(/.test(src)) {
+      problems.push(
+        `${file} is a routed toolkit and never calls ToolNav(). It appears in the ` +
+          'toolkits index and in the computed menu hint, and offers no link back to ' +
+          'them — see the header of shared/tool-nav.js for what that cost last time.'
+      );
+    }
+  }
+}
+
 if (problems.length) {
   console.error('check:wiring — the screen and the API disagree:\n');
   for (const p of problems) console.error(`  · ${p}`);

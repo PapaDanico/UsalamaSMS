@@ -45,6 +45,7 @@
    ============================================================ */
 
 import { html } from '../../shared/html.js';
+import { ToolNav } from '../../shared/tool-nav.js';
 import {
   SYLLABUS_MODULES, SYLLABUS_NOTE, TRAINING_BANDS, RECOMMENDED_TIMING,
   EXECUTIVE_TOPICS, SPECIALISED_FUNCTIONS, ASSESSMENT_METHODS,
@@ -65,6 +66,7 @@ export async function render(outlet) {
 
   outlet.innerHTML = html`
     <section class="panel">
+      ${ToolNav('/training')}
       <header class="page-head">
         <span class="eyebrow">Element 4.1 — training and education</span>
         <h1>The SMS training programme</h1>

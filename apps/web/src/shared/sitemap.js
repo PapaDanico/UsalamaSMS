@@ -101,6 +101,11 @@ export const TOOLKITS = [
     routed: true
   },
   {
+    href: '/toolkits/culture',
+    short: 'safety culture survey',
+    routed: true
+  },
+  {
     href: '/training',
     short: 'the training programme',
     routed: true
@@ -339,6 +344,17 @@ export const SECTIONS = [
         href: '/training',
         label: 'SMS Training Programme',
         short: 'Training'
+      },
+      {
+        /* BESIDE THE TRAINING PROGRAMME, and the reason is the same
+           one that puts training here rather than under promotion:
+           both answer whether the ORGANISATION can run the system it
+           has bought. The survey is the half nothing else measures —
+           a training matrix says people were taught, and this says
+           whether they will act on it. */
+        href: '/toolkits/culture',
+        label: 'Safety Culture Survey',
+        short: 'Culture'
       },
       {
         href: '/coverage',
