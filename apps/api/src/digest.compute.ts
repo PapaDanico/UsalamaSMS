@@ -24,6 +24,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { digestFor, type Digest } from "../../../packages/shared/src/digest";
 import { currencyOf } from "../../../packages/shared/src/currency";
+import type { RecordScale } from "../../../packages/shared/src/today";
 import {
   deadlineStatus,
   reportingDeadline,
@@ -145,4 +146,43 @@ export async function computeDigest(
       daysLeft: Math.ceil((a.dueOn!.getTime() - now.getTime()) / 86_400_000),
     })),
   });
+}
+
+/* =====================================================================
+   HOW MUCH RECORD THERE IS, which is a different question from what is
+   wrong with it.
+
+   computeDigest answers "what needs attention" and correctly finds
+   nothing in an empty operator. /today then rendered that absence as a
+   clean bill of health. See the comment block in
+   packages/shared/src/today.ts for why that is the understating failure
+   rather than a wording problem.
+
+   THREE COUNTS AND NOT A FLAG, so the screen can name WHICH step is
+   next. `count` rather than `findMany`, because nothing here needs a
+   row — and each is bounded by the database rather than by a take,
+   since a count does not carry rows back.
+   ===================================================================== */
+export async function computeRecordScale(
+  prisma: PrismaClient,
+  orgId: string,
+): Promise<RecordScale> {
+  const [reports, indicators, registerEntries] = await Promise.all([
+    /* RETRACTION-INCLUDES-DELIBERATELY: this counts whether the
+       operator is REPORTING, not what is outstanding. Filing something
+       and then correcting it is a working reporting culture rather than
+       an empty one, and offering "file the first report" to somebody
+       who has filed and retracted three would read as not having
+       noticed they did.
+
+       Nothing downstream of this number acts on a report. It decides
+       one thing: whether /today greets somebody with a sequence or with
+       their record. Every query that DOES act on reports — the digest
+       above, the picture, the export's own count — excludes retracted
+       rows, and must keep doing so. */
+    prisma.safetyReport.count({ where: { orgId } }),
+    prisma.spi.count({ where: { orgId } }),
+    prisma.hazard.count({ where: { orgId } }),
+  ]);
+  return { reports, indicators, registerEntries };
 }

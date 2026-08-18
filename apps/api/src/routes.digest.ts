@@ -25,7 +25,7 @@
 import type { FastifyInstance } from "fastify";
 import { can } from "@usalamasms/shared";
 import { isWorthSending } from "../../../packages/shared/src/digest";
-import { computeDigest } from "./digest.compute";
+import { computeDigest, computeRecordScale } from "./digest.compute";
 import { prisma, authenticate } from "./core";
 import { mailConfigFromEnv } from "./mail";
 
@@ -53,6 +53,19 @@ export async function digestRoutes(app: FastifyInstance): Promise<void> {
     const digest = await computeDigest(prisma, auth.org, now);
     if (!digest) return reply.code(404).send({ error: "not_found" });
 
+    /* HOW MUCH RECORD THERE IS, which is not what the digest answers.
+       The digest correctly finds nothing wrong with an empty operator,
+       and the screen used to render that as a clean bill of health —
+       "Nothing needs you today" to somebody who has done nothing at
+       all. See packages/shared/src/today.ts for the argument; this is
+       the number that lets the screen tell the two apart.
+
+       Computed HERE rather than on the screen because everything on
+       /today is computed once, server-side, by the same code the 05:00
+       schedule runs. A browser deriving its own view of whether the
+       record is empty is a second opinion about the record. */
+    const scale = await computeRecordScale(prisma, auth.org);
+
     /* THE DELIVERY STATE IS REPORTED, NOT INFERRED FROM SILENCE. A
        screen that shows a digest and says nothing about whether it will
        ever be sent lets somebody assume it arrives. `configured` is the
@@ -61,6 +74,7 @@ export async function digestRoutes(app: FastifyInstance): Promise<void> {
        find out whether it can send mail is not a preview. */
     return reply.send({
       digest,
+      scale,
       wouldSend: isWorthSending(digest),
       delivery: mailConfigFromEnv().apiKey ? "CONFIGURED" : "NOT_CONFIGURED",
       computedAt: now.toISOString(),

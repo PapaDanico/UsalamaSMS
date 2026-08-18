@@ -1975,7 +1975,15 @@ html { scroll-padding-top: var(--us-chrome); }
    measuring the wrong element. Two things that look alike are not
    therefore the same thing. */
 .queue__evidence { margin-top: var(--us-space-3); }
-.queue__evidence > summary { cursor: pointer; font-weight: 600; }
+/* 24px is WCAG 2.2 AA 2.5.8, and this summary was 22.4. Small, and the
+   product's own --us-tap is 48 because this screen is operated with
+   gloves on — so a disclosure a pixel and a half under the legal floor
+   is well under the one this product set itself. */
+.queue__evidence > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding-block: var(--us-space-1);
+}
 
 .queue__code b {
   color: var(--us-text-primary);
@@ -3659,7 +3667,27 @@ html { scroll-padding-top: var(--us-chrome); }
 [data-surface='tool'] .stat-strip {
   margin-top: var(--us-space-5);
   padding-top: var(--us-space-4);
+  /* THE STRIP IS A DARK-GROUND COMPONENT REUSED ON WHITE, and its ink
+     came with it. `.stat__label` is Warm Sand at 76%, which is 1.09:1 on
+     white — not low contrast, INVISIBLE. Four labels on /fatigue read
+     that way: the figures showed and the words saying what each figure
+     counted did not.
+
+     It survived because the print block overrides the label to #000, so
+     the one place anybody checks a stat strip on paper was fine, and
+     because check:a11y had never rendered a signed-in screen. The value
+     was already corrected on this surface at the rule above; the label
+     was missed, which is the shape of every pairing this sweep finds. */
+  border-top-color: var(--us-border);
 }
+[data-surface='tool'] .stat__label { color: var(--us-text-tertiary); }
+
+/* WCAG 1.4.1, and the second thing the signed-in sweep found. A teal
+   link inside a sentence of charcoal is 2.77:1 against the text around
+   it, under the 3:1 that lets colour alone carry the distinction — six
+   nodes on /picture, three on /today. Underlining is the distinguisher;
+   `.btn` is excluded because a button is already a shape. */
+[data-surface='tool'] :is(p, li, dd) > a:not(.btn) { text-decoration: underline; }
 
 /* ---------------------------------------------------------------------
    A FORM ON A TOOL SURFACE IS A DOCUMENT WITH A HEAD, not a stack of

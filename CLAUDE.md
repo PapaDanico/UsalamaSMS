@@ -302,6 +302,165 @@ wrapped in a `pg_roles` existence check because `anon`, `authenticated`
 and `service_role` are Supabase's and the same migration runs against a
 bare Postgres in the integration suite.
 
+## An empty record is not a clear one
+
+`/today` answers "is everything all right?", and to a brand-new operator
+it answered **"Nothing needs you today"** over a lede saying no deadline
+was open, no currency lapsing, nothing awaiting triage and no action
+overdue. Every clause was true. Together they told somebody who had done
+nothing at all that everything was fine.
+
+The digest is computed over an empty record, correctly finds nothing,
+and the screen rendered that absence as a clean bill of health.
+
+**`today.ts` already contained the right argument, unextended.**
+`reporterIsClear` refuses to call an UNKNOWN clear and says why — *"a
+screen whose job is to answer 'is everything all right' saying the most
+reassuring possible thing at the moment it knows least is the failure
+this product exists to refuse."* EMPTY deserved the same and never got
+it.
+
+So `/api/v1/digest` now returns a `scale` — three counts, not a flag,
+because the screen has to know WHICH step is next — and `establishment()`
+grades it EMPTY / STARTED / ESTABLISHED. `npm run check:first-run`
+renders `/today` in **three** states and asserts all of them, because
+two of the four mutations that matter are about not over-correcting:
+
+- an empty operator must not read the all-clear, and must get the
+  sequence with a link to `/report`;
+- an operator already running must **not** be offered the first step —
+  a sequence that never stops is a nag;
+- and a settled operator with genuinely nothing outstanding must **still
+  get the all-clear**, or the fix has replaced one wrong answer with
+  another.
+
+The three renders must also differ from each other. A fixture that
+quietly stopped taking would otherwise make every assertion above pass
+over one screen measured three times.
+
+### The retraction gate made the decision explicit, which was right
+
+`computeRecordScale` counts reports **without** `retractedAt: null`, on
+the reasoning that filing something and correcting it is a working
+reporting culture rather than an empty one. `npm run check:retraction`
+refused that until it carried a `RETRACTION-INCLUDES-DELIBERATELY`
+marker saying so. Nothing downstream of that number acts on a report —
+it decides only whether `/today` greets somebody with a sequence or with
+their record — and every query that DOES act on reports still excludes
+retracted rows.
+
+## A document is measured on the page, not in the DOM
+
+`npm run check:deliverables` renders the six handover documents — the
+risk assessment, the register, the indicators, the maturity assessment,
+the twelve-element record and the risk picture — at **A4 with the media
+emulated to print**, and asserts each names the operator, carries its
+mark, and fits the width.
+
+The first version counted `querySelectorAll('.print-id').length`, and
+its own mutation matrix caught it: adding
+`.print-id { display: none }` inside the print block left the gate
+**green**. The element was in the DOM, the pack printed anonymous, and a
+check on existence cannot tell those apart. Both are now measured by
+bounding box, which is zero for `display:none`, `visibility:hidden` and
+a zero-height container alike — and the zero-size variant is its own
+mutation, because it is the one somebody reaches for when a logo looks
+too big.
+
+**`attachPrintId` defaults to `allowFetch: false` and that is a
+decision, not an oversight.** The register, the risk assessment and the
+maturity assessment work with NO SESSION AT ALL, so an operator can use
+them while deciding whether to trust this product; a screen that phones
+home during that has answered the question being asked of it, in the
+wrong direction. Attribution there is opportunistic — cached name, or no
+header at all — and `smoke.mjs` already refuses the half-attributed
+middle. The gate therefore seeds the org cache and asserts the
+*reachable* property. A first attempt seeded only the session, reported
+all six as unattributed, and was the probe being wrong rather than the
+product.
+
+## Two things are blocked on a person, and neither is a code problem
+
+**Evidence upload needs one secret pasted.** The bucket exists,
+`SUPABASE_URL` and `SUPABASE_EVIDENCE_BUCKET` are set in the Netlify
+production environment, and `routes.attachments.ts` answers without
+storage rather than failing. `SUPABASE_SERVICE_ROLE_KEY` is **absent** —
+checked against the live environment, not assumed. Use an `sb_secret_…`
+key, never a legacy `service_role` JWT, for the reason the RLS section
+above gives, and redeploy after setting it.
+
+**The KCAA submission shape is behind a login.** The portal is
+`https://ecitizen.kcaa.or.ke` — not the path the task originally named.
+WebSearch reaches the governing circular and not the form: `spi.ts`
+already cites CAA-AC-SMS009 §8.4 and §8.5 paragraph by paragraph, so the
+COMPUTATION is grounded, including the STDEVP alert-level method. What
+nobody has seen is which fields the portal asks an operator to fill.
+That is one person, one login, one screenshot — and until then the
+export shape is unverified rather than wrong.
+
+## A sweep that renders signed out has not seen the product
+
+`check:a11y` reported "32 screens, no WCAG 2.2 AA violations" for weeks
+and every word of it was true. It had also never rendered a screen with
+a session. Measured on 18 August 2026, elements under `main`:
+
+| route | signed out | signed in |
+|---|---|---|
+| /sms | 39 | **522** |
+| /account | 44 | 98 |
+| /admin | 5 | 40 |
+| /account/profile | 6 | 32 |
+| /account/team | 5 | 21 |
+
+Nearly six hundred nodes of the record a safety manager works in every
+day, never swept. The sweep now runs **both states**, and the first
+signed-in run found four violations — including `.stat__label` at
+**1.09:1 on white**, which is not low contrast but INVISIBLE: four
+labels on /fatigue where the figures showed and the words saying what
+each figure counted did not.
+
+That one is the shape worth remembering. `.stat-strip` is a dark-ground
+component whose ink came with it; `[data-surface='tool']` reused it on
+white and overrode the value's colour but not the label's. The print
+block forces `#000`, so it printed correctly, and the only reader who
+would ever have met it was one looking at the screen.
+
+### The growth guard is the load-bearing half
+
+A stub whose shape is wrong renders an error state, axe finds no
+violation in the emptiness, and the sweep prints `ok` twice — a gate
+reporting 64 screens while checking 32. **That is worse than not adding
+the pass, because it retires the suspicion.**
+
+So `MUST_GROW` in `scripts/lib/a11y-fixtures.mjs` names every route
+whose signed-in render must be strictly larger, and the gate fails
+naming the route. It is not theoretical: /today, /fatigue and /picture
+all SHRANK under a bare `{}` body, and that is how the real shapes were
+found rather than guessed. Remove the session seeding and seven of nine
+routes render identically — mutation-checked.
+
+**Write a fixture from the component, not from the API route.** Three of
+the four fixture bugs were fields the screen reads and the route names
+differently — `createdAt` not `occurredAt`, `c.withinDeclared` not the
+enum key, `d.hrcs` not `d.hrc`. And `withheld` is a list of objects with
+a `source`: a list of strings renders "undefined or undefined" rather
+than throwing, which is the quieter half of the same lesson.
+
+## A validator tested at the unit level says nothing about the route
+
+55 routes are declared in `apps/api/src/routes*.ts`. On 18 August 2026
+54 appeared somewhere under `tests/` and one did not —
+`PUT /api/v1/config/logo`. `tests/logo.test.ts` exists, which is exactly
+what hid it: it imports `checkLogo` from `packages/shared` and asserts
+the VALIDATOR.
+
+A validator is perfect in a route that never calls it. That sentence is
+already in this repository — `reset-escalation.integration.test.ts`
+opens with it — so the rule is general: **a shared checker earns a unit
+test, and the route that must apply it earns one over HTTP.** Deleting
+the `checkLogo` call reddens four tests; deleting the `config.manage`
+guard reddens two.
+
 ## A zero-state is measured by where it sends you, not by its class
 
 `class="empty-state"` says nothing about whether a zero-state works.
