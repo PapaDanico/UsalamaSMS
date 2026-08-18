@@ -52,7 +52,7 @@ import { chromium } from 'playwright';
 import { findChromium } from './lib/chromium.mjs';
 import { SESSION, bodyFor } from './lib/a11y-fixtures.mjs';
 import { createServer } from 'node:http';
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { join, extname, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -77,10 +77,88 @@ const DELIVERABLES = [
   ['/toolkits/maturity', 'the SMS maturity assessment'],
   ['/sms', "the twelve-element record against Annex 19"],
   ['/picture', "the operator's own safety position"],
+  ['/toolkits/culture', 'the safety culture survey, printed before the answers are cleared'],
+  ['/toolkits/icaas?action=act-1', 'the corrective action pack for the Authority\'s portal'],
 ];
+
+/* =====================================================================
+   THE LIST WAS TYPED, AND TWO SCREENS HAD JOINED WITHOUT IT.
+
+   The comment above says a toolkit with no entry here "is a workflow
+   that ends on screen with nothing to give anybody". Two toolkits were
+   in exactly that position and this gate reported ok over both:
+   /toolkits/icaas, and /toolkits/culture as of this morning.
+
+   Both call attachPrintId. Both therefore render a print identity
+   block that this gate — the only thing that measures whether such a
+   block actually reaches the page — never looked at.
+
+   CULTURE IS THE ONE THAT WOULD HAVE HURT. Its own screen tells the
+   operator to "print this page for the record, then clear the answers
+   from the device". The printed sheet is not a convenience copy, it
+   is the ONLY surviving artefact of the survey — the responses are
+   deleted immediately after. A sheet that prints anonymous is an
+   unattributable document about a named operator's safety culture,
+   and the deletion means there is nothing left to re-print correctly.
+
+   SO CALLING attachPrintId IS WHAT ENROLS A SCREEN, not remembering
+   to type it here. /sms and /picture reach their identity another way
+   and stay listed by hand; the assertion runs in the direction that
+   was broken — every call site must be covered.
+   ===================================================================== */
+const printIdCallers = [];
+for (const full of (function walk(dir) {
+  return readdirSync(dir).flatMap((name) => {
+    const f = join(dir, name);
+    return statSync(f).isDirectory() ? walk(f) : [f];
+  });
+})(join(ROOT, 'apps/web/src/tools'))) {
+  if (!full.endsWith('.js')) continue;
+  if (/attachPrintId\s*\(/.test(readFileSync(full, 'utf8'))) {
+    const dir = full.split('/tools/')[1].split('/')[0];
+    printIdCallers.push(dir);
+  }
+}
+
+/* Rule 11 from the side that bites. */
+if (printIdCallers.length < 4) {
+  console.error(
+    `\ncheck:deliverables FAILED\n\n  \u2717 only ${printIdCallers.length} screen(s) call ` +
+      'attachPrintId. The discovery has lost its subject and would assert nothing.\n'
+  );
+  process.exit(1);
+}
+
+const listedDirs = new Set(
+  DELIVERABLES.map(([r]) => r.split('?')[0].replace(/^\/(toolkits\/)?/, '').split('#')[0])
+);
+const uncovered = printIdCallers.filter((d) => !listedDirs.has(d));
+if (uncovered.length) {
+  console.error(
+    '\ncheck:deliverables FAILED\n\n  \u2717 ' +
+      `${uncovered.join(', ')} call attachPrintId and are not in DELIVERABLES, so nothing ` +
+      'measures whether their print identity reaches the page. Add them, or stop printing.\n'
+  );
+  process.exit(1);
+}
+
 
 /* A one-pixel PNG. What is asserted is that the mark REACHES the page,
    not what it looks like. */
+/* What a screen needs before it HAS a document to print. */
+const CULTURE_RESPONSES = JSON.stringify(
+  Array.from({ length: 6 }, (_, i) => ({
+    at: `2026-08-0${i + 1}T09:00:00.000Z`,
+    answers: Object.fromEntries(
+      Array.from({ length: 14 }, (_, q) => [`q${q + 1}`, ((i + q) % 5) + 1])
+    ),
+  }))
+);
+
+const SEED = {
+  '/toolkits/culture': [['usalama.culture.responses.v1', CULTURE_RESPONSES]],
+};
+
 const LOGO =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42' +
   'mPk5+f/z0AEYBxVSF+FAP5FDvcfRYWgAAAAAElFTkSuQmCC';
@@ -128,6 +206,17 @@ try {
         localStorage.setItem('usalamasms.refresh', 'stub');
         localStorage.setItem('usalamasms.org', JSON.stringify(o));
       }, [SESSION, ORG]);
+
+      /* PER-ROUTE STATE, because a deliverable is a document and some
+         screens have no document until they have a record. Rendering
+         such a screen empty and asserting it names the operator asks
+         the wrong question — the same mistake check:a11y made before
+         MUST_GROW, where a fixture of the wrong shape rendered an
+         error state and the sweep printed ok twice. */
+      const seed = SEED[route];
+      if (seed) await page.addInitScript((entries) => {
+        for (const [k, v] of entries) window.localStorage.setItem(k, v);
+      }, seed);
 
       await page.goto(BASE + route, { waitUntil: 'networkidle' });
       await page.waitForTimeout(500);
