@@ -140,6 +140,38 @@ export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
        carry precisely because accepting it is a judgement about cost
        against safety; the red band is nobody's, at any level. */
     "report.read.org", "risk.accept.tolerable",
+    /* FILING, AND ITS ABSENCE WAS NEVER A DECISION.
+       ==========================================================
+       This role could not file a report. No test asserted that it
+       should not — which in this repository is the signature of an
+       unexamined default rather than a judgement — and it was found by
+       walking the sequence a design partner walks, not by reading the
+       matrix.
+
+       IT MADE THE PRODUCT'S OWN GATE UNREACHABLE. Signup creates
+       exactly one account and it is this one, so a new operator's first
+       and only user filed a report, watched the sync answer `forbidden`
+       per item, and read "your role cannot submit this report type" on
+       a device with nowhere else to go. docs/02-STRATEGY.md sets
+       Phase 1's gate as "a frontline user files a report offline and it
+       arrives"; nobody could reach it without first appointing a second
+       person. /today's first-run sequence then made it worse by opening
+       with "File the first report".
+
+       AND IT IS WRONG ON THE INSTRUMENT, which is the reason rather
+       than the convenience. Annex 19's reporting system is for ALL
+       personnel. The accountable executive is personnel, is the post
+       ACCOUNTABLE for the safety management system, and was the one
+       person in the organisation structurally unable to perform its
+       most basic act.
+
+       SYSTEM_ADMIN and PLATFORM_ADMIN still cannot file, and that stays
+       deliberate: the administrator is a technical post held away from
+       the safety record on purpose — the escalation rule in
+       routes.auth.ts rests on exactly that — and the platform
+       administrator is the vendor, who must never write into a tenant's
+       safety record. */
+    "report.create",
     "spi.read", "moc.approve", "document.read", "audit.read", "training.read.own",
     "config.manage",
     /* APPOINTING THE PEOPLE, because signup creates exactly one of these

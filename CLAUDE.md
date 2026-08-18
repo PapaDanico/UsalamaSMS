@@ -302,6 +302,52 @@ wrapped in a `pg_roles` existence check because `anon`, `authenticated`
 and `service_role` are Supabase's and the same migration runs against a
 bare Postgres in the integration suite.
 
+## The accountable executive could not file a report
+
+Signup creates exactly one account — an `ACCOUNTABLE_EXECUTIVE` — and
+that role did not hold `report.create`. So a new operator's first and
+only user filed, the sync answered `forbidden` per item, and the device
+said *"your role cannot submit this report type"*, which invites trying
+another type and fails identically.
+
+`docs/02-STRATEGY.md` sets Phase 1's gate as **"a frontline user files a
+report offline and it arrives"** and marks it *met in code, open on the
+customer*. It could not be reached by a new signup at all without first
+appointing a second person, and `/today`'s first-run sequence opened by
+telling them to file.
+
+**Every part of that walk was already tested and the walk was not.**
+Signup has a suite; sync has one; the queue has one. Nothing asserted
+they compose. `tests/integration/design-partner.integration.test.ts` now
+walks it — signup, sign in, file, it arrives, and the onboarding
+sequence advances — plus tenancy between two independently signed-up
+operators.
+
+### The exclusion was never a decision, and that is how it survived
+
+No test anywhere asserted the executive should not file, which in this
+repository is the signature of an unexamined default. `report.create` is
+now held, on the instrument rather than on convenience: Annex 19's
+reporting system is for **all personnel**, and the post accountable for
+the SMS was the one person structurally unable to perform its most basic
+act.
+
+`SYSTEM_ADMIN` and `PLATFORM_ADMIN` still cannot file, deliberately —
+the administrator is held away from the safety record on purpose (the
+reset-escalation rule rests on it) and the platform administrator is the
+vendor.
+
+**`tests/filing-rights.test.ts` is the defence that was missing.** It
+derives the role list from `PERMISSIONS` itself, so a role added without
+a filing decision fails in the same commit, and it asserts both
+directions. Writing it surfaced that `INVESTIGATOR` and `KEY_MANAGEMENT`
+also cannot file — plainly personnel, and the same argument applies on
+its face. **They were deliberately not changed:** the executive had a
+demonstrated failure, those two have none, and widening a
+security-relevant matrix by inference from one case is how a permission
+model stops meaning anything. The question is on the record in that
+file's header for the owner to settle.
+
 ## Two values cannot evidence a combination of three methods
 
 Annex 19 does not ask a service provider to identify hazards. It asks
