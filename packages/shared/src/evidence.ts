@@ -69,6 +69,46 @@ export const EVIDENCE_TYPES: ReadonlyArray<string> = Object.freeze([
  */
 export const EVIDENCE_MAX_BYTES = 3 * 1024 * 1024;
 
+/* =====================================================================
+   THE BUCKET ENFORCES THE SAME TWO RULES, AND NOTHING CHECKS THEY
+   AGREE. Read from production on 18 August 2026:
+
+     storage.buckets where id = 'evidence'
+       public             false
+       file_size_limit    3145728          = EVIDENCE_MAX_BYTES exactly
+       allowed_mime_types image/jpeg, image/png, image/webp,
+                          application/pdf  = EVIDENCE_TYPES exactly
+
+   They agree TODAY. Nothing makes them agree tomorrow. The limit above
+   lives in this repository and the bucket's lives in the Supabase
+   dashboard, and either can be changed without the other noticing —
+   the classic shape, and this file has already been bitten by it once.
+
+   The header above says it, about the previous instance: "Both numbers
+   are right about their own job, neither file mentions the other, and
+   the feature had no test that sent a file bigger than a few
+   kilobytes." That was `server.ts`'s 1 MB body cap against this 3 MB
+   rule. This is the same sentence one layer further out.
+
+   WHAT IT WOULD LOOK LIKE. Lower the bucket to 1 MB and a 2 MB
+   photograph passes every check written here — the size rule, the type
+   rule, the body limit — and is then refused by Supabase. The reporter
+   at the remote strip gets STORAGE's error rather than any of the
+   sentences in this file, for a file the product told them was fine.
+   Tighten the bucket's mime list instead and the same happens to a PDF.
+
+   IT IS NOT GATED, and the reason is worth stating rather than hiding:
+   a CI gate would need a Supabase credential to read the bucket, and
+   putting a secret in CI to check a constant is a worse trade than
+   this comment. What is gated is our half — tests/evidence.test.ts
+   pins both values — so a change made HERE is caught. A change made in
+   the dashboard is caught by whoever reads this.
+
+   If the two ever need to differ, the bucket should be the LOOSER of
+   the two: this file refuses first, with an explanation the reporter
+   can act on.
+   ===================================================================== */
+
 /**
  * THE REQUEST BODY A MAX-SIZED ATTACHMENT NEEDS, in bytes.
  *
