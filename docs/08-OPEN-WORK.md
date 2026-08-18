@@ -174,7 +174,7 @@ Centrik and ASQS iQSMS.
 | **Alerting / notification** | core to all four | **absent — §2.2, blocked on a person** |
 | Audit & finding / CAPA | yes | **yes** — actions with owner, date, separate verification |
 | Document control | yes | register + distribution; not content — §2.1 |
-| Occurrence coding to ADREP / CICTT | yes | **yes, 33 categories** — and EASA's ECCAIRS runs on the same taxonomy |
+| Occurrence coding to ADREP / CICTT | yes | **yes, 34 categories** — and EASA's ECCAIRS runs on the same taxonomy |
 | Configurable matrix and vocabulary | yes | **yes — relabel only, never redefine** |
 | ERP | yes | **exercise + contact directory** |
 | Training records | yes | yes, anticipating, not arriving |

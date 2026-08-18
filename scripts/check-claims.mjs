@@ -484,6 +484,35 @@ assert(
     `(${TRIAL_WORDS[trialConstant] ?? 'a length with no word in TRIAL_WORDS — add it'})`
 );
 
+/* ---------------- The occurrence-category count ----------------
+
+   IT WAS TYPED AND NOTHING COMPUTED IT. docs/08-OPEN-WORK.md said
+   "33 categories" in a competitor comparison — a figure a prospect
+   reads and an auditor could check — while cictt.ts is the only place
+   that knows. Adding one category on 18 August made the doc wrong in
+   the same commit that improved the product, which is exactly the
+   drift rule 10 exists for and exactly the shape no gate covered.
+
+   The category list is also the kind that GROWS: it gained thirteen
+   on 14 August and one on 18 August, both from re-checks against
+   secondary sources, and it will grow again when somebody reads the
+   primary. A hand-typed count in front of a list like that has a
+   short shelf life by construction. */
+const openWork = read('docs/08-OPEN-WORK.md');
+const cicttSrc = read('packages/shared/src/cictt.ts');
+const cicttActual = [...cicttSrc.matchAll(/code:\s*"[A-Z-]+"/g)].length;
+const cicttStated = openWork.match(/\*\*yes,\s*(\d+)\s*categories\*\*/);
+assert(
+  'docs/08-OPEN-WORK.md still states an occurrence-category count',
+  cicttStated !== null,
+  'the doc no longer makes this claim, so this assertion has lost its subject (rule 11)'
+);
+assert(
+  'occurrence-category count in docs matches cictt.ts',
+  cicttStated !== null && Number(cicttStated[1]) === cicttActual,
+  `docs say ${cicttStated ? cicttStated[1] : 'nothing'}, cictt.ts defines ${cicttActual}`
+);
+
 const charter = read('docs/DIAGNOSTIC-CHARTER.md');
 assert(
   'the charter is the three-product version',

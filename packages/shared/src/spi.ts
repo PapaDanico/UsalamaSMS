@@ -160,6 +160,69 @@ export interface Indicator {
  *
  * Six is a judgement, stated as a judgement everywhere it is shown.
  */
+/* =====================================================================
+   WHERE AN OPERATOR ACTUALLY SUBMITS THESE, and the premise that was
+   wrong.
+
+   THE TASK THIS ANSWERS ASKED US TO CHECK THE EXPORT AGAINST "KCAA'S
+   eSERVICES SUBMISSION SHAPE", and that is not where SPIs go. The
+   eServices addresses this product already cites (circulars.ts) are
+   the mandatory-occurrence system and the voluntary reporting form —
+   both about individual OCCURRENCES. The indicator submission is a
+   FORM IN A CIRCULAR THIS FILE ALREADY QUOTES: Appendix II of
+   CAA-AC-SMS009, the same document §8.4 and §8.5 above come from.
+
+   Months of work could have gone into matching a portal that was never
+   the destination. That is worth more than the finding itself: the
+   destination for a regulatory artefact is named in the instrument,
+   and looking for it in a portal is looking in the wrong kind of
+   place.
+
+   TWO THINGS ABOUT THE PROCESS THAT CHANGE WHAT THIS PRODUCT SHOULD
+   MODEL, both corroborated from search-level renderings of the
+   circular and NEITHER read from the document itself:
+
+     · SPIs ARE AGREED IN ADVANCE, NOT MERELY REPORTED. The service
+       provider submits its indicators on the Appendix II form — State
+       and organisation-specific alike — the Authority reviews them,
+       and issues an ACCEPTANCE LETTER once agreed. So an indicator has
+       a standing with the regulator that this product does not model
+       at all: proposed, accepted, or neither.
+
+     · THERE IS AN ANNUAL REPORTING CYCLE whose submission dates the
+       Authority publishes. A deadline this product could run a
+       countdown against — and must not, until somebody has read the
+       dates from the instrument rather than from a search result.
+       That is the same line fatigue.ts draws and for the same reason.
+
+   WHAT IS STILL UNREAD IS THE FORM ITSELF — which columns Appendix II
+   asks for, in what order, with what units. Nothing here guesses at
+   them, because a submission shape assembled from a plausible guess is
+   the one kind of wrong that costs an operator its acceptance letter.
+   The document is public at kcaa.or.ke and this environment's egress
+   proxy refuses that host; the route is the one the ICAAS manual took.
+   ===================================================================== */
+
+/** Where indicators are submitted, corrected from the eServices assumption. */
+export const SPI_SUBMISSION_INSTRUMENT =
+  "KCAA Advisory Circular CAA-AC-SMS009 (January 2023), Appendix II — the indicator " +
+  "form a service provider submits for both State and organisation-specific SPIs.";
+
+/** The regulator's side of the loop, which this product does not yet model. */
+export const SPI_SUBMISSION_LOOP: readonly string[] = Object.freeze([
+  "The service provider completes the Appendix II form for its SPIs and SPTs.",
+  "The Authority reviews them and agrees them with the service provider.",
+  "The Authority issues an acceptance letter, after which the indicator set is the agreed one.",
+  "Performance is then reported on the Authority's annual cycle, on dates it publishes.",
+]);
+
+/**
+ * FALSE, and it governs what any screen may say. The columns of
+ * Appendix II have not been read, so this product prepares the
+ * arithmetic and does not claim to produce the Authority's form.
+ */
+export const SPI_SUBMISSION_SHAPE_VERIFIED = false;
+
 export const MIN_BASELINE = 6;
 
 /**
