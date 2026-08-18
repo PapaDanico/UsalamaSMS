@@ -58,6 +58,29 @@ const BARRIER_LIMIT = 300;
    answer; this list is the worst few, and a dashboard that shipped all
    of them shipped 500 KB to render 12 of 1600. See the response block. */
 const DEGRADED_SHOWN = 12;
+/* THE TWO CAPS ON THE INDICATOR READ, and this was the one collection
+   on this route with neither. `Spi` was read unbounded, and each row
+   pulled its whole `periods` series unbounded with it — a product of
+   two unbounded counts, on the dashboard, which is the most-requested
+   authenticated route in the product.
+
+   THE PERIOD CAP HAS A CORRECTNESS TRAP AND IT IS WHY THE ORDER IS
+   REVERSED BELOW. `spiVerdict` judges each period against the periods
+   BEFORE it, so the obvious cap — keep the ordering the screen wants,
+   `label` ascending, and `take` — keeps the OLDEST periods and drops
+   the recent ones. An indicator that crossed its alert level last
+   quarter would then report the position it held four years ago, with
+   exactly the confidence of a correct answer. So the query takes the
+   most recent and the rows are reversed back into ascending order
+   afterwards.
+
+   The number is well past `MIN_BASELINE` (6) and past the longest
+   `consecutive` rule (3), so a verdict computed over this window is the
+   same verdict the full series would give — the periods dropped are
+   older than anything either rule consults. Sixty quarters is fifteen
+   years, which is longer than this product will have existed. */
+const INDICATOR_LIMIT = 200;
+const PERIOD_LIMIT = 60;
 
 const REPORT_STATES = [
   "SUBMITTED", "TRIAGED", "UNDER_INVESTIGATION", "ACTIONS_OPEN", "CLOSED",
@@ -215,10 +238,17 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
 
         prisma.spi.findMany({
           where,
+          take: INDICATOR_LIMIT,
+          orderBy: { name: "asc" },
           select: {
             id: true, name: true, kind: true, direction: true, per: true,
             target: true, exposureUnit: true, owner: true,
-            periods: { orderBy: { label: "asc" },
+            /* DESCENDING HERE, ASCENDING AGAIN BELOW. Taking the most
+               recent periods and then restoring the order the verdict
+               reads them in — see PERIOD_LIMIT for why the ascending
+               version of this cap is a correctness bug rather than a
+               smaller answer. */
+            periods: { orderBy: { label: "desc" }, take: PERIOD_LIMIT,
               select: { id: true, label: true, events: true, exposure: true } },
           },
         }),
@@ -342,7 +372,15 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
       })),
     );
 
-    const alerting = indicators
+    /* THE REVERSAL, BEFORE ANYTHING READS THE SERIES. The query took the
+       most recent periods, which means it returned them newest-first;
+       every consumer downstream — spiVerdict here, and the indicators
+       panel that renders the same rows — reads them oldest-first. Doing
+       this at the point of use rather than in each consumer is what
+       stops a second consumer being added against the wrong order. */
+    const series = indicators.map((i) => ({ ...i, periods: [...i.periods].reverse() }));
+
+    const alerting = series
       .map((i) => ({ spi: i, verdict: spiVerdict(i as never) }))
       .filter((x) => x.verdict.headline.startsWith("Alert"))
       .map((x) => ({
@@ -477,7 +515,21 @@ export async function pictureRoutes(app: FastifyInstance): Promise<void> {
         truncated: register.length === REGISTER_LIMIT,
         holderGaps: gaps,
       },
-      indicators: { total: indicators.length, alerting },
+      indicators: {
+        total: indicators.length,
+        alerting,
+        /* SAID, NOT ABSORBED — the same rule the closure median and the
+           register follow. "3 of 200 alerting" read off a capped list is
+           a different sentence from "3 of 214", and this is a figure an
+           operator reads out at a safety review.
+
+           The PERIOD cap is deliberately NOT reported: dropping periods
+           older than fifteen years changes no verdict, because nothing
+           in spi.ts consults a window that long. A truncation notice
+           about something that cannot alter the answer is noise that
+           teaches people to ignore the notice that can. */
+        truncated: indicators.length === INDICATOR_LIMIT,
+      },
       changes: { inEffectUnreviewed: changes },
       actions: {
         ...summariseActions(actions, to),

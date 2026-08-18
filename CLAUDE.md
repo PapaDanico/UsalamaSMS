@@ -319,6 +319,36 @@ backtick safely. `npm run check:prose` fails on a backtick inside an
 HTML comment and holds the remaining prose under a ceiling that
 ratchets down.
 
+## Creating the vendor's own account
+
+`npm run seed:platform-admin -- --email you@example.com`, with a
+**direct** connection string on port 5432. It refuses a pooler URL
+before it builds a client, and prints the password once into the
+terminal of whoever ran it.
+
+**The console shipped live and reachable by nobody.** `PLATFORM_ADMIN`
+was in the Role enum, the migration was applied to production, `/admin`
+rendered, and `routes.admin.ts` answered — and no user in the database
+held the role, so all of it answered 403 to everybody alive. That is
+the defect `check:claims` catches one layer down (a module nothing
+imports) arriving one layer up: **a role nothing can hold**.
+
+It cannot be created from inside the product, and that is deliberate.
+`/api/v1/admin/operators` mints operators and never platform
+administrators, because a tenant that could mint a platform
+administrator would be a tenant that could read the others.
+
+**The vendor org it creates holds no safety record** — no reports, no
+hazards, no indicators. It exists to satisfy the non-nullable `orgId`
+on `User`. That emptiness is load-bearing:
+`/api/v1/admin/upgrade-requests` is the one route in this API that
+reads across tenancy, so "the vendor sees every operator" is only safe
+to reason about while there is no operator the vendor is *also* inside.
+
+`--rotate` re-issues and **revokes every live refresh token**, for the
+reason the demo seed records below: a refresh token minted before a
+rotation still mints access tokens after it.
+
 ## Rotating a demo password
 
 `npm run seed:demo -- --rotate`. It re-issues a password for accounts

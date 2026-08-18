@@ -352,14 +352,28 @@ describe.skipIf(!hasDatabase)("auth routes against Postgres", () => {
      is hard to get wrong — but the three properties that make it a
      reset rather than a password change.
      ================================================================ */
+  /* THE ACTOR IS THE ACCOUNTABLE EXECUTIVE, AND IT USED TO BE A
+     SYSTEM_ADMIN — do not change it back.
+
+     The target below is the SAFETY_MANAGER, and that pair is now
+     refused: a reset RETURNS the password, so an administrator that
+     reads no narrative could reset the safety manager, sign in as them
+     and read the whole record. It was measured over HTTP, and
+     `reset-escalation.integration.test.ts` asserts the refusal.
+
+     Nothing about the three properties below changed — a new password
+     that works, every session revoked, an audit entry without the
+     credential. Only who is permitted to exercise them. The executive
+     holds `user.manage` and reads org narratives already, which is the
+     legitimate path that keeps the rule from being a lockout. */
   const asAdmin = async () => {
     await prisma().user.create({
       data: {
         orgId,
         email: "admin@example.test",
         passwordHash: await argon2.hash(PASSWORD, { type: argon2.argon2id }),
-        name: "System Admin",
-        role: "SYSTEM_ADMIN",
+        name: "Accountable Executive",
+        role: "ACCOUNTABLE_EXECUTIVE",
       },
     });
     const res = await login("admin@example.test", PASSWORD, `10.9.0.${testIndex}`);

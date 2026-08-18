@@ -426,6 +426,7 @@ export const SECTIONS = [
          fails on a registered route nobody advertises is the reason
          this product has no invisible screens. The account area is
          where somebody actually reaches it. */
+      { href: '/account/team', label: 'People & Access' },
       { href: '/account/logo', label: 'Organisation Branding' },
       { href: '/#deadlines', label: 'Regulatory Basis' }
     ]

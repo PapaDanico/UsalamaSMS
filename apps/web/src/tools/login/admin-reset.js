@@ -75,13 +75,23 @@ function bind(root) {
         body: JSON.stringify({ userId })
       });
       if (!res.ok) {
+        /* THE SERVER'S OWN SENTENCE WHERE IT WROTE ONE. This used to
+           answer every 403 with "Your role cannot reset passwords",
+           which is now false for the case that matters: an account
+           administrator CAN reset passwords and cannot reset the ones
+           that read safety narratives. Told the old sentence, they
+           would reasonably conclude the product was broken and try
+           again; the server's message names the rule and says who to
+           ask instead. */
+        const answer = await res.json().catch(() => ({}));
         out.dataset.state = 'error';
         out.textContent =
           res.status === 404
             ? 'No such user in this operator. Check the ID.'
-            : res.status === 403
-              ? 'Your role cannot reset passwords.'
-              : `That did not work (${res.status}).`;
+            : answer.message ??
+              (res.status === 403
+                ? 'Your role cannot reset passwords.'
+                : `That did not work (${res.status}).`);
         return;
       }
       const body = await res.json();

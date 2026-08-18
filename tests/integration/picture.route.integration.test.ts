@@ -542,6 +542,108 @@ describe.skipIf(!hasDatabase)("the risk picture, through the real route", () => 
     expect(b.degraded[0].daysLate).toBe(40);
   });
 
+  /* ================================================================
+     THE INDICATOR READ, AND THE ORDERING TRAP IN CAPPING IT.
+
+     `Spi` was read unbounded and pulled its whole `periods` series with
+     it — a product of two unbounded counts on the most-requested
+     authenticated route in the product. Both are capped now, and the
+     PERIOD cap is the one that could have been wrong in a way nothing
+     would show: `spiVerdict` judges each period against the ones
+     BEFORE it, so a cap that keeps the ordering the screen wants —
+     label ascending — keeps the OLDEST periods and silently drops the
+     recent ones. An indicator that crossed its alert level last
+     quarter would report the position it held years ago.
+
+     So the fixture below is built to be WRONG under that mistake and
+     right under the fix: a long quiet history, and the crossing at the
+     end.
+     ================================================================ */
+  const indicator = async (name: string, tail: number[], quiet = 60) => {
+    const spi = await prisma().spi.create({
+      data: {
+        orgId, name, kind: "OUTCOME", exposureUnit: "sectors",
+        per: 1000, direction: "LOWER_IS_BETTER", owner: "Safety Manager",
+      },
+    });
+    /* Quarters in ascending label order, oldest first. The quiet ones
+       carry the same rate so the standard deviation is small and any
+       crossing at the end is unambiguous. */
+    const rows = [];
+    for (let i = 0; i < quiet; i++) {
+      const year = 2000 + Math.floor(i / 4);
+      rows.push({
+        orgId, spiId: spi.id,
+        label: `${year}-Q${(i % 4) + 1}`, events: 1, exposure: 1000,
+      });
+    }
+    tail.forEach((events, j) => {
+      const i = quiet + j;
+      const year = 2000 + Math.floor(i / 4);
+      rows.push({
+        orgId, spiId: spi.id,
+        label: `${year}-Q${(i % 4) + 1}`, events, exposure: 1000,
+      });
+    });
+    await prisma().spiPeriod.createMany({ data: rows });
+    return spi.id;
+  };
+
+  it("THE VERDICT IS COMPUTED FROM THE MOST RECENT PERIODS, NOT THE OLDEST", async () => {
+    /* Sixty quiet quarters then three sharp ones. Capping ascending
+       would return sixty ones and never see the crossing; capping
+       descending and restoring the order sees it. */
+    await indicator("Runway excursions", [40, 45, 50]);
+
+    const body = (await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"))).json();
+    expect(body.indicators.total).toBe(1);
+    expect(
+      body.indicators.alerting.map((a: { name: string }) => a.name),
+      "the recent crossing was invisible — the cap kept the oldest periods",
+    ).toEqual(["Runway excursions"]);
+  });
+
+  it("and a series that is quiet at the end does not alert on an old crossing", async () => {
+    /* The other direction, so the assertion above is not satisfied by
+       an implementation that alerts on everything. */
+    await indicator("Ground handling", [1, 1, 1]);
+
+    const body = (await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"))).json();
+    expect(body.indicators.total).toBe(1);
+    expect(body.indicators.alerting).toEqual([]);
+  });
+
+  it("CAPS THE INDICATOR LIST AND SAYS SO", async () => {
+    /* THIS ASSERTION USED TO BE `truncated === false` OVER ONE
+       INDICATOR, and it could not fail: one is under the cap whether
+       the cap exists or not. Removing `take: INDICATOR_LIMIT` left the
+       whole suite green, which is the exact shape this repository keeps
+       meeting — a check that reads as protection and is not.
+
+       So the fixture crosses the limit. 201 rows through createMany,
+       no periods, because what is under test is the bound on the outer
+       read rather than anything about a series. */
+    await prisma().spi.createMany({
+      data: Array.from({ length: 201 }, (_, i) => ({
+        orgId, name: `Indicator ${String(i).padStart(3, "0")}`,
+        kind: "OUTCOME", exposureUnit: "sectors", per: 1000,
+        direction: "LOWER_IS_BETTER", owner: "Safety Manager",
+      })),
+    });
+
+    const body = (await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"))).json();
+    expect(body.indicators.total, "the read was unbounded").toBe(200);
+    expect(body.indicators.truncated, "the cut was absorbed silently").toBe(true);
+  });
+
+  it("and does not claim truncation when everything fitted", async () => {
+    /* The other direction, so the flag is not simply always true. */
+    await indicator("Only one", [1], 8);
+    const body = (await picture(tokenFor(managerId, orgId, "SAFETY_MANAGER"))).json();
+    expect(body.indicators.total).toBe(1);
+    expect(body.indicators.truncated).toBe(false);
+  });
+
   it("requires a token", async () => {
     expect(
       (await app.inject({ method: "GET", url: "/api/v1/picture" })).statusCode,

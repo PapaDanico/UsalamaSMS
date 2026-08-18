@@ -10,7 +10,24 @@ import type { FastifyInstance } from "fastify";
 import { LoginSchema } from "@usalamasms/shared";
 import { SignupSchema } from "../../../packages/shared/src/signup";
 import { z } from "zod";
-import { PERMISSIONS, type Role } from "@usalamasms/shared";
+import { PERMISSIONS, RoleEnum, type Role } from "@usalamasms/shared";
+import { mayCreateRole, mayResetCredential } from "../../../packages/shared/src/permissions";
+
+/* THE SAME SHAPE THE CONSOLE ISSUES, so a credential from either path
+   reads identically to whoever receives it. Duplicated deliberately
+   rather than exported from routes.admin.ts: that file is the vendor's
+   and this one is the operator's, and a shared helper between them
+   would be a seam somebody later routes an operator through. Twenty
+   bytes of entropy either way — the alphabet drops the characters that
+   are misread aloud over a telephone, which is how most of these will
+   actually be handed over.  */
+const CREDENTIAL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function issuePassword(): string {
+  const bytes = randomBytes(20);
+  let out = "";
+  for (const b of bytes) out += CREDENTIAL_ALPHABET[b % CREDENTIAL_ALPHABET.length];
+  return `${out.slice(0, 5)}-${out.slice(5, 10)}-${out.slice(10, 15)}-${out.slice(15, 20)}`;
+}
 
 /* WHAT A PERSON MAY CHANGE ABOUT THEMSELVES, and the email is not on
    the list — see the route below. Trimmed and bounded to the same
@@ -49,7 +66,7 @@ function knownOnly(
 }
 import {
   prisma, ENV, hmac, verifyPassword, issueAccessToken, issueRefreshToken,
-  appendAuditTx, authenticate, requirePermission,
+  appendAuditTx, authenticate, requirePermission, tenantWhere,
 } from "./core";
 /* By path rather than through the barrel, for the reason reset.ts
    states in its own header: the report form imports the barrel, so
@@ -732,12 +749,25 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           share this database, and an admin of one resetting an account
           in the other is the worst breach this product could have.
 
-       3. THE ADMIN STILL CANNOT READ A REPORT. SYSTEM_ADMIN holds
-          user.manage and org.manage and NO narrative permission — see
-          the note beside NARRATIVE_PERMISSIONS. Being able to restore
-          somebody's access is not being able to read what they filed in
-          confidence, and this route does not quietly become the way
-          around that.
+       3. THE ADMIN STILL CANNOT READ A REPORT — WHICH THIS ROUTE USED
+          TO ASSERT AND NOT ENFORCE. The claim was that being able to
+          restore somebody's access is not being able to read what they
+          filed, and that this route "does not quietly become the way
+          around that". It was the way around it. The new password is
+          RETURNED, because there is no mail path to send it down, so
+          the administrator finishes the request holding a working
+          credential for the account it just reset. Measured over HTTP:
+
+            SYSTEM_ADMIN own token, GET /api/v1/export -> 403
+            POST this route                           -> 200 + password
+            POST /api/v1/auth/login as the target     -> 200, role SAFETY_MANAGER
+            that token,             GET /api/v1/export -> 200, narratives
+
+          `mayResetCredential` now refuses it, sharing `readsNarrative`
+          with `mayCreateRole` so the two administrative doors cannot
+          drift apart about what a narrative role is. The safety manager
+          still gets back in through `/api/v1/auth/forgot` or through
+          the accountable executive, who reads narratives already.
 
      The new password is returned ONCE, in the response, for the admin
      to hand over. It is never stored in the clear and never logged: the
@@ -762,6 +792,35 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         select: { id: true, email: true, role: true },
       });
       if (!target) return reply.code(404).send({ error: "user_not_found" });
+
+      /* NO SELF-RESET EXEMPTION HERE, AND THE FIRST DRAFT HAD ONE.
+         It read `target.id !== req.auth!.sub &&`, to stop the rule
+         refusing a safety manager their own credential — and it could
+         not fire. This route's preHandler demands `user.manage`, so a
+         safety manager never reaches the handler; and every role that
+         does reach it is permitted against itself anyway, because the
+         rule compares narrative access and a role always matches
+         itself. A branch that cannot execute reads as protection and
+         is not, which is the objection this repository keeps meeting.
+
+         Somebody resetting their OWN password does it at
+         `/api/v1/auth/password` while signed in, or
+         `/api/v1/auth/forgot` when they are not. */
+      if (!mayResetCredential(req.auth!.role as never, target.role as never)) {
+        return reply.code(403).send({
+          error: "reset_not_permitted",
+          /* NAMED rather than "forbidden". An administrator looking at
+             a list of their own colleagues needs to know this is a rule
+             and not a malfunction, and needs to know who to ask. */
+          message:
+            target.role === "PLATFORM_ADMIN"
+              ? "That account belongs to the supplier of this product."
+              : "Your role cannot reset an account that reads safety narratives — " +
+                "a reset hands you a working password for it. The accountable " +
+                "executive can, and they can also reset it themselves from the " +
+                "sign-in screen.",
+        });
+      }
 
       /* 18 bytes of base64url — comfortably past the 12 characters
          LoginSchema demands, and generated here rather than chosen, so
@@ -813,6 +872,264 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
      
      AOC number too, where the operator has one, because that is the
      reference a regulator files a pack under. */
+  /* =====================================================================
+     THE SECOND USER, WHICH NOTHING COULD CREATE.
+
+     Nine roles, a permission matrix, role-gated routes throughout — and
+     until this route existed, an operator had exactly one account. The
+     comment above this file's signup handler said so outright:
+     "nothing anywhere creates a second user". Filing a report requires
+     `authenticate`, so the FRONTLINE staff the whole reporting system
+     exists for could not have accounts at all, the triage queue had
+     nobody to staff it, and investigator assignment had nobody to
+     assign to.
+
+     ---------------------------------------------------------------
+     THE ESCALATION THIS OPENS IS NOT VISIBLE FROM THE ROUTE.
+
+     `mayCreateRole` in permissions.ts carries the argument in full. The
+     short version: SYSTEM_ADMIN deliberately reads no narrative, and
+     `user.manage` would otherwise let it create a SAFETY_MANAGER, set
+     that account's password — the creator chooses it — sign in, and
+     read everything. No check is violated anywhere on that path. The
+     sequence is the breach, which is why it is refused in the matrix
+     rather than here.
+
+     ---------------------------------------------------------------
+     THE PASSWORD IS HANDED OVER, NOT EMAILED. Same discipline as
+     provisioning: shown once, never stored in the clear, never logged.
+     A set-your-own link would have been better and would have shipped
+     DISABLED, because it needs mail configured — the exact failure
+     evidence upload had.
+     ===================================================================== */
+  app.post<{ Body: { email?: unknown; name?: unknown; role?: unknown } }>(
+    "/api/v1/users",
+    {
+      preHandler: [authenticate, requirePermission("user.manage")],
+      config: { rateLimit: { max: 20, timeWindow: "15 minutes" } },
+    },
+    async (req, reply) => {
+      const auth = req.auth!;
+      const email = String(req.body?.email ?? "").trim().toLowerCase();
+      const name = String(req.body?.name ?? "").trim();
+      const roleRaw = String(req.body?.role ?? "");
+
+      if (!email.includes("@") || email.length > 254) {
+        return reply.code(400).send({ error: "email_required" });
+      }
+      if (name.length < 2 || name.length > 160) {
+        return reply.code(400).send({ error: "name_required" });
+      }
+
+      const parsed = RoleEnum.safeParse(roleRaw);
+      if (!parsed.success) return reply.code(400).send({ error: "unknown_role" });
+      const role = parsed.data;
+
+      /* THE MATRIX ANSWERS, NOT THIS ROUTE. Keeping the rule in
+         permissions.ts means the unit tests can drive every role pair
+         without standing a server up, and means a second creation path
+         cannot disagree with this one. */
+      if (!mayCreateRole(auth.role as never, role)) {
+        return reply.code(403).send({
+          error: "role_not_permitted",
+          /* NAMED, because "forbidden" would read as a bug to an
+             administrator who can plainly see the role in the list. */
+          message:
+            role === "PLATFORM_ADMIN"
+              ? "That role belongs to the supplier of this product and cannot be created by an operator."
+              : "Your role cannot create an account that reads safety narratives. Ask the accountable executive.",
+        });
+      }
+
+      /* Globally unique, not per-tenant: an address identifies a person
+         at sign-in, and two organisations holding the same one would
+         make login ambiguous. Checked before the hash is spent. */
+      const taken = await prisma.user.findFirst({ where: { email }, select: { id: true } });
+      if (taken) return reply.code(409).send({ error: "email_already_registered" });
+
+      const password = issuePassword();
+      const passwordHash = await argon2.hash(password);
+
+      const created = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          /* orgId FROM THE TOKEN, never from the body. An admin of one
+             operator creating an account inside another is the worst
+             breach this product could have, and the safe version is one
+             where the request cannot express it. */
+          data: { orgId: auth.org, email, name, role, passwordHash },
+          select: { id: true, email: true, name: true, role: true },
+        });
+        await appendAuditTx(tx, {
+          orgId: auth.org,
+          userId: auth.sub,
+          action: "user.created",
+          entityType: "User",
+          entityId: user.id,
+          /* Field by field, and NEVER the password or its hash. */
+          detail: { email: user.email, role: user.role },
+        });
+        return user;
+      });
+
+      return reply.code(201).send({
+        id: created.id,
+        email: created.email,
+        name: created.name,
+        role: created.role,
+        password,
+        passwordShownOnce: true,
+      });
+    },
+  );
+
+  /* =====================================================================
+     SOMEBODY LEAVES, AND UNTIL NOW NOTHING COULD SAY SO.
+
+     `User.active` has been in the schema since the first migration and
+     is checked in four places — login, refresh, forgot and reset all
+     refuse an inactive account. Nothing in the product ever set it
+     false. So an operator could hire, and could not offboard: a pilot
+     who left last month kept a working sign-in to the safety record of
+     the operator they left, and the only routes available were deleting
+     the row — which the schema refuses, see the note on AuditLog.userId
+     — or an UPDATE by hand against production.
+
+     ---------------------------------------------------------------
+     DEACTIVATION, NOT DELETION, AND THE SCHEMA ENFORCES IT.
+
+     `AuditLog.userId` is `onDelete: Restrict` because it used to be
+     SetNull, and offboarding therefore rewrote the hashed content of
+     every audit row naming the departing person — the chain reported
+     itself altered, which to a regulator reading it is indistinguishable
+     from a chain that was. The row stays; the access ends.
+
+     ---------------------------------------------------------------
+     THE WINDOW IS FIFTEEN MINUTES AND THE RESPONSE SAYS SO.
+
+     `authenticate` verifies a signature and does not re-read the user,
+     so an access token already issued keeps working until it expires —
+     ENV.ACCESS_TTL, fifteen minutes. Revoking the refresh tokens is what
+     bounds it: without that the holder renews indefinitely and
+     deactivation ends nothing, which is the same objection the password
+     reset above records. Reporting "signed out" while a token is live
+     for another quarter of an hour would be the quiet-failure shape, so
+     the answer names the bound instead.
+
+     ---------------------------------------------------------------
+     TWO REFUSALS, AND BOTH ARE ABOUT BEING ABLE TO UNDO IT.
+
+     Deactivating YOURSELF is refused: on an operator with one
+     administrator it is a one-way door, and the person walking through
+     it is the person who would have to open it again. Deactivating the
+     LAST ACTIVE ACCOUNTABLE EXECUTIVE is refused for a larger reason —
+     that role signs the safety policy, and since the escalation rule
+     above it is also the only role that can reset a safety manager's
+     credential. An operator with none has no way to appoint one, and
+     `mayCreateRole` will not let an administrator mint the replacement.
+     ===================================================================== */
+  app.post<{ Params: { id: string }; Body: { active?: unknown } }>(
+    "/api/v1/users/:id/active",
+    {
+      preHandler: [authenticate, requirePermission("user.manage")],
+      config: { rateLimit: { max: 20, timeWindow: "15 minutes" } },
+    },
+    async (req, reply) => {
+      const auth = req.auth!;
+      if (typeof req.body?.active !== "boolean") {
+        return reply.code(400).send({ error: "active_required" });
+      }
+      const active = req.body.active;
+
+      /* Scoped in the WHERE, not fetched and then checked — the reset
+         route records why, and the reason is the same one. */
+      const target = await prisma.user.findFirst({
+        where: { id: req.params.id, orgId: auth.org },
+        select: { id: true, email: true, name: true, role: true, active: true },
+      });
+      if (!target) return reply.code(404).send({ error: "user_not_found" });
+
+      if (target.id === auth.sub && !active) {
+        return reply.code(409).send({
+          error: "cannot_deactivate_self",
+          message:
+            "You cannot deactivate your own account — nobody would be left to " +
+            "reactivate it. Ask a colleague who manages accounts.",
+        });
+      }
+
+      if (!active && target.role === "ACCOUNTABLE_EXECUTIVE") {
+        const others = await prisma.user.count({
+          where: {
+            orgId: auth.org, role: "ACCOUNTABLE_EXECUTIVE",
+            active: true, id: { not: target.id },
+          },
+        });
+        if (others === 0) {
+          return reply.code(409).send({
+            error: "last_accountable_executive",
+            message:
+              "This is the only active accountable executive. That role signs the " +
+              "safety policy and is the only one that can reset the safety office's " +
+              "credentials. Appoint the replacement first, then deactivate this one.",
+          });
+        }
+      }
+
+      /* IDEMPOTENT, AND IT SAYS WHICH IT WAS. Repeating the request is
+         harmless, and an audit entry per click would make the chain
+         report activity that did not happen. */
+      if (target.active === active) {
+        return { id: target.id, active, changed: false };
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({ where: { id: target.id }, data: { active } });
+
+        if (!active) {
+          await tx.refreshToken.updateMany({
+            where: { userId: target.id, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+        }
+
+        await appendAuditTx(tx, {
+          orgId: auth.org,
+          userId: auth.sub,
+          action: active ? "user.reactivated" : "user.deactivated",
+          entityType: "User",
+          entityId: target.id,
+          detail: { targetEmail: target.email, targetRole: target.role },
+        });
+      });
+
+      return {
+        id: target.id,
+        active,
+        changed: true,
+        note: active
+          ? "They can sign in again with the password they had. If it is lost, reset it."
+          : "Signed out of every device, and no new session can be started. A session " +
+            "opened in the last 15 minutes stays valid until it expires. Their reports, " +
+            "and every audit entry naming them, are untouched.",
+      };
+    },
+  );
+
+  /* The team, so the screen that creates people can show who exists.
+     No narrative, no password, no hash — a name, an address and a
+     role. Reading who works here is not reading what they filed. */
+  app.get("/api/v1/users", {
+    preHandler: [authenticate, requirePermission("user.manage")],
+  }, async (req) => {
+    const rows = await prisma.user.findMany({
+      where: tenantWhere(req),
+      orderBy: [{ name: "asc" }],
+      take: 500,
+      select: { id: true, email: true, name: true, role: true, active: true },
+    });
+    return { users: rows };
+  });
+
   app.get("/api/v1/auth/me", { preHandler: [authenticate] }, async (req) => {
     const [org, user] = await Promise.all([
       prisma.org.findUnique({

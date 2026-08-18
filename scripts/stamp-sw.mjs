@@ -2155,7 +2155,30 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    share of the console chunk. /admin is deliberately absent from the
    menu and reachable by nobody in an operator's organisation, so this
    is weight no customer ever downloads. */
-const BUDGET = { entry: 224 * 1024, js: 614 * 1024, css: 80 * 1024 };
+/* TOTAL 614 -> 622 KB, for the second user an operator could not have.
+   ENTRY 216.3 -> 216.5, CSS unmoved.
+
+   NINE ROLES, A PERMISSION MATRIX, ROLE-GATED ROUTES THROUGHOUT — AND
+   NOTHING CREATED A USER BEYOND THE FIRST. Signup made one accountable
+   executive, the vendor console made one administrator, and that was
+   the whole organisation. Filing a report requires a session, so the
+   FRONTLINE staff the entire reporting system exists for could not have
+   accounts at all, the triage queue had nobody to staff it, and
+   investigator assignment had nobody to assign to. The product was
+   usable by exactly one person per customer.
+
+   The 8 KB is /account/team and its share of the account chunk. Lazily
+   loaded like its neighbours: an operator adds people a handful of
+   times in the product's life, and a ramp agent filing a hazard at a
+   strip never opens it. The 0.2 KB of entry is the route registration
+   and one sitemap entry.
+
+   AND THE PICKER IS DERIVED FROM THE SAME FUNCTION THE API REFUSES
+   WITH, rather than from a list. A screen offering a role the server
+   rejects teaches an administrator the product is broken; a screen
+   offering MORE than the server allows is the dangerous half of the
+   same bug. */
+const BUDGET = { entry: 224 * 1024, js: 622 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
