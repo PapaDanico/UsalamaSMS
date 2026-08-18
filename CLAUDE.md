@@ -276,12 +276,26 @@ the published deploy id and no deploy list, which is why the SHA has to
 be chased through `get-deploy` on an id learned from the netlify[bot]
 comment on a pull request.
 
-Where the failure sits is known and its cause is not. Every gate passes
-ON NETLIFY — the brand gate's 56 assertions, the claims gate's 105, all
-900 tests, and `npm run icons` — and the build then dies inside `vite
-build`, after `103 modules transformed`, during `rendering chunks`. The
-production build from `main` at 13:03 and the two preview builds fail
-at the same point, so it is neither PR-specific nor merge-specific.
+Where the failure sits is NOT known, and the first version of this
+section said it was — wrongly. Every gate passes ON NETLIFY: the brand
+gate's 56 assertions, the claims gate's 105, all 900 tests, and `npm
+run icons`. The log then showed
+
+    rendering chunks...
+    [plugin:vite:reporter]
+
+and both times it was truncated exactly there, so this said the build
+"dies inside vite build during rendering chunks".
+
+**IT DOES NOT. That line is a WARNING** — rollup noting that
+`offline.ts` is both statically and dynamically imported — and it
+appears verbatim in builds that go on to publish. Read in a successful
+build at 14:02 the same day. A truncated log is not a stack trace, and
+the last line before the cut is not the cause; it is where the paste
+ran out.
+
+The exit code said so at the time and was believed less than the log
+was. That is the lesson worth more than the incident.
 
 **AND IT IS NOT THE BUILD SCRIPT EITHER, WHICH TOOK A MATRIX TO SAY.**
 Netlify reports `Build script returned non-zero exit code: 2`. Every
@@ -414,6 +428,31 @@ ledger is a record of what ran; nothing about the data or the schema
 changed.
 - **BLOCKED** — a failed or rolled-back row is present. Nothing applies
   until it is resolved.
+
+## An APPLIED migration is immutable, including its comments
+
+`_prisma_migrations.checksum` is the sha256 of `migration.sql`, so
+editing an applied migration — by one character, in a comment — makes
+Prisma report it MODIFIED against every database that already ran it.
+
+That is not hypothetical either. On 18 August 2026 a review of
+`20260818134000_drop_syncreceipt_devicehash` concluded, correctly,
+that its trailing `VACUUM FULL` should not be there: production's
+`SyncReceipt` held zero rows so it reclaimed nothing, VACUUM FULL takes
+an ACCESS EXCLUSIVE lock, and it cannot run inside a transaction, which
+makes the migration depend on Prisma not opening one — behaviour rather
+than guarantee. All true. The edit was written and then reverted
+BEFORE it was committed, because the migration had already been applied
+to production forty minutes earlier and recorded with the old file's
+checksum.
+
+**A correct improvement to an applied migration is still a defect.**
+The remedy for a statement you wish were not there is a NEW migration
+that undoes it, or nothing at all when — as here — the statement has
+already run and cannot run again.
+
+The judgement about VACUUM FULL stands and belongs in the next
+migration that would otherwise reach for it: do not.
 
 ## `migrate dev` proposes drift that is not drift, and it breaks inserts
 
