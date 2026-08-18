@@ -1,0 +1,82 @@
+# =====================================================================
+# DID THE COMMIT WE JUST MERGED ACTUALLY REACH PRODUCTION?
+#
+# Nothing else asks. Netlify deploys atomically, so a failed build
+# leaves the previous one serving and the site looks healthy; CI going
+# green says the code is sound, not that it shipped. On 18 August 2026
+# those two facts were true at the same time for ninety minutes across
+# five failed builds, and no machine anywhere noticed.
+#
+# This job is the notification that does not depend on a dashboard
+# toggle somebody has to remember. It fails loudly, in the same place
+# the team already watches for red.
+#
+# IT DISTINGUISHES THREE OUTCOMES, because "not matched" hides two very
+# different problems:
+#
+#   matched      the merge is live
+#   mismatch     production is serving a DIFFERENT commit — the deploy
+#                failed, or is still queued past the window
+#   unreachable  the site did not answer at all, which is an outage
+#                rather than a stale deploy and reads differently
+#
+# THE WINDOW IS GENEROUS ON PURPOSE. A successful production build has
+# taken 48 seconds; the window is fifteen minutes because a watchdog
+# that cries wolf gets muted, and muting it costs more than the delay.
+# =====================================================================
+name: deploy-watchdog
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      expect_sha:
+        description: 'Commit the site should be serving (defaults to this ref)'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  reached-production:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for the commit to appear on usalamasms.com
+        env:
+          EXPECT: ${{ github.event.inputs.expect_sha || github.sha }}
+          URL: https://usalamasms.com/build-id.txt
+        run: |
+          echo "expecting $EXPECT"
+          deadline=$(( SECONDS + 900 ))
+          reachable=no
+          served=""
+          attempt=0
+          while [ $SECONDS -lt $deadline ]; do
+            attempt=$(( attempt + 1 ))
+            # Cache-bust: a CDN edge holding the previous build-id would
+            # make this assert the old deploy is the new one, which is
+            # the exact failure it exists to catch.
+            body=$(curl -fsS --max-time 20 -H 'Cache-Control: no-cache' \
+                     "$URL?t=$(date +%s)-$attempt" 2>/dev/null || true)
+            if [ -n "$body" ]; then
+              reachable=yes
+              served=$(echo "$body" | tr -d '[:space:]')
+              if [ "$served" = "$EXPECT" ]; then
+                echo "::notice::production is serving $served — the merge is live"
+                exit 0
+              fi
+              echo "attempt $attempt: serving $served, waiting for $EXPECT"
+            else
+              echo "attempt $attempt: $URL did not answer"
+            fi
+            sleep 30
+          done
+
+          if [ "$reachable" = "no" ]; then
+            echo "::error::usalamasms.com/build-id.txt never answered in 15 minutes. That is an OUTAGE or a missing build-id.txt, not a stale deploy — check the site is up before looking at deploys."
+            exit 1
+          fi
+
+          echo "::error::Production is serving $served, not $EXPECT, 15 minutes after the merge. The Netlify build for this commit failed or never ran — the previous deploy is still up, which is why nothing else noticed. Check https://app.netlify.com/projects/usalamasms/deploys ; if the build log shows the gates passing and then an exit code the build script cannot produce, clear the cache and redeploy."
+          exit 1
