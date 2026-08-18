@@ -31,12 +31,18 @@
 //
 // WHAT IS DELIBERATELY LEFT OUT:
 //
-//   · sync receipts. They carry `deviceHash` — an HMAC of the device
-//     id, kept so a duplicate filing can be detected. It is stable per
-//     device, so a file containing it lets a reader CLUSTER anonymous
-//     reports by handset, which is most of the way to identifying the
-//     person at a six-aircraft operator. It is a delivery mechanism,
-//     not a safety record, and it does not travel;
+//   · sync receipts. They carry `deviceId` in cleartext for named
+//     submissions and a `clientId` that joins straight to the report,
+//     so a file containing them lets a reader CLUSTER reports by
+//     handset — most of the way to identifying the person at a
+//     six-aircraft operator. It is a delivery mechanism, not a safety
+//     record, and it does not travel.
+//
+//     THIS ENTRY USED TO NAME `deviceHash`, and naming it here is how
+//     the risk got missed one layer in: the clustering was understood
+//     as something a FILE would enable, while the same hash sat in the
+//     database beside the cleartext it was derived from. The column is
+//     gone; see prisma/schema.prisma;
 //   · password hashes, MFA secrets and refresh tokens. An export is a
 //     file that leaves the building.
 //
@@ -94,10 +100,10 @@ const EXPORT_FORMAT = 2;
  */
 export const EXPORT_EXCLUSIONS: Readonly<Record<string, string>> = Object.freeze({
   SyncReceipt:
-    "Carries deviceHash, an HMAC of the device id kept so a duplicate filing can be " +
-    "detected. It is stable per device, so a file containing it lets a reader CLUSTER " +
-    "anonymous reports by handset — most of the way to identifying the person at a " +
-    "six-aircraft operator. A delivery mechanism, not a safety record.",
+    "Carries the device id in cleartext for named submissions, and a clientId that " +
+    "joins straight to the report. A file containing them lets a reader CLUSTER reports " +
+    "by handset — most of the way to identifying the person at a six-aircraft operator. " +
+    "A delivery mechanism, not a safety record.",
   RefreshToken:
     "A live credential. An export is a file that leaves the building, and a session " +
     "token in one is a session somebody else can resume.",
