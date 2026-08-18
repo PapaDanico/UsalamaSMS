@@ -414,6 +414,76 @@ assert(
     'the signature, not the record of it'
 );
 
+/* ---------------- THE OTHER DIRECTION, which was open ---------------
+
+   THE ASSERTION ABOVE ONLY LOOKS ONE WAY. It proves that every element
+   the table grades PARTIAL is named on /about. With the table at twelve
+   BUILT and zero PARTIAL it iterates an empty list and passes — while
+   the page went on telling every prospect, in its lede, that "the two
+   that are partial are named", and headed the section a prospect is
+   linked to "What is still partial".
+
+   Both sentences were true when the table held two partial elements and
+   neither was touched when it stopped. The numeral in the same lede WAS
+   updated, because the numeral is what this file checks — so /about
+   said "Twelve of ICAO Annex 19's twelve elements" and, two sentences
+   later, that two of them were partial. A gate that only checks one
+   direction is the anti-pattern this repository has written down twice;
+   this is the third instance and it landed on the page that sells.
+
+   So: a present-tense claim that some element IS partial must be
+   matched by a PARTIAL state in the table. Past tense is deliberately
+   untouched — "two of them WERE only partial until recently" is the
+   history the same page tells, and it is true. */
+const presentTensePartial =
+  /\bthat are partial\b/i.test(pages) || /\b(?:is|are)\s+(?:still\s+)?partial\b/i.test(pages);
+assert(
+  'the About page claims a partial element only when the table grades one',
+  !presentTensePartial || partialStates > 0,
+  'the About page says an element IS partial in the present tense while the coverage ' +
+    'table grades none — the figure was updated and the sentence around it was not'
+);
+
+/* ---------------- THE TRIAL LENGTH, on the page that promises it ----
+
+   TRIAL_DAYS WAS LOWERED FROM 60 TO 30 and the pricing page followed,
+   because the sentence there is BUILT from the constant. /about states
+   it in prose — "sixty days in which the product either fits your
+   operation or does not" — and prose does not follow anything. So the
+   product offered thirty days on one public screen and sixty on
+   another, which is a commercial promise a customer can hold us to.
+
+   THE SPELLED-OUT FORM IS WHY check:claims MISSED IT. Every count this
+   file guards is a numeral, and "sixty" is not one. Reading the word
+   is the whole point of this assertion.
+
+   The pattern pins the sentence rather than scanning for day-figures
+   loose in the prose, because /about also says "thirty days" about a
+   stolen refresh token and "ninety days" about a currency warning —
+   neither is the trial, and a gate that could not tell them apart
+   would have to be silenced the first time one of them changed. If
+   somebody rewrites the sentence the match disappears, and the guard
+   below fails rather than passing over nothing. */
+const TRIAL_WORDS = Object.freeze({
+  14: 'fourteen', 21: 'twenty-one', 30: 'thirty', 45: 'forty-five', 60: 'sixty', 90: 'ninety',
+});
+const trialConstant = Number(
+  /export const TRIAL_DAYS = (\d+);/.exec(read('packages/shared/src/pricing.ts'))?.[1] ?? NaN
+);
+const trialProse = /(\w[\w-]*) days in which the product either/.exec(pages)?.[1];
+assert(
+  'the trial sentence on /about was found at all',
+  trialProse !== undefined && Number.isFinite(trialConstant),
+  'the trial sentence on /about, or TRIAL_DAYS in pricing.ts, could not be read — this ' +
+    'check is looking at something it does not understand and every assertion on it is void'
+);
+assert(
+  'the trial length on /about matches TRIAL_DAYS',
+  trialProse === TRIAL_WORDS[trialConstant],
+  `/about promises "${trialProse} days" and TRIAL_DAYS is ${trialConstant} ` +
+    `(${TRIAL_WORDS[trialConstant] ?? 'a length with no word in TRIAL_WORDS — add it'})`
+);
+
 const charter = read('docs/DIAGNOSTIC-CHARTER.md');
 assert(
   'the charter is the three-product version',

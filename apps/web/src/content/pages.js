@@ -29,9 +29,10 @@ export const ABOUT = {
   title: 'The whole safety management system, for the operators the incumbents priced out',
   lede: `Twelve of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
          operator in East and Central Africa — the one running an SMS on paper
-         because the software market starts above what the operation earns. The
-         two that are partial are named, on this page and on the coverage page,
-         and the figure is computed from the same declaration the product runs on.`,
+         because the software market starts above what the operation earns. What each
+         element holds and what it declines to hold is named, on this page and on
+         the coverage page, and the figure is computed from the same declaration
+         the product runs on.`,
   sections: [
     {
       id: 'publisher',
@@ -48,7 +49,7 @@ export const ABOUT = {
         product is new; anyone quoted would have been invented. What stands in
         their place is checkable: the practice that built it, the
         <a href="/coverage">conformance table</a> that names the elements this
-        does <em>not</em> cover, and sixty days in which the product either
+        does <em>not</em> cover, and thirty days in which the product either
         fits your operation or does not. If it does not, you keep your record
         and owe nothing.</p>
         <p>That relationship is stated here, on the
@@ -134,7 +135,7 @@ export const ABOUT = {
     },
     {
       id: 'notyet',
-      title: 'What is still partial, and what no software can do for you',
+      title: 'What twelve of twelve does not mean, and what no software can do for you',
       body: `
         <p>ICAO Annex 19 defines a safety management system as four components
         and twelve elements. This product runs <strong>12 of 12</strong>.</p>
