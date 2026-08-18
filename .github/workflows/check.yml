@@ -250,6 +250,22 @@ jobs:
           fi
           cp /tmp/pages.bak apps/web/src/content/pages.js
 
+      - name: The Supabase Data API snippet must be rejected
+        run: |
+          cat > apps/web/src/data-api-probe.js <<'PROBE'
+          import { createClient } from '@supabase/supabase-js';
+          export const supabase = createClient(
+            process.env.SUPABASE_DATABASE_URL,
+            process.env.SUPABASE_ANON_KEY
+          );
+          PROBE
+          if node scripts/check-data-api.mjs > /dev/null 2>&1; then
+            echo "::error::The data-api gate ACCEPTED the exact snippet the Netlify Supabase extension tells you to paste. anon holds no grants, every table has a RESTRICTIVE deny-all, and the CSP is connect-src 'self' — this would fail three ways at runtime and the gate is what catches it first."
+            rm -f apps/web/src/data-api-probe.js
+            exit 1
+          fi
+          rm -f apps/web/src/data-api-probe.js
+
       - name: And the restored sources must pass
         run: |
           node scripts/check-brand.mjs
