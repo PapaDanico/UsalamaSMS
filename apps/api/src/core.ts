@@ -62,17 +62,23 @@ function databaseUrl(): string {
 
   const explicit = process.env["DATABASE_URL"];
   const fromExtension = process.env["SUPABASE_DATABASE_URL"];
-  const url = managed ?? explicit ?? fromExtension;
+  // DATABASE_URL takes precedence: it is the Supabase transaction-pooler
+  // URL set by hand and holds the real data.  NETLIFY_DB_URL (Netlify
+  // Database / Neon) is only used when DATABASE_URL is absent, so that an
+  // operator who genuinely migrates to Netlify Database can do so by
+  // unsetting DATABASE_URL rather than by removing code.
+  const url = explicit ?? managed ?? fromExtension;
 
   if (!url) {
     fatal(
       "no database connection string.\n" +
-        "  Connect Netlify Database or set DATABASE_URL to a Postgres URI."
+        "  Set DATABASE_URL to a Postgres URI (transaction pooler, port 6543).\n" +
+        "  See docs/06-DEPLOYMENT.md."
     );
   }
 
   if (!/^postgres(ql)?:\/\//.test(url)) {
-    const which = managed ? "NETLIFY_DB_URL" : explicit ? "DATABASE_URL" : "SUPABASE_DATABASE_URL";
+    const which = explicit ? "DATABASE_URL" : managed ? "NETLIFY_DB_URL" : "SUPABASE_DATABASE_URL";
     fatal(
       `${which} is not a Postgres connection string.\n` +
         `  Got a URL beginning "${url.slice(0, url.indexOf(":") + 3)}".\n` +
