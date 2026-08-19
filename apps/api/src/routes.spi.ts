@@ -30,6 +30,8 @@ import { can, HRC_CATEGORIES, type Permission } from "@usalamasms/shared";
 import { rollUp, SSP_CAVEAT } from "../../../packages/shared/src/ssp";
 import { NASP_INDICATORS, NASP_SOURCE } from "../../../packages/shared/src/nasp";
 import { periodWindow } from "../../../packages/shared/src/spi";
+import { SPI_STARTERS, startersFor } from "../../../packages/shared/src/spi-starters";
+import type { OperatorKind } from "../../../packages/shared/src/pricing";
 import { prisma, authenticate, appendAuditTx, tenantWhere , requireEntitlement } from "./core";
 
 const LIST_LIMIT = 200;
@@ -175,6 +177,37 @@ export async function spiRoutes(app: FastifyInstance): Promise<void> {
     ...limited,
     preHandler: [authenticate, requireEntitlement("RECORD_INDICATOR_PERIOD")],
   };
+
+  /* ==================================================================
+     STARTERS — read-only, no entitlement gate.
+
+     The blank-page problem this endpoint solves: an operator creating
+     its first indicator has nothing to work from. The starters list
+     offers pre-filled field values the operator edits rather than
+     invents, at the same cost as browsing the templates registry.
+
+     NO ENTITLEMENT GATE because the list is informational: reading it
+     costs no database row, creates nothing, and an operator who reads
+     it and decides not to use it has lost nothing. Requiring
+     RECORD_INDICATOR_PERIOD to browse starters would keep the page
+     empty for operators still on trial.
+
+     OPTIONAL `kind` QUERY PARAM filters by operator kind ("AOC",
+     "RPAS", "HELIPORT", "MRO"). Absent or unrecognised returns all.
+     ================================================================== */
+  app.get("/api/v1/spi/starters", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "spi.read")) return reply.code(403).send({ error: "forbidden" });
+    const kind = String((req.query as { kind?: string }).kind ?? "").toUpperCase() as OperatorKind;
+    const VALID_KINDS: ReadonlyArray<string> = ["AOC", "RPAS", "HELIPORT", "MRO"];
+    const filtered = VALID_KINDS.includes(kind) ? startersFor(kind) : SPI_STARTERS;
+    return reply.send({
+      starters: filtered,
+      caveat:
+        "These are offered as starting points, not requirements. Each organisation " +
+        "develops its own SPIs under Doc 9859 §9.1. Edit the pre-filled fields to " +
+        "match your operations before submitting the form to the Authority.",
+    });
+  });
 
   app.get("/api/v1/spi", paid, async (req, reply) => {
     if (!guard(req.auth!.role, "spi.read")) return reply.code(403).send({ error: "forbidden" });

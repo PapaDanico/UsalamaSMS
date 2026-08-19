@@ -109,6 +109,8 @@ if (jurisdictionMatch) {
   const instruments = (registry.match(/instrument:/g) ?? []).length;
   const verified = (registry.match(/verifiedOn:/g) ?? []).length;
   const cycles = (registry.match(/reviewCycleMonths:/g) ?? []).length;
+  const sourceLevels = (registry.match(/sourceLevel:/g) ?? []).length;
+  const cassoaRows = (registry.match(/regionalFramework: "CASSOA"/g) ?? []).length;
 
   assert(
     'every obligation row cites an instrument',
@@ -124,6 +126,16 @@ if (jurisdictionMatch) {
     'every obligation row carries a review cycle',
     cycles === jurisdictions.length,
     `${cycles} cycles for ${jurisdictions.length} jurisdictions`
+  );
+  assert(
+    'every obligation row declares its source level',
+    sourceLevels === jurisdictions.length,
+    `${sourceLevels} source levels for ${jurisdictions.length} jurisdictions`
+  );
+  assert(
+    'every EAC state row names CASSOA as regional context',
+    cassoaRows === jurisdictions.length - 1,
+    `${cassoaRows} CASSOA rows for ${jurisdictions.length - 1} non-ICAO jurisdictions`
   );
 
   /* Dates must be real and not in the future. A verifiedOn dated next
@@ -233,7 +245,7 @@ assert(
 const switches = read('docs/05-SWITCHES.md');
 assert(
   'the switches document still carries the jurisdiction-coverage entry',
-  /PROVISIONAL/.test(switches) && /ICAO Annex 13/.test(switches),
+  /PROVISIONAL/.test(switches) && /ICAO Annex 13/.test(switches) && /CASSOA/.test(switches),
   'the highest-risk claim in the product lost its entry'
 );
 

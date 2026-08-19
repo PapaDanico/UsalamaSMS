@@ -335,8 +335,10 @@ function Deadlines() {
 
         <p class="footer-note">
           ${provisional.length
-            ? `${provisional.join(', ')} carry a figure from a secondary source pending a ` +
-              `read of the primary instrument, and are marked provisional wherever they appear.`
+            ? `${provisional.join(', ')} carry the ICAO baseline — notify without delay, no fixed ` +
+              `period — while their State instruments remain unread. CASSOA is named as the ` +
+              `regional harmonisation framework and not as the legal source of the deadline, and ` +
+              `the rows are marked provisional wherever they appear.`
             : html`Every row above has been read against its primary instrument. Where an
                 operator&rsquo;s own authority is not listed, the ICAO baseline applies:
                 <strong>notify without delay</strong>. ICAO Annex 13 names no period and

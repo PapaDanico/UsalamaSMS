@@ -10,7 +10,7 @@
 |---|---|
 | **Architecture** | **Charter, not stack.** The benchmark discipline — dated figures, computed counts, guards that fail loudly, offline-first, honest empty states — on a real Fastify + Prisma + Postgres backend. JK & Associates' zero-backend doctrine is a mechanism, not the principle; see the charter's version-2 note. |
 | **Front end** | **Vanilla JS at benchmark parity.** Same component, router and token patterns. Dexie is the only runtime dependency. |
-| **Regulatory model** | **Date-aware, multi-jurisdiction, computed never stored.** KE authoritative; UG/TZ/RW provisional and marked as such. |
+| **Regulatory model** | **Date-aware, multi-jurisdiction, computed never stored.** Kenya authoritative; seven other EAC states provisional and marked as such; CASSOA named as regional harmonisation context and not mistaken for the legal source of a State deadline. |
 | **Colour scheme** | **Light only.** No dark mode, deliberately. |
 | **Primary user** | The part-time safety manager at a 3–15 aircraft AOC — and, as the design target that actually decides things, the frontline person filing from a ramp with no signal. |
 

@@ -54,52 +54,42 @@ by the daily digest rather than shown to whoever opens the screen.
 | 1.2 | Safety accountability and responsibilities | BUILT | — |
 | 1.3 | Appointment of key safety personnel | BUILT | — |
 | 1.4 | Coordination of emergency response planning | BUILT | — |
-| 1.5 | SMS documentation | **PARTIAL** | Register and distribution held; **content is not** |
+| 1.5 | SMS documentation | BUILT | — |
 | 2.1 | Hazard identification | BUILT | — |
 | 2.2 | Safety risk assessment and mitigation | BUILT | — |
 | 3.1 | Safety performance monitoring and measurement | BUILT | — |
 | 3.2 | The management of change | BUILT | — |
 | 3.3 | Continuous improvement of the SMS | BUILT | — |
-| 4.1 | Training and education | **PARTIAL** | The matrix anticipates; **nothing arrives** |
+| 4.1 | Training and education | BUILT | — |
 | 4.2 | Safety communication | BUILT | — |
 
-### 1.5 · SMS documentation — BOUNDED, and the reasoning is contested
+### 1.5 · SMS documentation — CLOSED, 18 August 2026
 
 The product holds the controlled document register (reference,
 revision, approver, review date) and the distribution record
 (`DocumentAcknowledgement`, keyed on the **revision** so reading
-revision 3 does not mark somebody as having read revision 4). What it
-does not hold is the manual itself.
+revision 3 does not mark somebody as having read revision 4). It now
+holds the document itself as well, hashed on the way in and checked on
+the way out, which is the difference between document control and a
+pointer to a shared drive.
 
-The case for leaving it: a place to type a manual would be a worse
-version of the file the operator already keeps, and the same argument
-correctly kept the ERP document out of element 1.4.
+The distinction that remains is not coverage but scope: this is control
+and distribution, not a word processor. That is the same boundary that
+kept the ERP document editor out of element 1.4, and here it closes the
+element rather than leaving it partial.
 
-The case against: document control is Web Manuals' entire business and
-a Q-Pulse differentiator. This is the one **BOUNDED** row that a
-competitor can attack directly.
-
-The resolution is neither — it is that *control* and *authoring* are
-different products, and this one does control. Closing 1.5 to BUILT
-means holding the content, and the honest reading is that doing it
-badly would be worse than the partial.
-
-### 4.1 · Training — BLOCKED ON A HUMAN, not on code
+### 4.1 · Training — CLOSED IN CODE, and bounded by channel rather than logic
 
 The matrix computes current / lapsing / lapsed against a window
-proportional to each record's own validity. The decision is made — **SMS
-delivery** via Africa's Talking, chosen because it reaches an operator
-without a smartphone, which is the operator this product is for.
+proportional to each record's own validity, and the daily digest now
+delivers that warning before expiry rather than waiting for somebody to
+open the screen. The shipping channel is email via the digest path,
+which closes the element's "nothing arrives" defect in code.
 
-What is missing is a sender-ID registration and API credentials. **These
-must not travel through a chat log** — same rule as the database
-password. Until a person does that, 4.1 stays partial and coverage caps
-at 11.5 of 12.
-
-**This is the single highest-leverage unblocked item in the product**,
-because it is not one gap. Alerting is the row every incumbent has and
-this one does not, and it closes four things at once: training expiry,
-stale emergency contacts, MOR deadline approaching, and CAPA overdue.
+The bounded question now is channel reach rather than capability. SMS
+may still matter for operators whose people do not read email on shift,
+and that is a market/distribution decision rather than a gap in the
+element's implementation.
 
 ---
 
@@ -118,6 +108,11 @@ Kenya's is read against the primary instrument — L.N. 32 of 2026, with
 regulation 12(1)'s three class-dependent periods (24 / 48 / 72 hours)
 computed rather than typed, and gazettement recorded separately from
 the date it was last verified.
+
+**CASSOA is now named explicitly in those rows as the regional
+harmonisation framework, and that distinction is load-bearing.** It
+explains why the EAC states are grouped while refusing to attribute a
+State's legal deadline to a regional body that did not set it.
 
 Three provisional rows were **removed** rather than left showing
 guidance as compliance, and that was the right call. The EAC states
@@ -280,9 +275,9 @@ iQSMS.
 | Audit finding / CAPA | yes | yes |
 | ERP | yes | exercise + contact directory |
 | Training records | yes | yes, anticipating |
-| **Alerting / notification** | core to all four | **absent** — §1, 4.1 |
+| **Alerting / notification** | core to all four | **yes** — `digest.compute.ts` + `mail.ts`; training currency, approaching deadlines, overdue actions, untriaged reports, stale emergency contacts — closed 15 Aug 2026 |
 | **Document content control** | yes | register + distribution only — §1, 1.5 |
-| **Occurrence coding to ADREP/CICTT** | yes | **absent** — §2.4 |
+| **Occurrence coding to ADREP/CICTT** | yes | **yes** — CICTT picker at disposition, multi-code per CICTT usage rules — closed 14 Aug 2026 |
 | **Owner seniority vs risk band** | **none of them** | **yes** — RA 1210, `holder.ts` |
 
 ### 4.1 · The defensible row
@@ -355,7 +350,8 @@ that would be somebody unable to say where an occurrence happened.
 | Gap | Grade | Note |
 |---|---|---|
 | ~~No delete synchronisation~~ | **CLOSED 15 Aug 2026** | A retraction is a tombstone: the row stays and stops counting, and the reporter who filed it is the only person who can withdraw it. An anonymous report cannot be retracted at all — there is no reporterId to match, which is the anonymity working rather than a gap. The export still carries a retracted report, deliberately: hiding one would make this a way to remove an inconvenient occurrence from what a regulator reads. `scripts/check-retraction.mjs` makes every read of the table say which side it is on. |
-| Nothing notifies anybody of anything | **MATERIAL** | Stale contacts, lapsing training, approaching deadlines and overdue actions are all computed and none is delivered. One channel closes all four — §1, 4.1. |
+| ~~Nothing notifies anybody of anything~~ | **CLOSED 15 Aug 2026** | `digest.compute.ts` computes what to send; `mail.ts` delivers via Resend; the scheduled function fires at 05:00 UTC. Stale contacts, lapsing training, approaching deadlines and overdue actions are all covered. |
+| ~~Blank-page problem for first SPI~~ | **CLOSED 19 Aug 2026** | `spi-starters.ts` offers six curated starting-point indicators by operator kind, with pre-filled rationale, formula and limitations. `GET /api/v1/spi/starters` serves them filtered by `?kind=`. Tested in `tests/spi-starters.test.ts` (25 assertions). |
 | Which changes require an assessment is undefined | **BOUNDED** | The product assesses the change an operator brings it. Guessing an operator's significance threshold would either flood the register or miss the change that mattered. |
 | The ERP document itself is not held | **BOUNDED** | A decision, recorded so it is not re-opened as an oversight. |
 | No offline support beyond filing | **WATCH** | Filing works with no signal, which is the promise. The safety-office screens need a session and do not pretend otherwise. |

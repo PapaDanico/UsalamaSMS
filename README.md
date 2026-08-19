@@ -60,11 +60,10 @@ server-held record, again when the register joined the indicators on
 the server, and again when an indicator gained the record of what was
 done the last time one crossed, and again when the change assessment
 moved off the handset, and again when the emergency contact directory
-gave element 1.4 the half it was missing. The two that stay partial say
-plainly what they still lack: the documents behind the document
-register, and a warning that reaches somebody who does not open the
-training screen. An operator adopting this as its sole SMS would still
-have gaps to answer for, and `/coverage` names every one of them —
+gave element 1.4 the half it was missing, and again when 1.5 gained the
+document itself and 4.1 gained a warning that arrives before expiry.
+An operator adopting this as its sole SMS would still have gaps to
+answer for, and `/coverage` names every one of them —
 including the one thing 1.4 deliberately does **not** hold, the ERP
 document itself, because a place to type call-out trees and diagrams
 would be a worse version of the file an operator already keeps.
@@ -136,7 +135,9 @@ exactly three places in the repository, none of which acted on it — a crew
 member too tired to fly safely filed a row indistinguishable from a bird
 strike. A fatigue report now carries the duty, the rest, the sleep, the
 sectors and a Samn-Perelli rating, and is read against the duty limits the
-operator **declares**, naming the instrument they come from.
+operator **declares**, naming the instrument they come from. That source
+level is explicit in the shared model: operator-declared figures are not
+presented as though the product had read a State table it does not ship.
 
 No flight-time table for any State ships, and that is a decision rather
 than a gap: Kenya's limits could not be read from the primary instrument,
@@ -148,14 +149,12 @@ and the reason Annex 6 asks for fatigue hazards to be managed through the
 SMS as well as by the clock. It is **not** an FRMS, which needs a State's
 approval, and the screen says so rather than footnoting it.
 
-**What is still absent is delivery.** Nothing in this product tells
-anybody anything: no alert when an indicator crosses, when training
-lapses, when an emergency contact goes stale or when an action falls
-overdue. Every incumbent has that and it is the largest functional gap
-here. It is unblocked but not started — the channel is decided (SMS,
-because it is the only one that reaches somebody without a smartphone)
-and what it needs next is a sender-ID registration and API credentials,
-which are a person's job and not a coding task. See
+**What is still absent is a phone-reachable alerting channel beyond
+email.** The daily digest path ships: training currency, stale
+emergency contacts, MOR deadlines and overdue actions can be computed
+and sent by email. What is not here yet is SMS or another channel that
+reaches somebody who does not read that mailbox on shift, which is a
+distribution decision rather than an absence of delivery logic. See
 `docs/02-STRATEGY.md`.
 
 ```bash
@@ -163,10 +162,10 @@ npm install
 npm run check          # prisma generate, typecheck, brand, assets, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:assets   # every file served from public/ is declared, with a ceiling
-npm run check:claims   # 132 assertions that the registries match the docs
+npm run check:claims   # 134 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm run check:authz    # no route shows a model to a role its own endpoint refuses
-npm test               # 935 unit tests
+npm test               # 962 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 7 checks across TWO versions — the PWA update path

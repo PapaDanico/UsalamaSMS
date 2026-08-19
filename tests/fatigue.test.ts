@@ -13,7 +13,7 @@ import {
   assess, touchesWocl, hasDeclaredLimits,
   SAMN_PERELLI, SAMN_PERELLI_IMPAIRMENT_FROM,
   WOCL_START_HOUR, WOCL_END_HOUR,
-  FATIGUE_VERIFIED_AGAINST_PRIMARY, FATIGUE_CAVEAT, FATIGUE_SOURCES,
+  FATIGUE_VERIFIED_AGAINST_PRIMARY, FATIGUE_CAVEAT, FATIGUE_SOURCES, FATIGUE_LIMIT_SOURCE_LEVEL,
 } from "../packages/shared/src/fatigue";
 
 const LIMITS = {
@@ -52,6 +52,10 @@ describe("the scale, and the threshold that is not ours", () => {
     /* And it says the limits are the operator's, because a reader who
        thought otherwise would read this as a legal check. */
     expect(FATIGUE_CAVEAT).toMatch(/you declared/i);
+  });
+
+  it("treats duty limits as OPERATOR_DECLARED, not as a shipped legal table", () => {
+    expect(FATIGUE_LIMIT_SOURCE_LEVEL).toBe("OPERATOR_DECLARED");
   });
 });
 

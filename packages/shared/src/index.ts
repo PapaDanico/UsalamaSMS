@@ -5,6 +5,7 @@
 import { z } from "zod";
 
 export * from "./regulations";
+export * from "./regulatory-source";
 export * from "./taxonomy";
 export * from "./glossary";
 import { isValidLocation, isValidAircraftType } from "./taxonomy";

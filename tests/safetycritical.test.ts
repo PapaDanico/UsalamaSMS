@@ -196,6 +196,18 @@ describe("regulatory reporting deadlines", () => {
     ]);
   });
 
+  it("names CASSOA as the regional framework for every EAC row, without confusing it for the legal source", () => {
+    expect(MOR_OBLIGATIONS.ICAO.regionalFramework).toBeUndefined();
+    for (const j of JURISDICTIONS.filter((j) => j !== "ICAO")) {
+      expect(MOR_OBLIGATIONS[j].regionalFramework).toBe("CASSOA");
+    }
+    expect(MOR_OBLIGATIONS.KE.sourceLevel).toBe("PRIMARY");
+    for (const j of JURISDICTIONS.filter(isProvisional)) {
+      expect(MOR_OBLIGATIONS[j].sourceLevel).toBe("PROVISIONAL");
+      expect(MOR_OBLIGATIONS[j].hours).toBeNull();
+    }
+  });
+
   it("marks a provisional obligation independently of the registry", () => {
     // Exercise the obligation-level predicate directly so callers using
     // an obligation object remain covered as well as registry lookups.

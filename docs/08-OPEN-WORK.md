@@ -334,6 +334,16 @@ move. Published examples worth borrowing for a small operator: voluntary
 reports per pilot per quarter, **time from report to closure**, squawk
 rate per flight hour, MEL deferral rate, first-attempt check pass rate.
 
+**CLOSED 19 August 2026.** `packages/shared/src/spi-starters.ts` ships
+six curated starters (voluntary report rate, time-to-first-closure, MEL
+deferral age, first-attempt check pass rate, high-risk occurrence rate,
+RPAS/heliport operations rate), each with pre-filled rationale, formula
+and limitations drawn from ICAO Doc 9859, the FSF and EASA AloSP.
+`GET /api/v1/spi/starters?kind=AOC` serves the filtered list.
+`tests/spi-starters.test.ts` guards the list (25 assertions):
+uniqueness, both indicator halves, leading and lagging coverage, filter
+correctness, and a minimum of two starters per operator kind.
+
 **AND THE §5 ENTRY ABOUT INDICATORS BEING TYPED RATHER THAN FED IS TOO
 PESSIMISTIC.** Two of the most valuable SPIs in that list —
 **report rate** and **time from report to closure** — are computable
@@ -349,7 +359,7 @@ taken before any dashboard work, because a dashboard whose numbers are
 typed is a dashboard nobody trusts twice.
 
 Sources: ICAO Doc 9859 4th ed.; Flight Safety Foundation "Unleashing
-SPIs"; EASA AloSP guidance.
+SPIs"; EASA ALoSP guidance.
 
 ### 8.3 Correcting §8.2, the same day — half of it was wrong
 

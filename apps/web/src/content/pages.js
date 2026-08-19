@@ -219,8 +219,10 @@ const TUTORIAL_SECTIONS = [
         window, and the window is the one figure in this product with a
         consequence attached: an operator under the Kenya Civil Aviation
         Authority has <strong>24 hours from becoming aware</strong> of a
-        reportable occurrence, where the regional default is 72. Getting that
-        wrong at step one invalidates every clock after it.</p>
+        reportable occurrence, while the other EAC rows in this build carry
+        the ICAO baseline <strong>without delay, with no fixed period</strong>
+        until their primary instrument is read. Getting that wrong at step
+        one invalidates every clock after it.</p>
 
         <p>Nothing below requires an account until step four. Filing has never
         required one and is not going to.</p>`

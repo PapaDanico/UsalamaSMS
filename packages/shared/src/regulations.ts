@@ -42,6 +42,7 @@
    occurrence class costs nothing at runtime and still stops the two
    files disagreeing about what the three classes are called. */
 import type { OccurrenceClass } from "./glossary";
+import type { RegulatorySourceLevel, RegionalFramework } from "./regulatory-source";
 
 /** The three classes Kenya's regulation 12(1) sets separate periods for. */
 export type OccurrenceClassKey = OccurrenceClass["key"];
@@ -91,6 +92,25 @@ export type ClockStart = "AWARENESS" | "OCCURRENCE";
 export interface ReportingObligation {
   readonly jurisdiction: Jurisdiction;
   readonly authority: string;
+  /**
+   * HOW THIS ROW EARNS the figure it surfaces.
+   *
+   * PRIMARY means the State's own instrument was read. PROVISIONAL means
+   * the row is honest guidance pending that read — the shape the unread
+   * EAC rows take. REGIONAL_GUIDANCE exists because a regional body can
+   * harmonise expectations without being the legal source of the number,
+   * and OPERATOR_DECLARED is the matching shape for figures this product
+   * refuses to invent and asks the operator to supply instead.
+   */
+  readonly sourceLevel: RegulatorySourceLevel;
+  /**
+   * The regional framework this row sits inside, where one exists.
+   *
+   * CASSOA is coordination and harmonisation across the EAC. It is NOT
+   * the legal source of a State's reporting period, which is why the row
+   * still distinguishes this field from `instrument` above.
+   */
+  readonly regionalFramework?: RegionalFramework;
   /**
    * Hours from `clockStart` within which the report is due, or `null`
    * where the instrument sets NO fixed period.
@@ -262,6 +282,7 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   ICAO: {
     jurisdiction: "ICAO",
     authority: "ICAO Standards and Recommended Practices",
+    sourceLevel: "PRIMARY",
     hours: null,
     clockStart: "AWARENESS",
     instrument:
@@ -283,6 +304,8 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   KE: {
     jurisdiction: "KE",
     authority: "Kenya Civil Aviation Authority",
+    sourceLevel: "PRIMARY",
+    regionalFramework: "CASSOA",
     /* The strictest of the three below, used when the class is not yet
        known. Never a middle value: an unknown occurrence is treated as
        the one with the least time, because the cost of being early is
@@ -392,6 +415,8 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   UG: {
     jurisdiction: "UG",
     authority: "Uganda Civil Aviation Authority",
+    sourceLevel: "PROVISIONAL",
+    regionalFramework: "CASSOA",
     hours: null,
     clockStart: "AWARENESS",
     instrument:
@@ -410,6 +435,8 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   TZ: {
     jurisdiction: "TZ",
     authority: "Tanzania Civil Aviation Authority",
+    sourceLevel: "PROVISIONAL",
+    regionalFramework: "CASSOA",
     hours: null,
     clockStart: "AWARENESS",
     instrument:
@@ -428,6 +455,8 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   RW: {
     jurisdiction: "RW",
     authority: "Rwanda Civil Aviation Authority",
+    sourceLevel: "PROVISIONAL",
+    regionalFramework: "CASSOA",
     hours: null,
     clockStart: "AWARENESS",
     instrument:
@@ -446,6 +475,8 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   BI: {
     jurisdiction: "BI",
     authority: "Agence Nationale de l'Aviation Civile du Burundi",
+    sourceLevel: "PROVISIONAL",
+    regionalFramework: "CASSOA",
     hours: null,
     clockStart: "AWARENESS",
     instrument:
@@ -464,6 +495,8 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   SS: {
     jurisdiction: "SS",
     authority: "South Sudan Civil Aviation Authority",
+    sourceLevel: "PROVISIONAL",
+    regionalFramework: "CASSOA",
     hours: null,
     clockStart: "AWARENESS",
     instrument:
@@ -482,6 +515,8 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   CD: {
     jurisdiction: "CD",
     authority: "Direction Générale de l'Aviation Civile (DRC)",
+    sourceLevel: "PROVISIONAL",
+    regionalFramework: "CASSOA",
     hours: null,
     clockStart: "AWARENESS",
     instrument:
@@ -500,6 +535,8 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
   SO: {
     jurisdiction: "SO",
     authority: "Somali Civil Aviation Authority",
+    sourceLevel: "PROVISIONAL",
+    regionalFramework: "CASSOA",
     hours: null,
     clockStart: "AWARENESS",
     instrument:
