@@ -238,8 +238,8 @@ describe("what an operator may be invoiced for", () => {
        from it — so this asserts they cannot drift rather than pinning a
        word somebody would have to remember to retype. */
     expect(promise).toContain(`${TRIAL_DAYS} days`);
-    expect(TRIAL_DAYS).toBe(30);
-    /* And the promise still names the extension, because thirty days is
+    expect(TRIAL_DAYS).toBe(60);
+    /* And the promise still names the extension, because sixty days is
        not reliably one whole loop and saying so is the honest half. */
     expect(promise).toMatch(/extended on request/i);
 

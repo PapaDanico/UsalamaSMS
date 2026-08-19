@@ -198,7 +198,7 @@ export async function sendDigest(
     const response = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: "Bearer " + config.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -325,7 +325,7 @@ export async function sendTrialDigest(
     const response = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `******
+        Authorization: "Bearer " + config.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -426,7 +426,7 @@ export async function sendPasswordReset(
     const response = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: "Bearer " + config.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -555,7 +555,7 @@ export async function sendInvitation(
     const response = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: "Bearer " + config.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -655,7 +655,7 @@ export async function sendUpgradeRequest(
     const response = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: "Bearer " + config.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
