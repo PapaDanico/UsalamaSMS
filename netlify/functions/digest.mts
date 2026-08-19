@@ -49,9 +49,10 @@ import type { Config } from "@netlify/functions";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { computeDigest } from "../../apps/api/src/digest.compute.js";
-import { sendDigest, mailConfigFromEnv } from "../../apps/api/src/mail.js";
+import { sendDigest, sendTrialDigest, mailConfigFromEnv } from "../../apps/api/src/mail.js";
 import { isWorthSending } from "../../packages/shared/src/digest.js";
 import { can } from "../../packages/shared/src/index.js";
+import { stateOn, trialEndsFrom, TRIAL_DAYS } from "../../packages/shared/src/subscription.js";
 
 /* ============================================================
    A BARE `new PrismaClient()` THROWS, AND THIS FILE HAD ONE.
@@ -93,6 +94,29 @@ function connect(): PrismaClient {
    is visible rather than looking like a complete one. */
 const ORG_LIMIT = 200;
 const RECIPIENT_LIMIT = 20;
+const DAY = 86_400_000;
+
+function utcDay(d: Date): number {
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+function trialDayFor(startedOn: Date, now: Date): number {
+  return Math.floor((utcDay(now) - utcDay(startedOn)) / DAY) + 1;
+}
+
+function trialStageFor(day: number): 1 | 7 | 30 | 45 | 55 | 60 | null {
+  switch (day) {
+    case 1:
+    case 7:
+    case 30:
+    case 45:
+    case 55:
+    case 60:
+      return day;
+    default:
+      return null;
+  }
+}
 
 export default async function handler(): Promise<Response> {
   /* ONE `now` FOR THE WHOLE RUN. Every operator's digest is computed
@@ -126,20 +150,18 @@ export default async function handler(): Promise<Response> {
     });
   }
 
-  const orgs = await prisma.org.findMany({ select: { id: true }, take: ORG_LIMIT });
+  const orgs = await prisma.org.findMany({
+    select: { id: true, createdAt: true, trialEndsOn: true, paidThrough: true },
+    take: ORG_LIMIT,
+  });
 
   let sent = 0;
+  let trialSent = 0;
   let silent = 0;
   const failures: { orgId: string; reason: string }[] = [];
 
   for (const org of orgs) {
     try {
-      const digest = await computeDigest(prisma, org.id, now);
-      if (!digest || !isWorthSending(digest)) {
-        silent += 1;
-        continue;
-      }
-
       const people = await prisma.user.findMany({
         where: { orgId: org.id, active: true },
         select: { email: true, role: true },
@@ -158,13 +180,58 @@ export default async function handler(): Promise<Response> {
         continue;
       }
 
-      for (const to of recipients) {
-        const outcome = await sendDigest(digest, to, config);
-        if (outcome.status === "SENT") sent += 1;
-        else if (outcome.status === "FAILED") {
-          failures.push({ orgId: org.id, reason: outcome.reason });
+      const digest = await computeDigest(prisma, org.id, now);
+      let saidSomething = false;
+      if (digest && isWorthSending(digest)) {
+        saidSomething = true;
+        for (const to of recipients) {
+          const outcome = await sendDigest(digest, to, config);
+          if (outcome.status === "SENT") sent += 1;
+          else if (outcome.status === "FAILED") {
+            failures.push({ orgId: org.id, reason: outcome.reason });
+          }
         }
       }
+
+      const dates = {
+        trialEndsOn: org.trialEndsOn ?? trialEndsFrom(org.createdAt),
+        paidThrough: org.paidThrough,
+      } as const;
+      const trialState = stateOn(dates, now);
+      const trialDay = trialDayFor(new Date(dates.trialEndsOn.getTime() - TRIAL_DAYS * DAY), now);
+      const stage = trialState === "TRIAL" ? trialStageFor(trialDay) : null;
+
+      if (stage) {
+        saidSomething = true;
+        const [reports, hazards, teamMembers, indicators, closedActions] = await Promise.all([
+          prisma.safetyReport.count({ where: { orgId: org.id, retractedAt: null } }),
+          prisma.hazard.count({ where: { orgId: org.id } }),
+          prisma.user.count({ where: { orgId: org.id, active: true } }),
+          prisma.spi.count({ where: { orgId: org.id } }),
+          prisma.correctiveAction.count({ where: { orgId: org.id, verifiedOn: { not: null }, cancelledOn: null } }),
+        ]);
+        const onboardingComplete =
+          Number(reports > 0) +
+          Number(hazards > 0) +
+          Number(indicators > 0) +
+          Number(teamMembers >= 2);
+        for (const to of recipients) {
+          const outcome = await sendTrialDigest({
+            stage,
+            daysRemaining: Math.max(0, TRIAL_DAYS - trialDay),
+            reports,
+            hazards,
+            closedActions,
+            onboardingComplete,
+          }, to, config);
+          if (outcome.status === "SENT") trialSent += 1;
+          else if (outcome.status === "FAILED") {
+            failures.push({ orgId: org.id, reason: outcome.reason });
+          }
+        }
+      }
+
+      if (!saidSomething) silent += 1;
     } catch (error) {
       failures.push({
         orgId: org.id,
@@ -181,6 +248,7 @@ export default async function handler(): Promise<Response> {
        complete one from a count alone. */
     truncated: orgs.length === ORG_LIMIT,
     sent,
+    trialSent,
     nothingToSay: silent,
     failures,
   });

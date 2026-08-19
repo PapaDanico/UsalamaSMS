@@ -340,6 +340,7 @@ router
   // never require a password — see the header of tools/login. This route
   // is where someone goes to make the queue send, not a gate they pass
   // through to reach the product.
+  .register('/login', (el) => renderLogin(el), { title: 'Sign in', surface: 'tool' })
   .register('/account', (el) => renderLogin(el), { title: 'Sign in', surface: 'tool' })
   /* LAZY, like every other destination below. The profile form is
      opened rarely and by somebody already signed in, so it has no claim

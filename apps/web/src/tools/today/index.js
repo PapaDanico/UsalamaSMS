@@ -56,6 +56,7 @@
 import { html } from '../../shared/html.js';
 import { isSignedIn, getSession, authFetch } from '../../shared/session.js';
 import { syncStatus } from '../../shared/offline.ts';
+import { OnboardingChecklist } from '../../components/OnboardingChecklist.js';
 import { can } from '../../../../../packages/shared/src/index.ts';
 import { currencyOf } from '../../../../../packages/shared/src/currency.ts';
 import { courseFor } from '../../../../../packages/shared/src/curriculum.ts';
@@ -417,6 +418,12 @@ export async function render(outlet) {
   const scale = payload.scale ?? null;
   const empty = scale ? establishment(scale) === 'EMPTY' : false;
   const step = scale ? nextStep(scale) : null;
+  const onboarding = OnboardingChecklist({
+    scale,
+    teamCount: payload.teamCount ?? 0,
+    trial: payload.trial ?? null,
+    role,
+  });
 
   outlet.innerHTML = html`
     <section class="band-dark">
@@ -440,8 +447,11 @@ export async function render(outlet) {
     </section>
 
     <section class="panel wrap">
+      ${onboarding}
       ${empty
-        ? html`
+        ? (onboarding
+          ? ''
+          : html`
             <h2 class="section-title">The first fifteen minutes</h2>
             <ol class="next-list" data-first-run>
               ${FIRST_RUN.map(
@@ -456,7 +466,7 @@ export async function render(outlet) {
             <p class="hint">
               Three steps, in that order, because each one is what makes the next worth
               doing. Nothing here has to be read first.
-            </p>`
+            </p>`)
         : digest.items.length
           ? html`<div class="picture-grid">${digest.items.map(item)}</div>`
           : html`<p class="hint">
