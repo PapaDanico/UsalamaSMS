@@ -176,6 +176,18 @@ describe.skipIf(!hasDatabase)("creating a colleague", () => {
     expect(res.statusCode).toBe(409);
   });
 
+  it("refuses email addresses that lack a dot in the domain part", async () => {
+    /* The old check was `email.includes("@")`, which accepted `@`,
+       `user@localhost`, `notanemail@` and similar. The new check requires
+       local@domain.tld — at least one dot after the @. */
+    for (const bad of ["@", "a@", "@b", "user@localhost", "notanemail@nope"]) {
+      const res = await create(execId, orgId, "ACCOUNTABLE_EXECUTIVE", {
+        name: "Bad email", email: bad, role: "FRONTLINE",
+      });
+      expect(res.statusCode, `expected 400 for ${JSON.stringify(bad)}`).toBe(400);
+    }
+  });
+
   it("records the creation in the audit chain, without the password", async () => {
     await create(execId, orgId, "ACCOUNTABLE_EXECUTIVE", {
       name: "Audited", email: "aud@strip.test", role: "FRONTLINE",

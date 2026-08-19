@@ -914,7 +914,16 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const name = String(req.body?.name ?? "").trim();
       const roleRaw = String(req.body?.role ?? "");
 
-      if (!email.includes("@") || email.length > 254) {
+      /* Basic RFC 5321 shape: local@domain with at least one dot in the
+         domain part. The previous check only required an `@` character,
+         accepting `@`, `a@`, `@b`, `user@localhost`, etc. The regex
+         does not cover every edge case in the RFC but it rejects the
+         most common inputs that pass `email.includes("@")` and would
+         fail to deliver. The UNIQUE constraint on the column means a
+         badly-formed address that somehow slips through can only waste
+         one row; the real cost is a user who cannot sign in. */
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRe.test(email) || email.length > 254) {
         return reply.code(400).send({ error: "email_required" });
       }
       if (name.length < 2 || name.length > 160) {
