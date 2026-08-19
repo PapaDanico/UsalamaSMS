@@ -118,9 +118,20 @@ enum FlightPhase {
 // nothing here is built for an EU-registered operator, and a
 // jurisdiction on offer is a claim to know its obligations. See
 // regulations.ts.
+//
+// EAC member states have been re-added as PROVISIONAL rows — no fixed
+// reporting period, ICAO Annex 13 baseline applies until the primary
+// instrument for each State is read and a period is confirmed.
 enum Jurisdiction {
   ICAO
   KE
+  UG
+  TZ
+  RW
+  BI
+  SS
+  CD
+  SO
 }
 
 model Org {

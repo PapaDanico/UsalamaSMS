@@ -189,12 +189,12 @@ export const ABOUT = {
         review; what it does is compute the window once the classification is
         made, and show it before it closes.</p>
 
-        <p>Three of the five jurisdictions in the registry carry a
-        <strong>provisional</strong> figure — the ICAO-common 72 hours, pending
-        a reading of the primary instrument. They are marked provisional
-        everywhere they appear, including inside the countdown, because a
-        deadline an operator relies on and cannot check is worse than no
-        deadline at all.</p>
+        <p>Seven of the nine jurisdictions in the registry carry a
+        <strong>provisional</strong> figure — the ICAO Annex 13 baseline (notify
+        without delay, no fixed period), pending a reading of the primary instrument
+        for each EAC member state. They are marked provisional everywhere they appear,
+        including inside the countdown, because a deadline an operator relies on and
+        cannot check is worse than no deadline at all.</p>
 
         <p>It is also not a replacement for an SMS manual, a safety committee
         or a competent safety manager. It is the instrument those three use.</p>`

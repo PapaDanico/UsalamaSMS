@@ -107,14 +107,23 @@ stale emergency contacts, MOR deadline approaching, and CAPA overdue.
 
 ### 2.1 · One jurisdiction, and that is the largest strategic gap · MATERIAL
 
-`MOR_OBLIGATIONS` carries **two rows: an ICAO baseline and Kenya.**
+`MOR_OBLIGATIONS` carries **nine rows: an ICAO baseline, Kenya (verified
+against the primary instrument), and seven EAC member states (Uganda,
+Tanzania, Rwanda, Burundi, South Sudan, DRC, and Somalia) as provisional
+rows.** The seven EAC rows carry no fixed period — the primary instrument
+for each State has not been read — and are marked PROVISIONAL everywhere
+they appear. The ICAO baseline (Annex 13: notify without delay) applies
+until each State's own instrument is read and a period confirmed.
 Kenya's is read against the primary instrument — L.N. 32 of 2026, with
 regulation 12(1)'s three class-dependent periods (24 / 48 / 72 hours)
 computed rather than typed, and gazettement recorded separately from
 the date it was last verified.
 
 Three provisional rows were **removed** rather than left showing
-guidance as compliance, and that was the right call.
+guidance as compliance, and that was the right call. The EAC states
+have been re-added as truly provisional entries: they show the operator
+and the authority — an operator knows which regulator it answers to —
+without asserting a period nobody has read from the instrument.
 
 But the strategy is African operators, and one country is one country.
 Tanzania, Uganda, Rwanda, Ethiopia, Nigeria, Ghana and South Africa are
