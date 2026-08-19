@@ -44,6 +44,10 @@
 import { html } from '../../shared/html.js';
 import { isSignedIn, authFetch } from '../../shared/session.js';
 import { printId, loadOrg } from '../../shared/print-id.js';
+import {
+  riskTolerabilityCard,
+  openActionsCard
+} from '../../shared/picture-cards.js';
 
 const BAND_LABEL = {
   INTOLERABLE: 'Intolerable',
@@ -360,6 +364,8 @@ export async function render(outlet) {
         </p>
       </header>
 
+      ${riskPictureCards({ register, actions, reporting })}
+
       ${attention({ register, indicators, changes, reporting, actions })}
 
       <h2>Barrier health</h2>
@@ -453,6 +459,51 @@ export async function render(outlet) {
             </ul>`}
     </section>
   `.toString();
+}
+
+/* ------------------------------------------------------------------
+   Risk picture summary cards.
+
+   THREE LINKED CARDS at the top of the signed-in screen, each linking
+   to /toolkits/risk-picture. They answer the three questions a Safety
+   Manager or Accountable Executive arrives asking: what is the risk
+   position, how many actions are open, and how quickly are things being
+   closed. The full picture is one click away from each card.
+
+   h3 headings are deliberate. The picture-offer test compares every
+   plain <h2> on this screen to LOCKED_SECTIONS, and these summaries
+   are not sections — they are signposts to one. Adding them as h2s
+   would require adding them to LOCKED_SECTIONS and to the signed-out
+   offer, which overstates what a two-number card is.
+   ------------------------------------------------------------------ */
+function riskPictureCards({ register, actions, reporting }) {
+  const avgDays = reporting?.closure?.median ?? null;
+
+  return html`
+    <div class="picture-summary" aria-label="Risk picture summary">
+      ${riskTolerabilityCard({
+        href: '/toolkits/risk-picture',
+        title: 'Risk tolerability',
+        ariaLabel: 'Risk tolerability — open in risk picture dashboard',
+        bands: register.open.by
+      })}
+      ${openActionsCard({
+        href: '/toolkits/risk-picture',
+        title: 'Open actions',
+        ariaLabel: 'Open actions — open in risk picture dashboard',
+        outstanding: actions.outstanding,
+        overdue: actions.overdue
+      })}
+
+      <a class="picture-card" href="/toolkits/risk-picture" aria-label="Time to close — open in risk picture dashboard">
+        <h3 class="picture-card__title">Time to close</h3>
+        ${avgDays !== null
+          ? html`<p class="picture-card__value">${avgDays}</p>
+              <p class="picture-card__note">days median</p>`
+          : html`<p class="picture-card__note">Insufficient data</p>`}
+      </a>
+    </div>
+  `;
 }
 
 /* ------------------------------------------------------------------

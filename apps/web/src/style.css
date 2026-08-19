@@ -2258,6 +2258,104 @@ html { scroll-padding-top: var(--us-chrome); }
   max-width: 62ch;
 }
 
+/* THE RISK PICTURE SUMMARY CARDS.
+
+   Three compact cards at the top of /picture — tolerability bands,
+   open actions, and time-to-close — each linking into the full
+   dashboard. They sit ABOVE the attention panel so the headline
+   figures are the first thing a viewer reads.
+
+   SAME AUTO-FIT GRID AS .picture-grid: one card per row at narrow
+   widths, three across on a desktop, no fixed breakpoint. */
+.picture-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--us-space-4);
+  margin: var(--us-space-4) 0;
+}
+
+/* Each card is a block link. text-decoration is suppressed because the
+   whole surface is the target, not a phrase inside it. color is
+   inherited so the card reads like document text, not a hyperlink. */
+.picture-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-2);
+  padding: var(--us-space-4);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius);
+  color: inherit;
+  text-decoration: none;
+}
+
+.picture-card:hover {
+  border-color: var(--us-border-strong);
+}
+
+.picture-card__title {
+  margin: 0;
+  font-size: var(--us-text-sm);
+  font-weight: 700;
+}
+
+/* The tolerability-band list. Reset so it reads as a compact column
+   of label / count pairs rather than a bulleted list. */
+.picture-card__bars {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-1);
+}
+
+.picture-card__bars li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--us-space-2);
+  font-size: var(--us-text-sm);
+}
+
+.picture-card__band {
+  color: var(--us-text-secondary);
+}
+
+/* Tabular nums so counts stay aligned as they change. Alert state
+   matches the single accent used elsewhere on this screen. */
+.picture-card__count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.picture-card__count--alert {
+  color: var(--us-state-error);
+}
+
+/* Large single-figure display — same scale as .picture-figure__value. */
+.picture-card__value {
+  font-family: var(--us-font-display);
+  font-size: var(--us-text-2xl);
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.picture-card__value--alert {
+  color: var(--us-state-error);
+}
+
+.picture-card__note {
+  font-size: var(--us-text-sm);
+  color: var(--us-text-secondary);
+  margin: 0;
+}
+
+.picture-card__note--alert {
+  color: var(--us-state-error);
+}
+
 /* THE ACCOUNT INDEX. The grid itself is .picture-grid — the same
    auto-fit that lays out the risk picture's figures, and the same
    reason: cards per row should follow the width rather than a

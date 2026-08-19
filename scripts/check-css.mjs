@@ -78,8 +78,15 @@ function classesUsed(files) {
     for (const m of src.matchAll(/class\s*=\s*["'`]([^"'`]*)["'`]/g)) {
       for (const c of m[1].split(/\s+/)) {
         // Interpolated fragments (`class="${x}"`) cannot be resolved
-        // statically and are not claimed to be.
+        // statically and are not claimed to be. Operator tokens such as
+        // `>`, `0`, `?` arrive when the regex meets an inner single-quote
+        // inside a template-literal expression like
+        //   class="foo ${x > 0 ? 'bar' : ''}"
+        // and the capture stops at the `'`. Reject anything that is not a
+        // valid CSS class-name identifier (letter/hyphen/underscore start,
+        // word characters and hyphens thereafter).
         if (!c || c.includes('$') || c.includes('{')) continue;
+        if (!/^-?[A-Za-z_][\w-]*$/.test(c)) continue;
         if (!used.has(c)) used.set(c, file);
       }
     }

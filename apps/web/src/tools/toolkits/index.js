@@ -30,6 +30,11 @@
 
 import { html, raw } from '../../shared/html.js';
 import { Select } from '../../components/Select.js';
+import { isSignedIn, authFetch } from '../../shared/session.js';
+import {
+  riskTolerabilityCard,
+  openActionsCard
+} from '../../shared/picture-cards.js';
 import {
   OCCURRENCE_CLASSES,
   SERIOUS_INJURY_TESTS
@@ -264,13 +269,81 @@ export function render(outlet) {
           </li>
         </ol>
       </nav>
-      <div class="doc__body">${Classifier()} ${RiskAssessor()}</div>
+      <div class="doc__body">${isSignedIn()
+          ? html`<div id="toolkits-risk-preview" class="doc-section">
+              <p class="hint">Loading risk picture…</p>
+            </div>`
+          : ''
+        }${Classifier()} ${RiskAssessor()}</div>
     </div>
   `.toString();
 
   bindClassifier(outlet);
   bindRisk(outlet);
+  if (isSignedIn()) loadRiskPreview(outlet);
 }
+
+/* Fetch a compact risk picture snapshot and render it at the top of the
+   toolkits body. Numbers are stale the moment they land — this is a
+   dashboard preview, not a workbench — so no refresh loop is needed.
+   A failure is silent: the preview slot is replaced with nothing rather
+   than an error panel that would push the calculators down. */
+async function loadRiskPreview(outlet) {
+  const slot = outlet.querySelector('#toolkits-risk-preview');
+  if (!slot) return;
+  try {
+    const [regRes, actRes] = await Promise.all([
+      authFetch('/api/v1/register'),
+      authFetch('/api/v1/actions')
+    ]);
+    if (!regRes.ok || !actRes.ok) {
+      slot.remove();
+      return;
+    }
+    const { entries } = await regRes.json();
+    const { actions } = await actRes.json();
+
+    const bands = { INTOLERABLE: 0, TOLERABLE: 0, ACCEPTABLE: 0 };
+    for (const e of entries) {
+      const s = e.residualSeverity ?? e.severity;
+      const l = e.residualLikelihood ?? e.likelihood;
+      if (!s || !l) continue;
+      const band = tolerability(s, l);
+      if (band in bands) bands[band]++;
+    }
+    const open = actions.filter(
+      (a) => a.status !== 'VERIFIED' && a.status !== 'CANCELLED'
+    ).length;
+    const overdue = actions.filter((a) => a.status === 'OVERDUE').length;
+    slot.innerHTML = html`
+      <h2 class="section-title">Risk picture</h2>
+      <p class="lede lede--tight">
+        Your current risk position, drawn from the register and corrective actions.
+        <a href="/toolkits/risk-picture">Full picture</a>
+      </p>
+      <div class="picture-summary">
+        ${riskTolerabilityCard({
+          href: '/toolkits/risk-picture',
+          title: 'Tolerability',
+          ariaLabel: 'Risk tolerability',
+          bands
+        })}
+        ${openActionsCard({
+          href: '/toolkits/risk-picture',
+          title: 'Open actions',
+          ariaLabel: 'Open actions',
+          outstanding: open,
+          overdue
+        })}
+      </div>
+    `.toString();
+  } catch {
+    slot.remove();
+  }
+}
+
+
+
 
 function bindClassifier(outlet) {
   const form = outlet.querySelector('#classify');
