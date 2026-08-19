@@ -2251,6 +2251,18 @@ html { scroll-padding-top: var(--us-chrome); }
   background: var(--us-surface-2);
 }
 
+.hint--inline {
+  display: block;
+  margin-top: var(--us-space-2);
+  font-size: var(--us-text-xs);
+  font-weight: var(--us-weight-normal);
+}
+
+.notice--caution {
+  border-left: 4px solid var(--us-risk-tolerable-text);
+  background: rgb(var(--us-gold-rgb) / 0.16);
+}
+
 .picture-note {
   margin: var(--us-space-3) 0;
   font-size: var(--us-text-sm);
@@ -4396,6 +4408,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   margin-bottom: var(--us-space-1);
 }
 
+.ra-1210-info { border-left-color: var(--us-risk-tolerable-text); }
+
 /* `section { padding: var(--us-section) 0 }` is the benchmark's rule
    for a marketing page whose sections are full-bleed bands. A document
    section is not that — it is a heading and its prose inside one
@@ -4868,6 +4882,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: var(--us-text-xs);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.risk-chip--band {
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
 
 .risk-chip[data-tolerability='INTOLERABLE'] {

@@ -43,7 +43,6 @@ import {
 } from '../../../packages/shared/src/regulations.ts';
 import { watchForInstall, offerUpdate } from './shared/prompts.js';
 import { SECTIONS, WORKING_SECTIONS } from './shared/sitemap.js';
-import { render as renderHome } from './tools/home/index.js';
 import { render as renderReport } from './tools/report/index.js';
 import { render as renderLogin } from './tools/login/index.js';
 
@@ -310,7 +309,7 @@ router
       requestAnimationFrame(() => router.navigate('/picture', { replace: true }));
       return;
     }
-    renderHome(el);
+    lazy(el, () => import('./tools/home/index.js').then((m) => (o) => m.render(o)));
   }, { title: 'Safety intelligence for African skies' })
   .register('/report', (el) => renderReport(el), { title: 'File a report', surface: 'tool' })
   /* LAZY, and this was the entry budget's last 4 KB.

@@ -72,12 +72,11 @@ and `verifiedOn` from the text, not from a summary of it. A row that
 cannot cite a numbered provision does not get a number — it gets `null`
 and the ICAO baseline, which is what ICAO itself does.
 
-**The test that stops it rotting:** `tests/safetycritical.test.ts` —
-*"still MARKS a provisional row, now that no real one trips it"* runs
-`isProvisionalObligation` against a synthetic row, because a guard with
-no instances is a guard that can silently stop working, and five
-assertions of `false` would pass just as happily against a function that
-always returned it. Alongside it, *"gives ICAO NO deadline, because ICAO
+**The tests that stop it rotting:** `tests/safetycritical.test.ts` checks
+that the registry contains exactly the seven documented provisional
+jurisdictions. It also runs `isProvisionalObligation` against a synthetic
+row so the obligation-level predicate remains covered independently of
+registry lookups. Alongside them, *"gives ICAO NO deadline, because ICAO
 publishes none"* fails the build if anyone gives the baseline an hour
 figure.
 
