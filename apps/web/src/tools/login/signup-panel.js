@@ -22,8 +22,9 @@
    it.
    ============================================================ */
 
-import { html, raw } from '../../shared/html.js';
-import { adoptSession } from '../../shared/session.js';
+import { html } from '../../shared/html.js';
+import { isSignedIn, getSession, adoptSession } from '../../shared/session.js';
+import { Select } from '../../components/Select.js';
 /* THE VOCABULARIES, IN THIS CHUNK AND NOT THE ENTRY ONE. Twenty-six
    aircraft types, eighteen aerodromes and seven operation types is
    about a kilobyte, and this module is already lazily imported for
@@ -32,6 +33,23 @@ import { adoptSession } from '../../shared/session.js';
    else that touches these lists. */
 import { AIRCRAFT_TYPES, AERODROMES } from '../../../../../packages/shared/src/taxonomy.ts';
 import { OPERATION_TYPES } from '../../../../../packages/shared/src/adrep.ts';
+import { JURISDICTIONS } from '../../../../../packages/shared/src/regulations.ts';
+
+const JURISDICTION_LABELS = {
+  KE: 'Kenya (KCAA)',
+  UG: 'Uganda (UCAA)',
+  TZ: 'Tanzania (TCAA)',
+  RW: 'Rwanda (RCAA)',
+  BI: 'Burundi (AACB)',
+  SS: 'South Sudan (SSCAA)',
+  CD: 'DR Congo (AAC/RDC)',
+  SO: 'Somalia (SCAA)'
+};
+
+const JURISDICTION_OPTIONS = JURISDICTIONS.map((code) => ({
+  value: code,
+  label: JURISDICTION_LABELS[code] ?? code
+}));
 
 /* A collapsed group of checkboxes. `details` rather than a multi-select
    because a native `select multiple` on a handset is a scroll region
@@ -59,9 +77,7 @@ function picked(form, name) {
   return values.length ? { [name]: values } : {};
 }
 
-const SHELL = html`<section class="band-dark"><div class="wrap"><span class="eyebrow">Account</span><h1>Create an operator</h1><p class="lede">This is how an operator comes to exist in the product. It takes a minute, and nobody has to call you.</p></div></section><section class="panel wrap">      <details class="filters-shell" id="signup-shell">
-        <summary><span>My operator does not have an account yet</span></summary>
-        <form id="signup-form" class="card" novalidate>
+const SHELL = html`<section class="band-dark"><div class="wrap"><span class="eyebrow">Account</span><h1>Create an operator</h1><p class="lede">This is how an operator comes to exist in the product. It takes a minute, and nobody has to call you.</p></div></section><section class="panel wrap">        <form id="signup-form" class="card" novalidate>
           <p class="lede lede--tight">
             This creates the operator and makes you its
             <strong>accountable executive</strong> — the post that signs the safety
@@ -76,6 +92,16 @@ const SHELL = html`<section class="band-dark"><div class="wrap"><span class="eye
             />
             <span class="field-hint">As it appears on the certificate.</span>
           </label>
+
+          ${Select({
+            name: 'jurisdiction',
+            label: 'Jurisdiction',
+            value: 'KE',
+            options: JURISDICTION_OPTIONS,
+            required: true,
+            placeholder: 'Select jurisdiction…',
+            hint: 'The civil aviation authority that issued your AOC or oversees operations.'
+          })}
 
           <label class="field">
             <span class="field-label">AOC number</span>
@@ -147,7 +173,6 @@ const SHELL = html`<section class="band-dark"><div class="wrap"><span class="eye
           </button>
           <p class="field-error" id="signup-status" role="status" aria-live="polite"></p>
         </form>
-      </details>
 </section>`.toString();
 
 /* ============================================================
@@ -167,6 +192,30 @@ const SHELL = html`<section class="band-dark"><div class="wrap"><span class="eye
    ============================================================ */
 export function render(slot) {
   if (!slot) return;
+  if (isSignedIn()) {
+    const session = getSession() ?? {};
+    slot.innerHTML = html`
+      <section class="band-dark">
+        <div class="wrap">
+          <span class="eyebrow">Account</span>
+          <h1>Operator account</h1>
+          <p class="lede">You are currently signed in.</p>
+        </div>
+      </section>
+      <section class="panel wrap">
+        <div class="card">
+          <p class="lede lede--tight">
+            You are signed in as <strong>${session.role ?? 'User'}</strong>.
+          </p>
+          <p>
+            <a class="btn btn-primary" href="/account">Go to account overview</a>
+          </p>
+        </div>
+      </section>
+    `.toString();
+    return;
+  }
+
   slot.innerHTML = SHELL;
   const form = slot.querySelector('#signup-form');
   const status = slot.querySelector('#signup-status');
@@ -176,13 +225,18 @@ export function render(slot) {
     const f = form.elements;
     const button = form.querySelector('button[type=submit]');
 
+    const fleetRaw = f.fleet.value.trim();
+    const fleetNum = Number(fleetRaw);
+    const jurisdiction = f.jurisdiction?.value || 'KE';
+
     const body = {
       orgName: f.orgName.value.trim(),
+      jurisdiction,
       name: f.name.value.trim(),
-      email: f.email.value.trim(),
+      email: f.email.value.trim().toLowerCase(),
       password: f.password.value,
       ...(f.aocNumber.value.trim() ? { aocNumber: f.aocNumber.value.trim() } : {}),
-      ...(f.fleet.value ? { fleet: Number(f.fleet.value) } : {}),
+      ...(fleetRaw && Number.isInteger(fleetNum) && fleetNum > 0 ? { fleet: fleetNum } : {}),
       /* Only sent when something was ticked. An empty array and an
          absent key mean the same thing to the route, and sending three
          empty arrays on every signup is three keys of noise in the one
@@ -226,7 +280,7 @@ export function render(slot) {
       adoptSession(session);
       form.elements.password.value = '';
       window.dispatchEvent(new CustomEvent('usalamasms:session-changed'));
-      window.location.reload();
+      window.location.href = '/account';
     } catch {
       button.disabled = false;
       status.textContent =

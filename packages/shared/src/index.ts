@@ -211,7 +211,7 @@ export const RiskAssessInputSchema = z.object({
 export type RiskAssessInput = z.infer<typeof RiskAssessInputSchema>;
 
 export const LoginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(12),
   mfaCode: z.string().length(6).optional(),
 });
