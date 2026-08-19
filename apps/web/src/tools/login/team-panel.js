@@ -231,6 +231,7 @@ export async function render(outlet) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const f = event.currentTarget;
+    const submit = f.querySelector('button[type=submit]');
     const body = {
       name: f.elements.name.value,
       email: f.elements.email.value,
@@ -238,6 +239,7 @@ export async function render(outlet) {
     };
     const err = outlet.querySelector('[data-err="add"]');
     err.textContent = '';
+    submit.disabled = true;
     try {
       const res = await authFetch('/api/v1/users', {
         method: 'POST',
@@ -274,6 +276,8 @@ export async function render(outlet) {
       f.reset();
     } catch {
       err.textContent = 'The safety office could not be reached. Nothing was created.';
+    } finally {
+      submit.disabled = false;
     }
   });
 }

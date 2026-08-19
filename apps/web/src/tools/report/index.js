@@ -433,7 +433,7 @@ function wire(outlet) {
           });
       }
     }
-    if (type !== 'MOR' || !occurredAt.value) {
+    if (!occurredAt.value) {
       deadlineHint.textContent = '';
       /* THE ANNEX 13 NOTICE IS NOT CLEARED HERE, and clearing it was the
          second half of the same defect as writing it in this block.
@@ -446,9 +446,30 @@ function wire(outlet) {
       return;
     }
     const occurred = new Date(occurredAt.value);
-    if (Number.isNaN(occurred.getTime())) return;
+    if (Number.isNaN(occurred.getTime())) { deadlineHint.textContent = ''; return; }
     const now = new Date();
-    const awareAt = now > occurred ? now : occurred;
+    /* FUTURE DATE: cannot be an occurrence. Show the error here so the
+       reporter sees it before submission, and bail — computing a deadline
+       from a future event would produce a nonsensical "by {future date}". */
+    if (occurred > now) {
+      deadlineHint.textContent = 'The occurrence date cannot be in the future.';
+      return;
+    }
+    /* NON-MOR TYPES: no deadline to show, but do flag a very old date. */
+    if (type !== 'MOR') {
+      const ONE_YEAR = 365 * 24 * 60 * 60 * 1000;
+      deadlineHint.textContent = now.getTime() - occurred.getTime() > ONE_YEAR
+        ? 'This occurrence is over a year ago — confirm it has not already been reported.'
+        : '';
+      return;
+    }
+    /* For MOR, awareAt is always NOW. The reporter is filing now; that is
+       the only honest anchor. The previous line read:
+         const awareAt = now > occurred ? now : occurred;
+       For a past occurrence this gives now (correct). For a future
+       occurrence — which the guard above now catches — it gave occurred,
+       computing a deadline anchored on a date that had not arrived. */
+    const awareAt = now;
     const jurisdiction = 'KE';
     /* NO OCCURRENCE CLASS IS PASSED, and that is deliberate. This form
        asks what kind of REPORT this is, not whether the event meets
@@ -477,7 +498,11 @@ function wire(outlet) {
        actually uses — so the shortest is named AS the shortest, and the
        reporter is told where the other two are worked out. */
     const perClass = obligation.hoursByClass;
-    deadlineHint.textContent = !due
+    const ONE_YEAR = 365 * 24 * 60 * 60 * 1000;
+    const staleNote = now.getTime() - occurred.getTime() > ONE_YEAR
+      ? ' This occurrence is over a year ago — confirm it has not already been reported.'
+      : '';
+    deadlineHint.textContent = (!due
       ? `${obligation.authority} sets no fixed period — notify without delay, and file within the window your authority sets.`
       : isProvisional(jurisdiction)
         ? `Around ${hours} hours to report — this jurisdiction's rule is not yet verified.`
@@ -485,7 +510,7 @@ function wire(outlet) {
           ? `${obligation.authority} expects an accident within ${hours} hours — by ` +
             `${due.toUTCString()}. A serious incident has ${perClass.SERIOUS_INCIDENT} and an ` +
             `incident ${perClass.INCIDENT}; the occurrence classifier works out which this is.`
-          : `${obligation.authority} expects this within ${hours} hours — by ${due.toUTCString()}.`;
+          : `${obligation.authority} expects this within ${hours} hours — by ${due.toUTCString()}.`) + staleNote;
   }
 
   narrative.addEventListener('input', () => {
@@ -511,6 +536,20 @@ function wire(outlet) {
     status.dataset.state = '';
 
     try {
+      /* CATCH FUTURE DATES BEFORE THEY HIT IndexedDB. renderDeadline
+         already shows the error live, but a reporter who submits before
+         the hint re-renders (e.g. rapid paste-and-click) would queue an
+         item the server will reject. Catching it here gives a clear
+         error instead of a sync failure hours later. */
+      const occurredVal = form.elements.occurredAt?.value;
+      if (occurredVal) {
+        const occurred = new Date(occurredVal);
+        if (!Number.isNaN(occurred.getTime()) && occurred > new Date()) {
+          status.dataset.state = 'error';
+          status.textContent = 'The occurrence date cannot be in the future.';
+          return;
+        }
+      }
       const input = collect(form);
       await submitReportOffline(input);
       clearDraft();

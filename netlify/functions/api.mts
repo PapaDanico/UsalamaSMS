@@ -63,9 +63,10 @@ let appPromise: Promise<{
 function missingConfig(): string[] {
   const missing: string[] = [];
 
-  /* Netlify Database supplies a deploy-aware Postgres connection and
-     branches it automatically for deploy previews. Prefer it over the
-     legacy explicit and Supabase variables.
+  /* DATABASE_URL is the Supabase transaction-pooler URL set by hand and
+     holds the real data. It takes priority. NETLIFY_DB_URL (Netlify
+     Database / Neon) is accepted as a fallback so an operator can migrate
+     to Netlify Database by unsetting DATABASE_URL rather than editing code.
 
      The Netlify Supabase extension sets SUPABASE_DATABASE_URL to the
      project's REST API base — `https://<ref>.supabase.co` — not to a
@@ -76,16 +77,16 @@ function missingConfig(): string[] {
 
      So the SCHEME decides, not the name. */
   const candidate =
-    Netlify.env.get("NETLIFY_DB_URL") ??
     Netlify.env.get("DATABASE_URL") ??
+    Netlify.env.get("NETLIFY_DB_URL") ??
     Netlify.env.get("SUPABASE_DATABASE_URL");
   if (!candidate) {
-    missing.push("NETLIFY_DB_URL — connect Netlify Database to this project");
+    missing.push("DATABASE_URL — set to the Supabase transaction-pooler URI (port 6543)");
   } else if (!/^postgres(ql)?:\/\//.test(candidate)) {
     missing.push(
       "Database connection — set, but not a Postgres URI. The Supabase extension's " +
         "SUPABASE_DATABASE_URL is the REST API base (https://…), not a " +
-        "connection string; connect Netlify Database or set DATABASE_URL explicitly.",
+        "connection string; set DATABASE_URL to the transaction-pooler URI explicitly.",
     );
   }
 

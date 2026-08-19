@@ -178,8 +178,24 @@ export const CreateReportSchema = z.object({
   (r) => r.type !== "MOR" || r.occurredAt !== undefined,
   { message: "MOR requires occurredAt to compute the regulatory deadline", path: ["occurredAt"] },
 ).refine(
-  (r) => !r.awareAt || !r.occurredAt || r.awareAt.getTime() >= r.occurredAt.getTime(),
+  /* Do NOT fire this check when occurredAt is itself in the future —
+     the future-date refine below will already name occurredAt, and
+     reporting "awareAt cannot precede occurredAt" on top of it points
+     the reporter at the wrong field. Guard: skip the awareAt ordering
+     check when occurredAt has not happened yet. */
+  (r) => !r.awareAt || !r.occurredAt
+    || r.occurredAt.getTime() > Date.now()
+    || r.awareAt.getTime() >= r.occurredAt.getTime(),
   { message: "awareAt cannot precede occurredAt", path: ["awareAt"] },
+).refine(
+  /* A FUTURE OCCURRENCE IS IMPOSSIBLE TO FILE ACCURATELY. The reporter
+     became aware now, which is before the occurrence, so the clock has
+     not started. Accepted values from the deadline engine also show
+     nonsensical deadlines for future dates. Reject explicitly so the
+     message names the field rather than surfacing via the awareAt check
+     with a confusing "awareAt cannot precede occurredAt". */
+  (r) => !r.occurredAt || r.occurredAt.getTime() <= Date.now(),
+  { message: "occurredAt cannot be in the future", path: ["occurredAt"] },
 ).refine(
   /* A DUTY CANNOT BE ATTACHED TO A BIRD STRIKE. The fatigue block is
      read by the fatigue picture and by nothing else, so a block riding

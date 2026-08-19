@@ -534,6 +534,30 @@ describe("input validation", () => {
     expect(r.success).toBe(false);
   });
 
+  it("rejects a future occurredAt with a clear error on occurredAt, not awareAt", () => {
+    /* The old code had no future-date refine. A future occurredAt was
+       rejected only because awareAt (= now) < occurredAt, surfacing as
+       "awareAt cannot precede occurredAt" — confusing the reporter into
+       thinking they mistyped when they became aware. The explicit refine
+       below names occurredAt so the error path is unambiguous, and the
+       awareAt refine is guarded so it does not also fire. */
+    const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const r = CreateReportSchema.safeParse({
+      ...base, type: "MOR",
+      occurredAt: future,
+      awareAt: new Date().toISOString(),
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      const paths = r.error.issues.map((i) => i.path.join("."));
+      expect(paths).toContain("occurredAt");
+      // The awareAt check must NOT also fire: a future occurredAt is
+      // not a mistyped awareAt, and reporting both would point the
+      // reporter at the wrong field.
+      expect(paths).not.toContain("awareAt");
+    }
+  });
+
   it("requires an ALARP justification for a TOLERABLE risk", () => {
     // The amber band means "as low as reasonably practicable" — the
     // justification IS the evidence. An unjustified TOLERABLE is an
