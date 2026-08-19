@@ -9,13 +9,12 @@
 -- Nothing read it. Three writes, zero reads; duplicate detection is
 -- @@unique([orgId, clientId]).
 --
--- The UPDATE runs first and is not redundant: DROP COLUMN leaves the
--- values in dead tuples until a rewrite, and this table's rows are the
--- ones the property is about.
+-- DROP COLUMN alone can leave the values in dead tuples. Changing TEXT
+-- to BYTEA with a NULL expression forces a transaction-safe table rewrite,
+-- removing the old values before the now-empty column is dropped.
 UPDATE "SyncReceipt" SET "deviceHash" = NULL WHERE "deviceHash" IS NOT NULL;
 
-ALTER TABLE "SyncReceipt" DROP COLUMN "deviceHash";
+ALTER TABLE "SyncReceipt"
+  ALTER COLUMN "deviceHash" TYPE BYTEA USING NULL::BYTEA;
 
--- Forces the rewrite that discards the dead tuples above. The table is
--- small (one row per synced entity) and this runs once.
-VACUUM FULL "SyncReceipt";
+ALTER TABLE "SyncReceipt" DROP COLUMN "deviceHash";
