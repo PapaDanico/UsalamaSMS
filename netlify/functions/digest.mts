@@ -198,7 +198,7 @@ export default async function handler(): Promise<Response> {
         paidThrough: org.paidThrough,
       } as const;
       const trialState = stateOn(dates, now);
-      const trialDay = trialDayFor(new Date(dates.trialEndsOn.getTime() - TRIAL_DAYS * DAY), now);
+      const trialDay = trialDayFor(org.createdAt, now);
       const stage = trialState === "TRIAL" ? trialStageFor(trialDay) : null;
 
       if (stage) {
