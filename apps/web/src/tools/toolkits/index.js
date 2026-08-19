@@ -32,6 +32,10 @@ import { html, raw } from '../../shared/html.js';
 import { Select } from '../../components/Select.js';
 import { isSignedIn, authFetch } from '../../shared/session.js';
 import {
+  riskTolerabilityCard,
+  openActionsCard
+} from '../../shared/picture-cards.js';
+import {
   OCCURRENCE_CLASSES,
   SERIOUS_INJURY_TESTS
 } from '../../../../../packages/shared/src/glossary.ts';
@@ -311,8 +315,6 @@ async function loadRiskPreview(outlet) {
       (a) => a.status !== 'VERIFIED' && a.status !== 'CANCELLED'
     ).length;
     const overdue = actions.filter((a) => a.status === 'OVERDUE').length;
-    const total = bands.INTOLERABLE + bands.TOLERABLE + bands.ACCEPTABLE;
-
     slot.innerHTML = html`
       <h2 class="section-title">Risk picture</h2>
       <p class="lede lede--tight">
@@ -320,33 +322,19 @@ async function loadRiskPreview(outlet) {
         <a href="/toolkits/risk-picture">Full picture</a>
       </p>
       <div class="picture-summary">
-        <a class="picture-card" href="/toolkits/risk-picture" aria-label="Risk tolerability">
-          <h3 class="picture-card__title">Tolerability</h3>
-          <ul class="picture-card__bars" aria-label="Hazards by tolerability band">
-            <li data-tolerability="INTOLERABLE">
-              <span class="picture-card__band">Intolerable</span>
-              <span class="picture-card__count ${bands.INTOLERABLE > 0 ? 'picture-card__count--alert' : ''}">${bands.INTOLERABLE}</span>
-            </li>
-            <li data-tolerability="TOLERABLE">
-              <span class="picture-card__band">Tolerable</span>
-              <span class="picture-card__count">${bands.TOLERABLE}</span>
-            </li>
-            <li data-tolerability="ACCEPTABLE">
-              <span class="picture-card__band">Acceptable</span>
-              <span class="picture-card__count">${bands.ACCEPTABLE}</span>
-            </li>
-          </ul>
-          ${total === 0
-            ? html`<p class="picture-card__note">No assessed hazards yet</p>`
-            : html`<p class="picture-card__note">${total} assessed hazard${total === 1 ? '' : 's'}</p>`}
-        </a>
-        <a class="picture-card" href="/toolkits/risk-picture" aria-label="Open actions">
-          <h3 class="picture-card__title">Open actions</h3>
-          <p class="picture-card__value ${overdue > 0 ? 'picture-card__value--alert' : ''}">${open}</p>
-          ${overdue > 0
-            ? html`<p class="picture-card__note picture-card__note--alert">${overdue} overdue</p>`
-            : html`<p class="picture-card__note">None overdue</p>`}
-        </a>
+        ${riskTolerabilityCard({
+          href: '/toolkits/risk-picture',
+          title: 'Tolerability',
+          ariaLabel: 'Risk tolerability',
+          bands
+        })}
+        ${openActionsCard({
+          href: '/toolkits/risk-picture',
+          title: 'Open actions',
+          ariaLabel: 'Open actions',
+          outstanding: open,
+          overdue
+        })}
       </div>
     `.toString();
   } catch {
