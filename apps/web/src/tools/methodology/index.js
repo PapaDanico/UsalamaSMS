@@ -66,6 +66,10 @@ import {
   isStale,
   reportingDeadline
 } from '../../../../../packages/shared/src/regulations.ts';
+import {
+  REGIONAL_FRAMEWORK_LABELS,
+  REGULATORY_SOURCE_LABELS
+} from '../../../../../packages/shared/src/regulatory-source.ts';
 
 /* One letter per tolerability. This is the channel that carries the
    meaning when colour cannot — greyscale, dichromacy, a bad projector,
@@ -170,6 +174,12 @@ function Obligations() {
             <td class="cite" data-label="Instrument">
               ${o.instrument}
               <span class="verified">verified ${o.verifiedOn}</span>
+              <span class="field-note">Source level: ${REGULATORY_SOURCE_LABELS[o.sourceLevel]}</span>
+              ${o.regionalFramework
+                ? html`<span class="field-note">
+                    Regional context: ${REGIONAL_FRAMEWORK_LABELS[o.regionalFramework]}
+                  </span>`
+                : ''}
               ${isStale(o, new Date())
                 ? html`<span class="tag tag--stale">past its review cycle</span>`
                 : ''}
@@ -378,8 +388,11 @@ export function render(outlet) {
             </table>
           </div>
           <p class="footnote">
-            Rows marked provisional carry the ICAO-common figure pending a
-            reading of the primary instrument. They are marked wherever they
+            Rows marked provisional do not carry an invented State period.
+            They carry the ICAO Annex 13 baseline — notify without delay,
+            no fixed period — while the State's own instrument remains unread.
+            CASSOA is named as the regional harmonisation framework and not as
+            the legal source of the number. They are marked wherever they
             appear, including inside a live countdown, because a figure an
             operator relies on and cannot check is worse than no figure.
           </p>

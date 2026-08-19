@@ -79,6 +79,8 @@
    flag from being load-bearing: the operator supplies every number.
    ===================================================================== */
 
+import type { RegulatorySourceLevel } from "./regulatory-source";
+
 /** The instruments this module reasons about, named so a reader can check. */
 export const FATIGUE_SOURCES = [
   "ICAO Annex 6, Part I, 4.10 and Appendix 7 — fatigue management",
@@ -94,6 +96,7 @@ export const FATIGUE_SOURCES = [
  * member is measured against.
  */
 export const FATIGUE_VERIFIED_AGAINST_PRIMARY = false;
+export const FATIGUE_LIMIT_SOURCE_LEVEL: RegulatorySourceLevel = "OPERATOR_DECLARED";
 
 /* ------------------------------------------------------------------
    THE SCALE, QUOTED.

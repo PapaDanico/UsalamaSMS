@@ -31,8 +31,9 @@ calendar expiry below has passed.
 ## 1. The jurisdictions that are NOT covered
 
 **The claim:** UsalamaSMS computes the mandatory occurrence reporting
-deadline for Kenya and the EU, and offers ICAO's baseline everywhere
-else.
+deadline for Kenya and offers ICAO's baseline everywhere else, with
+CASSOA named where it is the regional harmonisation framework and not
+mistaken for the legal source of a State period.
 
 **What this entry used to say, and why it was wrong.** It used to claim
 five jurisdictions: Kenya, Uganda, Tanzania, Rwanda and the EU — with
@@ -51,7 +52,10 @@ baseline applies. Seven EAC member states (Uganda, Tanzania, Rwanda,
 Burundi, South Sudan, DRC, Somalia) are now in the registry. Each
 carries the operator's regulator — an operator knows which authority it
 answers to — without asserting a period nobody has read from the
-instrument.
+instrument. **Each also now names CASSOA explicitly as the regional
+harmonisation framework**, because an EAC operator is entitled to know
+why the rows are grouped together without being told that CASSOA itself
+set the hours.
 
 **Why it still expires:** an operator in Uganda, Tanzania or Rwanda has
 a real deadline set by its own authority, and this product does not know
@@ -80,8 +84,8 @@ registry lookups. Alongside them, *"gives ICAO NO deadline, because ICAO
 publishes none"* fails the build if anyone gives the baseline an hour
 figure.
 
-**Owner:** whoever ships the first customer outside Kenya and the EU.
-Before, not after.
+**Owner:** whoever ships the first customer outside Kenya's primary
+instrument. Before, not after.
 
 ---
 
