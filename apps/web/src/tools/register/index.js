@@ -70,7 +70,7 @@ import {
 } from '../../../../../packages/shared/src/discovery.ts';
 import { ToolNav } from '../../shared/tool-nav.js';
 import { attachPrintId } from '../../shared/print-id.js';
-import { isSignedIn, authFetch } from '../../shared/session.js';
+import { isSignedIn, authFetch, getSession } from '../../shared/session.js';
 import { Select, wireSelects } from '../../components/Select.js';
 import {
   requiredHolder,
@@ -92,6 +92,32 @@ import {
 } from '../../../../../packages/shared/src/posts.ts';
 
 const STORE = 'usalamasms.register';
+
+/* UI-ONLY AUTHORITY MAP — mirrors signature.ts without importing it.
+   signature.ts is deliberately server-only (it froze a record Rollup
+   cannot tree-shake and the browser must not gate on it). This copy
+   exists solely to show a helpful hint on disabled accept buttons. It
+   does not gate anything; the server is the control. */
+const UI_AUTHORITY = /** @type {Readonly<Record<string, number>>} */ ({
+  SAFETY_OFFICER: 1, INVESTIGATOR: 1,
+  SAFETY_MANAGER: 2, KEY_MANAGEMENT: 2,
+  ACCOUNTABLE_EXECUTIVE: 3,
+});
+
+/* Minimum authority level required to accept a given band, per RA 1210
+   as modelled in holder.ts. INTOLERABLE has a level for completeness but
+   the button is disabled for everyone — the controls have to change. */
+const BAND_REQUIRES = /** @type {Readonly<Record<string, number>>} */ ({
+  ACCEPTABLE: 2,     // Safety Manager
+  TOLERABLE: 3,      // Accountable Executive
+  INTOLERABLE: 99,   // No one — controls must change
+});
+
+const BAND_LABEL = /** @type {Readonly<Record<string, string>>} */ ({
+  ACCEPTABLE: 'Acceptable',
+  TOLERABLE: 'Tolerable',
+  INTOLERABLE: 'Intolerable',
+});
 
 /* Same declaration as the matrix and the assessor. An entry scored on
    a severity worded differently from the matrix it is read against is
@@ -212,15 +238,28 @@ function band(severity, likelihood) {
   }
 }
 
-function Row(entry) {
+function Row(entry, userRole) {
   const initial = band(entry.severity, entry.likelihood);
   const residual = band(entry.residualSeverity, entry.residualLikelihood);
   const shown = residual ?? initial;
+
+  /* UI-only: can the signed-in user accept this band? The server
+     enforces — this is a hint only, so the person knows who to ask
+     rather than discovering the refusal after pressing. */
+  const userLevel = UI_AUTHORITY[userRole ?? ''] ?? 0;
+  const bandLevel = shown ? (BAND_REQUIRES[shown.t] ?? 99) : 0;
+  const userCanAccept = userLevel >= bandLevel;
 
   return html`<article class="card cov reg-entry" data-id="${entry.id}"
     data-tolerability="${shown?.t ?? ''}">
     <div class="cov__head">
       <h3>${entry.hazard}</h3>
+      ${shown
+        ? html`<span class="risk-chip risk-chip--band" data-tolerability="${shown.t}"
+              title="Risk Acceptance Rule 1210: the severity of the risk determines the minimum seniority of the person who may accept it."
+            >${BAND_LABEL[shown.t] ?? shown.t}</span
+          >`
+        : ''}
       <span class="badge" data-status="${BADGE[entry.status] ?? 'OFFLINE'}">
         <span class="badge__label">${entry.status.toLowerCase()}</span>
       </span>
@@ -246,8 +285,19 @@ function Row(entry) {
 
     ${shown?.t === 'INTOLERABLE' && entry.status !== 'ACCEPTED'
       ? html`<p class="notice notice--urgent">
-          This risk is classified as INTOLERABLE. The controls must change before it
-          can be closed — no signature at any level can accept it as it stands.
+          <strong>INTOLERABLE risk. (RA 1210)</strong> The controls must change before
+          this risk can be closed. No signature at any level can accept an intolerable
+          risk — that is what makes it intolerable.
+          <span class="hint--inline">Risk Acceptance Rule 1210: the severity of the risk
+          determines who may carry it, and an intolerable risk cannot be carried at all.</span>
+        </p>`
+      : ''}
+
+    ${shown?.t === 'TOLERABLE' && entry.status !== 'ACCEPTED'
+      ? html`<p class="notice notice--caution">
+          <strong>TOLERABLE risk. (RA 1210)</strong> Only the Accountable Executive may
+          accept a tolerable risk — it is a judgement about cost against safety, and that
+          belongs with the post that can spend the money.
         </p>`
       : ''}
 
@@ -317,13 +367,22 @@ function Row(entry) {
                 class="btn btn-secondary btn-sm"
                 data-accept="${entry.assessmentId}"
                 disabled
-                title="Controls must change — this risk cannot be accepted at any level"
+                title="Controls must change — this risk cannot be accepted at any level (RA 1210)"
               >Accept this risk</button>`
-            : html`<button
-                type="button"
-                class="btn btn-secondary btn-sm"
-                data-accept="${entry.assessmentId}"
-              >Accept this risk</button>`
+            : !userCanAccept && userRole
+              ? html`<button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  data-accept="${entry.assessmentId}"
+                  disabled
+                  title="RA 1210: this band requires ${shown?.t === 'TOLERABLE' ? 'Accountable Executive' : 'Safety Manager'} approval"
+                  aria-disabled="true"
+                >Requires ${shown?.t === 'TOLERABLE' ? 'Accountable Executive' : 'Safety Manager'} approval</button>`
+              : html`<button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  data-accept="${entry.assessmentId}"
+                >Accept this risk</button>`
           : html`<span class="reg-entry__nores"
               >On this device only — acceptance is signed at the safety office.</span
             >`}
@@ -575,6 +634,14 @@ export function render(outlet) {
       <div class="doc__body">
         <section class="doc-section">
           <h2>The register</h2>
+          <p class="note ra-1210-info">
+            <b>Risk acceptance is gated by role and severity. (RA 1210)</b>
+            A Safety Officer cannot carry an amber risk. Only the Accountable Executive
+            can accept a tolerable risk — it is a judgement about cost against safety,
+            and that belongs with the post that can spend the money. An intolerable risk
+            cannot be accepted by anybody; the controls have to change.
+            <a href="/tutorials">Learn more about RA 1210 →</a>
+          </p>
           <p class="note">
             <b>On this device only</b>
             Entries live in this browser. They are not sent anywhere, not shared
@@ -642,7 +709,7 @@ export function render(outlet) {
           will be typing on top of entries you cannot see.</span>
         </p>`.toString()
       : entries.length
-        ? methodBalance(entries) + entries.map(Row).join('')
+        ? methodBalance(entries) + entries.map((e) => Row(e, getSession()?.role)).join('')
         : html`<p class="empty-state">
             <span>Nothing on the register yet. The first entry is usually the hazard
             behind the last report somebody filed.</span>
