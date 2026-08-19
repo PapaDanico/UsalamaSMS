@@ -921,9 +921,20 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
          most common inputs that pass `email.includes("@")` and would
          fail to deliver. The UNIQUE constraint on the column means a
          badly-formed address that somehow slips through can only waste
-         one row; the real cost is a user who cannot sign in. */
-      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRe.test(email) || email.length > 254) {
+         one row; the real cost is a user who cannot sign in.
+
+         ReDoS note: the original [^\s@]+@[^\s@]+\.[^\s@]+$ pattern
+         had a polynomial backtracking path on pathological input. The
+         replacement checks length first (hard exit before regex), then
+         uses a pattern where the two domain halves are separated by a
+         literal dot that neither side can match — the dot removes the
+         ambiguity that caused backtracking.
+         - local: [^\s@]+ — can never contain @ or whitespace
+         - domain-left: [^\s@.]+ — can never contain . or @ or whitespace
+         - dot: literal \. — consumed exactly once
+         - TLD: [^\s@.]+ — same exclusion, no overlap with domain-left */
+      const emailRe = /^[^\s@]+@[^\s@.]+\.[^\s@.]+$/;
+      if (email.length > 254 || !emailRe.test(email)) {
         return reply.code(400).send({ error: "email_required" });
       }
       if (name.length < 2 || name.length > 160) {
