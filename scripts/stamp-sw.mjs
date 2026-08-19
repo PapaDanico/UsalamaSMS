@@ -2392,7 +2392,22 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    while entry remains 3.7 KB under its own ceiling. The stop condition
    above is unchanged — if entry starts climbing with total, take weight
    out before buying more. */
-const BUDGET = { entry: 224 * 1024, js: 672 * 1024, css: 80 * 1024 };
+/* 672 -> 680, 19 August 2026 — THE REST OF THE EAC REGISTRY.
+
+   WHAT MOVED. Seven provisional State rows were added after the previous
+   receipt so the report form and every deadline surface cover all EAC
+   member states rather than Kenya alone. Each row carries the authority,
+   verification date, review cycle, citation boundary and customer-facing
+   warning that no domestic primary instrument has yet been read. The
+   production bundle now measures js(total) at 677.3 KB.
+
+   WHAT DID NOT GET BOUGHT. The landing page was still imported into the
+   first-report entry even though an installed app starts on /report. It is
+   now loaded only when a browser visitor opens `/`, keeping its regulatory
+   table and marketing copy off the filing path. ENTRY stays at 224 KB: the
+   legal rows needed by the report form do not justify raising that ceiling,
+   and the home-screen split pays back the shared-registry growth there. */
+const BUDGET = { entry: 224 * 1024, js: 680 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

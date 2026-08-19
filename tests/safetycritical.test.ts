@@ -186,20 +186,19 @@ describe("regulatory reporting deadlines", () => {
     }
   });
 
-  it("carries NO provisional row — the three that were are gone", () => {
-    // Uganda, Tanzania and Rwanda were carried at 72 hours as an
-    // "ICAO-common" default. There is no such default: ICAO names no
-    // period at all. Three rows of a compliance tool therefore stated a
-    // deadline no instrument anywhere supports, and a provisional label
-    // made that visible without making it true.
-    for (const j of JURISDICTIONS) expect(isProvisional(j)).toBe(false);
+  it("carries only the seven documented provisional rows", () => {
+    // Uganda, Tanzania and Rwanda were once carried at 72 hours as an
+    // "ICAO-common" default. There is no such default, so those rows and
+    // the other unread EAC instruments now carry no invented period and
+    // remain explicitly provisional until their primary law is read.
+    expect(JURISDICTIONS.filter(isProvisional)).toEqual([
+      "UG", "TZ", "RW", "BI", "SS", "CD", "SO",
+    ]);
   });
 
-  it("still MARKS a provisional row, now that no real one trips it", () => {
-    // The guard has no instances today, which is exactly when a guard
-    // quietly stops working. Exercised against a synthetic row so this
-    // can still fail — a test that only asserts `false` five times
-    // would pass just as happily if isProvisional always returned it.
+  it("marks a provisional obligation independently of the registry", () => {
+    // Exercise the obligation-level predicate directly so callers using
+    // an obligation object remain covered as well as registry lookups.
     const synthetic = {
       ...MOR_OBLIGATIONS.KE,
       note: "PROVISIONAL — a secondary source, pending a read of the instrument.",
