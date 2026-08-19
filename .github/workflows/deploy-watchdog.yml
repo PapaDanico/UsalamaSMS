@@ -64,6 +64,21 @@ jobs:
               served=$(echo "$body" | tr -d '[:space:]')
               if [ "$served" = "$EXPECT" ]; then
                 echo "::notice::production is serving $served — the merge is live"
+                echo "running post-deploy smoke checks"
+
+                home=$(curl -fsS --max-time 20 "https://usalamasms.com/" 2>/dev/null || true)
+                if [ -z "$home" ] || ! echo "$home" | grep -q "UsalamaSMS"; then
+                  echo "::error::Post-deploy smoke failed: https://usalamasms.com/ did not return expected app content."
+                  exit 1
+                fi
+
+                ready=$(curl -fsS --max-time 20 "https://usalamasms.com/api/ready" 2>/dev/null || true)
+                if [ -z "$ready" ] || ! echo "$ready" | grep -Eq '"ok"[[:space:]]*:[[:space:]]*true'; then
+                  echo "::error::Post-deploy smoke failed: /api/ready did not return ok:true. Body: ${ready:-<empty>}"
+                  exit 1
+                fi
+
+                echo "::notice::post-deploy smoke passed"
                 exit 0
               fi
               echo "attempt $attempt: serving $served, waiting for $EXPECT"
