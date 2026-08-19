@@ -90,6 +90,7 @@ const DESCRIPTIONS = {
   '/fatigue': 'What your fatigue reports say, read against the duty limits you declared \u2014 including the duties that stayed inside them and still left somebody too tired to fly.',
   '/faq': 'Straight answers on price, data, the regulator, offline filing and what happens if you stop paying.',
   '/glossary': 'The vocabulary a safety management system is written in, in the words a regulator uses.',
+  '/login': 'Sign in to send your queued reports to the safety office and open your organisation’s record.',
   '/methodology': 'The risk matrix and the reporting deadlines, rendered from the modules that compute them rather than typed beside them.',
   '/picture': 'Your operator’s safety position in one view: what is open, what is overdue and which barriers are degraded.',
   '/pricing': 'What UsalamaSMS costs, per operator rather than per seat, and what is included at each tier.',
@@ -120,7 +121,7 @@ const DESCRIPTIONS = {
    a link in a WhatsApp group should still say what it opens. */
 const NOINDEX = new Set([
   '/account', '/account/logo', '/account/profile', '/account/team',
-  '/admin', '/picture', '/reset', '/sms', '/today', '/training', '/triage',
+  '/admin', '/login', '/picture', '/reset', '/sms', '/today', '/training', '/triage',
 ]);
 
 /* ---- the routes, from the router's own registrations ---- */

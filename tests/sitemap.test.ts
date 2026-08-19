@@ -162,6 +162,11 @@ describe('the information architecture', () => {
          the menu is an information-architecture decision, and the
          authorisation is enforced on the server. */
       if (path === '/admin') continue;
+      /* /login is an alias for /account (which IS advertised in the sitemap).
+         /login exists as a direct entrypoint for invitation emails and deep
+         links to the sign-in screen, so advertising both /account and /login
+         in the sitemap would duplicate the same screen in navigation. */
+      if (path === '/login') continue;
       expect(
         advertised.has(path),
         `${path} is a registered route that no section of the sitemap advertises — ` +
