@@ -360,6 +360,8 @@ export async function render(outlet) {
         </p>
       </header>
 
+      ${riskPictureCards({ register, actions, reporting })}
+
       ${attention({ register, indicators, changes, reporting, actions })}
 
       <h2>Barrier health</h2>
@@ -453,6 +455,68 @@ export async function render(outlet) {
             </ul>`}
     </section>
   `.toString();
+}
+
+/* ------------------------------------------------------------------
+   Risk picture summary cards.
+
+   THREE LINKED CARDS at the top of the signed-in screen, each linking
+   to /toolkits/risk-picture. They answer the three questions a Safety
+   Manager or Accountable Executive arrives asking: what is the risk
+   position, how many actions are open, and how quickly are things being
+   closed. The full picture is one click away from each card.
+
+   h3 headings are deliberate. The picture-offer test compares every
+   plain <h2> on this screen to LOCKED_SECTIONS, and these summaries
+   are not sections — they are signposts to one. Adding them as h2s
+   would require adding them to LOCKED_SECTIONS and to the signed-out
+   offer, which overstates what a two-number card is.
+   ------------------------------------------------------------------ */
+function riskPictureCards({ register, actions, reporting }) {
+  const { INTOLERABLE, TOLERABLE, ACCEPTABLE } = register.open.by;
+  const total = INTOLERABLE + TOLERABLE + ACCEPTABLE;
+  const avgDays = reporting?.closure?.median ?? null;
+
+  return html`
+    <div class="picture-summary" aria-label="Risk picture summary">
+      <a class="picture-card" href="/toolkits/risk-picture" aria-label="Risk tolerability — open in risk picture dashboard">
+        <h3 class="picture-card__title">Risk tolerability</h3>
+        <ul class="picture-card__bars" aria-label="Hazards by tolerability band">
+          <li data-tolerability="INTOLERABLE">
+            <span class="picture-card__band">Intolerable</span>
+            <span class="picture-card__count ${INTOLERABLE > 0 ? 'picture-card__count--alert' : ''}">${INTOLERABLE}</span>
+          </li>
+          <li data-tolerability="TOLERABLE">
+            <span class="picture-card__band">Tolerable</span>
+            <span class="picture-card__count">${TOLERABLE}</span>
+          </li>
+          <li data-tolerability="ACCEPTABLE">
+            <span class="picture-card__band">Acceptable</span>
+            <span class="picture-card__count">${ACCEPTABLE}</span>
+          </li>
+        </ul>
+        ${total === 0
+          ? html`<p class="picture-card__note">No assessed hazards yet</p>`
+          : html`<p class="picture-card__note">${total} assessed hazard${total === 1 ? '' : 's'}</p>`}
+      </a>
+
+      <a class="picture-card" href="/toolkits/risk-picture" aria-label="Open actions — open in risk picture dashboard">
+        <h3 class="picture-card__title">Open actions</h3>
+        <p class="picture-card__value ${actions.overdue > 0 ? 'picture-card__value--alert' : ''}">${actions.outstanding}</p>
+        ${actions.overdue > 0
+          ? html`<p class="picture-card__note picture-card__note--alert">${actions.overdue} overdue</p>`
+          : html`<p class="picture-card__note">None overdue</p>`}
+      </a>
+
+      <a class="picture-card" href="/toolkits/risk-picture" aria-label="Time to close — open in risk picture dashboard">
+        <h3 class="picture-card__title">Time to close</h3>
+        ${avgDays !== null
+          ? html`<p class="picture-card__value">${avgDays}</p>
+              <p class="picture-card__note">days median</p>`
+          : html`<p class="picture-card__note">Insufficient data</p>`}
+      </a>
+    </div>
+  `;
 }
 
 /* ------------------------------------------------------------------

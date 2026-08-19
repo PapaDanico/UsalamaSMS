@@ -30,6 +30,7 @@
 
 import { html, raw } from '../../shared/html.js';
 import { Select } from '../../components/Select.js';
+import { isSignedIn, authFetch } from '../../shared/session.js';
 import {
   OCCURRENCE_CLASSES,
   SERIOUS_INJURY_TESTS
@@ -264,13 +265,97 @@ export function render(outlet) {
           </li>
         </ol>
       </nav>
-      <div class="doc__body">${Classifier()} ${RiskAssessor()}</div>
+      <div class="doc__body">${isSignedIn()
+          ? html`<div id="toolkits-risk-preview" class="doc-section">
+              <p class="hint">Loading risk picture…</p>
+            </div>`
+          : ''
+        }${Classifier()} ${RiskAssessor()}</div>
     </div>
   `.toString();
 
   bindClassifier(outlet);
   bindRisk(outlet);
+  if (isSignedIn()) loadRiskPreview(outlet);
 }
+
+/* Fetch a compact risk picture snapshot and render it at the top of the
+   toolkits body. Numbers are stale the moment they land — this is a
+   dashboard preview, not a workbench — so no refresh loop is needed.
+   A failure is silent: the preview slot is replaced with nothing rather
+   than an error panel that would push the calculators down. */
+async function loadRiskPreview(outlet) {
+  const slot = outlet.querySelector('#toolkits-risk-preview');
+  if (!slot) return;
+  try {
+    const [regRes, actRes] = await Promise.all([
+      authFetch('/api/v1/register'),
+      authFetch('/api/v1/actions')
+    ]);
+    if (!regRes.ok || !actRes.ok) {
+      slot.remove();
+      return;
+    }
+    const { entries } = await regRes.json();
+    const { actions } = await actRes.json();
+
+    const bands = { INTOLERABLE: 0, TOLERABLE: 0, ACCEPTABLE: 0 };
+    for (const e of entries) {
+      const s = e.residualSeverity ?? e.severity;
+      const l = e.residualLikelihood ?? e.likelihood;
+      if (!s || !l) continue;
+      const band = tolerability(s, l);
+      if (band in bands) bands[band]++;
+    }
+    const open = actions.filter(
+      (a) => a.status !== 'VERIFIED' && a.status !== 'CANCELLED'
+    ).length;
+    const overdue = actions.filter((a) => a.status === 'OVERDUE').length;
+    const total = bands.INTOLERABLE + bands.TOLERABLE + bands.ACCEPTABLE;
+
+    slot.innerHTML = html`
+      <h2 class="section-title">Risk picture</h2>
+      <p class="lede lede--tight">
+        Your current risk position, drawn from the register and corrective actions.
+        <a href="/toolkits/risk-picture">Full picture →</a>
+      </p>
+      <div class="picture-summary">
+        <a class="picture-card" href="/toolkits/risk-picture" aria-label="Risk tolerability">
+          <h3 class="picture-card__title">Tolerability</h3>
+          <ul class="picture-card__bars" aria-label="Hazards by tolerability band">
+            <li data-tolerability="INTOLERABLE">
+              <span class="picture-card__band">Intolerable</span>
+              <span class="picture-card__count ${bands.INTOLERABLE > 0 ? 'picture-card__count--alert' : ''}">${bands.INTOLERABLE}</span>
+            </li>
+            <li data-tolerability="TOLERABLE">
+              <span class="picture-card__band">Tolerable</span>
+              <span class="picture-card__count">${bands.TOLERABLE}</span>
+            </li>
+            <li data-tolerability="ACCEPTABLE">
+              <span class="picture-card__band">Acceptable</span>
+              <span class="picture-card__count">${bands.ACCEPTABLE}</span>
+            </li>
+          </ul>
+          ${total === 0
+            ? html`<p class="picture-card__note">No assessed hazards yet</p>`
+            : html`<p class="picture-card__note">${total} assessed hazard${total === 1 ? '' : 's'}</p>`}
+        </a>
+        <a class="picture-card" href="/toolkits/risk-picture" aria-label="Open actions">
+          <h3 class="picture-card__title">Open actions</h3>
+          <p class="picture-card__value ${overdue > 0 ? 'picture-card__value--alert' : ''}">${open}</p>
+          ${overdue > 0
+            ? html`<p class="picture-card__note picture-card__note--alert">${overdue} overdue</p>`
+            : html`<p class="picture-card__note">None overdue</p>`}
+        </a>
+      </div>
+    `.toString();
+  } catch {
+    slot.remove();
+  }
+}
+
+
+
 
 function bindClassifier(outlet) {
   const form = outlet.querySelector('#classify');

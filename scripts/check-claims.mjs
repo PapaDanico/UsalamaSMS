@@ -2027,6 +2027,27 @@ assert(
   );
 }
 
+/* ---------------- Risk picture cards surface on /picture ---------------
+   Task 9: the three linked summary cards (tolerability, open actions,
+   time to close) are the visible entry point to the risk picture
+   dashboard. If the function that renders them disappears, or is
+   disconnected from the render call, the feature is gone and this gate
+   says so. */
+{
+  const pictureSrc = read('apps/web/src/tools/picture/index.js');
+  assert(
+    'RISK PICTURE SUMMARY CARDS ARE RENDERED ON /picture AND LINK TO /toolkits/risk-picture',
+    /function riskPictureCards/.test(pictureSrc) &&
+      /riskPictureCards\(/.test(pictureSrc) &&
+      /\/toolkits\/risk-picture/.test(pictureSrc),
+    'the riskPictureCards() function, its call site, or its link to /toolkits/risk-picture ' +
+      'is missing from apps/web/src/tools/picture/index.js. ' +
+      'Task 9 adds three summary cards (tolerability, open actions, time to close) at the top ' +
+      'of /picture, each linking to the full risk picture dashboard. ' +
+      'Restore the function or its call.'
+  );
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);

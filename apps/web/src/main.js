@@ -36,7 +36,7 @@ import { Lockup } from './components/Logo.js';
 import { router } from './shared/router.js';
 import { registerServiceWorker, listenForFlushRequests } from './shared/register-sw.js';
 import { syncStatus, flushOutbox } from './shared/offline.ts';
-import { resumeSession, isSignedIn } from './shared/session.js';
+import { resumeSession, isSignedIn, getSession } from './shared/session.js';
 import {
   MOR_OBLIGATIONS,
   isProvisional
@@ -295,7 +295,23 @@ function lazy(el, load) {
 }
 
 router
-  .register('/', (el) => renderHome(el), { title: 'Safety intelligence for African skies' })
+  .register('/', (el) => {
+    /* Safety Managers and Accountable Executives land on the risk picture
+       dashboard rather than the marketing page: they arrived to work, not
+       to be persuaded. The landing page is still the default for visitors
+       who are not signed in or hold a different role.
+
+       The redirect is deferred one frame so the router's render() for '/'
+       completes before the one for '/picture' starts — a synchronous call
+       from inside a render handler is a nested render, which would set the
+       wrong title and surface after the inner render corrects them. */
+    const session = getSession();
+    if (session?.role === 'SAFETY_MANAGER' || session?.role === 'ACCOUNTABLE_EXECUTIVE') {
+      requestAnimationFrame(() => router.navigate('/picture', { replace: true }));
+      return;
+    }
+    renderHome(el);
+  }, { title: 'Safety intelligence for African skies' })
   .register('/report', (el) => renderReport(el), { title: 'File a report', surface: 'tool' })
   /* LAZY, and this was the entry budget's last 4 KB.
 
