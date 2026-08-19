@@ -2068,9 +2068,9 @@ try {
 
     // 5 x 5 is 25 and red. The number and the band both come from
     // risk.ts; neither is stored on the entry.
-    const chip = (await page.locator('.risk-chip').first().textContent()) ?? '';
+    const chip = (await page.locator('.reg-entry__risk .risk-chip').first().textContent()) ?? '';
     assert(/25 initial/.test(chip), `the initial band reads "${chip.trim()}", expected 25`);
-    const tol = await page.locator('.risk-chip').first().getAttribute('data-tolerability');
+    const tol = await page.locator('.reg-entry__risk .risk-chip').first().getAttribute('data-tolerability');
     assert(tol === 'INTOLERABLE', `5x5 came back ${tol}, and Doc 9859 calls it red`);
 
     // An intolerable risk nobody has accepted is the one an inspector

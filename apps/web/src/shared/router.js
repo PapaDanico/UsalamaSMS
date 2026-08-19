@@ -231,9 +231,16 @@ class Router {
     const pendingHash = window.location.hash;
     if (pendingHash) {
       requestAnimationFrame(() => {
-        if (!this.scrollToFragment(pendingHash)) {
-          window.scrollTo({ top: 0, behavior: 'auto' });
-        }
+        if (this.scrollToFragment(pendingHash)) return;
+        /* A cross-page fragment can arrive one frame before a lazy route
+           has finished writing. Try once more on the next frame before
+           falling back to the top, or "/#deadlines" keeps its hash and
+           lands at y=0 — the exact silent failure the smoke check names. */
+        requestAnimationFrame(() => {
+          if (!this.scrollToFragment(pendingHash)) {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+          }
+        });
       });
     } else {
       window.scrollTo({ top: 0, behavior: 'auto' });
