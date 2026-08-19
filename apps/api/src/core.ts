@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import argon2 from "argon2";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { getConnectionString, MissingDatabaseConnectionError } from "@netlify/database";
 import { can, type Role, type Permission } from "@usalamasms/shared";
 import { bandForFleet } from "../../../packages/shared/src/pricing";
 import {
@@ -27,7 +28,12 @@ function requireEnv(name: string): string {
 /**
  * The database connection string.
  *
- * A HARD-WON PIECE OF KNOWLEDGE IS ENCODED HERE. The Netlify Supabase
+ * Netlify Database injects NETLIFY_DB_URL at function runtime. Reading
+ * it through @netlify/database keeps the application on the managed
+ * connection selected for the current production or preview deploy,
+ * including database branches.
+ *
+ * A HARD-WON PIECE OF KNOWLEDGE IS ALSO ENCODED HERE. The Netlify Supabase
  * extension sets a variable called `SUPABASE_DATABASE_URL`, and it is
  * NOT a database connection string. It is the project's REST API base —
  * `https://<ref>.supabase.co` — intended for
@@ -47,21 +53,26 @@ function requireEnv(name: string): string {
  * sentence that explains it.
  */
 function databaseUrl(): string {
+  let managed: string | undefined;
+  try {
+    managed = getConnectionString();
+  } catch (error) {
+    if (!(error instanceof MissingDatabaseConnectionError)) throw error;
+  }
+
   const explicit = process.env["DATABASE_URL"];
   const fromExtension = process.env["SUPABASE_DATABASE_URL"];
-  const url = explicit ?? fromExtension;
+  const url = managed ?? explicit ?? fromExtension;
 
   if (!url) {
     fatal(
       "no database connection string.\n" +
-        "  Set DATABASE_URL to the Postgres URI from\n" +
-        "  Supabase -> Connect -> Direct connection (or the transaction\n" +
-        "  pooler, if this is running serverless)."
+        "  Connect Netlify Database or set DATABASE_URL to a Postgres URI."
     );
   }
 
   if (!/^postgres(ql)?:\/\//.test(url)) {
-    const which = explicit ? "DATABASE_URL" : "SUPABASE_DATABASE_URL";
+    const which = managed ? "NETLIFY_DB_URL" : explicit ? "DATABASE_URL" : "SUPABASE_DATABASE_URL";
     fatal(
       `${which} is not a Postgres connection string.\n` +
         `  Got a URL beginning "${url.slice(0, url.indexOf(":") + 3)}".\n` +

@@ -1,0 +1,43 @@
+-- What the State files it under.
+--
+-- This product classifies a report with its own six types — MOR, VCR,
+-- hazard, suggestion, near miss, fatigue. That describes what KIND OF
+-- REPORT arrived, which is a useful distinction and is not the one an
+-- authority files under.
+--
+-- ICAO's ADREP taxonomy, maintained in detail by EASA as the ECCAIRS
+-- taxonomy, is how every State classifies an OCCURRENCE when reporting
+-- to ICAO. Its occurrence categories come from the CAST/ICAO Common
+-- Taxonomy Team. An operator whose reports carry no CICTT code hands
+-- its State data that somebody has to re-code by hand, and hand-coding
+-- drifts.
+--
+-- AN ARRAY BECAUSE THE TAXONOMY SAYS SO. CICTT's own usage notes are
+-- explicit: a runway excursion that became a loss of control is coded
+-- as BOTH, because the taxonomy exists for accident prevention and
+-- every pertinent element should be recorded. A single-code column
+-- would quietly discard the second half of exactly the occurrences
+-- worth learning from.
+--
+-- DEFAULT EMPTY, NOT NULL. An uncoded report and a report coded with
+-- nothing are the same thing, and two representations of one fact is
+-- how they come to disagree. Every existing row becomes uncoded, which
+-- is true: nothing has been classified until somebody classifies it.
+--
+-- NO CHECK CONSTRAINT AND NO ENUM, DELIBERATELY. The list this product
+-- carries is incomplete by its own admission — CICTT 4.8 has more
+-- categories than are in packages/shared/src/cictt.ts, and none of them
+-- has been read against the primary document. A constraint here would
+-- refuse a legitimate code that the product simply has not got yet,
+-- which turns a gap in this software into a rejected occurrence report.
+-- The route records what it was given and reports what it could not
+-- resolve, so the occurrence stays intact and the gap stays visible.
+--
+-- NO INDEX YET. Nothing queries by code today; the codes are written at
+-- disposition and read back with the report. An index added before a
+-- query exists is an index nobody can justify the shape of — when
+-- something aggregates by category, it will want a GIN index on this
+-- column and that change should carry the query it is for.
+
+ALTER TABLE "SafetyReport"
+  ADD COLUMN "cicttCodes" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

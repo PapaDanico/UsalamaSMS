@@ -48,6 +48,7 @@
 import type { Config } from "@netlify/functions";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { getConnectionString, MissingDatabaseConnectionError } from "@netlify/database";
 import { computeDigest } from "../../apps/api/src/digest.compute.js";
 import { sendDigest, sendTrialDigest, mailConfigFromEnv } from "../../apps/api/src/mail.js";
 import { isWorthSending } from "../../packages/shared/src/digest.js";
@@ -82,8 +83,14 @@ let client: PrismaClient | null = null;
 
 function connect(): PrismaClient {
   if (client) return client;
-  const url = process.env["DATABASE_URL"] ?? process.env["SUPABASE_DATABASE_URL"];
-  if (!url) throw new Error("no DATABASE_URL or SUPABASE_DATABASE_URL");
+  let managed: string | undefined;
+  try {
+    managed = getConnectionString();
+  } catch (error) {
+    if (!(error instanceof MissingDatabaseConnectionError)) throw error;
+  }
+  const url = managed ?? process.env["DATABASE_URL"] ?? process.env["SUPABASE_DATABASE_URL"];
+  if (!url) throw new Error("no Netlify Database or DATABASE_URL connection");
   client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   return client;
 }
