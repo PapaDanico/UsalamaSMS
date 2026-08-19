@@ -80,6 +80,21 @@ describe.skipIf(!hasDatabase)("anonymity survives the database", () => {
       narrative: "The clearance was misread and nobody challenged it.",
     });
 
+    // Guard against a vacuous pass: this assertion only proves anything
+    // if an anonymous report AND its matching receipt row both exist.
+    const joined = await prisma().$queryRawUnsafe<Array<{ userId: string | null; deviceId: string | null }>>(
+      `SELECT s."userId", s."deviceId"
+         FROM "SafetyReport" r
+         JOIN "SyncReceipt"  s ON s."clientId" = r."clientId"
+        WHERE r."isAnonymous" = true`,
+    );
+    expect(
+      joined,
+      "the anonymity check had nothing to test because no receipt row joined the anonymous report",
+    ).toHaveLength(1);
+    expect(joined[0]?.userId).toBeNull();
+    expect(joined[0]?.deviceId).toBeNull();
+
     const leaked = await prisma().$queryRawUnsafe<Array<{ userId: string | null }>>(
       `SELECT s."userId"
          FROM "SafetyReport" r

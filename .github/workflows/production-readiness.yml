@@ -1,0 +1,37 @@
+name: production-readiness
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check production app and API readiness
+        run: |
+          set -euo pipefail
+
+          home=$(curl -fsS --max-time 20 "https://usalamasms.com/" 2>/dev/null || true)
+          if [ -z "$home" ] || ! echo "$home" | grep -q "UsalamaSMS"; then
+            echo "::error::Production homepage probe failed."
+            exit 1
+          fi
+
+          ready=$(curl -fsS --max-time 20 "https://usalamasms.com/api/ready" 2>/dev/null || true)
+          if [ -z "$ready" ] || ! echo "$ready" | grep -Eq '"ok"[[:space:]]*:[[:space:]]*true'; then
+            echo "::error::Production /api/ready probe failed. Body: ${ready:-<empty>}"
+            exit 1
+          fi
+
+          build_id=$(curl -fsS --max-time 20 "https://usalamasms.com/build-id.txt" 2>/dev/null || true)
+          if [ -z "$(echo "$build_id" | tr -d '[:space:]')" ]; then
+            echo "::error::Production build-id.txt probe failed."
+            exit 1
+          fi
+
+          echo "::notice::Production readiness probes passed"
