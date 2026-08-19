@@ -8,7 +8,10 @@
    the standard the rest of the repository holds itself to.
    ===================================================================== */
 import { describe, it, expect, vi } from "vitest";
-import { sendDigest, subjectFor, bodyFor, mailConfigFromEnv } from "../apps/api/src/mail";
+import {
+  sendDigest, sendTrialDigest, subjectFor, bodyFor, mailConfigFromEnv,
+  trialDigestBody, trialDigestSubject,
+} from "../apps/api/src/mail";
 import { digestFor } from "../packages/shared/src/digest";
 
 const configured = {
@@ -260,5 +263,50 @@ describe("reply-to", () => {
     expect(
       mailConfigFromEnv({ MAIL_REPLY_TO: "" } as NodeJS.ProcessEnv).replyTo,
     ).toBeUndefined();
+  });
+});
+
+describe("trial digests", () => {
+  it("report NOT_CONFIGURED rather than pretending when the key is absent", async () => {
+    const outcome = await sendTrialDigest(
+      { stage: 1, daysRemaining: 59, reports: 0, hazards: 0, closedActions: 0, onboardingComplete: 0 },
+      "safety@example.com",
+      { ...configured, apiKey: undefined },
+      spyFetch(),
+    );
+    expect(outcome.status).toBe("NOT_CONFIGURED");
+  });
+
+  it("send plain text with an unsubscribe mailto link", async () => {
+    const fetchImpl = spyFetch();
+    await sendTrialDigest(
+      { stage: 55, daysRemaining: 5, reports: 3, hazards: 2, closedActions: 1, onboardingComplete: 3 },
+      "safety@example.com",
+      configured,
+      fetchImpl,
+    );
+    const call = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    const sent = JSON.parse((call[1] as RequestInit).body as string) as {
+      subject: string;
+      text: string;
+      html?: string;
+    };
+    expect(sent.subject).toContain("5 days left");
+    expect(sent.text).toContain("3 reports");
+    expect(sent.text).toContain("1 closed action");
+    expect(sent.text).toContain("mailto:safety@usalamasms.com?subject=Unsubscribe%20trial%20emails");
+    expect(sent.html).toBeUndefined();
+  });
+
+  it("names the local-only maturity caveat on the week-one message", () => {
+    const text = trialDigestBody(
+      { stage: 7, daysRemaining: 53, reports: 1, hazards: 0, closedActions: 0, onboardingComplete: 2 },
+      configured,
+    );
+    expect(trialDigestSubject({
+      stage: 7, daysRemaining: 53, reports: 1, hazards: 0, closedActions: 0, onboardingComplete: 2,
+    })).toContain("Week 1");
+    expect(text).toContain("2 of 4 shared onboarding steps complete");
+    expect(text).toMatch(/fifth step is the maturity assessment/i);
   });
 });

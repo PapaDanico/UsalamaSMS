@@ -55,6 +55,17 @@ export type MailOutcome =
   /** The provider refused or could not be reached. This one is a problem. */
   | { readonly status: "FAILED"; readonly reason: string };
 
+export type TrialDigestStage = 1 | 7 | 30 | 45 | 55 | 60;
+
+export interface TrialDigest {
+  readonly stage: TrialDigestStage;
+  readonly daysRemaining: number;
+  readonly reports: number;
+  readonly hazards: number;
+  readonly closedActions: number;
+  readonly onboardingComplete: number;
+}
+
 interface MailConfig {
   readonly apiKey: string | undefined;
   readonly baseUrl: string;
@@ -85,6 +96,16 @@ interface MailConfig {
    * name somewhere nobody chose.
    */
   readonly platformNotice: string | undefined;
+}
+
+function senderAddress(config: MailConfig): string {
+  return config.replyTo
+    ?? config.from.match(/<([^>]+)>/)?.[1]
+    ?? "safety@usalamasms.com";
+}
+
+function unsubscribeLine(config: MailConfig): string {
+  return `Unsubscribe from trial emails: mailto:${senderAddress(config)}?subject=Unsubscribe%20trial%20emails`;
 }
 
 /**
@@ -177,7 +198,7 @@ export async function sendDigest(
     const response = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: "Bearer " + config.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -203,6 +224,121 @@ export async function sendDigest(
        to try again — so a parser quirk becomes two copies of a safety
        warning in somebody's inbox. The id is for logging; not having it
        is not worth resending over. */
+    let id = "";
+    try {
+      const payload = (await response.json()) as { id?: string };
+      id = payload.id ?? "";
+    } catch {
+      /* Accepted, unparseable. Still sent. */
+    }
+    return { status: "SENT", id };
+  } catch (error) {
+    return {
+      status: "FAILED",
+      reason: error instanceof Error ? error.message : "transport failed",
+    };
+  }
+}
+
+export function trialDigestSubject(digest: TrialDigest): string {
+  switch (digest.stage) {
+    case 1:
+      return "Welcome to UsalamaSMS. Your 60-day trial starts today.";
+    case 7:
+      return "Week 1 check-in from UsalamaSMS";
+    case 30:
+      return "Halfway through your UsalamaSMS trial";
+    case 45:
+      return "15 days left in your UsalamaSMS trial";
+    case 55:
+      return "5 days left in your UsalamaSMS trial";
+    case 60:
+      return "Your UsalamaSMS trial ends today";
+  }
+}
+
+export function trialDigestBody(digest: TrialDigest, config: MailConfig): string {
+  const lines =
+    digest.stage === 1
+      ? [
+          "Welcome to UsalamaSMS. Your 60-day trial starts today. Here's your onboarding checklist.",
+          "",
+          "- [ ] File your first report",
+          "- [ ] Complete the SMS maturity assessment",
+          "- [ ] Add one hazard to the risk register",
+          "- [ ] Create your first SPI",
+          "- [ ] Invite your team (2+ members)",
+          "",
+          `Open the dashboard: ${config.baseUrl}/today`,
+        ]
+      : digest.stage === 7
+        ? [
+            `Week 1 check-in. You have ${digest.daysRemaining} days remaining.`,
+            `${digest.onboardingComplete} of 4 shared onboarding steps complete.`,
+            "The fifth step is the maturity assessment, and it is kept on the device where it was filled in.",
+            "",
+            `Open the dashboard: ${config.baseUrl}/today`,
+          ]
+        : digest.stage === 30
+          ? [
+              `Halfway through your trial. ${digest.reports} ${digest.reports === 1 ? "report" : "reports"} filed, ` +
+                `${digest.hazards} ${digest.hazards === 1 ? "hazard" : "hazards"} registered.`,
+              "",
+              `Open the dashboard: ${config.baseUrl}/today`,
+            ]
+          : digest.stage === 45
+            ? [
+                "15 days left. Your data is yours forever, even if you do not subscribe. Export anytime.",
+                "",
+                `Open export: ${config.baseUrl}/account`,
+              ]
+            : digest.stage === 55
+              ? [
+                  `5 days left. Here's what you built: ${digest.reports} ${digest.reports === 1 ? "report" : "reports"}, ` +
+                    `${digest.hazards} ${digest.hazards === 1 ? "hazard" : "hazards"}, ` +
+                    `${digest.closedActions} ${digest.closedActions === 1 ? "closed action" : "closed actions"}. Ready to subscribe?`,
+                  "",
+                  `Open the dashboard: ${config.baseUrl}/today`,
+                ]
+              : [
+                  "Your trial ends today. Subscribe to keep full access, or continue with free reporting.",
+                  "",
+                  `Open the dashboard: ${config.baseUrl}/today`,
+                ];
+
+  return [
+    ...lines,
+    "",
+    unsubscribeLine(config),
+  ].join("\n");
+}
+
+export async function sendTrialDigest(
+  digest: TrialDigest,
+  to: string,
+  config: MailConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MailOutcome> {
+  if (!config.apiKey) return { status: "NOT_CONFIGURED" };
+
+  try {
+    const response = await fetchImpl("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + config.apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
+        to,
+        subject: trialDigestSubject(digest),
+        text: trialDigestBody(digest, config),
+      }),
+    });
+
+    if (!response.ok) return { status: "FAILED", reason: `provider responded ${response.status}` };
+
     let id = "";
     try {
       const payload = (await response.json()) as { id?: string };
@@ -290,7 +426,7 @@ export async function sendPasswordReset(
     const response = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: "Bearer " + config.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -419,7 +555,7 @@ export async function sendInvitation(
     const response = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: "Bearer " + config.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -519,7 +655,7 @@ export async function sendUpgradeRequest(
     const response = await fetchImpl("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.apiKey}`,
+        Authorization: "Bearer " + config.apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

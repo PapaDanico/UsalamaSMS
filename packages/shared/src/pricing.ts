@@ -283,7 +283,7 @@ export function annualUsd(band: Band): number {
    number cannot drift: the string below is built from the constant,
    which is charter rule 10 applied to a sales claim rather than to a
    test count. */
-export const TRIAL_DAYS = 30;
+export const TRIAL_DAYS = 60;
 
 export const COMMITMENTS: ReadonlyArray<string> = Object.freeze([
   `${TRIAL_DAYS} days to try it, with no card and no limit on what you file — and ` +

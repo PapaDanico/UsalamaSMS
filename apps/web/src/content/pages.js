@@ -49,7 +49,7 @@ export const ABOUT = {
         product is new; anyone quoted would have been invented. What stands in
         their place is checkable: the practice that built it, the
         <a href="/coverage">conformance table</a> that names the elements this
-        does <em>not</em> cover, and thirty days in which the product either
+        does <em>not</em> cover, and sixty days in which the product either
         fits your operation or does not. If it does not, you keep your record
         and owe nothing.</p>
         <p>That relationship is stated here, on the

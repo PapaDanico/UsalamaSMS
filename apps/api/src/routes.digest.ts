@@ -25,6 +25,7 @@
 import type { FastifyInstance } from "fastify";
 import { can } from "@usalamasms/shared";
 import { isWorthSending } from "../../../packages/shared/src/digest";
+import { daysUntilChange, stateOn, trialEndsFrom } from "../../../packages/shared/src/subscription";
 import { computeDigest, computeRecordScale } from "./digest.compute";
 import { prisma, authenticate } from "./core";
 import { mailConfigFromEnv } from "./mail";
@@ -64,7 +65,20 @@ export async function digestRoutes(app: FastifyInstance): Promise<void> {
        /today is computed once, server-side, by the same code the 05:00
        schedule runs. A browser deriving its own view of whether the
        record is empty is a second opinion about the record. */
-    const scale = await computeRecordScale(prisma, auth.org);
+    const [scale, org, teamCount] = await Promise.all([
+      computeRecordScale(prisma, auth.org),
+      prisma.org.findUnique({
+        where: { id: auth.org },
+        select: { createdAt: true, trialEndsOn: true, paidThrough: true },
+      }),
+      prisma.user.count({ where: { orgId: auth.org, active: true } }),
+    ]);
+    if (!org) return reply.code(404).send({ error: "not_found" });
+    const dates = {
+      trialEndsOn: org.trialEndsOn ?? trialEndsFrom(org.createdAt),
+      paidThrough: org.paidThrough,
+    } as const;
+    const trialState = stateOn(dates, now);
 
     /* THE DELIVERY STATE IS REPORTED, NOT INFERRED FROM SILENCE. A
        screen that shows a digest and says nothing about whether it will
@@ -75,6 +89,12 @@ export async function digestRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({
       digest,
       scale,
+      teamCount,
+      trial: {
+        state: trialState,
+        daysRemaining: trialState === "TRIAL" ? Math.max(0, daysUntilChange(dates, now)) : null,
+        endsOn: dates.trialEndsOn.toISOString(),
+      },
       wouldSend: isWorthSending(digest),
       delivery: mailConfigFromEnv().apiKey ? "CONFIGURED" : "NOT_CONFIGURED",
       computedAt: now.toISOString(),
