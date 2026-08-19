@@ -2380,7 +2380,19 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    WHY IT IS ACCEPTED. The overage sits in lazy-loaded toolkit surface
    code and does not push entry toward its 224 KB ceiling; the stop
    condition above still applies unchanged. */
-const BUDGET = { entry: 224 * 1024, js: 668 * 1024, css: 80 * 1024 };
+/* 668 -> 672, 19 August 2026 — RISK-PICTURE ENTRY POINTS.
+
+   WHAT MOVED. Task 9 adds the linked summary cards on /picture and the
+   signed-in risk preview on /toolkits. After deduplicating their shared
+   markup into one browser module, verify measures js(total) at 670.9 KB
+   and entry at 220.3 KB.
+
+   WHY IT IS ACCEPTED. The new weight stays off the first-report path:
+   the summary surface lives in lazy route chunks plus one shared helper,
+   while entry remains 3.7 KB under its own ceiling. The stop condition
+   above is unchanged — if entry starts climbing with total, take weight
+   out before buying more. */
+const BUDGET = { entry: 224 * 1024, js: 672 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
