@@ -53,6 +53,7 @@ import { z } from "zod";
 import argon2 from "argon2";
 import { randomBytes } from "node:crypto";
 import { can } from "@usalamasms/shared";
+import { JURISDICTIONS } from "../../../packages/shared/src/regulations";
 import { bandForFleet } from "../../../packages/shared/src/pricing";
 import { stateOn, trialEndsFrom } from "../../../packages/shared/src/subscription";
 import { prisma, authenticate, appendAuditTx } from "./core";
@@ -77,10 +78,10 @@ function issuePassword(): string {
 
 const ProvisionInput = z.object({
   orgName: z.string().trim().min(2).max(160),
-  jurisdiction: z.enum(["KE"]),
+  jurisdiction: z.enum(JURISDICTIONS).default("KE"),
   aocNumber: z.string().trim().max(64).optional(),
   fleetSize: z.number().int().min(0).max(2000).optional(),
-  adminEmail: z.string().trim().email().max(254),
+  adminEmail: z.string().trim().toLowerCase().email().max(254),
   adminName: z.string().trim().min(2).max(160),
   /* The first user is the OPERATOR'S own administrator, not ours, and
      not a reporter. Restricted to the two posts that can meaningfully

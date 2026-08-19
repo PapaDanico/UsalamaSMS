@@ -83,7 +83,7 @@ export const SignupSchema = z.object({
   bases: z.array(z.string().trim().toUpperCase().max(8)).max(40).optional(),
   operationTypes: z.array(z.string().trim().toUpperCase().max(32)).max(10).optional(),
   name: z.string().trim().min(2).max(120),
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(12),
 });
 export type SignupInput = z.infer<typeof SignupSchema>;
