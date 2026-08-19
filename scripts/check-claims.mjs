@@ -237,17 +237,19 @@ assert(
   'the highest-risk claim in the product lost its entry'
 );
 
-/* The three removed rows must not creep back in anywhere. They asserted
-   a 72-hour deadline that no instrument publishes, and the only reason
-   they lasted was that a placeholder looked like a citation. */
+/* UG, TZ, RW and the other EAC states may now appear, but only as
+   PROVISIONAL rows with null hours. A numeric deadline for any of them
+   is the original mistake — the EU's 72 hours misattributed as
+   "ICAO-common". Check that no row for an EAC state carries a numeric
+   deadline without a proper primary instrument citation. */
 for (const [file, text] of [
   ['packages/shared/src/regulations.ts', regulations],
   ['docs/05-SWITCHES.md', switches]
 ]) {
   assert(
-    `${file} does not reinstate a deadline for UG, TZ or RW`,
-    !/^\s*(UG|TZ|RW):\s*\{/m.test(text),
-    'a jurisdiction row returned without an instrument to cite'
+    `${file} does not carry a numeric deadline for EAC states without a verified instrument`,
+    !/^\s*(UG|TZ|RW|BI|SS|CD|SO):\s*\{[^}]*\bhours:\s*\d/ms.test(text),
+    'an EAC state row carries a numeric deadline — the primary instrument must be read first'
   );
 }
 
@@ -1646,7 +1648,7 @@ assert(
   );
   const rowsActual = (regBlock.match(/^\s{2}[A-Z]{2,4}:\s*\{/gm) ?? []).length;
   const rowsStated = /carries \*\*(\w+) rows:/.exec(gaps)?.[1];
-  const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8 };
+  const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
   assert(
     'the gap analysis states how many jurisdiction rows the registry holds',
     Boolean(rowsStated) && rowsStated.toLowerCase() in WORDS,

@@ -82,7 +82,7 @@ export type OccurrenceClassKey = OccurrenceClass["key"];
 // ---------------------------------------------------------------------
 
 /** The jurisdictions whose reporting law this engine encodes. */
-export const JURISDICTIONS = ["ICAO", "KE"] as const;
+export const JURISDICTIONS = ["ICAO", "KE", "UG", "TZ", "RW", "BI", "SS", "CD", "SO"] as const;
 export type Jurisdiction = (typeof JURISDICTIONS)[number];
 
 /** Which event starts the clock. The distinction the old constant lost. */
@@ -375,6 +375,146 @@ export const MOR_OBLIGATIONS: Readonly<Record<Jurisdiction, ReportingObligation>
     },
   },
 
+  // ------------------------------------------------------------------
+  // EAC MEMBER STATES — PROVISIONAL
+  //
+  // All seven rows below are PROVISIONAL. No primary instrument has been
+  // read for any of them. Each row cites ICAO Annex 13, which binds all
+  // Chicago Convention signatories and sets the floor: notification with
+  // a minimum of delay. The period is null — no fixed figure enters this
+  // registry without a citation.
+  //
+  // To graduate a row from provisional: read the State's own civil
+  // aviation regulations and advisory circulars, confirm the period and
+  // the clock start, and replace this note with a dated citation.
+  // ------------------------------------------------------------------
+
+  UG: {
+    jurisdiction: "UG",
+    authority: "Uganda Civil Aviation Authority",
+    hours: null,
+    clockStart: "AWARENESS",
+    instrument:
+      "ICAO Annex 13, Chapter 4 — notification with a minimum of delay, by the most " +
+      "suitable and quickest means available. Uganda's own civil aviation regulations " +
+      "have not been read against this row.",
+    verifiedOn: "2026-08-19",
+    instrumentIssued: "2016-07-01",
+    reviewCycleMonths: 12,
+    note:
+      "PROVISIONAL — primary instrument (Uganda Civil Aviation Act and any advisory " +
+      "circulars on occurrence reporting) has not been read. Use ICAO baseline: notify " +
+      "without delay and confirm the period with UCAA directly.",
+  },
+
+  TZ: {
+    jurisdiction: "TZ",
+    authority: "Tanzania Civil Aviation Authority",
+    hours: null,
+    clockStart: "AWARENESS",
+    instrument:
+      "ICAO Annex 13, Chapter 4 — notification with a minimum of delay, by the most " +
+      "suitable and quickest means available. Tanzania's own civil aviation regulations " +
+      "have not been read against this row.",
+    verifiedOn: "2026-08-19",
+    instrumentIssued: "2016-07-01",
+    reviewCycleMonths: 12,
+    note:
+      "PROVISIONAL — primary instrument (Tanzania Civil Aviation Act and TCAA " +
+      "regulations on occurrence reporting) has not been read. Use ICAO baseline: " +
+      "notify without delay and confirm the period with TCAA directly.",
+  },
+
+  RW: {
+    jurisdiction: "RW",
+    authority: "Rwanda Civil Aviation Authority",
+    hours: null,
+    clockStart: "AWARENESS",
+    instrument:
+      "ICAO Annex 13, Chapter 4 — notification with a minimum of delay, by the most " +
+      "suitable and quickest means available. Rwanda's own civil aviation regulations " +
+      "have not been read against this row.",
+    verifiedOn: "2026-08-19",
+    instrumentIssued: "2016-07-01",
+    reviewCycleMonths: 12,
+    note:
+      "PROVISIONAL — primary instrument (Rwanda Civil Aviation Law and RCAA " +
+      "regulations on occurrence reporting) has not been read. Use ICAO baseline: " +
+      "notify without delay and confirm the period with RCAA directly.",
+  },
+
+  BI: {
+    jurisdiction: "BI",
+    authority: "Agence Nationale de l'Aviation Civile du Burundi",
+    hours: null,
+    clockStart: "AWARENESS",
+    instrument:
+      "ICAO Annex 13, Chapter 4 — notification with a minimum of delay, by the most " +
+      "suitable and quickest means available. Burundi's own civil aviation regulations " +
+      "have not been read against this row.",
+    verifiedOn: "2026-08-19",
+    instrumentIssued: "2016-07-01",
+    reviewCycleMonths: 12,
+    note:
+      "PROVISIONAL — primary instrument (Burundi civil aviation law and ANAC-BI " +
+      "regulations on occurrence reporting) has not been read. Use ICAO baseline: " +
+      "notify without delay and confirm the period with ANAC-BI directly.",
+  },
+
+  SS: {
+    jurisdiction: "SS",
+    authority: "South Sudan Civil Aviation Authority",
+    hours: null,
+    clockStart: "AWARENESS",
+    instrument:
+      "ICAO Annex 13, Chapter 4 — notification with a minimum of delay, by the most " +
+      "suitable and quickest means available. South Sudan's own civil aviation " +
+      "regulations have not been read against this row.",
+    verifiedOn: "2026-08-19",
+    instrumentIssued: "2016-07-01",
+    reviewCycleMonths: 12,
+    note:
+      "PROVISIONAL — primary instrument (South Sudan Civil Aviation Act and SSCAA " +
+      "regulations on occurrence reporting) has not been read. Use ICAO baseline: " +
+      "notify without delay and confirm the period with SSCAA directly.",
+  },
+
+  CD: {
+    jurisdiction: "CD",
+    authority: "Direction Générale de l'Aviation Civile (DRC)",
+    hours: null,
+    clockStart: "AWARENESS",
+    instrument:
+      "ICAO Annex 13, Chapter 4 — notification with a minimum of delay, by the most " +
+      "suitable and quickest means available. DRC's own civil aviation regulations " +
+      "have not been read against this row.",
+    verifiedOn: "2026-08-19",
+    instrumentIssued: "2016-07-01",
+    reviewCycleMonths: 12,
+    note:
+      "PROVISIONAL — primary instrument (DRC civil aviation code and DGAC regulations " +
+      "on occurrence reporting) has not been read. Use ICAO baseline: notify without " +
+      "delay and confirm the period with DGAC-DRC directly.",
+  },
+
+  SO: {
+    jurisdiction: "SO",
+    authority: "Somali Civil Aviation Authority",
+    hours: null,
+    clockStart: "AWARENESS",
+    instrument:
+      "ICAO Annex 13, Chapter 4 — notification with a minimum of delay, by the most " +
+      "suitable and quickest means available. Somalia's own civil aviation regulations " +
+      "have not been read against this row.",
+    verifiedOn: "2026-08-19",
+    instrumentIssued: "2016-07-01",
+    reviewCycleMonths: 12,
+    note:
+      "PROVISIONAL — primary instrument (Somalia Civil Aviation Law and SCAA " +
+      "regulations on occurrence reporting) has not been read. Use ICAO baseline: " +
+      "notify without delay and confirm the period with SCAA directly.",
+  },
+
 };
 
 /**
@@ -390,13 +530,9 @@ export function isProvisional(j: Jurisdiction): boolean {
   return isProvisionalObligation(MOR_OBLIGATIONS[j]);
 }
 
-/* No row is provisional today — the three that were have been removed
-   rather than left flying a warning label. The machinery stays because
-   the next row somebody adds from a secondary source needs it, and a
-   guard deleted the day it has no instances is a guard that is not
-   there the day it does. The predicate is exported separately so a test
-   can exercise it against a synthetic row, which is the only way it can
-   still fail now that nothing real trips it. */
+/* Seven rows are provisional — the EAC states whose instruments have not
+   yet been read. The machinery stays because the next row somebody
+   adds from a primary source needs it. */
 
 // =====================================================================
 // THE STANDARDS THIS PRODUCT IS BUILT TO.

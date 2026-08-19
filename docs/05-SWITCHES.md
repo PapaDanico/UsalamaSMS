@@ -45,9 +45,13 @@ misattributed. So three rows of a compliance tool stated a deadline that
 no instrument anywhere publishes, and the PROVISIONAL label made that
 visible without making it any less false.
 
-The three rows are gone. ICAO is now a jurisdiction in its own right
-with `hours: null` — it computes no date, and every surface says
-"without delay" rather than filling the gap with a number.
+The three rows were removed and have now been re-added as properly
+provisional entries: `hours: null`, no fixed period, ICAO Annex 13
+baseline applies. Seven EAC member states (Uganda, Tanzania, Rwanda,
+Burundi, South Sudan, DRC, Somalia) are now in the registry. Each
+carries the operator's regulator — an operator knows which authority it
+answers to — without asserting a period nobody has read from the
+instrument.
 
 **Why it still expires:** an operator in Uganda, Tanzania or Rwanda has
 a real deadline set by its own authority, and this product does not know
@@ -57,7 +61,7 @@ it. The baseline is honest, not sufficient.
 `packages/shared/src/regulations.ts`, surfaced by `isProvisional(j)` and
 by `isProvisionalObligation(o)`.
 
-**Provisional rows today: **0**.** `scripts/check-claims.mjs` compares
+**Provisional rows today: **7**.** `scripts/check-claims.mjs` compares
 that figure against the rows the code actually marks, and fails in both
 directions — an unverified row added without documenting it here, and a
 row documented here that the code does not mark.
