@@ -2407,7 +2407,18 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    table and marketing copy off the filing path. ENTRY stays at 224 KB: the
    legal rows needed by the report form do not justify raising that ceiling,
    and the home-screen split pays back the shared-registry growth there. */
-const BUDGET = { entry: 224 * 1024, js: 680 * 1024, css: 80 * 1024 };
+/* 680 -> 684, 19 August 2026 — ONBOARDING CHECKLIST AND LOGIN DEEP LINKS.
+
+   WHAT MOVED. The OnboardingChecklist component was introduced on the
+   Today screen to guide new trial operators through initial setup steps,
+   and the /login route was registered for direct invitation links. Verify
+   measures js(total) at 680.9 KB against the 680 KB budget.
+
+   WHY IT IS ACCEPTED. The new weight sits in lazy feature modules and the
+   Today work surface. Entry JS remains 216.8 KB (well within its 224 KB
+   ceiling), ensuring the first-report path for ramp agents on remote strips
+   is not degraded. */
+const BUDGET = { entry: 224 * 1024, js: 684 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
