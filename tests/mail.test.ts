@@ -306,7 +306,7 @@ describe("trial digests", () => {
     expect(trialDigestSubject({
       stage: 7, daysRemaining: 53, reports: 1, hazards: 0, closedActions: 0, onboardingComplete: 2,
     })).toContain("Week 1");
-    expect(text).toContain("2 of 5 onboarding steps complete");
-    expect(text).toMatch(/maturity assessment is kept on the device/i);
+    expect(text).toContain("2 of 4 shared onboarding steps complete");
+    expect(text).toMatch(/fifth step is the maturity assessment/i);
   });
 });

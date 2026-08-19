@@ -274,8 +274,8 @@ export function trialDigestBody(digest: TrialDigest, config: MailConfig): string
       : digest.stage === 7
         ? [
             `Week 1 check-in. You have ${digest.daysRemaining} days remaining.`,
-            `${digest.onboardingComplete} of 5 onboarding steps complete.`,
-            "The maturity assessment is kept on the device where it was filled in, so this count can understate your total.",
+            `${digest.onboardingComplete} of 4 shared onboarding steps complete.`,
+            "The fifth step is the maturity assessment, and it is kept on the device where it was filled in.",
             "",
             `Open the dashboard: ${config.baseUrl}/today`,
           ]
