@@ -70,7 +70,7 @@ describe.skipIf(!hasDatabase)("the Netlify Function handler", () => {
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error).toBe("not_configured");
-    expect(body.missing.join(" ")).toMatch(/DATABASE_URL/);
+    expect(body.missing.join(" ")).toMatch(/NETLIFY_DB_URL/);
     // The NAMES are safe to return. The values never are.
     expect(JSON.stringify(body)).not.toContain(JWT_SECRET);
   });
@@ -103,6 +103,17 @@ describe.skipIf(!hasDatabase)("the Netlify Function handler", () => {
     // somebody sets it to a real connection string, that works.
     const handler = await loadHandler({
       SUPABASE_DATABASE_URL: DATABASE_URL,
+      JWT_SECRET,
+      DEIDENT_SALT: "integration-test-salt",
+    });
+    const res = await handler(new Request(`${BASE}/api/health`), {});
+    expect(res.status).toBe(200);
+  });
+
+  it("prefers the managed Netlify Database connection", async () => {
+    const handler = await loadHandler({
+      NETLIFY_DB_URL: DATABASE_URL,
+      SUPABASE_DATABASE_URL: "https://unused.example.test",
       JWT_SECRET,
       DEIDENT_SALT: "integration-test-salt",
     });

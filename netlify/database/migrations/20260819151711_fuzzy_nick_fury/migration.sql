@@ -1,0 +1,7 @@
+-- This migration is intentionally empty.
+--
+-- It was generated from the partial Drizzle compatibility schema in db/schema.ts,
+-- but Org, User, RefreshToken, Role, and Jurisdiction already exist in the Prisma
+-- migration history. Recreating them here would make deployment fail on an
+-- existing database. Keeping an explicit no-op preserves the migration ordering
+-- while Prisma remains the source of truth for the application schema.

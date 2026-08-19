@@ -63,7 +63,11 @@ let appPromise: Promise<{
 function missingConfig(): string[] {
   const missing: string[] = [];
 
-  /* The Netlify Supabase extension sets SUPABASE_DATABASE_URL to the
+  /* Netlify Database supplies a deploy-aware Postgres connection and
+     branches it automatically for deploy previews. Prefer it over the
+     legacy explicit and Supabase variables.
+
+     The Netlify Supabase extension sets SUPABASE_DATABASE_URL to the
      project's REST API base — `https://<ref>.supabase.co` — not to a
      Postgres connection string. Accepting it on the strength of its
      name produces a Prisma protocol error on a deploy that has just
@@ -71,14 +75,17 @@ function missingConfig(): string[] {
      whoever is looking at it.
 
      So the SCHEME decides, not the name. */
-  const candidate = Netlify.env.get("DATABASE_URL") ?? Netlify.env.get("SUPABASE_DATABASE_URL");
+  const candidate =
+    Netlify.env.get("NETLIFY_DB_URL") ??
+    Netlify.env.get("DATABASE_URL") ??
+    Netlify.env.get("SUPABASE_DATABASE_URL");
   if (!candidate) {
-    missing.push("DATABASE_URL — the Postgres URI from Supabase → Connect");
+    missing.push("NETLIFY_DB_URL — connect Netlify Database to this project");
   } else if (!/^postgres(ql)?:\/\//.test(candidate)) {
     missing.push(
-      "DATABASE_URL — set, but not a Postgres URI. The Supabase extension's " +
+      "Database connection — set, but not a Postgres URI. The Supabase extension's " +
         "SUPABASE_DATABASE_URL is the REST API base (https://…), not a " +
-        "connection string; set DATABASE_URL explicitly.",
+        "connection string; connect Netlify Database or set DATABASE_URL explicitly.",
     );
   }
 
