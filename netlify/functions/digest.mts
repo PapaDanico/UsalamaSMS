@@ -89,8 +89,12 @@ function connect(): PrismaClient {
   } catch (error) {
     if (!(error instanceof MissingDatabaseConnectionError)) throw error;
   }
-  const url = managed ?? process.env["DATABASE_URL"] ?? process.env["SUPABASE_DATABASE_URL"];
-  if (!url) throw new Error("no Netlify Database or DATABASE_URL connection");
+  // DATABASE_URL (Supabase pooler, set by hand) takes priority.
+  // managed (Netlify Database / Neon) is a fallback so an operator can
+  // migrate to Netlify Database by unsetting DATABASE_URL rather than
+  // editing code. Same order as core.ts and api.mts.
+  const url = process.env["DATABASE_URL"] ?? managed ?? process.env["SUPABASE_DATABASE_URL"];
+  if (!url) throw new Error("no DATABASE_URL or Netlify Database connection");
   client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   return client;
 }

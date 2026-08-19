@@ -70,7 +70,7 @@ describe.skipIf(!hasDatabase)("the Netlify Function handler", () => {
     expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error).toBe("not_configured");
-    expect(body.missing.join(" ")).toMatch(/NETLIFY_DB_URL/);
+    expect(body.missing.join(" ")).toMatch(/DATABASE_URL/);
     // The NAMES are safe to return. The values never are.
     expect(JSON.stringify(body)).not.toContain(JWT_SECRET);
   });
