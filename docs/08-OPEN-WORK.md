@@ -359,7 +359,7 @@ taken before any dashboard work, because a dashboard whose numbers are
 typed is a dashboard nobody trusts twice.
 
 Sources: ICAO Doc 9859 4th ed.; Flight Safety Foundation "Unleashing
-SPIs"; EASA AloSP guidance.
+SPIs"; EASA ALoSP guidance.
 
 ### 8.3 Correcting §8.2, the same day — half of it was wrong
 

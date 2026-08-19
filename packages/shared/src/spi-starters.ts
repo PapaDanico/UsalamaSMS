@@ -316,7 +316,6 @@ export const SPI_STARTERS: ReadonlyArray<SpiStarter> = Object.freeze([
  *
  * Returns all starters when `kind` is not provided, so the route can
  * decide how to filter rather than this module encoding a routing rule.
- * The array returned is stable-sorted by `id`.
  */
 export function startersFor(kind?: OperatorKind | null): ReadonlyArray<SpiStarter> {
   if (!kind) return SPI_STARTERS;
