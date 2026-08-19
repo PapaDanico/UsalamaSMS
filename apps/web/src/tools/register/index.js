@@ -640,7 +640,7 @@ export function render(outlet) {
             can accept a tolerable risk — it is a judgement about cost against safety,
             and that belongs with the post that can spend the money. An intolerable risk
             cannot be accepted by anybody; the controls have to change.
-            <a href="/tutorials">Learn more about RA 1210 →</a>
+            <a href="/tutorials">Learn more about RA 1210</a>
           </p>
           <p class="note">
             <b>On this device only</b>
@@ -709,7 +709,10 @@ export function render(outlet) {
           will be typing on top of entries you cannot see.</span>
         </p>`.toString()
       : entries.length
-        ? methodBalance(entries) + entries.map((e) => Row(e, getSession()?.role)).join('')
+        ? (() => {
+            const userRole = getSession()?.role;
+            return methodBalance(entries) + entries.map((e) => Row(e, userRole)).join('');
+          })()
         : html`<p class="empty-state">
             <span>Nothing on the register yet. The first entry is usually the hazard
             behind the last report somebody filed.</span>
