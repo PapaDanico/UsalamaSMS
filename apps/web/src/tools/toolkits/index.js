@@ -317,7 +317,7 @@ async function loadRiskPreview(outlet) {
       <h2 class="section-title">Risk picture</h2>
       <p class="lede lede--tight">
         Your current risk position, drawn from the register and corrective actions.
-        <a href="/toolkits/risk-picture">Full picture →</a>
+        <a href="/toolkits/risk-picture">Full picture</a>
       </p>
       <div class="picture-summary">
         <a class="picture-card" href="/toolkits/risk-picture" aria-label="Risk tolerability">
