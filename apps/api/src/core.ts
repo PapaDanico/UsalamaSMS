@@ -8,7 +8,6 @@ import jwt from "jsonwebtoken";
 import argon2 from "argon2";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { getConnectionString, MissingDatabaseConnectionError } from "@netlify/database";
 import { can, type Role, type Permission } from "@usalamasms/shared";
 import { bandForFleet } from "../../../packages/shared/src/pricing";
 import {
@@ -28,12 +27,7 @@ function requireEnv(name: string): string {
 /**
  * The database connection string.
  *
- * Netlify Database injects NETLIFY_DB_URL at function runtime. Reading
- * it through @netlify/database keeps the application on the managed
- * connection selected for the current production or preview deploy,
- * including database branches.
- *
- * A HARD-WON PIECE OF KNOWLEDGE IS ALSO ENCODED HERE. The Netlify Supabase
+ * A HARD-WON PIECE OF KNOWLEDGE IS ENCODED HERE. The Netlify Supabase
  * extension sets a variable called `SUPABASE_DATABASE_URL`, and it is
  * NOT a database connection string. It is the project's REST API base —
  * `https://<ref>.supabase.co` — intended for
@@ -53,21 +47,17 @@ function requireEnv(name: string): string {
  * sentence that explains it.
  */
 function databaseUrl(): string {
-  let managed: string | undefined;
-  try {
-    managed = getConnectionString();
-  } catch (error) {
-    if (!(error instanceof MissingDatabaseConnectionError)) throw error;
-  }
-
   const explicit = process.env["DATABASE_URL"];
   const fromExtension = process.env["SUPABASE_DATABASE_URL"];
-  // DATABASE_URL takes precedence: it is the Supabase transaction-pooler
-  // URL set by hand and holds the real data.  NETLIFY_DB_URL (Netlify
-  // Database / Neon) is only used when DATABASE_URL is absent, so that an
-  // operator who genuinely migrates to Netlify Database can do so by
-  // unsetting DATABASE_URL rather than by removing code.
-  const url = explicit ?? managed ?? fromExtension;
+  /* NO FALLBACK TO A DIFFERENT DATABASE. A Netlify Database (Neon)
+     fallback lived here for one day in August 2026 and is the reason
+     this comment exists: an empty managed database that answers is far
+     worse than no database that refuses. Missing DATABASE_URL would
+     have connected the API to a fresh Neon instance, and the operator's
+     safety record would have rendered as a new install rather than as
+     an error. A compliance product must fail loudly, never quietly
+     succeed against the wrong data. */
+  const url = explicit ?? fromExtension;
 
   if (!url) {
     fatal(
@@ -78,7 +68,7 @@ function databaseUrl(): string {
   }
 
   if (!/^postgres(ql)?:\/\//.test(url)) {
-    const which = explicit ? "DATABASE_URL" : managed ? "NETLIFY_DB_URL" : "SUPABASE_DATABASE_URL";
+    const which = explicit ? "DATABASE_URL" : "SUPABASE_DATABASE_URL";
     fatal(
       `${which} is not a Postgres connection string.\n` +
         `  Got a URL beginning "${url.slice(0, url.indexOf(":") + 3)}".\n` +

@@ -110,15 +110,30 @@ describe.skipIf(!hasDatabase)("the Netlify Function handler", () => {
     expect(res.status).toBe(200);
   });
 
-  it("prefers the managed Netlify Database connection", async () => {
+  /* NETLIFY_DB_URL IS NOT A CONNECTION THIS PRODUCT WILL MAKE.
+
+     For one day in August 2026 these functions read it, through
+     @netlify/database, as a fallback beneath DATABASE_URL. The failure
+     mode is the reason this test asserts the refusal rather than the
+     preference: a deploy that loses DATABASE_URL would not have gone
+     down. It would have come up against an EMPTY managed Neon database
+     and rendered the operator's safety record as a new install — seven
+     real reports replaced by a clean first-run screen, with a 200 on
+     every request.
+
+     A compliance product may fail. It may not quietly succeed against
+     the wrong data. So the only database this reads is the one it was
+     configured with, and a stray managed-database variable is inert. */
+  it("ignores NETLIFY_DB_URL and refuses to start on it alone", async () => {
     const handler = await loadHandler({
       NETLIFY_DB_URL: DATABASE_URL,
-      SUPABASE_DATABASE_URL: "https://unused.example.test",
       JWT_SECRET,
       DEIDENT_SALT: "integration-test-salt",
     });
     const res = await handler(new Request(`${BASE}/api/health`), {});
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.missing.join(" ")).toMatch(/DATABASE_URL/);
   });
 
   it("routes a GET through to Fastify and returns its status and body", async () => {

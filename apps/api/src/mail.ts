@@ -44,6 +44,7 @@
    ===================================================================== */
 import type { Digest, DigestItem } from "../../../packages/shared/src/digest";
 import { isWorthSending } from "../../../packages/shared/src/digest";
+import { TRIAL_DAYS } from "../../../packages/shared/src/pricing";
 
 export type MailOutcome =
   /** Handed to the provider, which accepted it. */
@@ -55,7 +56,14 @@ export type MailOutcome =
   /** The provider refused or could not be reached. This one is a problem. */
   | { readonly status: "FAILED"; readonly reason: string };
 
-export type TrialDigestStage = 1 | 7 | 30 | 45 | 55 | 60;
+/* THE STAGES ARE DAYS INTO A TRIAL OF TRIAL_DAYS, so they cannot outrun
+   it. They were 1/7/30/45/55/60 for one day in August 2026, against a
+   trial the constant said was 30 days long: the last three could never
+   fire, because `stateOn` stops returning TRIAL before day 45 arrives.
+   Three emails nobody could receive, and no test could see it — the
+   fixtures called `trialDigestBody({stage: 55})` directly and never
+   asked whether a trial reaches day 55. */
+export type TrialDigestStage = 1 | 7 | 15 | 25 | 30;
 
 export interface TrialDigest {
   readonly stage: TrialDigestStage;
@@ -243,16 +251,14 @@ export async function sendDigest(
 export function trialDigestSubject(digest: TrialDigest): string {
   switch (digest.stage) {
     case 1:
-      return "Welcome to UsalamaSMS. Your 60-day trial starts today.";
+      return `Welcome to UsalamaSMS. Your ${TRIAL_DAYS}-day trial starts today.`;
     case 7:
       return "Week 1 check-in from UsalamaSMS";
-    case 30:
+    case 15:
       return "Halfway through your UsalamaSMS trial";
-    case 45:
-      return "15 days left in your UsalamaSMS trial";
-    case 55:
+    case 25:
       return "5 days left in your UsalamaSMS trial";
-    case 60:
+    case 30:
       return "Your UsalamaSMS trial ends today";
   }
 }
@@ -261,7 +267,7 @@ export function trialDigestBody(digest: TrialDigest, config: MailConfig): string
   const lines =
     digest.stage === 1
       ? [
-          "Welcome to UsalamaSMS. Your 60-day trial starts today. Here's your onboarding checklist.",
+          `Welcome to UsalamaSMS. Your ${TRIAL_DAYS}-day trial starts today. Here's your onboarding checklist.`,
           "",
           "- [ ] File your first report",
           "- [ ] Complete the SMS maturity assessment",
@@ -279,32 +285,26 @@ export function trialDigestBody(digest: TrialDigest, config: MailConfig): string
             "",
             `Open the dashboard: ${config.baseUrl}/today`,
           ]
-        : digest.stage === 30
+        : digest.stage === 15
           ? [
               `Halfway through your trial. ${digest.reports} ${digest.reports === 1 ? "report" : "reports"} filed, ` +
                 `${digest.hazards} ${digest.hazards === 1 ? "hazard" : "hazards"} registered.`,
               "",
               `Open the dashboard: ${config.baseUrl}/today`,
             ]
-          : digest.stage === 45
+          : digest.stage === 25
             ? [
-                "15 days left. Your data is yours forever, even if you do not subscribe. Export anytime.",
+                `5 days left. Here's what you built: ${digest.reports} ${digest.reports === 1 ? "report" : "reports"}, ` +
+                  `${digest.hazards} ${digest.hazards === 1 ? "hazard" : "hazards"}, ` +
+                  `${digest.closedActions} ${digest.closedActions === 1 ? "closed action" : "closed actions"}. Ready to subscribe?`,
                 "",
-                `Open export: ${config.baseUrl}/account`,
+                `Open the dashboard: ${config.baseUrl}/today`,
               ]
-            : digest.stage === 55
-              ? [
-                  `5 days left. Here's what you built: ${digest.reports} ${digest.reports === 1 ? "report" : "reports"}, ` +
-                    `${digest.hazards} ${digest.hazards === 1 ? "hazard" : "hazards"}, ` +
-                    `${digest.closedActions} ${digest.closedActions === 1 ? "closed action" : "closed actions"}. Ready to subscribe?`,
-                  "",
-                  `Open the dashboard: ${config.baseUrl}/today`,
-                ]
-              : [
-                  "Your trial ends today. Subscribe to keep full access, or continue with free reporting.",
-                  "",
-                  `Open the dashboard: ${config.baseUrl}/today`,
-                ];
+            : [
+                "Your trial ends today. Subscribe to keep full access, or continue with free reporting.",
+                "",
+                `Open the dashboard: ${config.baseUrl}/today`,
+              ];
 
   return [
     ...lines,

@@ -48,7 +48,6 @@
 import type { Config } from "@netlify/functions";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { getConnectionString, MissingDatabaseConnectionError } from "@netlify/database";
 import { computeDigest } from "../../apps/api/src/digest.compute.js";
 import { sendDigest, sendTrialDigest, mailConfigFromEnv } from "../../apps/api/src/mail.js";
 import { isWorthSending } from "../../packages/shared/src/digest.js";
@@ -83,18 +82,11 @@ let client: PrismaClient | null = null;
 
 function connect(): PrismaClient {
   if (client) return client;
-  let managed: string | undefined;
-  try {
-    managed = getConnectionString();
-  } catch (error) {
-    if (!(error instanceof MissingDatabaseConnectionError)) throw error;
-  }
-  // DATABASE_URL (Supabase pooler, set by hand) takes priority.
-  // managed (Netlify Database / Neon) is a fallback so an operator can
-  // migrate to Netlify Database by unsetting DATABASE_URL rather than
-  // editing code. Same order as core.ts and api.mts.
-  const url = process.env["DATABASE_URL"] ?? managed ?? process.env["SUPABASE_DATABASE_URL"];
-  if (!url) throw new Error("no DATABASE_URL or Netlify Database connection");
+  /* No managed-database fallback. See the comment in core.ts:
+     connecting to an empty Neon instance because DATABASE_URL is unset
+     is worse than refusing to start. */
+  const url = process.env["DATABASE_URL"] ?? process.env["SUPABASE_DATABASE_URL"];
+  if (!url) throw new Error("no DATABASE_URL or SUPABASE_DATABASE_URL");
   client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   return client;
 }
@@ -115,14 +107,13 @@ function trialDayFor(startedOn: Date, now: Date): number {
   return Math.floor((utcDay(now) - utcDay(startedOn)) / DAY) + 1;
 }
 
-function trialStageFor(day: number): 1 | 7 | 30 | 45 | 55 | 60 | null {
+function trialStageFor(day: number): 1 | 7 | 15 | 25 | 30 | null {
   switch (day) {
     case 1:
     case 7:
+    case 15:
+    case 25:
     case 30:
-    case 45:
-    case 55:
-    case 60:
       return day;
     default:
       return null;

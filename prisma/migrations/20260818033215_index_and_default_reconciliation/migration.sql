@@ -7,7 +7,7 @@
 --
 -- WHAT SURVIVED: VoluntaryScheme_orgId_idx
 --
---   Created by 20260815091500_index_reconciliation. schema.prisma now
+--   Created by 20260815090000_index_reconciliation. schema.prisma now
 --   carries an explicit comment on that model saying there is NO
 --   @@index([orgId]) because orgId is already @unique, so the index is
 --   drift from a decision later reversed in the schema and never in the
@@ -45,7 +45,7 @@
 --   accept it.
 
 -- DropIndex
--- IF EXISTS, matching 20260815091500_index_reconciliation, which created
+-- IF EXISTS, matching 20260815090000_index_reconciliation, which created
 -- this same index with CREATE INDEX IF NOT EXISTS. A migration that dies
 -- on an environment where the object is already gone blocks every later
 -- migration behind it.

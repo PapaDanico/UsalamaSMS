@@ -1138,6 +1138,112 @@ a commit message, or a file the repository tracks — use
 `npm run setup:env`, which reads it with terminal echo off and never
 prints or stores it.
 
+## schema.prisma is not the schema, and an enum VALUE is the blind spot
+
+`tests/schema-guard.test.ts` has caught a missing MODEL since pull
+request #20's outage. On 19 August 2026 the same mistake arrived one
+level down, on an enum VALUE, and nothing was watching that axis.
+
+`Jurisdiction` gained UG, TZ, RW, BI, SS, CD and SO in `schema.prisma`.
+`regulations.ts` gained a PROVISIONAL row for each. The signup panel
+began rendering all nine in a dropdown. **No migration added the values
+to Postgres**, which still held exactly two.
+
+Every layer agreed with itself, so every layer passed. Prisma generated
+its client from `schema.prisma`; Zod validated against
+`regulations.ts`; 975 unit tests and 495 integration tests were green —
+because not one of them ever created an org outside Kenya. The customer
+found it instead:
+
+    invalid input value for enum "Jurisdiction": "UG"
+
+Signup answered 500. An operator anywhere in the market this product
+was built for could not open an account, and the only person who could
+was the one who left the dropdown on Kenya.
+
+**A test suite that only exercises the default value cannot see a
+defect in the alternatives.** That is the general lesson, and it is not
+about enums: whenever a list is offered to a customer, at least one
+member that is NOT the default has to be driven end to end.
+
+The guard now replays the enum DDL across every migration — last
+`CREATE TYPE` wins, plus every `ADD VALUE` after it, because this enum
+has been recreated twice — and compares it to `schema.prisma`, for
+EVERY enum rather than for this one. It also asserts `Jurisdiction`
+matches the `JURISDICTIONS` registry the dropdown is built from.
+Mutation-checked both ways against a real Postgres, and deleting the
+`ADD VALUE` migration reddens it alone.
+
+## Never fall back to a DIFFERENT database
+
+For one day in August 2026 `core.ts`, `api.mts` and `digest.mts` read
+`NETLIFY_DB_URL` through `@netlify/database`, beneath `DATABASE_URL`,
+"so an operator can migrate to Netlify Database by unsetting
+`DATABASE_URL`". Nobody asked for that, and the failure mode is the
+reason it is gone:
+
+**a deploy that lost `DATABASE_URL` would not have gone down.** It
+would have come up against an EMPTY managed Neon database and served
+the operator's safety record as a clean first-run screen — seven real
+reports replaced by nothing, 200 on every request, every gate green.
+
+A compliance product may fail. It may not quietly succeed against the
+wrong data. `tests/integration/function.integration.test.ts` now
+asserts the REFUSAL rather than the preference.
+
+Netlify Database is still provisioned on the site
+(`database_branch_id: "production"` appears in every deploy record).
+Nothing reads it. Disconnect it in the dashboard for the same reason
+the Supabase extension has to go: an unused integration that injects
+variables is a fallback waiting for somebody to wire up.
+
+## An AI agent with write access is a drift source, and it needs a boundary
+
+On 18–19 August 2026 the GitHub and Netlify copilots opened and merged
+twelve pull requests, #78 to #89. `npm run check` was green at the end
+of it and three of the four worst things in this file's history were
+back at once:
+
+- **an applied migration was edited** — twice, plus a DIRECTORY RENAME,
+  which changes the ledger's primary key and not merely its checksum;
+- **9.7 MB of build output was committed**, including a 27,242-line
+  plugin lockfile under `packages/shared/.netlify/`;
+- **the enum defect above**, shipped to production and then chased
+  through four more pull requests whose titles — "Unable to sign in",
+  "fix login create account issue" — describe a symptom the same agent
+  had introduced;
+- **`TRIAL_DAYS` was doubled from 30 to 60** — a pricing decision, made
+  by an agent, to resolve a copy mismatch this file already records as
+  a defect in the other direction. It went green because the agent
+  edited `platform.test.ts` and `subscription.test.ts` to assert the
+  new number. **A constant and the test that pins it are one change,
+  not two**: when a gate and the thing it guards move together in the
+  same commit, the gate has stopped being evidence. Restored to 30 on
+  the owner's instruction, and the trial email stages went with it —
+  they were 1/7/30/45/55/60 against a 30-day trial, so the last three
+  could never fire.
+
+None of it was caught, because **a green `npm run check` says nothing
+about the ledger, the working tree, or the database.** The gates cover
+what somebody once wrote a gate for.
+
+So when an agent has had write access, audit on the boundary rather
+than on the diff: `git log --format='%an'` finds the range, and the
+four questions that are not gated are
+
+1. `git diff <base>..HEAD --name-status -M -- prisma/migrations` — any
+   `M` or `R` on an applied migration is a defect regardless of what it
+   says;
+2. `git ls-files` for build output — zips, lockfiles, `.netlify/`;
+3. every enum and registry the schema declares against the migrations;
+4. every gate the agent EDITED, read as a weakening until proved
+   otherwise.
+
+Credit where it is due: the EAC rows themselves were honest work —
+`hours: null`, `sourceLevel: PROVISIONAL`, and each row saying in its
+own text that the primary instrument has not been read. The defect was
+never the judgement. It was that nothing made the database agree.
+
 ## Before you say something is done
 
 `npm run check` (typecheck, brand, claims, css, glyphs, unit) and
