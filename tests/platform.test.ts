@@ -76,11 +76,11 @@ describe("the vendor cannot read what it is selling somewhere to put", () => {
 });
 
 describe("the trial the console grants", () => {
-  it("is 60 days, and the promise says the number the code uses", () => {
-    expect(TRIAL_DAYS).toBe(60);
+  it("is 30 days, and the promise says the number the code uses", () => {
+    expect(TRIAL_DAYS).toBe(30);
     const start = new Date("2026-03-01T00:00:00.000Z");
     const end = trialEndsFrom(start);
-    expect(Math.round((end.getTime() - start.getTime()) / 86_400_000)).toBe(60);
+    expect(Math.round((end.getTime() - start.getTime()) / 86_400_000)).toBe(30);
   });
 
   it("still ends, and ending does not need anybody to write a state down", () => {

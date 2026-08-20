@@ -269,7 +269,7 @@ describe("reply-to", () => {
 describe("trial digests", () => {
   it("report NOT_CONFIGURED rather than pretending when the key is absent", async () => {
     const outcome = await sendTrialDigest(
-      { stage: 1, daysRemaining: 59, reports: 0, hazards: 0, closedActions: 0, onboardingComplete: 0 },
+      { stage: 1, daysRemaining: 29, reports: 0, hazards: 0, closedActions: 0, onboardingComplete: 0 },
       "safety@example.com",
       { ...configured, apiKey: undefined },
       spyFetch(),
@@ -280,7 +280,7 @@ describe("trial digests", () => {
   it("send plain text with an unsubscribe mailto link", async () => {
     const fetchImpl = spyFetch();
     await sendTrialDigest(
-      { stage: 55, daysRemaining: 5, reports: 3, hazards: 2, closedActions: 1, onboardingComplete: 3 },
+      { stage: 25, daysRemaining: 5, reports: 3, hazards: 2, closedActions: 1, onboardingComplete: 3 },
       "safety@example.com",
       configured,
       fetchImpl,
@@ -300,11 +300,11 @@ describe("trial digests", () => {
 
   it("names the local-only maturity caveat on the week-one message", () => {
     const text = trialDigestBody(
-      { stage: 7, daysRemaining: 53, reports: 1, hazards: 0, closedActions: 0, onboardingComplete: 2 },
+      { stage: 7, daysRemaining: 23, reports: 1, hazards: 0, closedActions: 0, onboardingComplete: 2 },
       configured,
     );
     expect(trialDigestSubject({
-      stage: 7, daysRemaining: 53, reports: 1, hazards: 0, closedActions: 0, onboardingComplete: 2,
+      stage: 7, daysRemaining: 23, reports: 1, hazards: 0, closedActions: 0, onboardingComplete: 2,
     })).toContain("Week 1");
     expect(text).toContain("2 of 4 shared onboarding steps complete");
     expect(text).toMatch(/fifth step is the maturity assessment/i);

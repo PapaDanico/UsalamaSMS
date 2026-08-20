@@ -2,3 +2,7 @@ node_modules
 dist
 .env
 *.local
+
+# Netlify build output and plugin cache. Committed by mistake on 19 Aug
+# 2026 (9.7 MB of function zips and a 27,242-line plugin lockfile).
+.netlify/

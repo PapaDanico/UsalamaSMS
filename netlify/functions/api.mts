@@ -63,12 +63,7 @@ let appPromise: Promise<{
 function missingConfig(): string[] {
   const missing: string[] = [];
 
-  /* DATABASE_URL is the Supabase transaction-pooler URL set by hand and
-     holds the real data. It takes priority. NETLIFY_DB_URL (Netlify
-     Database / Neon) is accepted as a fallback so an operator can migrate
-     to Netlify Database by unsetting DATABASE_URL rather than editing code.
-
-     The Netlify Supabase extension sets SUPABASE_DATABASE_URL to the
+  /* The Netlify Supabase extension sets SUPABASE_DATABASE_URL to the
      project's REST API base — `https://<ref>.supabase.co` — not to a
      Postgres connection string. Accepting it on the strength of its
      name produces a Prisma protocol error on a deploy that has just
@@ -77,9 +72,7 @@ function missingConfig(): string[] {
 
      So the SCHEME decides, not the name. */
   const candidate =
-    Netlify.env.get("DATABASE_URL") ??
-    Netlify.env.get("NETLIFY_DB_URL") ??
-    Netlify.env.get("SUPABASE_DATABASE_URL");
+    Netlify.env.get("DATABASE_URL") ?? Netlify.env.get("SUPABASE_DATABASE_URL");
   if (!candidate) {
     missing.push("DATABASE_URL — set to the Supabase transaction-pooler URI (port 6543)");
   } else if (!/^postgres(ql)?:\/\//.test(candidate)) {
