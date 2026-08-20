@@ -50,7 +50,7 @@ repository's `build` script begins with `npm run check`, that means:
 | | git-backed build | direct deploy |
 |---|---|---|
 | who builds | Netlify | Netlify |
-| `npm run check` (989 tests) | runs | **runs** |
+| `npm run check` (995 tests) | runs | **runs** |
 | functions built from `netlify.toml` | yes | **yes** |
 | `commit_ref` on the deploy record | the merged SHA | **`null`** |
 

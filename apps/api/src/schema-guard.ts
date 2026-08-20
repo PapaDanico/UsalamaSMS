@@ -85,3 +85,157 @@ export async function missingTables(prisma: PrismaClient): Promise<string[]> {
   );
   return rows.filter((r) => !r.present).map((r) => r.name).sort();
 }
+
+/**
+ * Every enum value this build expects Postgres to hold, by enum name.
+ *
+ * WHY THIS EXISTS SEPARATELY FROM THE TABLE LIST, and it is the second
+ * scar on the same bone. The table check above was written after #20,
+ * where a migration never ran and `/api/ready` said `{"ok":true}`
+ * throughout. On 19 August 2026 the identical failure arrived one level
+ * down: `Jurisdiction` gained seven values in schema.prisma and in the
+ * signup dropdown, no migration added them to Postgres, and the enum
+ * held exactly two.
+ *
+ * `missingTables` could not see it. `to_regclass` asks whether a
+ * RELATION exists; an enum value is not a relation, so every table was
+ * present, the probe answered ready, and signup answered 500 to anyone
+ * outside Kenya. The readiness probe passing while the product is
+ * broken — the exact sentence this file opens with, one axis over.
+ *
+ * Kept sorted for the same reason as the table list, and checked
+ * against prisma/schema.prisma by tests/schema-guard.test.ts so a value
+ * added to the schema cannot be forgotten here.
+ */
+export const EXPECTED_ENUM_VALUES: Readonly<Record<string, ReadonlyArray<string>>> =
+  Object.freeze({
+    ChangeStatus: Object.freeze([
+      "APPROVED",
+      "ASSESSED",
+      "DRAFT",
+      "IN_EFFECT",
+      "REVIEWED",
+    ]),
+    ChangeTrigger: Object.freeze([
+      "EQUIPMENT_OR_SYSTEM",
+      "FLEET",
+      "KEY_PERSONNEL",
+      "ORGANISATION",
+      "OTHER",
+      "PROCEDURE",
+      "ROUTE_OR_NETWORK",
+    ]),
+    FindingSeverity: Object.freeze([
+      "IMPROVEMENT",
+      "NONCONFORMITY",
+      "OBSERVATION",
+    ]),
+    FlightPhase: Object.freeze([
+      "APPROACH",
+      "CLIMB",
+      "CRUISE",
+      "DESCENT",
+      "GO_AROUND",
+      "GROUND_HANDLING",
+      "INITIAL_CLIMB",
+      "LANDING",
+      "LANDING_ROLL",
+      "MAINTENANCE",
+      "PUSHBACK",
+      "STANDING",
+      "TAKEOFF",
+      "TAXI",
+    ]),
+    Jurisdiction: Object.freeze([
+      "BI",
+      "CD",
+      "ICAO",
+      "KE",
+      "RW",
+      "SO",
+      "SS",
+      "TZ",
+      "UG",
+    ]),
+    Likelihood: Object.freeze([
+      "EXTREMELY_IMPROBABLE",
+      "FREQUENT",
+      "IMPROBABLE",
+      "OCCASIONAL",
+      "REMOTE",
+    ]),
+    ReportState: Object.freeze([
+      "ACTIONS_OPEN",
+      "CLOSED",
+      "SUBMITTED",
+      "TRIAGED",
+      "UNDER_INVESTIGATION",
+    ]),
+    ReportType: Object.freeze([
+      "FATIGUE",
+      "HAZARD",
+      "MOR",
+      "NEAR_MISS",
+      "SUGGESTION",
+      "VCR",
+    ]),
+    RiskStatus: Object.freeze([
+      "ACCEPTED",
+      "CLOSED",
+      "MITIGATED",
+      "OPEN",
+    ]),
+    Role: Object.freeze([
+      "ACCOUNTABLE_EXECUTIVE",
+      "FRONTLINE",
+      "INVESTIGATOR",
+      "KEY_MANAGEMENT",
+      "PLATFORM_ADMIN",
+      "REGULATOR_INSPECTOR",
+      "SAFETY_MANAGER",
+      "SAFETY_OFFICER",
+      "SYSTEM_ADMIN",
+    ]),
+    Severity: Object.freeze([
+      "A_CATASTROPHIC",
+      "B_HAZARDOUS",
+      "C_MAJOR",
+      "D_MINOR",
+      "E_NEGLIGIBLE",
+    ]),
+    Tolerability: Object.freeze([
+      "ACCEPTABLE",
+      "INTOLERABLE",
+      "TOLERABLE",
+    ]),
+  });
+
+/**
+ * Which expected enum values the database does not have, as
+ * `"EnumName.VALUE"` so the response names the thing to fix.
+ *
+ * One round trip, and it asks pg_enum rather than trusting the
+ * migration ledger — a recorded migration says a statement ran, which
+ * is not the same as the value being there now. An enum the database
+ * does not have at all reports every one of its values as missing,
+ * which is the honest answer rather than an exception.
+ */
+export async function missingEnumValues(prisma: PrismaClient): Promise<string[]> {
+  const pairs: Array<{ enumName: string; value: string }> = [];
+  for (const [enumName, values] of Object.entries(EXPECTED_ENUM_VALUES))
+    for (const value of values) pairs.push({ enumName, value });
+  if (pairs.length === 0) return [];
+
+  const rows = await prisma.$queryRawUnsafe<Array<{ enum_name: string; value: string; present: boolean }>>(
+    `SELECT w.enum_name, w.value,
+            EXISTS (
+              SELECT 1 FROM pg_type t
+                JOIN pg_enum e ON e.enumtypid = t.oid
+               WHERE t.typname = w.enum_name AND e.enumlabel = w.value
+            ) AS present
+       FROM unnest($1::text[], $2::text[]) AS w(enum_name, value)`,
+    pairs.map((p) => p.enumName),
+    pairs.map((p) => p.value),
+  );
+  return rows.filter((r) => !r.present).map((r) => `${r.enum_name}.${r.value}`).sort();
+}

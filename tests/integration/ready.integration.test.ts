@@ -46,6 +46,44 @@ describe.skipIf(!hasDatabase)("the readiness probe", () => {
     expect(res.json().ok).toBe(true);
   });
 
+  it("REFUSES READY WHEN AN ENUM VALUE THE CODE USES IS ABSENT", async () => {
+    /* THE SECOND SHAPE OF THE SAME OUTAGE, and the table check above
+       cannot see it. On 19 August 2026 Jurisdiction gained seven values
+       in schema.prisma and in the signup dropdown; no migration added
+       them to Postgres. Every table was present, so this probe answered
+       {"ok":true} while signup answered 500 to anyone outside Kenya.
+
+       RENAME VALUE rather than a drop, for the same reason the table
+       above is renamed — and because Postgres has no DROP VALUE at all.
+       It is exactly as invisible to pg_enum lookup and reverses in one
+       statement. */
+    await reset();
+    await prisma().$executeRawUnsafe(`ALTER TYPE "Jurisdiction" RENAME VALUE 'UG' TO 'UG__hidden'`);
+    try {
+      const res = await ready();
+      expect(res.statusCode, "a database missing an enum value reported itself ready").toBe(503);
+      const body = res.json();
+      expect(body.ok).toBe(false);
+      expect(body.reason).toBe("schema_behind_code");
+      expect(body.missingEnumValues).toContain("Jurisdiction.UG");
+      // The table list must be EMPTY here. That is the whole point: this
+      // database has every table and is still not ready, so a probe that
+      // only counted tables would have passed it.
+      expect(body.missingTables, "no table is missing — only the enum value").toEqual([]);
+      expect(body.detail).toMatch(/migration/i);
+    } finally {
+      await prisma().$executeRawUnsafe(`ALTER TYPE "Jurisdiction" RENAME VALUE 'UG__hidden' TO 'UG'`);
+    }
+  });
+
+  it("is ready again once the enum value is back", async () => {
+    // Proves the restore above actually ran, as the table test does.
+    await reset();
+    const res = await ready();
+    expect(res.statusCode).toBe(200);
+    expect(res.json().ok).toBe(true);
+  });
+
   it("REFUSES READY WHEN A TABLE THE CODE QUERIES IS ABSENT", async () => {
     await reset();
     // The exact shape of the outage: code deployed, migration not run.
