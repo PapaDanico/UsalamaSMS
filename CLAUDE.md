@@ -18,16 +18,15 @@ security posture:
 - every read and write goes through the Fastify API in `apps/api`,
   which enforces tenancy in SQL (`orgId` on every tenant-owned table,
   indexed first);
-- **RLS does not stop the API**, so the deny-all does not lock it out.
+- **RLS does not apply to a table's owner**, and the API connects as the
+  owner, so the deny-all does not lock it out.
 
-That last point used to read "RLS does not apply to a table's owner, so
-the API is unaffected", and until 21 August 2026 that was how it worked.
-It is not any more — see "THE API IS NO LONGER THE OWNER" below. The
-property is unchanged; the mechanism holding it is not, and the two are
-worth keeping separate in your head, because only one of them is what
-the tests assert.
+That owner is `usalama_api`, not `postgres`, and the reason is an outage
+— see "THE OWNER CHANGED, AND ONE WRONG QUERY NEARLY MADE IT PERMANENT"
+below. The property and the mechanism are both the original ones; only
+the role's name changed.
 
-### THE API IS NO LONGER THE OWNER, and the reason is an outage
+### THE OWNER CHANGED, AND ONE WRONG QUERY NEARLY MADE IT PERMANENT
 
 On 21 August 2026 the product was down and the owner could not sign in.
 The account was fine — `danmoi08@gmail.com`, `PLATFORM_ADMIN`, a valid
@@ -65,36 +64,73 @@ grant all privileges on all tables in schema public to usalama_api;
 `DATABASE_URL` now names `usalama_api.<project-ref>` on the transaction
 pooler, secret-marked, production, functions and runtime.
 
-**Ownership was deliberately NOT transferred to it.** `ALTER TABLE …
-OWNER TO usalama_api` would have restored the original posture exactly —
-but `pg_auth_members` holds no `admin_option` for `postgres` over
-`usalama_api`, so `postgres` could not have set-role back to reverse it.
-A one-way door on a production database, taken while the site is already
-down, is not a trade worth making for tidiness.
+**FOR A FEW HOURS THAT ROLE ALSO CARRIED BYPASSRLS, WHICH IS THE
+`service_role` SHAPE.** This file mutation-proves, against production,
+that a BYPASSRLS role with grants reads every row straight through the
+RESTRICTIVE deny-all. `usalama_api` was exactly that, and the honest
+description of the interim state is that the deny-all had stopped being
+*also* irrelevant-by-ownership for the API.
 
-**THIS IS THE `service_role` SHAPE, AND PRETENDING OTHERWISE WOULD BE THE
-REAL DEFECT.** This file mutation-proves, against production, that a
-BYPASSRLS role with grants reads every row straight through the
-RESTRICTIVE deny-all. `usalama_api` is exactly that. Two things and only
-two make it acceptable:
+**IT WAS WRITTEN DOWN AS PERMANENT ON THE STRENGTH OF A QUERY THAT ASKED
+THE WRONG QUESTION**, and that is the part worth keeping. The reasoning
+was: `ALTER TABLE … OWNER TO usalama_api` would restore the original
+posture exactly, but `pg_auth_members` holds no `admin_option` for
+`postgres` over `usalama_api`, so the transfer could not be reversed —
+a one-way door on a live database, refused.
 
-- its credential is **server-side only**, in Netlify's secret store,
-  where the `postgres` one already was — this is the same trust level,
-  not a new one;
-- `anon`, `authenticated` and `service_role` still hold **zero grants**,
-  re-measured after the change, so the roles reachable from a browser are
-  restrained by the revoke exactly as before.
+Every clause of that is false, and the query is why. It asked whether
+`usalama_api` was a **member** of something. The grant PostgreSQL 16
+creates runs the other way — `roleid = usalama_api, member = postgres`,
+`admin_option = true` — and it was there the whole time, granted by
+`supabase_admin` when the role was created. The measurement was pointed
+180 degrees away from the fact it was supposed to find, returned an
+empty set, and the empty set was read as proof.
 
-The deny-all's job against those three is untouched. What changed is that
-it is no longer *also* irrelevant-by-ownership for the API.
+**ASKING IT THE RIGHT WAY ROUND OPENS THE WHOLE THING**, in four
+statements, none of which need a dashboard:
 
-**THE CLEAN FIX IS ONE DASHBOARD ACTION AND IS STILL WORTH DOING.**
-Resetting the `postgres` password in the Supabase dashboard lets
-`DATABASE_URL` go back to the owner, after which `usalama_api` should be
-dropped and the bypass branch in `rls.integration.test.ts` deleted. That
-is a genuine dashboard action — this file has been wrong about that
-phrase more often than right, so it was checked: no MCP tool resets a
-database password.
+```sql
+-- ADMIN lets postgres re-grant the role to itself WITH SET, which is
+-- what ALTER TABLE ... OWNER TO requires. `with admin option` here is
+-- refused — "cannot be granted back to your own grantor" — and is not
+-- needed.
+grant usalama_api to postgres with set true, inherit true;
+-- the new owner needs CREATE on the schema or the ALTER is denied
+grant create, usage on schema public to usalama_api;
+alter table public."X" owner to usalama_api;   -- for every table
+alter role usalama_api with nobypassrls;
+```
+
+Reassign **tables only**. A sequence linked to a table refuses on its
+own — *"is linked to table"* — and does not need reassigning: the table's
+new owner carries it. Measured after: the one sequence in `public`
+followed.
+
+**THE POSTURE IS THE ORIGINAL ONE AGAIN**, verified by driving it rather
+than by reading the catalogue — `set role usalama_api`, with
+`rolbypassrls` now false, reads 9 users, 2 orgs and 7 reports straight
+through the RESTRICTIVE deny-all, because ownership is doing the work:
+
+| property | value |
+|---|---|
+| tables owned by the connecting role | **30 / 30** |
+| `rolbypassrls` on `usalama_api` | **false** |
+| RLS enabled / forced | 30 / **0** |
+| `deny_all_not_owner`, RESTRICTIVE | **30** |
+| PERMISSIVE policies | **0** |
+| grants to `anon` / `authenticated` / `service_role` | **0** |
+
+`ALTER DEFAULT PRIVILEGES` was re-issued **for role `usalama_api`**,
+because default privileges are keyed on the CREATING role and every
+future migration now creates as `usalama_api` rather than `postgres`.
+Without that, the revoke this file describes would have silently stopped
+covering new tables — the same trap, one owner along.
+
+**THE `postgres` PASSWORD IS STILL STALE, AND NOW IT DOES NOT MATTER.**
+Resetting it in the dashboard remains the only way to make that role
+usable again, and there is no longer a reason to: the API has an owner
+credential of its own. Drop `usalama_api` only as part of deliberately
+going back, and move ownership with it in the same change.
 
 **THE ROLE'S PASSWORD WAS GENERATED IN A TRANSCRIPT.** It had to be, to
 be set without a person; but this file's secrets rule has no exception
@@ -553,6 +589,22 @@ grep for `"/ready"` that missed `` `${prefix}/ready` `` and concluded a
 live endpoint did not exist, and a mutation matrix whose six clean
 passes were all masked by one standing failure. Absence in a search,
 and a description of a tool, are both evidence about the observer.
+
+**AND A QUERY CAN BE POINTED THE WRONG WAY ROUND**, which is the same
+error wearing a schema. On 21 August 2026 `pg_auth_members` was asked
+whether `usalama_api` was a MEMBER of anything. The fact being looked
+for was the reverse row — `roleid = usalama_api, member = postgres`,
+`admin_option = true` — which was present the whole time. The empty
+result was written into this file, a commit message and a pull request
+body as *"ownership cannot be transferred, it would be a one-way
+door"*, and the database was left in the weaker BYPASSRLS posture for
+hours on the strength of it.
+
+An empty result set is the cheapest thing in the world to obtain and
+proves nothing until you have checked that the query COULD have
+returned the row you were afraid of. For a two-sided catalogue —
+memberships, dependencies, foreign keys, grants — write both directions
+or say which one you asked.
 
 Direct deploy is now the documented default — see
 `docs/06-DEPLOYMENT.md`, which carries the policy, the preflight
