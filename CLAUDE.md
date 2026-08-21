@@ -1514,3 +1514,56 @@ naming so nobody burns an afternoon rediscovering it:**
 
 Everything else — the Netlify environment, extensions, deploys, the
 repository, the pull request, the gates — is the agent's to do.
+
+### AND WITH THE SUPABASE MCP AUTHENTICATED, SO IS THE DATABASE
+
+On 21 August 2026 the owner authenticated it, and the first two items
+on a list that had been "needs a person" for a day were done in
+minutes. Both are worth recording as method rather than as news.
+
+**The migration.** `Jurisdiction` held `ICAO, KE`. The DDL was applied
+through `execute_sql`, and then — the half that is easy to skip — a row
+was written to `_prisma_migrations` carrying the **sha256 of
+`migration.sql`** as its checksum. Without that second step the section
+above titled "the two ways of applying are NOT interchangeable" comes
+true: Prisma still sees the migration as pending, `migrate deploy`
+raises P3018 on the object that already exists, and P3009 then blocks
+every migration behind it.
+
+**Then the defect was driven, not the enum inspected.** An org was
+created in each of the seven previously-broken markets — the exact
+operation that had been raising `invalid input value for enum` — and
+the probe rows deleted afterwards. Reading `pg_enum` would have shown
+nine labels and proved nothing about whether `org.create` works.
+
+**The lockout was never what it looked like.** The account existed the
+whole time, `PLATFORM_ADMIN`, with a valid argon2id hash. The Neon
+window was a plausible story and it was wrong. What settled it was a
+query nobody had run: **zero rows in `PasswordReset` for that user**,
+which means the forgot-password requests never reached the database and
+no mail was ever attempted. Hours could have gone into Resend's sender
+domain; the fault was upstream of mail entirely.
+
+**A password is set by copying a HASH, never by inventing one.** Run
+`scripts/seed-platform-admin.mjs` against a local database, take the
+`$argon2id$…` digest it produces, and `UPDATE` it into production. The
+plaintext is issued once by the sanctioned tool and the hash that
+travels is one-way. **Delete every `RefreshToken` for that user in the
+same statement** — a rotation that leaves one alive has ended nothing,
+which this file already says about the demo seed.
+
+**And a temporary password is temporary.** Anything an agent tells the
+owner is in the transcript, so it is a credential to change at first
+login rather than to keep.
+
+### `npm run recover` is the same sequence in one command
+
+`scripts/recover.mjs` reports the state, repairs it, and reports it
+again — the difference between the two reports being the diagnosis. It
+exists because "signup is broken" and "I cannot log in" have several
+possible causes with different remedies, and a script that silently
+fixes both teaches nothing about which one you had.
+
+It needs a **session pooler** string on port 5432. Only the transaction
+pooler is refused, so the session pooler — the easiest string to obtain
+from the dashboard — is fine.
