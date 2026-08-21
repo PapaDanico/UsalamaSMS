@@ -239,6 +239,17 @@ document.getElementById('footer-columns').innerHTML = SECTIONS.map(
     </div>`
 ).join('');
 
+/* OPEN ON THE LANDING PAGE, SHUT EVERYWHERE ELSE. The reasoning is in
+   index.html above the <details>. Set here rather than in CSS because
+   `open` is a property of the element, not a presentation of it — a
+   stylesheet cannot express "this disclosure starts expanded" without
+   fighting the control's own state. */
+{
+  const index = document.getElementById('footer-index');
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (index && path === '/') index.open = true;
+}
+
 const jurisdictions = Object.keys(MOR_OBLIGATIONS);
 const provisional = jurisdictions.filter(isProvisional);
 

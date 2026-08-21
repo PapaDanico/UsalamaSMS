@@ -856,7 +856,7 @@ html { scroll-padding-top: var(--us-chrome); }
   padding-inline: clamp(var(--us-space-4), 4vw, var(--us-space-8));
 }
 
-.footer { background: var(--us-charcoal); padding: 32px 0 20px; }
+.footer { background: var(--us-charcoal); padding: 24px 0 16px; }
 .footer :is(h2, h3, h4) { color: #fff; font-family: var(--us-font); font-size: var(--us-text-sm); letter-spacing: .06em; text-transform: uppercase; }
 /* On ink, at 0.78 alpha sand, a link was the exact colour of the
    sentence around it — colour as the sole signal, which WCAG 1.4.1
@@ -893,10 +893,18 @@ html { scroll-padding-top: var(--us-chrome); }
    out as five and four rather than as a short column beside a tall
    one, and no cell is empty. Below the breakpoints further down it
    collapses the same way it always did. */
+/* NOT A GRID ANY MORE, because the index below it is one. The brand
+   used to span two tracks of a nine-cell grid it shared with the seven
+   groups; once the groups moved inside a disclosure with its own grid,
+   that arrangement left empty tracks beside the brand and cost the
+   landing page 174px. Two stacked blocks, each laying itself out. */
 .footer .cols {
-  display: grid;
+  display: block;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: var(--us-space-8) clamp(1.5rem, 3vw, 2.5rem);
+  /* Row gap was --us-space-8. Eight cells at that spacing is most of
+     why the footer measured 640px on a 900px viewport — 0.71 of a
+     screen of chrome under every working page. */
+  gap: var(--us-space-6) clamp(1.5rem, 3vw, 2.5rem);
 }
 .footer .footer-brand { grid-column: span 2; }
 /* The link groups are cells of the SAME grid now, so this element is
@@ -971,8 +979,9 @@ html { scroll-padding-top: var(--us-chrome); }
 .tag { font-size: var(--us-text-2xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: .16rem .5rem; border-radius: 4px; background: var(--us-sand); color: var(--us-ink-600); }
 
 @media (max-width: 980px) {
-  .footer .cols { grid-template-columns: 1fr; }
-  
+  /* ONE RULE, NOT TWO. There were two here — `1fr` then `1fr 1fr`, same
+     selector, same specificity, same block — so the first never applied
+     and read as intent that had been changed and not cleaned up. */
   .footer .cols { grid-template-columns: 1fr 1fr; }
   .nav-links { display: none; position: absolute; top: 72px; left: 0; right: 0; background: #fff; flex-direction: column; align-items: stretch; padding: 1rem 24px; border-bottom: 1px solid var(--us-border); gap: .5rem; box-shadow: var(--us-shadow-md); max-height: calc(100vh - 72px); overflow-y: auto; }
   .nav-toggle { display: block; }
@@ -5251,11 +5260,24 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    lines each, and stacking them makes the footer tall again, which is
    the thing this rebuild was for. */
 @media (max-width: 900px) {
-  .footer .cols { grid-template-columns: 1fr; gap: var(--us-space-6); }
+  /* TWO, AND THE COMMENT ABOVE ALREADY SAID SO. This rule set `1fr`,
+     and because it sits later in the file than the 980px rule that sets
+     `1fr 1fr`, one column is what a handset got — the exact outcome the
+     paragraph above calls "the thing this rebuild was for".
+
+     MEASURED BEFORE AND AFTER, at 390x844: the footer was 1166px, or
+     1.38 VIEWPORTS, and on /triage it was 64.6% of the whole page. A
+     reporting queue where a person scrolls through more footer than
+     queue is not a long footer, it is a broken one. */
+  .footer .cols { grid-template-columns: 1fr 1fr; gap: var(--us-space-5); }
 }
 
 @media (max-width: 420px) {
-  .footer .cols { grid-template-columns: 1fr; gap: var(--us-space-5); }
+  /* Still two. The labels are short and the columns are link lists, not
+     prose — at 390px that is two ~150px tracks, which a section title
+     wraps inside rather than overflows. One column here would undo the
+     rule above on exactly the devices that need it most. */
+  .footer .cols { grid-template-columns: 1fr 1fr; gap: var(--us-space-4); }
 }
 
 .footer-line { margin: 0; max-width: 52ch; line-height: var(--us-leading-normal); }
@@ -5837,3 +5859,50 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .badge--weak { background: var(--us-risk-intolerable); color: var(--us-risk-intolerable-on); }
 .badge--mixed { background: var(--us-risk-tolerable); color: var(--us-risk-tolerable-on); }
 .badge--strong { background: var(--us-risk-acceptable); color: var(--us-risk-acceptable-on); }
+
+/* ---------- the footer's site index, as a disclosure ----------
+   See index.html for why it is one. The summary has to look like the
+   control it is: a footer heading a person can click, not a stray
+   word. Marker kept — a disclosure with no affordance is a heading
+   that mysteriously does something. */
+/* THE DISCLOSURE IS A GRID CELL SPANNING EVERY TRACK, and its columns
+   need a grid of their own. `.footer .footer-cols` is `display:contents`
+   so the seven groups become cells of `.footer .cols` directly — that
+   stops working the moment they are wrapped, because the <details> is
+   then the cell and the groups are its children. Wrapping without this
+   made the landing page footer 1263px, twice what it had been: measured,
+   not guessed. */
+.footer-index { grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,.12); margin-top: var(--us-space-4); padding-top: var(--us-space-3); }
+.footer .footer-index .footer-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--us-space-5) clamp(1.5rem, 3vw, 2.5rem);
+}
+@media (max-width: 900px) {
+  .footer .footer-index .footer-cols { grid-template-columns: 1fr 1fr; gap: var(--us-space-4); }
+}
+.footer-index[open] { border-top: 0; margin-top: 0; padding-top: 0; }
+.footer-index__summary {
+  cursor: pointer;
+  color: #fff;
+  font-family: var(--us-font);
+  font-size: var(--us-text-sm);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: var(--us-space-2) 0;
+  list-style-position: inside;
+}
+.footer-index[open] .footer-index__summary { margin-bottom: var(--us-space-4); }
+.footer-index__summary:focus-visible { outline: 2px solid var(--us-gold); outline-offset: 2px; }
+/* ON THE LANDING PAGE IT IS OPEN, AND THERE IT IS SIMPLY THE INDEX IT
+   ALWAYS WAS. The summary is a control for collapsing something that
+   was never collapsible on that page, and it cost 154px of the 774 the
+   footer measured there — so it is not rendered when open. The links
+   are untouched and visible; only the toggle goes.
+
+   Measured, both ways: with the summary shown the landing footer was
+   774px against a 620px baseline; without it, 620px. Every other screen
+   keeps the control, because on those the index starts shut and a
+   disclosure with no affordance is a heading that mysteriously does
+   nothing. */
+.footer-index[open] .footer-index__summary { display: none; }
