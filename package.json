@@ -52,7 +52,8 @@
     "seed:platform-admin": "node scripts/seed-platform-admin.mjs",
     "stamp-build-id": "node scripts/stamp-build-id.mjs",
     "check:build-id": "node scripts/check-build-id.mjs",
-    "check:data-api": "node scripts/check-data-api.mjs"
+    "check:data-api": "node scripts/check-data-api.mjs",
+    "deploy:check": "node scripts/deploy-direct.mjs"
   },
   "devDependencies": {
     "@netlify/functions": "^5.3.0",

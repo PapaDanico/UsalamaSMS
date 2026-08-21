@@ -23,6 +23,128 @@ environment and in a password manager. `.env` is gitignored and
 
 ---
 
+## Deploying: direct to Netlify is the policy
+
+*Changed 20 August 2026. Git-backed builds still work and are still a
+valid fallback; they are no longer the documented default.*
+
+The command is one line, and it is deliberately not the first thing
+here:
+
+```bash
+node scripts/deploy-direct.mjs      # refuses unless everything below holds
+# then run the npx command it prints on success
+```
+
+### What a direct deploy actually does, because the obvious guess is wrong
+
+It does **not** upload `dist/`. This file said so for a week, `CLAUDE.md`
+said so, and both were wrong — the error cost an afternoon of designing
+around a hazard that does not exist.
+
+`deploy-site` returns a command that, in Netlify's own words, *"will
+upload the code repo and run a build in Netlify's build system."* It
+uploads **source**. Netlify then runs `npm run build`, and because this
+repository's `build` script begins with `npm run check`, that means:
+
+| | git-backed build | direct deploy |
+|---|---|---|
+| who builds | Netlify | Netlify |
+| `npm run check` (995 tests) | runs | **runs** |
+| functions built from `netlify.toml` | yes | **yes** |
+| `commit_ref` on the deploy record | the merged SHA | **`null`** |
+
+Only the last row differs. The fear that a direct deploy would publish
+a site with no `api` — rendering perfectly, answering nothing — was
+based on the phrase "uploads a directory" and not on the mechanism.
+
+**THE GENERAL LESSON IS THE ONE WORTH KEEPING.** Both wrong claims were
+inherited from a tool's one-line description and then repeated as fact
+by everyone who read them, including in a pull request body. Nobody ran
+the command. A sentence about a mechanism is not a measurement of it,
+and this repository has a whole section on checks that cannot fail for
+the same reason.
+
+### `commit_ref: null` is the real cost, and the anchor moves
+
+That SHA is what every verification here is anchored to — this file
+says elsewhere to read `commit_ref` rather than `state: "ready"`,
+because "ready" describes whatever IS published rather than the thing
+you meant to publish, and ninety minutes were lost to that distinction
+on 18 August.
+
+A direct deploy has no commit, so Netlify records `null` and the anchor
+is gone. `scripts/deploy-direct.mjs` replaces it with one that does not
+depend on the platform: the tree is proven clean, the SHA is read from
+local git, and `dist/build-id.txt` is proven to carry that exact SHA
+before anything uploads. Provenance then travels **inside the artefact**,
+and `https://usalamasms.com/build-id.txt` still answers "which commit is
+live".
+
+That is strictly weaker than `commit_ref` — self-reported by the bundle
+rather than recorded by the builder — and it is the same file the
+deploy watchdog already reads.
+
+### What the preflight refuses
+
+Each row mutation-checked to fail **alone**; baseline 0, every mutation
+1, restored 0.
+
+| check | guards against |
+|---|---|
+| working tree clean | publishing an uncommitted afternoon with no record of what it was |
+| `npm run verify` exit 0 | the gates, when nothing else is running them |
+| `build-id.txt` == HEAD | `commit_ref: null` leaving nothing able to say what is live |
+| `api.mts` + `digest.mts` present | a site that renders perfectly and answers nothing |
+| secret scan over `dist` | a credential going public before Netlify's own scan sees it |
+
+**The first mutation matrix was invalid and reported six clean passes.**
+The script was untracked, so the clean-tree check failed on every row
+and masked all six. That is the trap this repository already records
+under "the mutation matrix itself can be invalid" — met again, by the
+person who wrote that section.
+
+**A hole it does not close:** `dist` is gitignored, so the clean-tree
+check cannot see a stray file inside it. On the default path
+`vite build` rebuilds `dist` and takes the stray with it; `--skip-verify`
+is the one mode in which the contents of `dist` are trusted rather than
+proven, and its warning says so.
+
+### It cannot be run from an agent container, and that is not a bug
+
+Measured 20 August 2026:
+
+```
+netlify-mcp.netlify.app  →  CONNECT tunnel failed, response 403
+api.netlify.com          →  CONNECT tunnel failed, response 403
+```
+
+The same organisation egress policy that blocks `usalamasms.com` and
+every primary regulatory host blocks Netlify's API and the deploy
+proxy. The MCP tools still work — they route through Anthropic rather
+than out of the container — which is why reading projects, deploys and
+environment variables succeeds while the deploy itself cannot.
+
+So an agent can run the preflight and can read the result afterwards.
+**The upload has to happen on a machine with ordinary network access.**
+Do not retry it from a container and do not route around it.
+
+### After it publishes
+
+`commit_ref` will be `null`, so read these instead:
+
+1. `state` must be `ready`;
+2. `available_functions` on the **same** record must list both `api` and
+   `digest`;
+3. `https://usalamasms.com/build-id.txt` must return the SHA the
+   preflight printed. That is the check `commit_ref` would have done.
+
+And the standing one, which no deploy of any kind performs:
+**`prisma migrate deploy` still has to be run separately.** Merging
+ships code and nothing ships schema — see the section above.
+
+---
+
 ## The migration history was applied out-of-band, and has been baselined
 
 Recorded because it explains an oddity someone will otherwise trip over,

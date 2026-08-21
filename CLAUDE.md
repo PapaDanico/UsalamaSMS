@@ -362,10 +362,46 @@ under a second, which is a restore rather than an install, and the same
 log shows a cache MISS one line earlier — the Playwright browser gone
 from `/opt/buildhome/.cache/ms-playwright/`, so `build-icons` fell back
 to verifying the committed PNGs. A restore that is partly stale would
-look exactly like this. Clearing it is a dashboard action; no MCP tool
-does it, and `deploy-site` is not the substitute — it uploads a local
-directory and would publish production from somebody's working tree
-instead of from git.
+look exactly like this. Clearing it is a dashboard action and no MCP
+tool does it.
+
+**THE SENTENCE THAT USED TO END THIS PARAGRAPH WAS WRONG**, and it is
+kept here as the correction rather than quietly deleted. It said
+`deploy-site` "uploads a local directory and would publish production
+from somebody's working tree instead of from git". It does not. The
+tool returns a command that, in Netlify's own words, *"will upload the
+code repo and run a build in Netlify's build system"* — source, built
+by Netlify, which means `npm run build` runs and therefore so does
+`npm run check` and every function in `netlify.toml`.
+
+The claim was never measured. It was read off a one-line tool
+description, written down as fact, and then repeated — including into a
+pull request body — until somebody finally ran the command on 20 August
+2026 and watched it upload source. An afternoon went into designing
+around a hazard that does not exist: the API being dropped from a
+deploy that carries only `dist`.
+
+**A sentence about a mechanism is not a measurement of it.** This file
+already says a check that cannot fail is worse than none, for the same
+underlying reason, and the same week produced two more of these: a
+grep for `"/ready"` that missed `` `${prefix}/ready` `` and concluded a
+live endpoint did not exist, and a mutation matrix whose six clean
+passes were all masked by one standing failure. Absence in a search,
+and a description of a tool, are both evidence about the observer.
+
+Direct deploy is now the documented default — see
+`docs/06-DEPLOYMENT.md`, which carries the policy, the preflight
+(`npm run deploy:check`), and the one thing that genuinely does change:
+`commit_ref` is `null` on a direct deploy, so `dist/build-id.txt`
+becomes the only anchor and the preflight proves it matches HEAD before
+anything uploads.
+
+**It cannot be run from this container.** `api.netlify.com` and
+`netlify-mcp.netlify.app` both answer `CONNECT tunnel failed, response
+403` at the egress proxy, alongside `usalamasms.com` and every primary
+regulatory host. The MCP tools work because they route through
+Anthropic rather than out of here; the deploy itself needs ordinary
+network access. Run the preflight here, run the upload elsewhere.
 
 ### It recovered on its own, and that is why a WATCHDOG is the answer
 

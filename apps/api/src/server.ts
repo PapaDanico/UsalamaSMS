@@ -33,7 +33,7 @@ import { exportRoutes } from "./routes.export";
 import { adminRoutes } from "./routes.admin";
 import { icaasRoutes } from "./routes.icaas";
 import { rateLimitKey } from "./rate-limit-key";
-import { missingTables } from "./schema-guard";
+import { missingTables, missingEnumValues } from "./schema-guard";
 
 export async function build(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -211,16 +211,26 @@ export async function build(): Promise<FastifyInstance> {
        redeploy. It is one query. */
     app.get(`${prefix}/ready`, async (_req, reply) => {
       try {
-        const missing = await missingTables(prisma);
-        if (missing.length) {
+        /* BOTH AXES, because the table check alone answered ready while
+           signup was 500ing. On 19 August 2026 Jurisdiction gained seven
+           values in schema.prisma and no migration added them to
+           Postgres; every table was present, so this probe said ok and
+           an operator outside Kenya could not open an account. An enum
+           value is not a relation, so to_regclass cannot see it. */
+        const [missing, missingEnums] = await Promise.all([
+          missingTables(prisma),
+          missingEnumValues(prisma),
+        ]);
+        if (missing.length || missingEnums.length) {
           return reply.code(503).send({
             ok: false,
             reason: "schema_behind_code",
             missingTables: missing,
+            missingEnumValues: missingEnums,
             detail:
-              "The database is reachable but does not have every table this build " +
-              "queries. Run the outstanding Prisma migration — deploying code does " +
-              "not apply one.",
+              "The database is reachable but does not have every table and enum " +
+              "value this build queries. Run the outstanding Prisma migration — " +
+              "deploying code does not apply one.",
           });
         }
         return { ok: true };

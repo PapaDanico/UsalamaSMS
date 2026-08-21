@@ -20,7 +20,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { EXPECTED_TABLES } from "../apps/api/src/schema-guard";
+import { EXPECTED_TABLES, EXPECTED_ENUM_VALUES } from "../apps/api/src/schema-guard";
 import { JURISDICTIONS } from "../packages/shared/src/regulations";
 
 /** Model names, read from the schema rather than restated. */
@@ -200,5 +200,71 @@ describe("every enum value in schema.prisma is created by a migration", () => {
   it("the Jurisdiction enum matches the JURISDICTIONS registry exactly", () => {
     const schemaValues = [...(enumsInSchema().get("Jurisdiction") ?? [])].sort();
     expect([...JURISDICTIONS].sort()).toEqual(schemaValues);
+  });
+});
+
+/** Enum name -> values, read from the schema rather than restated. */
+function enumsInSchema(): Record<string, string[]> {
+  const schema = readFileSync(resolve(__dirname, "../prisma/schema.prisma"), "utf8");
+  const out: Record<string, string[]> = {};
+  for (const m of schema.matchAll(/^enum\s+([A-Za-z][A-Za-z0-9_]*)\s*\{([^}]*)\}/gm))
+    out[m[1]!] = m[2]!
+      .split("\n")
+      .map((l) => l.replace(/\/\/.*/, "").trim())
+      .filter((v) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(v))
+      .sort();
+  return out;
+}
+
+describe("the readiness probe's ENUM VALUE list", () => {
+  /* THE SECOND SCAR ON THE SAME BONE. The table list above came from
+     #20. On 19 August 2026 the identical failure arrived one level
+     down: Jurisdiction gained seven values in schema.prisma and in the
+     signup dropdown, no migration added them to Postgres, and the enum
+     held two. Every table was present, so `/api/ready` answered
+     {"ok":true} while signup answered 500 to anyone outside Kenya.
+
+     to_regclass asks whether a RELATION exists. An enum value is not a
+     relation, so the table check could not have caught this and never
+     will. This list is the axis it was blind to. */
+
+  it("finds enums in the schema at all", () => {
+    // A gate that reads nothing passes everything.
+    expect(Object.keys(enumsInSchema()).length).toBeGreaterThan(5);
+  });
+
+  it("NAMES EVERY ENUM THE SCHEMA DECLARES, AND NO OTHERS", () => {
+    expect(Object.keys(EXPECTED_ENUM_VALUES).sort()).toEqual(Object.keys(enumsInSchema()).sort());
+  });
+
+  it("NAMES EVERY VALUE OF EVERY ENUM", () => {
+    /* Both directions, as with the tables. A value missing from the
+       list is one the probe will not notice is absent — the defect
+       again. A value here that the schema does not declare is a probe
+       that can never go green. */
+    const schema = enumsInSchema();
+    for (const [name, values] of Object.entries(schema))
+      expect([...(EXPECTED_ENUM_VALUES[name] ?? [])].sort(), `enum ${name}`).toEqual(values);
+  });
+
+  it("includes the seven Jurisdiction values the missed migration adds", () => {
+    /* Named explicitly rather than left to the comparison above: these
+       are the ones production did not have while the probe said ready. */
+    for (const v of ["UG", "TZ", "RW", "BI", "SS", "CD", "SO"])
+      expect(EXPECTED_ENUM_VALUES["Jurisdiction"]).toContain(v);
+  });
+
+  it("agrees with the JURISDICTIONS registry the dropdown is built from", () => {
+    /* The defect was a disagreement between three places that each
+       agreed with themselves. This is the third edge of that triangle. */
+    expect([...(EXPECTED_ENUM_VALUES["Jurisdiction"] ?? [])].sort())
+      .toEqual([...JURISDICTIONS].sort());
+  });
+
+  it("is sorted and carries no duplicates", () => {
+    for (const [name, values] of Object.entries(EXPECTED_ENUM_VALUES)) {
+      expect([...values], `enum ${name} sorted`).toEqual([...values].sort());
+      expect(new Set(values).size, `enum ${name} unique`).toBe(values.length);
+    }
   });
 });
