@@ -1588,6 +1588,19 @@ once seen:
 Seventy-plus consecutive runs, across all three trigger types — `push`,
 `schedule` and `workflow_dispatch`. No step ever ran.
 
+**RE-RUNNING WAS TRIED, SO NOBODY NEEDS TO TRY IT AGAIN.** On 21 August
+2026 `rerun_failed_jobs` was fired at run `32468432428`. GitHub accepted
+it — `201 Created` — and attempt 2 produced the identical signature:
+both jobs `completed` in three and four seconds, `conclusion: failure`,
+no step executed. A re-run is the obvious first move and it is not a
+transient fault; measuring that cost one API call and closes the
+question. Measured the same day: 30 runs listed, **28 failures, 2
+cancelled, zero successes**, back to 19 August 13:24.
+
+All four workflows are `state: active`, so it is not a repository-level
+Actions toggle either. Whatever this is, it is upstream of anything in
+this repository.
+
 **IT IS NOT BILLING, AND THAT WAS THE FIRST WRONG ANSWER.** This
 repository is PUBLIC, and Actions minutes are free and unlimited on
 public repositories. There is no quota to exhaust. An agent that reads
