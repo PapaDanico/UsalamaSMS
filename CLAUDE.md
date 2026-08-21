@@ -36,6 +36,27 @@ never true. Measured against production on 16 August 2026:
 `SELECT INSERT UPDATE DELETE TRUNCATE REFERENCES TRIGGER` — not 196
 tables. Each of those roles holds the full set on the whole schema.
 
+**RE-MEASURED 21 AUGUST 2026, AFTER TWELVE COPILOT PULL REQUESTS, AND
+THE POSTURE HELD.** Nothing in this section had been verified against
+production since it was written, and the agents that ran through this
+repository could have undone any of it:
+
+| property | production |
+|---|---|
+| tables in `public` | 30 |
+| `rowsecurity = true` | **30 / 30** |
+| `relforcerowsecurity` | **0** — see "Do not FORCE" below |
+| owned by a role other than `postgres` | **0** |
+| policies | **30**, every one RESTRICTIVE, **0 PERMISSIVE** |
+| `deny_all_not_owner` present | **30 / 30** |
+| grant rows for `anon` / `authenticated` / `service_role` | **0** |
+| grant rows for `postgres` | 210 — 30 tables × 7, as expected |
+
+The revoke is the control and the revoke survived. Re-run those four
+queries after any agent has had write access; they take seconds and
+they are the only thing that turns this section from a claim into a
+fact.
+
 Supabase issues them when a project is created; nobody here removed
 them. So the deny-all is not a second lock behind an empty grant table
 — **it is the only lock**, and it is load-bearing.
@@ -206,8 +227,13 @@ production. It now has a gate.
 
 **IT WAS MUTATION-CHECKED AGAINST PRODUCTION, and the result is the
 strongest evidence in this file.** With `SELECT` granted back on
-`SafetyReport` alone, `service_role` read **all seven real reports**
-straight through the RESTRICTIVE deny-all. The grant was revoked again
+`SafetyReport` alone, `service_role` read **all seven reports**
+straight through the RESTRICTIVE deny-all. (Read on 21 August 2026:
+those seven live in `Rift Valley Air — DEMO`, so they are seeded rather
+than a customer's. Earlier versions of this file called them "real",
+which overstated the incident without changing its lesson — the
+mechanism is identical whoever filed them, and the next seven will not
+be seeded.) The grant was revoked again
 immediately and the denial re-proved.
 
 That is not a theory about `BYPASSRLS`. It is this database, these
@@ -1469,6 +1495,27 @@ node scripts/seed-platform-admin.mjs --email you@example.com --rotate
 in this database. `rotated:` means it existed and the password was
 simply wrong. One command answers the question that mail, the login
 screen and the API all deliberately refuse to.
+
+### The vendor org was named after an operator, and now is not
+
+`seed-platform-admin.mjs` creates `UsalamaSMS (vendor)`, and the
+section above explains why its emptiness is load-bearing:
+`/api/v1/admin/upgrade-requests` is the one route that reads across
+tenancy, so "the vendor sees every operator" is only safe to reason
+about while there is no operator the vendor is **also inside**.
+
+Production had the `PLATFORM_ADMIN` in an org called **`Taraji Air`**.
+It held zero reports and zero hazards, so the property held on the day
+— but a vendor account sitting in something named like a customer is a
+property that survives only until somebody files into it. Renamed to
+`UsalamaSMS (vendor)` on 21 August 2026, with the `UPDATE` guarded on
+BOTH counts being zero, so it could not have silently renamed an org
+that had become real.
+
+Renaming rather than moving the user: the `orgId` is unchanged, so no
+foreign key moves and the audit chain is untouched — its hash covers
+`AuditLog`'s own columns, not `Org.name`.
+
 
 ## RESOLVE IT, DO NOT HAND IT BACK — AND KNOW THE THREE THAT CANNOT BE
 
