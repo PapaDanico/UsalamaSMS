@@ -16,9 +16,92 @@ security posture:
   PostgREST. The Supabase **anon/publishable key is deliberately absent
   from the codebase** — there is nothing to hold it;
 - every read and write goes through the Fastify API in `apps/api`,
-  which connects as the database owner and enforces tenancy in SQL
-  (`orgId` on every tenant-owned table, indexed first);
-- **RLS does not apply to a table's owner**, so the API is unaffected.
+  which enforces tenancy in SQL (`orgId` on every tenant-owned table,
+  indexed first);
+- **RLS does not stop the API**, so the deny-all does not lock it out.
+
+That last point used to read "RLS does not apply to a table's owner, so
+the API is unaffected", and until 21 August 2026 that was how it worked.
+It is not any more — see "THE API IS NO LONGER THE OWNER" below. The
+property is unchanged; the mechanism holding it is not, and the two are
+worth keeping separate in your head, because only one of them is what
+the tests assert.
+
+### THE API IS NO LONGER THE OWNER, and the reason is an outage
+
+On 21 August 2026 the product was down and the owner could not sign in.
+The account was fine — `danmoi08@gmail.com`, `PLATFORM_ADMIN`, a valid
+argon2id hash, zero sessions, and **zero rows in `PasswordReset`**, which
+is the measurement that settled it: the reset requests never reached the
+database, so no mail was ever attempted and Resend was never the fault.
+
+`supavisor_logs` gave the cause in one line, repeated thirteen times with
+zero successful connections in 24 hours:
+
+    ClientHandler: Exchange error: password authentication failed for user "postgres"
+
+`DATABASE_URL` held a stale password. Every request the API served had
+been failing at the handshake.
+
+**Both in-database repairs are refused by Supabase's privilege model**,
+and they are worth naming so nobody re-derives them:
+
+| attempt | Postgres answers |
+|---|---|
+| `alter user postgres with password '…'` | permission denied — only superusers can alter privileged roles |
+| `create role x; grant postgres to x` | permission denied — only roles with ADMIN option on `postgres` may grant it |
+
+`postgres` here is `rolsuper: false`, `rolcreaterole: true`,
+`rolbypassrls: true`. What it CAN do is create a role **with BYPASSRLS**,
+which was tested rather than assumed. So:
+
+```sql
+create role usalama_api with login bypassrls password '…';
+grant all privileges on all tables in schema public to usalama_api;
+-- plus sequences, functions, and ALTER DEFAULT PRIVILEGES for each,
+-- or the next migration creates tables this role cannot read
+```
+
+`DATABASE_URL` now names `usalama_api.<project-ref>` on the transaction
+pooler, secret-marked, production, functions and runtime.
+
+**Ownership was deliberately NOT transferred to it.** `ALTER TABLE …
+OWNER TO usalama_api` would have restored the original posture exactly —
+but `pg_auth_members` holds no `admin_option` for `postgres` over
+`usalama_api`, so `postgres` could not have set-role back to reverse it.
+A one-way door on a production database, taken while the site is already
+down, is not a trade worth making for tidiness.
+
+**THIS IS THE `service_role` SHAPE, AND PRETENDING OTHERWISE WOULD BE THE
+REAL DEFECT.** This file mutation-proves, against production, that a
+BYPASSRLS role with grants reads every row straight through the
+RESTRICTIVE deny-all. `usalama_api` is exactly that. Two things and only
+two make it acceptable:
+
+- its credential is **server-side only**, in Netlify's secret store,
+  where the `postgres` one already was — this is the same trust level,
+  not a new one;
+- `anon`, `authenticated` and `service_role` still hold **zero grants**,
+  re-measured after the change, so the roles reachable from a browser are
+  restrained by the revoke exactly as before.
+
+The deny-all's job against those three is untouched. What changed is that
+it is no longer *also* irrelevant-by-ownership for the API.
+
+**THE CLEAN FIX IS ONE DASHBOARD ACTION AND IS STILL WORTH DOING.**
+Resetting the `postgres` password in the Supabase dashboard lets
+`DATABASE_URL` go back to the owner, after which `usalama_api` should be
+dropped and the bypass branch in `rls.integration.test.ts` deleted. That
+is a genuine dashboard action — this file has been wrong about that
+phrase more often than right, so it was checked: no MCP tool resets a
+database password.
+
+**THE ROLE'S PASSWORD WAS GENERATED IN A TRANSCRIPT AND MUST BE
+ROTATED.** It had to be, to be set without a person; but this file's
+secrets rule has no exception for convenience, and a credential in a chat
+log is a credential in a log forever. `postgres` created the role, so it
+can `alter role usalama_api with password '…'` and re-set the Netlify
+variable without any dashboard access at all.
 
 ### What the deny-all does and does not restrain
 

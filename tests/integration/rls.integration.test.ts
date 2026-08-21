@@ -256,7 +256,12 @@ describe.skipIf(!hasDatabase)("row-level security posture", () => {
     ).toEqual([]);
   });
 
-  it("keeps every table owned by the role the API connects as", async () => {
+  /** The two ways RLS can fail to stop the API: it owns the table, or it
+      bypasses row security. Neither holding means every read is empty. */
+  const apiCanReadItsOwnRows = (connectedAs: string, tableOwner: string, bypassesRls: boolean) =>
+    connectedAs === tableOwner || bypassesRls;
+
+  it("keeps every table under one owner the API can actually read", async () => {
     /* WHY THIS IS PART OF THE SAME PROPERTY. RLS does not apply to a
        table's owner, which is the entire reason the deny-all does not
        lock the API out of its own data. A table owned by anybody else
@@ -273,14 +278,78 @@ describe.skipIf(!hasDatabase)("row-level security posture", () => {
     );
     expect(rows.length, "no tables found in public — this check has lost its subject").toBeGreaterThan(10);
 
-    const me = await prisma().$queryRawUnsafe<Array<{ me: string }>>(`SELECT current_user AS me`);
+    /* THE PREMISE CHANGED ON 21 AUGUST 2026, AND SAYING SO IS THE POINT.
+       This asserted `tableowner === current_user` full stop, on the
+       reasoning quoted above. That reasoning names OWNERSHIP, but the
+       property it is really about is "RLS does not stop the API" — and
+       ownership is only one of the two ways to hold it. The other is
+       BYPASSRLS.
+
+       Production now uses the second. `DATABASE_URL` held a stale
+       password for the `postgres` role, supavisor refused every
+       handshake, and the whole product was down with no in-database way
+       to reset it: `alter user postgres with password` answers "only
+       superusers can alter privileged roles", and granting `postgres` to
+       a new role answers "only roles with the ADMIN option". What IS
+       available is creating a role WITH BYPASSRLS, so `usalama_api` is
+       what the API connects as, while the 30 tables stay owned by
+       `postgres`. Ownership was NOT transferred to it: `postgres` holds
+       no admin_option on `usalama_api`, so the transfer would have been
+       a one-way door.
+
+       This is deliberately NOT written as "ownership or bypass, either
+       is fine". A non-owner-with-BYPASSRLS is the exact shape CLAUDE.md
+       mutation-proved dangerous for `service_role` — the difference, and
+       the only difference, is that `usalama_api`'s credential is
+       server-side and `anon`/`authenticated`/`service_role` still hold
+       ZERO grants, which is what the assertion above this one proves.
+       Resetting the `postgres` password in the Supabase dashboard
+       restores the simpler posture, and the bypass branch here should go
+       when it does. */
+    const me = await prisma().$queryRawUnsafe<Array<{ me: string; bypass: boolean }>>(
+      `SELECT current_user AS me,
+              (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypass`,
+    );
     const owner = me[0]!.me;
+    const bypasses = me[0]!.bypass === true;
+
+    /* ONE owner, whoever it is. This is the half that still bites: a
+       table created by `supabase_admin` arrives carrying that role's
+       default grants to all three Data API roles, and it shows up here
+       as a second owner however the API connects. */
+    const owners = [...new Set(rows.map((r) => r.tableowner))];
+    expect(
+      owners.length,
+      `public holds tables under ${owners.length} different owners (${owners.join(", ")}). ` +
+        "An object created by another role arrives carrying that role's default grants, " +
+        "which the default-privileges revoke does not cover",
+    ).toBe(1);
 
     expect(
-      rows.filter((r) => r.tableowner !== owner).map((r) => `${r.tablename} owned by ${r.tableowner}`),
-      `a table in public is not owned by ${owner}, the role this connection uses. RLS ` +
-        "applies to a non-owner, so the deny-all policy denies the API its own rows — and " +
-        "an object created by another role arrives carrying that role's default grants",
-    ).toEqual([]);
+      apiCanReadItsOwnRows(owner, owners[0]!, bypasses),
+      `the API connects as ${owner}, which neither owns the tables (${owners[0]}) nor ` +
+        "carries BYPASSRLS. RLS applies to a non-owner, so the RESTRICTIVE deny-all denies " +
+        "the API its own rows and every read comes back empty",
+    ).toBe(true);
+  });
+
+  /* WHY THIS IS A SEPARATE TEST AND NOT AN INLINE BOOLEAN. The assertion
+     above cannot fail here. The suite runs as a superuser, which carries
+     rolbypassrls, so the second operand is ALWAYS true and the false
+     branch never executes — "a check that cannot fail is worse than no
+     check", one layer inside the fix for it. The condition is not dead
+     (production is exactly the case it decides), it is unreachable FROM
+     CI, which is worse: it looks load-bearing and is decorative.
+
+     So the decision is a pure function, driven at all three states
+     directly. Mutation-checked: `||` to `&&` reddens the non-owner case,
+     dropping the ownership operand reddens the owner case. */
+  it("knows which connections RLS actually stops", () => {
+    // The posture this repository was built on: the API owns the tables.
+    expect(apiCanReadItsOwnRows("postgres", "postgres", false)).toBe(true);
+    // Production since 21 August 2026: not the owner, but bypasses RLS.
+    expect(apiCanReadItsOwnRows("usalama_api", "postgres", true)).toBe(true);
+    // The state that takes the product down: neither. Every read empty.
+    expect(apiCanReadItsOwnRows("usalama_api", "postgres", false)).toBe(false);
   });
 });
