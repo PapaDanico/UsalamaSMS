@@ -314,8 +314,30 @@
               <p class="footer-note" id="footer-jurisdictions"></p>
             </div>
 
-            <!-- Written by the shell from the architecture. -->
-            <div class="footer-cols" id="footer-columns"></div>
+            <!-- Written by the shell from the architecture.
+
+                 A DISCLOSURE, AND ONLY THE LANDING PAGE OPENS IT.
+                 Measured at 390x844 before this: the site index made the
+                 footer 1138px — 1.35 viewports — and on /triage it was
+                 64% of the whole page. A person scrolling a reporting
+                 queue scrolled through more footer than queue.
+
+                 A site index earns that space where somebody is deciding
+                 whether to use the product. It does not earn it under a
+                 screen they are working in, where they navigate by the
+                 menu. `main.js` opens it on `/` and leaves it shut
+                 elsewhere.
+
+                 <details> rather than removing the markup, because the
+                 links must stay IN THE DOM: check:a11y discovers every
+                 route by crawling `.footer a`, the footer is this
+                 product's site index, and a native disclosure is
+                 keyboard-reachable and announced. Hiding by display:none
+                 would have cost both. -->
+            <details class="footer-index" id="footer-index">
+              <summary class="footer-index__summary">All pages</summary>
+              <div class="footer-cols" id="footer-columns"></div>
+            </details>
           </div>
 
           <!-- The corporate banner belongs on every screen, not only in
