@@ -31,6 +31,7 @@ import { actionRoutes } from "./routes.actions";
 import { erpRoutes } from "./routes.erp";
 import { exportRoutes } from "./routes.export";
 import { adminRoutes } from "./routes.admin";
+import { billingRoutes } from "./routes.billing";
 import { icaasRoutes } from "./routes.icaas";
 import { rateLimitKey } from "./rate-limit-key";
 import { missingTables, missingEnumValues } from "./schema-guard";
@@ -104,7 +105,14 @@ export async function build(): Promise<FastifyInstance> {
   app.addContentTypeParser(
     "application/json",
     { parseAs: "string", bodyLimit: 1_048_576 },
-    (_req, body, done) => {
+    (req, body, done) => {
+      /* THE RAW BYTES ARE KEPT, for one route: the Paystack webhook
+         verifies an HMAC over exactly what was sent. Re-serialising the
+         parsed object is the commonest Paystack integration bug in the
+         wild — it passes in testing and fails whenever key order or
+         escaping differs. Costs one reference to a string Fastify has
+         already materialised, since parseAs is "string" above. */
+      (req as unknown as { rawBody?: string }).rawBody = body as string;
       try {
         done(null, JSON.parse(body as string));
       } catch {
@@ -257,6 +265,7 @@ export async function build(): Promise<FastifyInstance> {
   await app.register(erpRoutes);
   await app.register(exportRoutes);
   await app.register(adminRoutes);
+  await app.register(billingRoutes);
   await app.register(icaasRoutes);
 
   // Regulator oversight: verify an org's audit chain by content.

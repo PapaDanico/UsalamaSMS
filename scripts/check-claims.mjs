@@ -1308,6 +1308,13 @@ assert(
     ],
     ["/api/v1/auth/reset", "As above — the second half of the same path."],
     ["/api/v1/export", "Evidence extraction spans every element rather than belonging to one."],
+    [
+      "/api/v1/billing/webhook",
+      "Taking money is commerce, not safety management. An inspector asks an operator " +
+        "to evidence its hazard register and its reporting culture; it does not ask how " +
+        "the operator pays its software vendor. Putting this on /coverage would count a " +
+        "billing rail as an Annex 19 element, which is the page overstating.",
+    ],
   ]);
 
   const named = new Set(
@@ -1457,6 +1464,12 @@ assert(
   const NOT_FROM_A_SCREEN = new Map([
     ["/api/v1/auth/logout", "Called by the session module, which is not a screen."],
     ["/api/v1/sync/batch", "Called by the outbox, which is not a screen."],
+    [
+      "/api/v1/billing/webhook",
+      "Called by Paystack, which is not a screen and holds no session. A webhook " +
+        "the product could reach from a screen would be one an operator could send " +
+        "itself, which is the opposite of what it is for.",
+    ],
   ]);
 
   const unreachable = [...writeRoutes]
