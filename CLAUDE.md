@@ -117,6 +117,39 @@ the new API key system — the legacy anon key reports `disabled: true` —
 so use an `sb_secret_…` key, which is issued independently of the JWT
 secret and survives its rotation.
 
+**IT CAME BACK AGAIN, AND THE CLEARTEXT SECRET WAS READ.** On 20 August
+2026 the Netlify environment still held `SUPABASE_JWT_SECRET`,
+`SUPABASE_ANON_KEY` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` at
+`is_secret: false`, re-provisioned by the extension on 18 August at
+13:55. An agent read the JWT signing secret in cleartext through an
+ordinary read-only API call — which is the exposure stated as a fact
+rather than as a risk.
+
+All five extension-created variables were deleted again that day, and
+the remaining environment re-read to confirm every credential left is
+`is_secret: true`.
+
+**AND THEN THE EXTENSION WAS UNINSTALLED, WHICH IS THE PART THAT
+LASTS.** On 21 August 2026 the Supabase extension (slug `supabase`,
+site-level) was removed from the Netlify project through
+`change-extension-installation`. This is the action every previous
+version of this section described as "a dashboard action" and left
+outstanding — it is not. It is an ordinary API call, and an agent with
+the Netlify MCP can make it.
+
+Verified after: eight variables remain, every credential among them
+`is_secret: true`, and the only three that are not secret carry nothing
+sensitive — the project URL, the public base URL, and the evidence
+bucket name. Nothing this product reads was touched.
+
+**The re-injection loop is dead. The rotation is still worth doing.**
+Those are two different facts and the difference matters: the secret
+that was exposed remains valid until somebody rotates it in the
+Supabase dashboard, which is genuinely not an API this agent holds.
+What has changed is that the exposure no longer regenerates on the
+extension's schedule, so the rotation can happen calmly rather than as
+a race.
+
 ### So the grants were revoked, which closes it without the rotation
 
 `BYPASSRLS` bypasses **policies, not grants**. A role with no privilege
@@ -1210,6 +1243,40 @@ matches the `JURISDICTIONS` registry the dropdown is built from.
 Mutation-checked both ways against a real Postgres, and deleting the
 `ADD VALUE` migration reddens it alone.
 
+### AND `/api/ready` COULD NOT SEE IT, WHICH WAS THE WORSE HALF
+
+The guard above fails the BUILD when a migration is missing. Nothing
+failed when the migration existed and had not been APPLIED — and that
+is the state production was actually in.
+
+`missingTables` asks `to_regclass` whether a RELATION exists. An enum
+value is not a relation. So every table was present, `/api/ready`
+answered `{"ok":true}`, and signup answered 500 to seven of nine
+jurisdictions at the same moment. That is the sentence
+`schema-guard.ts` OPENS with — "the readiness probe passing while the
+product is broken" — recurring one level down, on the axis this very
+section had already named as the blind spot.
+
+Measured against a real Postgres in production's exact shape — three
+tables present, `Jurisdiction` holding only `ICAO` and `KE`:
+
+    missingTables()      ->  (NOTHING MISSING -> probe answers ok:true)
+    missingEnumValues()  ->  Jurisdiction.BI .CD .RW .SO .SS .TZ .UG
+    INSERT KE            ->  CREATED ok
+    INSERT UG            ->  invalid input value for enum "Jurisdiction"
+
+Identical state, both checks, one blind. `EXPECTED_ENUM_VALUES` now
+covers all twelve enums, is checked against `schema.prisma` in BOTH
+directions, and is pinned to the `JURISDICTIONS` registry the dropdown
+is built from — the third edge of the triangle whose corners each
+agreed with themselves while production disagreed with all three.
+
+The integration test RENAMES the enum value rather than dropping it:
+Postgres has no `DROP VALUE` at all, and a rename is exactly as
+invisible to `pg_enum` and reverses in one statement. It asserts
+`missingTables` is EMPTY in that state, because that is the whole
+point.
+
 ## Never fall back to a DIFFERENT database
 
 For one day in August 2026 `core.ts`, `api.mts` and `digest.mts` read
@@ -1324,3 +1391,126 @@ noise. `org.export` is exempt by construction: it *is* the whole record.
 **A dashboard is the easiest place in a product to lose an authorisation
 rule**, because it does not read like a read of the underlying table —
 it reads like arithmetic.
+
+## CI CAN BE DEAD WITHOUT BEING RED FOR A REASON YOU CAN FIX
+
+On 19–21 August 2026 every GitHub Actions run failed. Not a test, not a
+lint — the jobs never executed. The signature, and it is unmistakable
+once seen:
+
+    runner_id: 0        runner_name: ""
+    completed in 3–6 seconds        logs 404
+
+Seventy-plus consecutive runs, across all three trigger types — `push`,
+`schedule` and `workflow_dispatch`. No step ever ran.
+
+**IT IS NOT BILLING, AND THAT WAS THE FIRST WRONG ANSWER.** This
+repository is PUBLIC, and Actions minutes are free and unlimited on
+public repositories. There is no quota to exhaust. An agent that reads
+"all runs failing" and concludes "spending limit" has invented a cause
+that cannot exist here, and will send somebody to a billing page that
+has nothing on it. The only billing setting worth a glance is an
+explicit $0 spending limit somebody set by hand.
+
+What it actually costs, while it holds:
+
+- **`production-readiness.yml` has never once probed the site.** Sixty
+  scheduled runs, zero requests made. A monitor that cannot run is not
+  a quiet monitor, it is an absent one.
+- **`deploy-watchdog.yml` cannot confirm a deploy reached production**,
+  which is the job it exists for. Deploys in this period were verified
+  by hand, against `commit_ref`, one at a time.
+- **Every gate in this repository is decorative.** `npm run check` is
+  green because somebody ran it locally, not because anything enforced
+  it. Twelve copilot pull requests merged that way once already.
+
+So when CI is red across the board, read ONE job's `runner_id` before
+reading any logs. Three seconds and a zero tells you the code is not
+the subject, and everything downstream of that assumption is wasted.
+
+## WHEN THE OWNER CANNOT GET IN
+
+This happened, it cost hours, and the paths are worth writing down
+because two of the three obvious ones do not exist.
+
+**A password cannot be recovered. It is argon2-hashed and the plaintext
+was never stored** — not by the product, not by the vendor, not
+anywhere an agent with full database access could reach. The only
+mechanism is to issue a new one, and
+`scripts/seed-platform-admin.mjs` prints it ONCE to the terminal of
+whoever runs it.
+
+**`/api/v1/auth/forgot` cannot tell you whether an account exists**, and
+that is deliberate — it answers 202 with an identical message either
+way, so nobody can enumerate users. Which means "no email arrived" is
+NOT evidence of a mail fault. It is equally consistent with there being
+no account to send to. The response body carries a `delivery` field —
+`SENT`, `NOT_CONFIGURED`, `FAILED` — and reading it in the browser's
+network tab distinguishes all four causes in thirty seconds. The
+on-screen message never will.
+
+**An agent in this container cannot reach the database at all.**
+Measured: `aws-0-eu-north-1.pooler.supabase.com:5432` resolves and
+then refuses — the egress policy permits HTTPS through the proxy and
+nothing else, so there is no TCP path to Postgres and there never will
+be. MCP servers work because they route through Anthropic instead;
+that is why authenticating the Supabase MCP is the one thing that turns
+an agent from a spectator into a participant here.
+
+The recovery, on a **session pooler** string (port 5432 — the guard
+refuses only `pgbouncer=true` and `:6543`, so the session pooler is
+fine and is the easiest string to obtain from the dashboard):
+
+```bash
+node scripts/seed-platform-admin.mjs --email you@example.com --rotate
+```
+
+**Its output is the diagnosis.** `created:` means the account was never
+in this database. `rotated:` means it existed and the password was
+simply wrong. One command answers the question that mail, the login
+screen and the API all deliberately refuse to.
+
+## RESOLVE IT, DO NOT HAND IT BACK — AND KNOW THE THREE THAT CANNOT BE
+
+The standing expectation in this repository is that an agent with tools
+USES them, rather than producing a list of commands for the owner to
+run. A handover is a cost transferred, not work completed, and most of
+what gets handed over turns out to be doable.
+
+**The Netlify MCP is more capable than earlier versions of this file
+assumed.** It reads and WRITES environment variables, and it installs
+and UNINSTALLS extensions. Three separate sections here described
+disconnecting the Supabase extension as "a dashboard action" and left
+it outstanding for weeks. It was one call. Before writing that
+something needs a person, look for the tool — the phrase "that is a
+dashboard action" has been wrong in this file more often than it has
+been right.
+
+**THREE THINGS GENUINELY CANNOT BE DONE FROM HERE, and they are worth
+naming so nobody burns an afternoon rediscovering it:**
+
+1. **Anything requiring the production database.** Measured on 21
+   August 2026: `aws-0-eu-north-1.pooler.supabase.com:5432` resolves
+   and the connection is refused. The egress policy permits HTTPS
+   through the proxy and nothing else — there is no TCP path to
+   Postgres, so `prisma migrate deploy`, the admin seed, and every
+   `psql` cannot run here. **The one exception is an authenticated
+   Supabase MCP**, which routes through Anthropic rather than out of
+   this container. Authenticating it is the single highest-leverage
+   thing the owner can do for an agent working on this repository.
+
+2. **Rotating a secret at the provider.** Supabase's JWT secret,
+   Paystack's API key, Resend's key — issuing and revoking credentials
+   is the provider's console. An agent can delete a credential from
+   Netlify and can disconnect what re-creates it; it cannot invalidate
+   the credential itself.
+
+3. **Receiving a credential.** Not "cannot" in the mechanical sense —
+   in the sense that it must not. A connection string or API key
+   pasted into a chat log is in the log forever, and this file's
+   secrets rule has no exception for convenience. `npm run setup:env`
+   exists because the owner setting it with terminal echo off is the
+   correct shape.
+
+Everything else — the Netlify environment, extensions, deploys, the
+repository, the pull request, the gates — is the agent's to do.
