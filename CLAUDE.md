@@ -667,6 +667,46 @@ Three things about it are load-bearing:
   reaches, and a control that depends on somebody remembering to switch
   it on is not a control.
 
+### AND THEN GITHUB ACTIONS DIED, SO THE WATCHDOG MOVED TO NETLIFY
+
+Everything above assumes Actions runs. It has not since 19 August 2026
+— `runner_id: 0`, three to six seconds, no step executed, and a re-run
+reproduces it exactly. So `deploy-watchdog.yml` and
+`production-readiness.yml` are both monitors that do not exist, and
+saying "the workflow covers it" was true only on paper.
+
+`netlify/functions/watchdog.mts` is the one that runs. Netlify's
+scheduler is the same mechanism that already delivers the digest, it
+egresses from infrastructure that CAN reach the site, and it owes
+nothing to GitHub. Every ten minutes it asks `/api/ready` and mails
+`PLATFORM_NOTICE_EMAIL` when that fails.
+
+Three things about it are load-bearing:
+
+- **It probes TWICE.** A cold start, a function swap mid-deploy, or one
+  dropped connection each produce a single bad response and recover.
+  Alerting on the first is how a monitor gets muted, which is the
+  argument `digest.ts` already makes about mail nobody opens. Only a
+  second consecutive failure sends anything. That needs no stored
+  state, deliberately: state means a blob store and a second thing that
+  can be wrong.
+- **It asks `/api/ready`, never `/`.** The site is static files on a
+  CDN and answers 200 with the database on fire — that is what atomic
+  deploys are for, and it is why "the site is up" was believed for
+  hours while nothing worked. It also requires `"ok":true` in the
+  BODY, because the readiness probe reports faults there while still
+  answering 200.
+- **The decision is not in the Netlify function.** Nothing in the unit
+  suite runs those, so logic living there is logic nothing tests.
+  `verdictFrom` and the two-probe rule are in `apps/api/src/watchdog.ts`
+  under `tests/watchdog.test.ts`; the function only wires them up.
+  Mutation-checked both ways: removing the two-probe rule and dropping
+  the body check each redden a test alone.
+
+**It is silent without `PLATFORM_NOTICE_EMAIL`**, and reports that it
+is rather than pretending — the run returns `NOT_CONFIGURED` in its
+body instead of a quiet success.
+
 ## Migrations do not apply themselves on deploy
 
 `netlify.toml` runs `npm run build`. It does **not** run

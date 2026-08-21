@@ -45,6 +45,7 @@
 import type { Digest, DigestItem } from "../../../packages/shared/src/digest";
 import { isWorthSending } from "../../../packages/shared/src/digest";
 import { TRIAL_DAYS } from "../../../packages/shared/src/pricing";
+import { watchdogSubject, watchdogBody } from "./watchdog";
 
 export type MailOutcome =
   /** Handed to the provider, which accepted it. */
@@ -664,6 +665,64 @@ export async function sendUpgradeRequest(
         to: config.platformNotice,
         subject: upgradeRequestSubject(orgName),
         text: upgradeRequestBody(orgName, askedBy, fleetSize, band),
+      }),
+    });
+    if (!response.ok) {
+      return { status: "FAILED", reason: `provider responded ${response.status}` };
+    }
+    let id = "";
+    try {
+      const payload = (await response.json()) as { id?: string };
+      id = payload.id ?? "";
+    } catch {
+      /* Accepted, unparseable. Still sent. */
+    }
+    return { status: "SENT", id };
+  } catch (error) {
+    return {
+      status: "FAILED",
+      reason: error instanceof Error ? error.message : "transport failed",
+    };
+  }
+}
+
+/**
+ * Tell the vendor the product is not answering.
+ *
+ * TO `platformNotice`, NOT TO AN OPERATOR. This is the vendor's own
+ * monitoring: the operators cannot act on it, and a safety office that
+ * receives infrastructure alarms is a safety office that filters our
+ * mail. `sendUpgradeRequest` is addressed the same way and for the same
+ * reason.
+ *
+ * Returns NOT_CONFIGURED rather than throwing when either the key or
+ * the address is missing, so a deployment without them degrades to a
+ * quiet no-op that the caller REPORTS — charter rule 8 — instead of a
+ * scheduled function that dies and looks like silence.
+ */
+export async function sendWatchdogAlert(
+  baseUrl: string,
+  first: { readonly status: number; readonly detail: string },
+  second: { readonly status: number; readonly detail: string },
+  config: MailConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MailOutcome> {
+  if (!config.apiKey) return { status: "NOT_CONFIGURED" };
+  if (!config.platformNotice) return { status: "NOT_CONFIGURED" };
+
+  try {
+    const response = await fetchImpl("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + config.apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
+        to: config.platformNotice,
+        subject: watchdogSubject(baseUrl),
+        text: watchdogBody(baseUrl, { ok: false, ...first }, { ok: false, ...second }),
       }),
     });
     if (!response.ok) {
