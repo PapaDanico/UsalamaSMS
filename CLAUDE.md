@@ -96,12 +96,35 @@ is a genuine dashboard action — this file has been wrong about that
 phrase more often than right, so it was checked: no MCP tool resets a
 database password.
 
-**THE ROLE'S PASSWORD WAS GENERATED IN A TRANSCRIPT AND MUST BE
-ROTATED.** It had to be, to be set without a person; but this file's
-secrets rule has no exception for convenience, and a credential in a chat
-log is a credential in a log forever. `postgres` created the role, so it
-can `alter role usalama_api with password '…'` and re-set the Netlify
-variable without any dashboard access at all.
+**THE ROLE'S PASSWORD WAS GENERATED IN A TRANSCRIPT.** It had to be, to
+be set without a person; but this file's secrets rule has no exception
+for convenience, and a credential in a chat log is a credential in a log
+forever. `postgres` created the role, so it can
+`alter role usalama_api with password '…'` and re-set the Netlify
+variable without any dashboard access at all. Done on 21 August 2026 —
+the first password is dead.
+
+**AND ROTATING IT THAT WAY CANNOT ACTUALLY CLEAR THE LOG, which is the
+part worth understanding before anybody does it again.** The new
+password has to be passed to the Netlify tool as a parameter, so it
+lands in the transcript exactly as the old one did. The rotation kills a
+credential somebody has already read; it does not produce one nobody
+has. Each pass swaps one logged secret for another, and a second
+rotation buys nothing the first did not.
+
+There are only two endings that actually close it, and neither is a
+rotation an agent performs:
+
+- the owner sets the value themselves — `npm run setup:env` reads it
+  with terminal echo off, which is the shape this file has always
+  prescribed;
+- or the `postgres` password is reset in the dashboard, `DATABASE_URL`
+  goes back to the owner, and `usalama_api` is dropped — after which
+  there is no role for the logged credential to open.
+
+The second is strictly better, because it also retires the
+BYPASSRLS posture. Treat the rotation as damage control with a known
+ceiling rather than as the fix.
 
 ### What the deny-all does and does not restrain
 
