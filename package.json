@@ -53,6 +53,7 @@
     "stamp-build-id": "node scripts/stamp-build-id.mjs",
     "check:build-id": "node scripts/check-build-id.mjs",
     "check:data-api": "node scripts/check-data-api.mjs",
+    "platform": "vite-node scripts/run-platform.mjs",
     "deploy:check": "node scripts/deploy-direct.mjs"
   },
   "devDependencies": {
