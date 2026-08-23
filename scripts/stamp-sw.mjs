@@ -2418,7 +2418,19 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    Today work surface. Entry JS remains 216.8 KB (well within its 224 KB
    ceiling), ensuring the first-report path for ramp agents on remote strips
    is not degraded. */
-const BUDGET = { entry: 224 * 1024, js: 684 * 1024, css: 80 * 1024 };
+/* 684 -> 688, 23 August 2026 — VERCEL WEB ANALYTICS.
+
+   WHAT MOVED. The unsupported hand-written `/_vercel/insights/script.js`
+   tag was replaced with `@vercel/analytics`'s `inject()` entry point. That
+   keeps Analytics working in the Vite distribution and adds 0.8 KB to the
+   measured total: 684.8 KB.
+
+   WHY IT IS ACCEPTED. This is platform instrumentation, not product UI; it
+   has no application data path and the first-report entry remains 219.6 KB,
+   4.4 KB under its unchanged 224 KB ceiling. The 688 KB total ceiling leaves
+   3.2 KB of measured headroom while preserving the existing entry and CSS
+   limits. */
+const BUDGET = { entry: 224 * 1024, js: 688 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
