@@ -99,6 +99,7 @@ const DESCRIPTIONS = {
   '/reset': 'Set a new password from the link you were sent.',
   '/signup': 'Create an operator account and start the trial. No card, and your record is yours to export.',
   '/sms': 'Your organisation’s own record against Annex 19: the signed policy, the appointments, the exercises, the documents, the audits and the training.',
+  '/seti': 'Assess every CAA SET-I criterion against evidence, source references, accountable posts and review dates.',
   '/templates': 'The source documents and templates behind each instrument, with what each one is for.',
   '/terms': 'The terms this product is supplied under.',
   '/today': 'What needs you today: the reports, actions, reviews and lapses with a date against them.',
