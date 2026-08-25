@@ -2430,7 +2430,17 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    4.4 KB under its unchanged 224 KB ceiling. The 688 KB total ceiling leaves
    3.2 KB of measured headroom while preserving the existing entry and CSS
    limits. */
-const BUDGET = { entry: 224 * 1024, js: 688 * 1024, css: 80 * 1024 };
+/* 688 -> 696, 25 August 2026 — CAA SET-I assessment ledger.
+ *
+ * The full Vercel build measures total JavaScript at 691.9 KB after the
+ * evidence-backed SET-I assessment route was added. The route remains
+ * lazy-loaded; entry JavaScript is 221.9 KB of its unchanged 224 KB
+ * ceiling, and CSS is 77.8 KB of its unchanged 80 KB ceiling. Splitting
+ * this route further adds chunk overhead without removing feature code.
+ *
+ * This increase covers the measured lazy-route addition plus 4.1 KB of
+ * headroom. It does not relax either first-report or CSS budgets. */
+const BUDGET = { entry: 224 * 1024, js: 696 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
