@@ -195,7 +195,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
         org, users, reports, hazards, riskAssessments, policies, accountabilities,
         appointments, exercises, documents, findings, training, communications, auditLog,
         spis, spiPeriods, voluntaryScheme, changes, contacts, actions, attachments, transitions,
-        fatigueLimits,
+        fatigueLimits, setiAssessments,
         policyReads, documentReads, config,
       ] = await Promise.all([
         prisma.org.findUnique({
@@ -257,6 +257,12 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
            came from. check:claims caught its absence rather than a
            reviewer. */
         prisma.fatigueLimit.findMany({ where, take: PROBE }),
+        prisma.setiAssessment.findMany({
+          where,
+          take: PROBE,
+          orderBy: [{ assessedOn: "asc" }],
+          include: { items: { orderBy: { criterionId: "asc" } } },
+        }),
         prisma.changeAssessment.findMany({ where, take: PROBE, orderBy: [{ assessedOn: "asc" }] }),
         prisma.emergencyContact.findMany({ where, take: PROBE, orderBy: [{ callOrder: "asc" }] }),
         prisma.correctiveAction.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
@@ -307,8 +313,10 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
         ["exercises", exercises], ["documents", documents], ["findings", findings],
         ["training", training], ["communications", communications],
         ["auditLog", auditLog], ["spis", spis], ["spiPeriods", spiPeriods],
-        ["voluntaryScheme", voluntaryScheme], ["changes", changes],
-        ["contacts", contacts], ["actions", actions], ["transitions", transitions],
+        ["voluntaryScheme", voluntaryScheme], ["fatigueLimits", fatigueLimits],
+        ["setiAssessments", setiAssessments], ["changes", changes],
+        ["contacts", contacts], ["actions", actions], ["attachments", attachments],
+        ["transitions", transitions],
         ["policyReads", policyReads], ["documentReads", documentReads],
         ["config", config],
       ] as ReadonlyArray<readonly [string, ReadonlyArray<unknown>]>)
@@ -385,7 +393,7 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
             org, users, reports, hazards, riskAssessments, policies, accountabilities,
             appointments, exercises, documents, findings, training, communications,
             auditLog: chainEntries, spis, spiPeriods, voluntaryScheme, changes, contacts,
-            fatigueLimits,
+            fatigueLimits, setiAssessments,
             actions, attachments, transitions, policyReads, documentReads, config,
           },
           new Date(),
@@ -453,6 +461,8 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
           spis,
           spiPeriods,
           voluntaryScheme,
+          fatigueLimits,
+          setiAssessments,
           changes,
           contacts,
           actions,

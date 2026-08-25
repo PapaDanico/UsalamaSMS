@@ -961,9 +961,11 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
        performs — because a safety manager verifying their own finding
        closed is the finding, not the evidence. */
     state: "BUILT",
-    serverRoutes: ["/api/v1/sms/findings", "/api/v1/actions"],
+    serverRoutes: ["/api/v1/sms/findings", "/api/v1/actions", "/api/v1/seti", "/api/v1/seti/:id", "/api/v1/seti/:id/items/:criterionId"],
     has:
-      "Internal audit findings with a severity, an owning post and a due date; the " +
+      "Internal audit findings with a severity, an owning post and a due date; a CAA SET-I " +
+      "assessment ledger with evidence, source references, accountable posts and review dates for " +
+      "all 48 criteria; the " +
       "corrective action taken; closure; and verification by key management rather than " +
       "by whoever raised and closed it. A finding's actions are now tracked individually " +
       "as well, each with its own owner, date and separate verification, and counted " +
