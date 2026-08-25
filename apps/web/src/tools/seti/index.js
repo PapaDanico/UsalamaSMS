@@ -46,6 +46,7 @@ async function renderAssessment(outlet, id) {
     const body = Object.fromEntries(new FormData(event.currentTarget));
     const saved = await authFetch(`/api/v1/seti/${encodeURIComponent(id)}/items/${encodeURIComponent(criterionId)}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     const note = event.currentTarget.querySelector(".seti-status");
+    note.dataset.state = saved.ok ? "ok" : "error";
     note.textContent = saved.ok ? "Saved" : "Could not save: all evidence fields are required.";
   });
 }

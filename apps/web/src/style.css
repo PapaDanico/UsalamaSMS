@@ -5906,3 +5906,20 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    disclosure with no affordance is a heading that mysteriously does
    nothing. */
 .footer-index[open] .footer-index__summary { display: none; }
+
+/* SET-I evidence records use the same compact form rhythm and explicit
+   success/error states as the report form. */
+.seti-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-3);
+}
+.seti-status {
+  display: block;
+  min-height: 1.4em;
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-medium);
+  line-height: var(--us-leading-snug);
+}
+.seti-status[data-state='ok'] { color: var(--us-teal-text); }
+.seti-status[data-state='error'] { color: var(--us-state-error); }
