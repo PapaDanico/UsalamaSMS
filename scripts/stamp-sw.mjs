@@ -2430,7 +2430,7 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    4.4 KB under its unchanged 224 KB ceiling. The 688 KB total ceiling leaves
    3.2 KB of measured headroom while preserving the existing entry and CSS
    limits. */
-/* 688 -> 696, 25 August 2026 — CAA SET-I assessment ledger.
+/* 688 -> 696, 25 August 2026 — SET-I self-assessment ledger.
  *
  * The full Vercel build measures total JavaScript at 691.9 KB after the
  * evidence-backed SET-I assessment route was added. The route remains

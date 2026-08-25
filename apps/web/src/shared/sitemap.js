@@ -246,7 +246,7 @@ export const SECTIONS = [
       },
       {
         href: '/report',
-        label: 'File a Safety Report',
+        label: 'File a Confidential Safety Report',
         short: 'Report',
         inHeader: true
       },
@@ -368,7 +368,7 @@ export const SECTIONS = [
       },
       {
         href: '/seti',
-        label: 'CAA SET-I Assessment',
+        label: 'SET-I-aligned Self-Assessment',
         short: 'SET-I assessment'
       },
       {

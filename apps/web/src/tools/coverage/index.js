@@ -100,6 +100,9 @@ export function render(outlet) {
             elements. It is the reporting and risk-classification layer. Everything
             it does not do is listed below by name rather than omitted.
           </p>
+          <p class="note">
+            <strong>SET-I alignment is not CAA conformance.</strong> The self-assessment ledger records the supplied SET-I criteria, evidence, accountable posts and review dates. It does not reproduce the official UK CAA assessment, record a regulator assessment, or establish regulatory conformance.
+          </p>
           <p>
             <strong>The twelve are not our list.</strong> They are the Second Schedule to
             Kenya&rsquo;s Civil Aviation (Safety Management) Regulations, 2025

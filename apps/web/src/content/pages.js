@@ -813,10 +813,12 @@ export const PRIVACY = {
         optional context such as aerodrome and flight phase. If it is filed
         anonymously, no identifier is recorded — there is nothing stored to
         conceal.</p>
-        <p>Reports are held on the filing device until a session exists to send
-        them, and thereafter on the operator's own tenant. They are readable by
-        that operator's safety office. They are not aggregated across
-        operators, sold, or used to train anything.</p>`
+        <p>Named reports are confidential to the operator's safety office. Reports
+        are held on the filing device until a session exists to send them, and
+        thereafter on the operator's own tenant. They are not aggregated across
+        operators, sold, or used to train anything. A person can choose anonymous
+        reporting instead when their identity must not be stored; that prevents
+        direct feedback to the reporter by design.</p>`
     },
     {
       id: 'deidentification',
@@ -908,10 +910,13 @@ export const TERMS = {
       title: 'What the product does and does not decide',
       body: `
         <p>UsalamaSMS records safety reports, computes reporting windows from
-        published instruments, and classifies risk against ICAO Doc 9859. It
-        does not determine whether an occurrence is reportable, whether a
-        hazard is acceptable, or whether an operator is compliant. Those are
-        the accountable manager's decisions and the authority's to review.</p>
+        published instruments, and classifies risk against ICAO Doc 9859. Its
+        SET-I-aligned self-assessment records organisation evidence against the
+        supplied criteria, but is not the official UK CAA tool, a regulator
+        assessment, or evidence of conformance. It does not determine whether an
+        occurrence is reportable, whether a hazard is acceptable, or whether an
+        operator is compliant. Those are the accountable manager's decisions and
+        the authority's to review.</p>
         <p>Regulatory figures are recorded with the date they were checked
         against their primary instrument. The product maintains the reporting
         standard of one State of Registry &mdash; Kenya &mdash; and offers the
