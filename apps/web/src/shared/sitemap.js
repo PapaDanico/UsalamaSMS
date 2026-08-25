@@ -367,6 +367,11 @@ export const SECTIONS = [
         short: 'Culture'
       },
       {
+        href: '/seti',
+        label: 'CAA SET-I Assessment',
+        short: 'SET-I assessment'
+      },
+      {
         href: '/coverage',
         label: 'Annex 19 Conformance',
         short: 'Conformance'

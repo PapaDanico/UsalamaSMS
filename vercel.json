@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/[...path].ts": {
-      "includeFiles": ["prisma/**", "node_modules/.prisma/client/**"]
+      "includeFiles": "{prisma/**,node_modules/.prisma/client/**}"
     }
   },
   "rewrites": [

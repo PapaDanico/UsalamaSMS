@@ -215,6 +215,7 @@ model Org {
   training          TrainingRecord[]
   communications    SafetyCommunication[]
   changes           ChangeAssessment[]
+  setiAssessments   SetiAssessment[]
   documentReads     DocumentAcknowledgement[]
   reportMoves       ReportTransition[]
   actions           CorrectiveAction[]
@@ -258,6 +259,7 @@ model User {
   actionsCompleted  CorrectiveAction[]        @relation("actionCompleter")
   actionsVerified   CorrectiveAction[]        @relation("actionVerifier")
   contactsVerified  EmergencyContact[]        @relation("contactVerifier")
+  setiAssessments   SetiAssessment[]          @relation("setiAssessor")
 
   @@index([orgId, role])
 }
@@ -1502,6 +1504,58 @@ enum FindingSeverity {
   NONCONFORMITY
   OBSERVATION
   IMPROVEMENT
+}
+
+/// A SET-I assessment is evidence-led. A rating without the linked
+/// evidence, accountable post, and review date is deliberately not a
+/// valid assessment item.
+enum SetiAssessmentStatus {
+  DRAFT
+  COMPLETE
+}
+
+enum SetiLevel {
+  PRESENT
+  SUITABLE
+  OPERATING
+  EFFECTIVE
+}
+
+model SetiAssessment {
+  id          String               @id @default(uuid())
+  orgId       String
+  title       String
+  scope       String               @db.Text
+  assessedOn  DateTime
+  status      SetiAssessmentStatus @default(DRAFT)
+  assessorId  String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  org       Org                  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  assessor  User                 @relation("setiAssessor", fields: [assessorId], references: [id], onDelete: Restrict)
+  items     SetiAssessmentItem[]
+
+  @@index([orgId, assessedOn])
+  @@index([assessorId], map: "idx_setiassessment_assessorid")
+}
+
+model SetiAssessmentItem {
+  id            String    @id @default(uuid())
+  assessmentId  String
+  criterionId   String
+  level         SetiLevel?
+  evidence      String?   @db.Text
+  sourceRefs    String?   @db.Text
+  ownerPost     String?
+  reviewDueOn   DateTime?
+  assessorNotes String?   @db.Text
+  updatedAt     DateTime  @updatedAt
+
+  assessment SetiAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, criterionId])
+  @@index([criterionId])
 }
 
 /// Element 4.1 — training and education.
