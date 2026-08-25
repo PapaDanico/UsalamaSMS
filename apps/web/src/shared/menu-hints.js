@@ -62,7 +62,7 @@ export const MENU_HINTS = {
     'Grade the twelve elements, and get the implementation plan that falls out of it',
   '/account': 'Sign in so queued reports can reach the safety office',
 
-  '/report': 'Three fields, thirty seconds, and it works with no signal',
+  '/report': 'Confidential by default; file anonymously when your identity must not be stored',
   '/today': 'The reporting deadlines, lapsing training and untriaged reports asking for you now',
   '/triage': "Everything the operator has filed, and what has not left this handset",
 
@@ -82,7 +82,7 @@ export const MENU_HINTS = {
     'Answer a KCAA request with the plan composed from your own record, not retyped',
   '/amendment': 'Seven questions against the changes that apply from 26 November 2026',
   '/toolkits/culture': 'Will your people actually file? Fourteen questions, scored on the device',
-  '/seti': 'Evidence-led CAA SET-I ratings, with accountable posts and review dates for every criterion',
+  '/seti': 'Evidence-led SET-I self-assessment; it records your evidence, not a regulator finding',
   '/training': 'What the SMS course covers, who sits which version, and how long each runs',
   '/coverage': 'Element by element, what this product does and exactly where it stops',
 

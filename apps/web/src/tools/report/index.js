@@ -288,6 +288,8 @@ export function render(outlet) {
 
       </div>
 
+      <p class="note"><strong>Confidential reporting:</strong> named reports are visible only to your operator's safety office. Choose anonymous reporting when your identity must not be stored; anonymous reports cannot receive direct feedback.</p>
+
       <label class="report__anon">
         <input type="checkbox" name="isAnonymous" ${draft.isAnonymous ? raw('checked') : ''} class="input-field"/>
         <span>

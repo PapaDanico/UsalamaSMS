@@ -6,13 +6,13 @@ const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&
 
 export async function render(outlet) {
   if (!isSignedIn()) {
-    outlet.innerHTML = html`<section class="panel wrap"><h1>SET-I assessment</h1><p>Sign in with a safety-management role to create an evidence-backed assessment.</p><p><a href="/account">Sign in</a></p></section>`.toString();
+    outlet.innerHTML = html`<section class="panel wrap"><h1>SET-I-aligned self-assessment</h1><p>Sign in with a safety-management role to record evidence against the supplied SET-I criteria.</p><p>This is not the official UK CAA tool, a CAA assessment, or evidence of regulatory conformance.</p><p><a href="/report">File a confidential or anonymous safety report</a></p><p><a href="/account">Sign in</a></p></section>`.toString();
     return;
   }
   const requestedId = new URLSearchParams(window.location.search).get("id");
   if (requestedId) return renderAssessment(outlet, requestedId);
 
-  outlet.innerHTML = html`<section class="panel wrap"><h1>CAA SET-I assessment ledger</h1><p>Record evidence against all 48 SET-I criteria. A rating requires evidence, source references, an accountable post, and a review date.</p><form id="seti-create"><label>Assessment title<input name="title" required maxlength="200" placeholder="Initial oversight readiness review" /></label><label>Scope<textarea name="scope" required minlength="10" maxlength="6000" placeholder="Organisation, approvals, operations, assessment boundary and period."></textarea></label><label>Assessment date<input name="assessedOn" type="date" required /></label><button type="submit">Create assessment</button></form><div id="seti-list" aria-live="polite"></div></section>`.toString();
+  outlet.innerHTML = html`<section class="panel wrap"><h1>SET-I-aligned self-assessment</h1><p>Record evidence against all 48 supplied SET-I criteria. A rating requires evidence, source references, an accountable post, and a review date.</p><p class="note"><strong>Assessment boundary:</strong> this ledger supports an organisation self-assessment. It is not the official UK CAA tool, does not record a CAA assessment, and does not determine conformance.</p><p>If this review identifies a safety concern, <a href="/report">file a confidential or anonymous safety report</a>.</p><form id="seti-create"><label>Assessment title<input name="title" required maxlength="200" placeholder="Initial oversight readiness review" /></label><label>Scope<textarea name="scope" required minlength="10" maxlength="6000" placeholder="Organisation, approvals, operations, assessment boundary and period."></textarea></label><label>Assessment date<input name="assessedOn" type="date" required /></label><button type="submit">Create assessment</button></form><div id="seti-list" aria-live="polite"></div></section>`.toString();
   outlet.querySelector("[name=assessedOn]").value = new Date().toISOString().slice(0, 10);
   const list = outlet.querySelector("#seti-list");
   try {
