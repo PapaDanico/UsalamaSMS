@@ -8,6 +8,7 @@ export * from "./regulations";
 export * from "./regulatory-source";
 export * from "./taxonomy";
 export * from "./glossary";
+export * from "./seti";
 import { isValidLocation, isValidAircraftType } from "./taxonomy";
 import { JURISDICTIONS, type Jurisdiction } from "./regulations";
 
