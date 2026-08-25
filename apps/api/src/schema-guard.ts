@@ -60,6 +60,8 @@ export const EXPECTED_TABLES: ReadonlyArray<string> = Object.freeze([
   "SafetyCommunication",
   "SafetyPolicy",
   "SafetyReport",
+  "SetiAssessment",
+  "SetiAssessmentItem",
   "Spi",
   "SpiPeriod",
   "SyncReceipt",
@@ -195,6 +197,16 @@ export const EXPECTED_ENUM_VALUES: Readonly<Record<string, ReadonlyArray<string>
       "SAFETY_MANAGER",
       "SAFETY_OFFICER",
       "SYSTEM_ADMIN",
+    ]),
+    SetiAssessmentStatus: Object.freeze([
+      "COMPLETE",
+      "DRAFT",
+    ]),
+    SetiLevel: Object.freeze([
+      "EFFECTIVE",
+      "OPERATING",
+      "PRESENT",
+      "SUITABLE",
     ]),
     Severity: Object.freeze([
       "A_CATASTROPHIC",
