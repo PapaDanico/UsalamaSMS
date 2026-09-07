@@ -567,6 +567,70 @@ export function isProvisional(j: Jurisdiction): boolean {
   return isProvisionalObligation(MOR_OBLIGATIONS[j]);
 }
 
+/* ====================================================================
+   ROWS THAT SAY THE SAME THING CAN BE SHOWN ONCE — BUT ONLY IF THEY
+   ACTUALLY SAY THE SAME THING.
+
+   The front page rendered nine authorities and seven of them carried
+   one sentence with the country name swapped: "ICAO Annex 13, Chapter 4
+   — notification with a minimum of delay ... X's own civil aviation
+   regulations have not been read against this row." Measured on the
+   published page: "Without delay" seventeen times, "PROVISIONAL"
+   fourteen, "PAST ITS REVIEW CYCLE" eight — and a sentence directly
+   beneath them already grouping the same seven in one line.
+
+   THE GUARD IS THE POINT, NOT THE GROUPING. Folding rows together is
+   a summary while they are identical and a LIE the moment one is not:
+   a State that gains a real period — 24 hours, read from its own
+   instrument — must not disappear into a line that says "no fixed
+   period is set". That is this product's central failure mode, the
+   one `/coverage` and the deadline registry both exist to refuse.
+
+   So a row groups only when it carries NO figure of its own and
+   nothing particular to say: null hours, no per-class table, the
+   awareness anchor every ICAO-baseline row shares, and none of the
+   three qualifying notes the table renders per row. Anything else
+   renders on its own line, whatever its provisional status.
+
+   Graduating a State is therefore self-correcting: give it hours and
+   it leaves the group without anybody remembering to take it out.
+   ==================================================================== */
+export function groupsAsIcaoBaselineObligation(o: ReportingObligation): boolean {
+  return (
+    isProvisionalObligation(o) &&
+    o.hours === null &&
+    !o.hoursByClass &&
+    o.clockStart === "AWARENESS" &&
+    !o.clockStartUnstated &&
+    !o.clockStartInstrument &&
+    !o.governedByUnread
+  );
+}
+
+/* Split on the OBLIGATION, not on the code, so the graduation case can
+   be driven directly in a test rather than asserted about a hand-built
+   boolean beside it — the same pair this file already uses for
+   `isProvisionalObligation` / `isProvisional`. */
+export function groupsAsIcaoBaseline(j: Jurisdiction): boolean {
+  return groupsAsIcaoBaselineObligation(MOR_OBLIGATIONS[j]);
+}
+
+/**
+ * Split jurisdictions into the ones that may share one line and the
+ * ones that must keep their own.
+ *
+ * Order is preserved, so the table reads in registry order either way.
+ */
+export function splitByIcaoBaseline(codes: readonly Jurisdiction[]): {
+  readonly own: readonly Jurisdiction[];
+  readonly grouped: readonly Jurisdiction[];
+} {
+  return {
+    own: codes.filter((c) => !groupsAsIcaoBaseline(c)),
+    grouped: codes.filter((c) => groupsAsIcaoBaseline(c)),
+  };
+}
+
 /* Seven rows are provisional — the EAC states whose instruments have not
    yet been read. The machinery stays because the next row somebody
    adds from a primary source needs it. */

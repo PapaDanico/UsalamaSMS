@@ -32,6 +32,7 @@ import { html, raw } from '../../shared/html.js';
 import { Mark } from '../../components/Logo.js';
 import {
   MOR_OBLIGATIONS,
+  splitByIcaoBaseline,
   isStale,
   isProvisional
 } from '../../../../../packages/shared/src/regulations.ts';
@@ -270,6 +271,12 @@ const CLASS_ORDER = [
 function Deadlines() {
   const codes = Object.keys(MOR_OBLIGATIONS);
   const provisional = codes.filter(isProvisional);
+  /* SEVEN ROWS SAID ONE SENTENCE WITH THE COUNTRY NAME SWAPPED, and a
+     line directly beneath them already grouped the same seven. The
+     split is computed rather than listed, and `groupsAsIcaoBaseline`
+     refuses to fold a row that carries a figure of its own — so a
+     State graduating to a real period leaves the group by itself. */
+  const { own, grouped } = splitByIcaoBaseline(codes);
 
   return html`
     <section class="band-parchment" id="deadlines">
@@ -282,7 +289,7 @@ function Deadlines() {
         </p>
 
         <dl class="reg-list">
-          ${codes.map((code) => {
+          ${own.map((code) => {
             const o = MOR_OBLIGATIONS[code];
             return html`<div class="reg-list__row">
               <dt>
@@ -331,14 +338,38 @@ function Deadlines() {
               </dd>
             </div>`;
           })}
+
+          ${grouped.length
+            ? html`<div class="reg-list__row">
+                <dt>
+                  ${grouped.map((code) => MOR_OBLIGATIONS[code].authority).join(' · ')}
+                  <span class="tag tag--provisional">Provisional</span>
+                </dt>
+                <dd>
+                  <strong>Without delay</strong> &mdash; no fixed period is set
+                  <span class="reg-list__source"
+                    >&middot; ICAO Annex 13, Chapter 4 &mdash; notification with a minimum of
+                    delay, by the most suitable and quickest means available. These
+                    ${grouped.length} States&rsquo; own civil aviation regulations have not
+                    been read against this figure.</span
+                  >
+                  ${grouped.some((code) => isStale(MOR_OBLIGATIONS[code], new Date()))
+                    ? html`<span class="tag tag--stale">Past its review cycle</span>`
+                    : ''}
+                  <span class="cite__governs">
+                    Shown as one row because all ${grouped.length} carry the same ICAO floor
+                    and no figure of their own. Any of them that gains a period read from its
+                    own instrument leaves this row and gets its own. CASSOA is the regional
+                    harmonisation framework, not the legal source of a deadline.
+                  </span>
+                </dd>
+              </div>`
+            : ''}
         </dl>
 
         <p class="footer-note">
           ${provisional.length
-            ? `${provisional.join(', ')} carry the ICAO baseline — notify without delay, no fixed ` +
-              `period — while their State instruments remain unread. CASSOA is named as the ` +
-              `regional harmonisation framework and not as the legal source of the deadline, and ` +
-              `the rows are marked provisional wherever they appear.`
+            ? ''
             : html`Every row above has been read against its primary instrument. Where an
                 operator&rsquo;s own authority is not listed, the ICAO baseline applies:
                 <strong>notify without delay</strong>. ICAO Annex 13 names no period and
