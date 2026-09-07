@@ -216,6 +216,7 @@ model Org {
   communications    SafetyCommunication[]
   changes           ChangeAssessment[]
   setiAssessments   SetiAssessment[]
+  setiItems         SetiAssessmentItem[]
   documentReads     DocumentAcknowledgement[]
   reportMoves       ReportTransition[]
   actions           CorrectiveAction[]
@@ -1542,6 +1543,10 @@ model SetiAssessment {
 
 model SetiAssessmentItem {
   id            String    @id @default(uuid())
+  /// Carried even though the parent holds it: every tenant-owned table
+  /// in this schema indexes `orgId` first, so a query against this table
+  /// can be scoped without a join it might forget.
+  orgId         String
   assessmentId  String
   criterionId   String
   level         SetiLevel?
@@ -1553,8 +1558,10 @@ model SetiAssessmentItem {
   updatedAt     DateTime  @updatedAt
 
   assessment SetiAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  org        Org            @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@unique([assessmentId, criterionId])
+  @@index([orgId, assessmentId])
   @@index([criterionId])
 }
 

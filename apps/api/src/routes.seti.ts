@@ -55,7 +55,15 @@ export async function setiRoutes(app: FastifyInstance): Promise<void> {
           title: parsed.data.title,
           scope: parsed.data.scope,
           assessedOn: at(parsed.data.assessedOn),
-          items: { create: SETI_CRITERIA.map((criterion) => ({ criterionId: criterion.id })) },
+          /* `orgId` on each item as well as on the assessment. Prisma
+             does not infer it from the parent, and the column is NOT
+             NULL, so omitting it fails every create. */
+          items: {
+            create: SETI_CRITERIA.map((criterion) => ({
+              orgId: req.auth!.org,
+              criterionId: criterion.id,
+            })),
+          },
         },
         include: { items: true },
       });

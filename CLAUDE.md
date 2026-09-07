@@ -707,6 +707,32 @@ Three things about it are load-bearing:
 is rather than pretending — the run returns `NOT_CONFIGURED` in its
 body instead of a quiet success.
 
+#### AND IT CANNOT SEE A STALE DEPLOY, WHICH IS WHAT ACTUALLY HAPPENED
+
+Between 21 August and 7 September 2026 production published **nothing**.
+Six pull requests merged to `main` — #102 to #107 — and
+`currentDeploy.commit_ref` stayed `e4bb779`, the 21 August merge.
+Seventeen days, `published_at` unchanged, and the watchdog reported
+healthy every ten minutes throughout.
+
+It was right to. `/api/ready` was answering `{"ok":true}` because the
+21 August deploy was serving perfectly; the site was up, the database
+was reachable, nothing was broken. **A stale deploy is not an unhealthy
+one**, and a readiness probe cannot tell the difference between "the
+current version works" and "the current version is the one from a
+fortnight ago".
+
+That is what `dist/build-id.txt` and `deploy-watchdog.yml` were built
+for — comparing the SHA being SERVED against the SHA that was MERGED —
+and it is exactly the check that has never run, because Actions has been
+dead since 19 August. The two monitors covered different failures and
+losing one silently left the other looking sufficient.
+
+**A monitor answers the question it asks.** Health and freshness are two
+questions. Asking only the first, on a platform whose whole design is
+that a failed build leaves the last good deploy up, means the failure
+mode the platform is BUILT to hide is the one nothing is watching.
+
 ## Migrations do not apply themselves on deploy
 
 `netlify.toml` runs `npm run build`. It does **not** run
@@ -1570,6 +1596,57 @@ Credit where it is due: the EAC rows themselves were honest work —
 `hours: null`, `sourceLevel: PROVISIONAL`, and each row saying in its
 own text that the primary instrument has not been read. The defect was
 never the judgement. It was that nothing made the database agree.
+
+### IT HAPPENED AGAIN IN SEPTEMBER, WITH A DIFFERENT AGENT
+
+Six pull requests from `vercel[bot]`, #102 to #107, between 23 and 25
+August. The four boundary questions were run on 7 September and two came
+back clean — **no applied migration was modified or renamed, and no
+build output was committed**, which is better than the August range
+managed. The other two found this:
+
+**AN ANALYTICS VENDOR, AGAINST TWO PAGES THAT PROMISE THERE IS NONE.**
+`main.js` gained `import { inject } from '@vercel/analytics'` and called
+it on every page load. `/privacy` says "no font CDN, no analytics, no
+tag manager"; `/terms` says "there is no analytics vendor". The bundle
+budget was raised 684 -> 688 KB to make room for it, with a receipt that
+described the mechanics accurately and never noticed the contradiction.
+
+The CSP held — `connect-src 'self'` refused every beacon, so no page
+view ever left a browser, and /privacy's sentence about a dependency
+failing visibly rather than quietly was literally correct. That is the
+only reason this is a defect and not an incident. It is also not a
+control to rely on: a header is one edit from being widened, by somebody
+who does not know it is the last thing between a confidential
+safety-reporting product and a third party's record of who read
+`/report`. `npm run check:third-party` now fails the build on that class
+of import, so the claim is enforced rather than remembered.
+
+**A NEW TABLE WITHOUT THE DENY-ALL POSTURE.** The SET-I migration's own
+header said "RLS follows the existing direct-API, deny-by-default
+posture" and then enabled row security and stopped — no RESTRICTIVE
+`deny_all_not_owner`, no guarded REVOKE. `rls.integration.test.ts`
+asserts exactly this over every table and would have failed the pull
+request. It did not run, because integration tests need a real Postgres
+and every Actions run since 19 August completes in three seconds with
+`runner_id: 0`. **This is the first measured cost of the dead CI**, and
+it is worth naming as such: `npm run check` runs inside the Netlify
+build and cannot catch it, because that layer has no database.
+
+`SetiAssessmentItem` also carried no `orgId`. The routes are correct —
+every one filters on `tenantWhere(req)`, and the item update verifies
+the parent assessment before writing — so nothing leaked. But the
+convention exists so the NEXT query has something local to scope on, and
+adding the column surfaced a second gap the claims gate then caught: the
+model was not named in `EXPORT_EXCLUSIONS`, and its rows reach the
+operator's own copy nested under the assessment rather than through a
+top-level read.
+
+**AND NONE OF IT WAS EVER LIVE**, which is the part that reframes the
+whole audit: production had not deployed since 21 August. The analytics
+never reached a customer and the SET-I code never ran against its
+missing tables. Both defects were latent — real the moment anything
+published, invisible until then.
 
 ## Before you say something is done
 
