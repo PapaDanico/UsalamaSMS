@@ -1580,6 +1580,20 @@ None of it was caught, because **a green `npm run check` says nothing
 about the ledger, the working tree, or the database.** The gates cover
 what somebody once wrote a gate for.
 
+**A RANGE AUDIT CANNOT SEE DEBRIS OLDER THAN THE RANGE**, which is how
+`.probe2.mjs` survived three of them. It is a 26-line throwaway
+Playwright script hardcoding `/home/user/UsalamaSMS/dist` — a container
+path meaningless to anybody else — committed by an earlier Claude
+session on 17 August 2026 inside a commit about training records, and
+found on 7 September only because an unrelated `ls` printed it. Question
+2 below would have caught it on the day and never ran again over that
+range afterwards.
+
+So run question 2 over the WHOLE TREE occasionally, not only over the
+boundary: `git ls-files | grep -Ei 'probe|scratch|tmp|\.bak$'` and
+`git grep -l "/home/user"` take a second each and answer "is there
+anything in here that only made sense inside one container".
+
 So when an agent has had write access, audit on the boundary rather
 than on the diff: `git log --format='%an'` finds the range, and the
 four questions that are not gated are
