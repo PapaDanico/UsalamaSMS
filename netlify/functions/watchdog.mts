@@ -35,11 +35,22 @@
    and this file only wires them up.
    ============================================================ */
 import type { Config } from "@netlify/functions";
-import { probeReadiness, verdictFrom, isWorthSending } from "../../apps/api/src/watchdog.js";
-import { sendWatchdogAlert, mailConfigFromEnv } from "../../apps/api/src/mail.js";
+import {
+  probeReadiness,
+  verdictFrom,
+  isWorthSending,
+  fetchServedBuildId,
+  fetchMainHead,
+  freshnessFrom,
+  isStale,
+} from "../../apps/api/src/watchdog.js";
+import { sendWatchdogAlert, sendStalenessAlert, mailConfigFromEnv } from "../../apps/api/src/mail.js";
 
 /** Long enough for a cold start or a function swap to finish. */
 const REPROBE_DELAY_MS = 15_000;
+
+/** Where `main` lives, for the freshness half. */
+const REPO = "PapaDanico/UsalamaSMS";
 
 export default async function handler(): Promise<Response> {
   const config = mailConfigFromEnv();
@@ -59,6 +70,33 @@ export default async function handler(): Promise<Response> {
   const verdict = verdictFrom(first, second);
 
   if (!isWorthSending(verdict)) {
+    /* THE SITE IS ANSWERING. Now the second question: is it answering
+       with the build somebody merged? Only asked when readiness passed,
+       because during an outage the freshness of what is not serving is
+       not the useful thing to say. */
+    const freshness = await checkFreshness(baseUrl);
+
+    if (isStale(freshness)) {
+      const outcome = await sendStalenessAlert(
+        baseUrl,
+        { served: freshness.served, head: freshness.head, behindMs: freshness.behindMs },
+        config,
+      );
+      return Response.json(
+        {
+          ok: false,
+          verdict: verdict.kind,
+          freshness: freshness.kind,
+          served: freshness.served,
+          head: freshness.head,
+          behindMs: freshness.behindMs,
+          alert: outcome.status,
+          ...(outcome.status === "FAILED" ? { alertFailed: outcome.reason } : {}),
+        },
+        { status: 503 },
+      );
+    }
+
     /* REPORTED RATHER THAN SILENT, including the recovered case.
        Charter rule 8. A FLAPPED run is the interesting near-miss: it
        means the site failed a probe and came back, and a run of those
@@ -66,6 +104,7 @@ export default async function handler(): Promise<Response> {
     return Response.json({
       ok: true,
       verdict: verdict.kind,
+      freshness: freshness.kind,
       ...(verdict.kind === "FLAPPED"
         ? { recoveredFrom: { status: verdict.first.status, detail: verdict.first.detail } }
         : {}),
@@ -97,6 +136,12 @@ export default async function handler(): Promise<Response> {
     },
     { status: 503 },
   );
+}
+
+/** Both reads, in parallel, neither able to throw. */
+async function checkFreshness(baseUrl: string) {
+  const [served, head] = await Promise.all([fetchServedBuildId(baseUrl), fetchMainHead(REPO)]);
+  return freshnessFrom(served, head?.sha ?? null, head?.committedAt ?? null);
 }
 
 export const config: Config = {
