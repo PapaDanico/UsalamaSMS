@@ -31,7 +31,6 @@
    navigate.
    ============================================================ */
 
-import { inject } from '@vercel/analytics';
 import { html, raw } from './shared/html.js';
 import { Lockup } from './components/Logo.js';
 import { router } from './shared/router.js';
@@ -48,8 +47,6 @@ import { render as renderReport } from './tools/report/index.js';
 import { render as renderLogin } from './tools/login/index.js';
 
 /* ------------------------------ Chrome ------------------------------ */
-
-inject();
 
 document.getElementById('logo-slot').innerHTML = Lockup({ height: 34 }).toString();
 /* GOLD, because the footer is charcoal. The header sits on Warm Sand

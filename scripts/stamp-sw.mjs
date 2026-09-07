@@ -2418,28 +2418,26 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    Today work surface. Entry JS remains 216.8 KB (well within its 224 KB
    ceiling), ensuring the first-report path for ramp agents on remote strips
    is not degraded. */
-/* 684 -> 688, 23 August 2026 — VERCEL WEB ANALYTICS.
-
-   WHAT MOVED. The unsupported hand-written `/_vercel/insights/script.js`
-   tag was replaced with `@vercel/analytics`'s `inject()` entry point. That
-   keeps Analytics working in the Vite distribution and adds 0.8 KB to the
-   measured total: 684.8 KB.
-
-   WHY IT IS ACCEPTED. This is platform instrumentation, not product UI; it
-   has no application data path and the first-report entry remains 219.6 KB,
-   4.4 KB under its unchanged 224 KB ceiling. The 688 KB total ceiling leaves
-   3.2 KB of measured headroom while preserving the existing entry and CSS
-   limits. */
-/* 688 -> 696, 25 August 2026 — SET-I self-assessment ledger.
+/* 684 -> 696, 25 August 2026 — SET-I self-assessment ledger.
  *
- * The full Vercel build measures total JavaScript at 691.9 KB after the
- * evidence-backed SET-I assessment route was added. The route remains
- * lazy-loaded; entry JavaScript is 221.9 KB of its unchanged 224 KB
- * ceiling, and CSS is 77.8 KB of its unchanged 80 KB ceiling. Splitting
- * this route further adds chunk overhead without removing feature code.
+ * The evidence-backed SET-I assessment route is lazy-loaded and measures
+ * 691.5 KB total. Entry JavaScript is 220.3 KB of its unchanged 224 KB
+ * ceiling and CSS is 77.8 KB of its unchanged 80 KB, so neither the
+ * first-report path nor the stylesheet is relaxed. Splitting the route
+ * further adds chunk overhead without removing feature code.
  *
- * This increase covers the measured lazy-route addition plus 4.1 KB of
- * headroom. It does not relax either first-report or CSS budgets. */
+ * THIS RECEIPT WAS REWRITTEN ON 7 SEPTEMBER 2026, AND THE REASON IS THE
+ * POINT OF KEEPING RECEIPTS AT ALL. It was originally two: a 684 -> 688
+ * raise buying `@vercel/analytics`, and 688 -> 696 buying SET-I. The
+ * first bought something this product tells its customers it does not
+ * have — `/privacy` and `/terms` both state there is no analytics
+ * vendor — so the dependency was removed and the ceiling re-measured at
+ * 691.5 KB without it.
+ *
+ * A receipt that records the mechanics and not the contradiction is only
+ * half of one. `npm run check:third-party` now fails the build on that
+ * class of import, so the next attempt is refused before it reaches a
+ * budget line. */
 const BUDGET = { entry: 224 * 1024, js: 696 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };

@@ -99,6 +99,13 @@ const EXPORT_FORMAT = 2;
  * would do.
  */
 export const EXPORT_EXCLUSIONS: Readonly<Record<string, string>> = Object.freeze({
+  SetiAssessmentItem:
+    "PRESENT IN THE FILE, but nested under its assessment rather than read on its own — " +
+    "`setiAssessment.findMany` includes `items`, so every rating, its evidence, its source " +
+    "references and its review date are in the export. It is named here because the gate " +
+    "looks for a top-level `prisma.<model>.find` and cannot see a nested include. Flattening " +
+    "it would be worse: an item is meaningless away from the assessment that dates and scopes " +
+    "it, and the 48 criteria are only interpretable as a set.",
   SyncReceipt:
     "Carries the device id in cleartext for named submissions, and a clientId that " +
     "joins straight to the report. A file containing them lets a reader CLUSTER reports " +
