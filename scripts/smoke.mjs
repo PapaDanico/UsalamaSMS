@@ -172,6 +172,22 @@ const JURISDICTION_COUNT = [
 ].length;
 const PROVISIONAL_COUNT = (REGULATIONS.match(/note:\s*\n?\s*"PROVISIONAL/g) ?? []).length;
 
+/* Every authority the registry names, parsed from the same source for
+   the same reason the count is: the next jurisdiction added moves the
+   expectation with it. Names rather than a row count, because nine rows
+   never proved they were the RIGHT nine — see the landing-page check. */
+const OBLIGATIONS_BLOCK =
+  /export const MOR_OBLIGATIONS[\s\S]*?\n};/.exec(REGULATIONS)?.[0] ?? '';
+/* TOP-LEVEL FIELDS ONLY — four spaces of indent. Kenya's entry NESTS an
+   `accidentNotification` carrying its own `authority`, the AAID, which
+   is a different body and not a reporting deadline the landing page
+   states. A looser parse returned ten names for nine jurisdictions and
+   failed the page for omitting something it should omit; the count
+   assertion below is what caught it. */
+const AUTHORITIES = [
+  ...OBLIGATIONS_BLOCK.matchAll(/^ {4}authority:\s*\n?\s*"([^"]+)"/gm)
+].map((m) => m[1]);
+
 /* The coverage figure, computed from the same declaration the page
    renders. This was typed as 1.5 and went stale the moment /toolkits/sra
    moved element 3.2 from NOT_BUILT to PARTIAL — the check then failed
@@ -529,9 +545,29 @@ try {
     });
 
     assert(section, 'there is no #deadlines section on the landing page to link to');
+
+    /* EVERY AUTHORITY IS NAMED — which is what the row count was a proxy
+       for, and a weaker one. This asserted `rows === JURISDICTION_COUNT`
+       until 7 September 2026, when seven provisional States that each
+       rendered the same sentence with the country name swapped were
+       collapsed into one row. The rows fell to three and the property
+       the check exists for never moved: all nine are still on the page,
+       still generated from MOR_OBLIGATIONS.
+       A count of nine would have passed on nine copies of Kenya. */
+    const missing = AUTHORITIES.filter((a) => !section.text.includes(a));
     assert(
-      section.rows === JURISDICTION_COUNT,
-      `${section.rows} regulatory rows; the registry defines ${JURISDICTION_COUNT}`
+      missing.length === 0,
+      `${missing.length} authority name(s) the registry defines are absent from the ` +
+        `landing page: ${missing.join(', ')}`
+    );
+    assert(
+      AUTHORITIES.length === JURISDICTION_COUNT,
+      `parsed ${AUTHORITIES.length} authority names for ${JURISDICTION_COUNT} jurisdictions ` +
+        '— this check has lost its subject'
+    );
+    assert(
+      section.rows >= 1 && section.rows <= JURISDICTION_COUNT,
+      `${section.rows} regulatory rows renders none, or more than the registry defines`
     );
     // The Kenyan figure is the one that was wrong for most of this
     // project's life. If this ever prints 72 for KCAA again, that is the
