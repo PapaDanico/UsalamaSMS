@@ -733,6 +733,26 @@ questions. Asking only the first, on a platform whose whole design is
 that a failed build leaves the last good deploy up, means the failure
 mode the platform is BUILT to hide is the one nothing is watching.
 
+**IT ASKS BOTH NOW.** After a readiness pass — and only then, because
+during an outage the freshness of what is not serving is not the useful
+thing to say — the run compares `dist/build-id.txt` from the LIVE SITE
+against what `main` points at, read from GitHub's API. That is the
+comparison `deploy-watchdog.yml` was written for and never once made.
+
+**A mismatch alone is not staleness.** For the two minutes between a
+merge and its published build the served commit legitimately differs, so
+the HEAD commit must ALSO be older than `STALE_AFTER_MS` (45 minutes).
+That age is the debounce and it needs no stored state — the same
+reasoning as the two-probe rule, and the same reason neither needs a
+blob store.
+
+**An unreadable side is UNKNOWN, never STALE.** GitHub rate-limits
+unauthenticated calls. A monitor that reports its own blindness as an
+outage is one people mute, and this repository has already had two
+monitors that never ran. Mutation-checked both ways: removing the
+debounce reddens the post-merge case, and treating an unreadable side as
+stale reddens the unknown case.
+
 ## Migrations do not apply themselves on deploy
 
 `netlify.toml` runs `npm run build`. It does **not** run

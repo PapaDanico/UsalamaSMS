@@ -48,6 +48,149 @@
    a relation and `to_regclass` cannot see one.
    ===================================================================== */
 
+/* =====================================================================
+   FRESHNESS IS A SECOND QUESTION, AND ASKING ONLY THE FIRST COST
+   SEVENTEEN DAYS.
+
+   Between 21 August and 7 September 2026 production published nothing.
+   Six pull requests merged and `currentDeploy.commit_ref` never moved.
+   This watchdog reported healthy every ten minutes throughout, and it
+   was RIGHT to: `/api/ready` answered `{"ok":true}` because the old
+   deploy was serving perfectly. The site was up. It was just not the
+   site anybody had merged.
+
+   A readiness probe cannot tell "the current version works" from "the
+   current version is a fortnight old". On a platform whose whole design
+   is that a failed build leaves the last good deploy up, that is the
+   failure mode the platform is BUILT to hide — so it is the one thing
+   most worth watching, and the one nothing was watching.
+
+   `deploy-watchdog.yml` was written for exactly this and has never
+   executed a step. This is that check, somewhere it can actually run.
+
+   HOW IT AVOIDS CRYING ON EVERY MERGE. For the two minutes between a
+   merge and its published build, the served commit legitimately differs
+   from `main`. So a mismatch alone is not staleness: the HEAD commit
+   must ALSO be older than STALE_AFTER_MS. That is the debounce, and it
+   needs no stored state — the same reasoning as the two-probe rule
+   below, which is why neither of them needs a blob store.
+   ===================================================================== */
+
+/** Long enough for any legitimate build to finish and publish. */
+export const STALE_AFTER_MS = 45 * 60 * 1000;
+
+export type Freshness =
+  /** The served commit is what main points at. */
+  | { readonly kind: "CURRENT"; readonly sha: string }
+  /** They differ, but main moved recently — a build is probably running. */
+  | { readonly kind: "BUILDING"; readonly served: string; readonly head: string }
+  /** They differ and main has been ahead for too long. Publishing is stuck. */
+  | { readonly kind: "STALE"; readonly served: string; readonly head: string; readonly behindMs: number }
+  /** Something could not be read. Never an alarm on its own. */
+  | { readonly kind: "UNKNOWN"; readonly detail: string };
+
+/**
+ * Decide from the served commit and main's HEAD.
+ *
+ * UNKNOWN RATHER THAN STALE when either side is unreadable. GitHub rate
+ * limits unauthenticated calls, and a watchdog that treats its own
+ * blindness as an outage is a watchdog people mute — which is how this
+ * repository ended up with two monitors that had never run.
+ */
+export function freshnessFrom(
+  served: string | null,
+  head: string | null,
+  headCommittedAt: number | null,
+  now: number = Date.now(),
+): Freshness {
+  if (!served) return { kind: "UNKNOWN", detail: "build-id.txt could not be read" };
+  if (!head || headCommittedAt === null) return { kind: "UNKNOWN", detail: "main's HEAD could not be read" };
+  if (served === head) return { kind: "CURRENT", sha: head };
+
+  const behindMs = now - headCommittedAt;
+  if (behindMs < STALE_AFTER_MS) return { kind: "BUILDING", served, head };
+  return { kind: "STALE", served, head, behindMs };
+}
+
+export function isStale(f: Freshness): f is Extract<Freshness, { kind: "STALE" }> {
+  return f.kind === "STALE";
+}
+
+export function stalenessSubject(baseUrl: string): string {
+  return `UsalamaSMS is serving an old build — ${hostOf(baseUrl)}`;
+}
+
+export function stalenessBody(baseUrl: string, f: Extract<Freshness, { kind: "STALE" }>): string {
+  const hours = Math.floor(f.behindMs / 3_600_000);
+  return [
+    `${hostOf(baseUrl)} is answering, and it is answering with an old build.`,
+    "",
+    `  serving   ${f.served}`,
+    `  main      ${f.head}`,
+    `  behind    ${hours} hour${hours === 1 ? "" : "s"}`,
+    "",
+    "The site is UP. Readiness passes. Nothing is broken in the way a",
+    "health check can see — which is why this is a separate alarm.",
+    "",
+    "Netlify's atomic deploys leave the last good deploy serving when a",
+    "build fails, so a failed build is silent by design. Between 21",
+    "August and 7 September 2026 that silence lasted seventeen days and",
+    "six merged pull requests.",
+    "",
+    "Where to look, in order:",
+    "",
+    "  · the deploy list for a FAILED build on the merge commit;",
+    "  · `currentDeploy.commit_ref` against the SHA you merged — nothing",
+    "    else in the Netlify response changes when a build fails;",
+    "  · whether the build is failing for a reason in the tree, which",
+    "    `npm run build` locally will reproduce.",
+    "",
+    `  ${baseUrl}/build-id.txt`,
+  ].join("\n");
+}
+
+/** The commit the LIVE SITE is serving, from `dist/build-id.txt`. */
+export async function fetchServedBuildId(
+  baseUrl: string,
+  fetchImpl: typeof fetch = fetch,
+  now: number = Date.now(),
+): Promise<string | null> {
+  try {
+    const res = await fetchImpl(`${baseUrl.replace(/\/+$/, "")}/build-id.txt?t=${now}`, {
+      headers: { "cache-control": "no-cache" },
+    });
+    if (!res.ok) return null;
+    const text = (await res.text()).trim();
+    /* `stamp-build-id.mjs` writes the literal `unknown` where there is no
+       git rather than fabricating a SHA — an id the watchdog can never
+       match is honest, and treating it as one would invent an outage. */
+    return /^[0-9a-f]{7,40}$/i.test(text) ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+/** What `main` actually points at, and when that commit landed. */
+export async function fetchMainHead(
+  repo: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ sha: string; committedAt: number } | null> {
+  try {
+    const res = await fetchImpl(`https://api.github.com/repos/${repo}/commits/main`, {
+      headers: { accept: "application/vnd.github+json", "user-agent": "usalamasms-watchdog" },
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { sha?: string; commit?: { committer?: { date?: string } } };
+    const sha = body.sha;
+    const date = body.commit?.committer?.date;
+    if (!sha || !date) return null;
+    const committedAt = Date.parse(date);
+    return Number.isFinite(committedAt) ? { sha, committedAt } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** What one request to the readiness endpoint told us. */
 export interface Probe {
   /** The endpoint answered, and answered that it is ready. */
