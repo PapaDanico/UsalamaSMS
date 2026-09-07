@@ -1648,6 +1648,35 @@ never reached a customer and the SET-I code never ran against its
 missing tables. Both defects were latent — real the moment anything
 published, invisible until then.
 
+### THERE IS ONE DEPLOY TARGET, AND IT IS NETLIFY
+
+The same range added a second: `vercel.json`, a catch-all Vercel
+Function at `api/[...path].ts` adapting Fastify through `inject`, and a
+hosted project `usalama-sms`. Removed on 7 September 2026 on the owner's
+instruction, and the project paused.
+
+**It never served the product.** Measured before touching anything,
+because pausing a project that holds the live domain would have taken
+the site down: its `domains` were two `*.vercel.app` hostnames and
+nothing else, `live: false`, and `usalamasms.com` resolves through
+Netlify. Check that first if it is ever reinstated.
+
+**It was failing, and not because of anything in this repository.**
+`errorCode: BUILD_FAILED`, `errorMessage: "Resource provisioning
+failed"`, `buildingAt` to `ready` in 0.6 seconds, and NO build log
+events at all. That is the same shape as GitHub's `runner_id: 0`:
+infrastructure that never started, so reading the diff for a cause is
+wasted effort. Deployments show ERROR going back to PR #103, long
+before the audit touched anything.
+
+**Two deploy targets is worse than one even when both work.** A second
+pipeline that is permanently red trains everybody to ignore a red
+deploy, which is the same failure as a muted monitor — and this
+repository lost seventeen days of publishing to a silence nobody
+questioned. If Vercel is ever genuinely wanted, it needs the domain, the
+environment variables, a decision about which one is authoritative, and
+this section rewritten — in one change.
+
 ## Before you say something is done
 
 `npm run check` (typecheck, brand, claims, css, glyphs, unit) and

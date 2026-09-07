@@ -80,9 +80,12 @@ const stripCommentsAndStrings = (s) =>
     .replace(/'(?:\\.|[^'\\\n])*'/g, "''")
     .replace(/"(?:\\.|[^"\\\n])*"/g, '""');
 
-/* Our own origins. `usalamasms.com` is this product; the others are
-   schema and spec URLs that appear in JSON-LD and never fetch. */
-const OWN = /^(https?:)?\/\/(usalamasms\.com|schema\.org|www\.w3\.org|openapi\.vercel\.sh)/;
+/* Our own origins. `usalamasms.com` is this product; the other two are
+   schema and spec URLs that appear in JSON-LD and never fetch.
+   `openapi.vercel.sh` was allowed here for `vercel.json`'s `$schema`
+   and came out with it — an allowlist entry outliving the thing it
+   allowed is how the next one gets waved through. */
+const OWN = /^(https?:)?\/\/(usalamasms\.com|schema\.org|www\.w3\.org)/;
 
 /* A RESOURCE LOAD, NOT A HYPERLINK — and the first version of this gate
    got that wrong, which is why the distinction is written down.
