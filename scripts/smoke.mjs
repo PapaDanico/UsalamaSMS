@@ -3415,7 +3415,46 @@ try {
     // router claimed it; normalise() strips the fragment to get a route,
     // and the fragment went with it. Every press landed on the top of
     // the landing page instead of on the regulatory basis.
-    await page.click('.footer a[href="/#deadlines"]');
+    /* REACHABLE WITHOUT OPENING ANYTHING FIRST, and that is asserted
+       rather than assumed by the click below.
+
+       On 8 September 2026 the site index was closed on handsets to
+       recover 779px of footer — measured 1163px against 384px on every
+       other screen. The first attempt simply closed the disclosure, and
+       the only link to `/#deadlines` lived INSIDE it: still in the DOM,
+       so `check:a11y`'s route crawl was untouched, and two taps away on
+       exactly the handsets this product is for. This check caught it by
+       timing out on an invisible element, which is a real catch and an
+       obscure message. The property is now stated.
+
+       The link moved to the footer's always-visible jurisdictions line —
+       the sentence that was already talking about the deadlines. */
+    /* checkVisibility(), NOT a bounding box — and the first version of
+       this assertion used a bounding box and could therefore never
+       fail. Measured at 390x844: a link inside a CLOSED <details> in
+       this footer reports 93x15, a perfectly ordinary box, so counting
+       non-zero rectangles found two visible links when one of them was
+       not rendered at all. The assertion passed during its own mutation
+       and the obscure click timeout it was written to replace is what
+       actually caught the regression.
+
+       `checkVisibility()` answers false for it and true for the hoisted
+       one; `offsetParent` is true for both and is equally useless here.
+       A check that cannot fail is worse than no check — this file has
+       four of those recorded, and this was nearly the fifth. */
+    const reachable = await page.evaluate(() =>
+      [...document.querySelectorAll('.footer a[href="/#deadlines"]')].filter((a) =>
+        typeof a.checkVisibility === 'function' ? a.checkVisibility() : a.offsetParent !== null
+      ).length
+    );
+    assert(
+      reachable > 0,
+      'no VISIBLE link to /#deadlines in the footer — the regulatory basis is reachable ' +
+        'only by opening a disclosure first, which is two taps for the most consequential ' +
+        'link in the product'
+    );
+
+    await page.click('.footer a[href="/#deadlines"] >> visible=true');
     await page.waitForFunction(
       () => {
         if (!document.querySelector('#deadlines')) return false;
