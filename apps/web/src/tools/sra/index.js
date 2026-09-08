@@ -38,6 +38,7 @@ import {
 } from '../../../../../packages/shared/src/risk.ts';
 import {
   SRA_STEPS,
+  OCCURRENCE_PRECEDENT,
   sraProgress,
   sraVerdict,
   effectiveRisk
@@ -239,6 +240,25 @@ export function render(outlet) {
               placeholder: 'Choose a likelihood',
               options: options(LIKELIHOOD_SCALE)
             })}
+            <!-- PRECEDENT, NEXT TO THE JUDGEMENT IT INFORMS. The
+                 reasoning is in sra.ts; the short version is that an
+                 operator with four events of its own has nothing to
+                 reason from, and "has this bitten before, on this
+                 type" is answerable where a likelihood is not. The
+                 standing and the two sentences are read from the
+                 declaration rather than written here, so the caveat
+                 cannot drift from the source it qualifies. -->
+            <p class="field-hint">
+              The
+              <a href="${OCCURRENCE_PRECEDENT.url}" target="_blank" rel="noopener noreferrer"
+                >${OCCURRENCE_PRECEDENT.name}</a
+              >
+              (${OCCURRENCE_PRECEDENT.publisher},
+              ${OCCURRENCE_PRECEDENT.standing.toLowerCase()}) is useful for
+              ${OCCURRENCE_PRECEDENT.useFor}. It is not for
+              ${OCCURRENCE_PRECEDENT.notFor}. It opens in a new tab, and this page
+              requests nothing from it.
+            </p>
 
             <label class="field">
               <span class="field-label">Control</span>
