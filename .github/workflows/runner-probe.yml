@@ -1,0 +1,59 @@
+# =====================================================================
+# IS THE RUNNER THE SUBJECT, OR ARE WE?
+#
+# Every Actions run in this repository since 19 August 2026 has failed
+# with `runner_id: 0` in three to six seconds, no step executed. 834
+# runs. CLAUDE.md records the signature, records that a re-run
+# reproduces it, and concludes "upstream of anything in this
+# repository" — on the strength of reading the failures, never on an
+# experiment that could have come back the other way.
+#
+# That is the same shape as the build failure of 18 August, and this
+# repository already owns the instrument for it: push something with NO
+# content and watch what happens. A workflow that fails while carrying
+# real work is ambiguous — the work is the obvious suspect. One that
+# fails carrying nothing at all is not.
+#
+# So this job has no checkout, no npm, no secret, no matrix, no
+# container, no permission, and no dependency on this repository's
+# tree. It echoes a string. If it dies in three seconds like the rest,
+# the cause is the account or the runner pool and no amount of reading
+# our YAML will find it. If it PASSES, then something in the other
+# workflows is the subject after all and the note in CLAUDE.md is
+# wrong.
+#
+# Either answer is worth having. Delete this file once it has given one.
+# =====================================================================
+name: runner-probe
+
+# ---------------------------------------------------------------------
+# DORMANT ON PURPOSE — SEE "CI CAN BE DEAD WITHOUT BEING RED" IN CLAUDE.md
+#
+# GitHub Actions has not executed a step in this repository since 19
+# August 2026: runner_id: 0, three to six seconds, no step run, 834
+# runs. On 8 September a workflow carrying NO checkout, NO npm and a
+# single `echo` failed in four seconds exactly like the rest, which
+# settles by experiment what was previously concluded by reading
+# failures. Nothing in this file is the cause and no edit to it is the
+# cure.
+#
+# While that holds, an automatic trigger here produces a red mark on
+# every push that means nothing. This repository has already written
+# down what that costs — a permanently-red second pipeline "trains
+# everybody to ignore a red deploy, which is the same failure as a
+# muted monitor" — and it then lost seventeen days of publishing to a
+# silence nobody questioned.
+#
+# So the trigger is `workflow_dispatch` only. The recipe below is
+# INTACT and is the thing to restore the triggers on the day a
+# dispatched run goes green. Dispatch it to ask whether that day has
+# arrived; it costs one click and answers in four seconds.
+# ---------------------------------------------------------------------
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say one thing
+        run: echo "the runner started"

@@ -26,9 +26,30 @@
 # =====================================================================
 name: deploy-watchdog
 
+# ---------------------------------------------------------------------
+# DORMANT ON PURPOSE — SEE "CI CAN BE DEAD WITHOUT BEING RED" IN CLAUDE.md
+#
+# GitHub Actions has not executed a step in this repository since 19
+# August 2026: runner_id: 0, three to six seconds, no step run, 834
+# runs. On 8 September a workflow carrying NO checkout, NO npm and a
+# single `echo` failed in four seconds exactly like the rest, which
+# settles by experiment what was previously concluded by reading
+# failures. Nothing in this file is the cause and no edit to it is the
+# cure.
+#
+# While that holds, an automatic trigger here produces a red mark on
+# every push that means nothing. This repository has already written
+# down what that costs — a permanently-red second pipeline "trains
+# everybody to ignore a red deploy, which is the same failure as a
+# muted monitor" — and it then lost seventeen days of publishing to a
+# silence nobody questioned.
+#
+# So the trigger is `workflow_dispatch` only. The recipe below is
+# INTACT and is the thing to restore the triggers on the day a
+# dispatched run goes green. Dispatch it to ask whether that day has
+# arrived; it costs one click and answers in four seconds.
+# ---------------------------------------------------------------------
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       expect_sha:

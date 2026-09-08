@@ -1812,10 +1812,85 @@ this section rewritten — in one change.
 
 ## Before you say something is done
 
-`npm run check` (typecheck, brand, claims, css, glyphs, unit) and
-`npm run verify` (build, smoke against the built bundle, the two-version
-PWA update gate). `npm run test:integration` needs a real Postgres —
-`bash scripts/local-db.sh` starts one.
+**`npm run gate`.** One command, and it is the only one that covers
+everything: it starts a Postgres if there is none, applies every
+migration, runs `check`, runs the mutation matrix, runs the 505
+integration tests including the seven RLS posture assertions, and
+drives the built bundle in Chromium. 818 seconds on 8 September 2026.
+
+`npm run check` and `npm run verify` still exist and still mean what
+they meant. Use `gate` when the sentence you are about to write is
+"this is sound".
+
+### THE COMMANDS WERE NOT THE PROBLEM. WHERE THEY RAN WAS.
+
+Measured on 8 September 2026, twenty days after Actions stopped
+executing steps — and none of this was written down as a gap, because
+every piece had a home on paper:
+
+| what | ran where, actually |
+|---|---|
+| `npm run check` | the Netlify build. Genuinely enforced |
+| the 505 integration tests | **nowhere since 19 August** |
+| the 7 RLS posture assertions | **nowhere since 19 August** |
+| `smoke`, `check:a11y`, `check:deliverables`, `check:first-run`, `check:symmetry`, `check:update` | **nowhere, in either place** |
+| the 11-mutation matrix proving the gates still bite | **nowhere** — it was `run:` blocks in a dead workflow |
+
+The six in the fourth row are the ones worth staring at. Netlify runs
+`npm run build`, which is `check` plus the build steps. `verify` is a
+SUPERSET of `build` — and nothing called it. So six gates existed,
+passed when a person ran them, were described in the README, and had no
+opinion whatsoever about anything that merged. `check:symmetry` alone
+is 315 measurements over 35 screens.
+
+**AND `npm run test:integration` EXITED 0 WHILE ASSERTING NOTHING.**
+Every file in `tests/integration` is `describe.skipIf(!hasDatabase)`,
+which is correct on a laptop and is exactly how an integration suite
+dies. `tests/integration/guard.test.ts` exists to catch that — it fails
+when `REQUIRE_DB=1` is set and no database arrived. The only thing that
+ever set `REQUIRE_DB` was `check.yml`. So the guard on the guards was
+itself gated on the dead runner, and for twenty days the command ran,
+went green, and checked nothing.
+
+`scripts/gate.mjs` sets it, and REFUSES rather than degrading: no
+database is a failure there, never a quiet pass.
+
+### `npm run check:gates-fail` — the mutations, out of the YAML
+
+Eleven mutations put a real defect back and assert the gate goes RED: a
+mid-green risk scale, a renamed token, a rate limit with no plugin, a
+trial length spelled out, a partial claim with nothing partial, a
+backtick in an HTML comment, prose over the ceiling, a dead-end
+zero-state, an undeclared zero-state, the Supabase Data API snippet,
+and an analytics import. Plus one source rule: `check:deliverables`
+must still measure a bounding box.
+
+It is **in `npm run check`**, so it runs inside the Netlify build — the
+one machine that both publishes and still executes. Placed before
+`npm run test` so damage fails the build BEFORE `vite build` runs,
+which is what makes a mutated bundle unpublishable rather than merely
+unlikely.
+
+**Nothing in it trusts git**, for the reason this file already records:
+`git checkout --` on an untracked file exits 0 and does nothing, and
+six stacked mutations once produced six worthless passes. Every target
+is copied, restored from that copy, and the restoration confirmed by
+**sha256** before the next mutation runs. A failed restore aborts the
+whole run.
+
+**Mutation-checked itself, twice, and the first attempt was wrong.**
+Prepending `process.exit(0)` to `check-brand.mjs` pushed the shebang to
+line 2, which is a syntax error — so the gate crashed rather than
+passed, and the matrix went red with the wrong message ("the sweep left
+damage behind"). That proves the crash path, not the path that matters.
+Replacing the file with a genuinely toothless one that exits 0 produced
+the right failure: `check-brand.mjs ACCEPTED a mid-green risk scale`
+and `ACCEPTED a token renamed out from under an assertion`, both named.
+**A red is not a pass. Read which red you got.**
+
+`npm run test:integration` needs a real Postgres —
+`bash scripts/local-db.sh` starts one, and `npm run gate` does it for
+you.
 
 The bundle budget is two numbers on purpose. The total says something
 grew; the **entry** says it grew in a place a reporter at a remote
@@ -1879,6 +1954,53 @@ cancelled, zero successes**, back to 19 August 13:24.
 All four workflows are `state: active`, so it is not a repository-level
 Actions toggle either. Whatever this is, it is upstream of anything in
 this repository.
+
+### AND ON 8 SEPTEMBER THAT WAS FINALLY MEASURED RATHER THAN INFERRED
+
+Everything above is true and every word of it came from READING
+failures. "Upstream of anything in this repository" is a claim about a
+cause, and this file has a whole section on what that costs — a
+sentence about a mechanism is not a measurement of it, and the empty
+commit of 18 August is the instrument this repository already owns for
+exactly this question. It had never been pointed at Actions.
+
+`.github/workflows/runner-probe.yml` carries **no checkout, no npm, no
+secret, no matrix, no container, no permission** and no dependency on
+this tree. It echoes a string. Run `34200112337`, 8 September 2026:
+
+    created_at 07:35:42   updated_at 07:35:46   conclusion: failure
+
+Four seconds, same signature, on a workflow that could not possibly
+have a defect in it. **That is the answer, and it could have come back
+the other way** — a pass would have meant something in the other
+workflows was the subject and this section was wrong. It did not. No
+edit to any YAML in this repository is the cure, and nobody needs to
+read those files looking for one again.
+
+834 runs at the time of measuring. The probe is kept, on
+`workflow_dispatch` only: asking "is it back?" costs one click and
+answers in four seconds.
+
+### SO THE TRIGGERS ARE OFF, AND THAT IS THE HONEST STATE
+
+All four workflows are now `workflow_dispatch` only. The recipes are
+INTACT — they are the thing to restore triggers on the day a dispatched
+run goes green.
+
+The reason is this file's own Vercel lesson, applied to itself: a
+permanently-red second pipeline "trains everybody to ignore a red
+deploy, which is the same failure as a muted monitor". Every push was
+producing red marks that meant nothing, on a repository that then lost
+seventeen days of publishing to a silence nobody questioned. A red mark
+has to be worth reading or it costs more than it gives.
+
+**Two of the three were already replaced by something that runs.**
+`production-readiness.yml` and `deploy-watchdog.yml` are both
+superseded by `netlify/functions/watchdog.mts`, which probes health
+every ten minutes and freshness after it. `check.yml`'s gates are
+superseded by `npm run gate` and by `check:gates-fail` running inside
+the Netlify build. Nothing was silenced that did not have a successor
+already executing.
 
 **IT IS NOT BILLING, AND THAT WAS THE FIRST WRONG ANSWER.** This
 repository is PUBLIC, and Actions minutes are free and unlimited on
