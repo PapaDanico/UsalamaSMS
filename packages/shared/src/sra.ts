@@ -47,6 +47,68 @@ export interface SraStep {
  * introduces a new hazard is the commonest way an SRA makes an
  * operation less safe while documenting the opposite.
  */
+/* ====================================================================
+   PRECEDENT IS NOT A PROBABILITY, AND THE DIFFERENCE IS THE WHOLE
+   REASON THIS IS A LINK RATHER THAN A FIGURE.
+
+   The likelihood field on `/toolkits/sra` is labelled "Likelihood, in
+   THIS operation", and the capital letters are load-bearing: a three-
+   aircraft operator flying one route out of one strip cannot borrow a
+   global rate any more than it could borrow the EU's 72 hours. That
+   error is already recorded twice in this repository.
+
+   BUT A SMALL OPERATOR'S HARDEST STEP IS EXACTLY THIS ONE. Doc 9859
+   asks for a likelihood, and an operator with four events of its own
+   has nothing to reason from. What helps is not somebody else's number
+   — it is knowing whether the thing has BITTEN BEFORE, on this type,
+   in this kind of operation, and how it went. That is precedent, and
+   it belongs to hazard identification rather than to the arithmetic.
+
+   THE AVIATION SAFETY NETWORK is the Flight Safety Foundation's
+   database of occurrences, searchable by type, operator and country.
+   It is a SECONDARY source — compiled from official reports rather
+   than being one — and this product says so, because a database of
+   accidents cited as though it were an accident report is the same
+   category error the CICTT caveat exists to refuse.
+
+   WHY A LINK AND NOTHING MORE. `netlify.toml` sets `connect-src
+   'self'`, so nothing here could fetch it even if that were wanted,
+   and `npm run check:third-party` refuses any external resource load.
+   An anchor is a person choosing to navigate away: nothing is
+   requested, nothing is embedded, and no reporter's identity travels.
+   The data is the Foundation's and stays theirs.
+   ==================================================================== */
+export interface ExternalReference {
+  /** What it is called, as it calls itself. */
+  readonly name: string;
+  /** Who publishes it — a reader is owed this before they trust it. */
+  readonly publisher: string;
+  readonly url: string;
+  /** PRIMARY reads the instrument; SECONDARY compiles from those who did. */
+  readonly standing: "PRIMARY" | "SECONDARY";
+  /** What it can honestly be used for here, and what it cannot. */
+  readonly useFor: string;
+  readonly notFor: string;
+}
+
+export const OCCURRENCE_PRECEDENT: ExternalReference = {
+  name: "Aviation Safety Network database",
+  publisher: "Flight Safety Foundation",
+  url: "https://aviation-safety.net/database/",
+  standing: "SECONDARY",
+  /* PHRASES, NOT SENTENCES, so the screen can compose them into prose
+     rather than concatenating two fragments. The first draft rendered
+     as "Setting the likelihood. That is a judgement about..." — a
+     caveat opening on a sentence fragment, which reads as a mistake
+     and undercuts the thing it is warning about. */
+  useFor:
+    "checking whether a hazard has occurred before — on this type, in this " +
+    "kind of operation — and reading what happened when it did",
+  notFor:
+    "setting the likelihood, which is a judgement about THIS operation that a " +
+    "rate computed over the world fleet cannot make for you",
+};
+
 export const SRA_STEPS: readonly SraStep[] = [
   {
     id: "system",
