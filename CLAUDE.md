@@ -1945,6 +1945,25 @@ gives before the merge, and the property worth buying is the narrow
 one: nothing reaches an operator without having been driven in a
 browser.
 
+**AND THEN MEASURED ON THE MACHINE THAT ACTUALLY RUNS IT**, because a
+local timing is a prediction and this file has a section on the
+difference. The first production build under this change —
+`91e773de…`, published 14:14:16 — reported:
+
+    deploy_time: 497        (56 before)
+
+So the gates plus the Chromium install cost **441 seconds there**
+against 486 measured here: the prediction held, which is worth knowing
+the next time somebody sizes a change from this container.
+
+**THE NUMBER TO WATCH IS THE HEADROOM, NOT THE COST.** Netlify's build
+ceiling is 900 seconds. At 497 there are roughly **400 seconds spare**,
+which is what a seventh gate has to fit inside — and what a slower
+build machine has to eat before deploys start failing. Re-read
+`deploy_time` after adding anything to `gate:bundle`; if it approaches
+the ceiling, trim per the note in `netlify.toml` rather than removing
+the context.
+
 **That is only safe because a blocked deploy is now noticed.** Netlify
 is atomic: a failed build leaves the last good deploy serving and says
 nothing, which is how seventeen days of publishing went missing. The
