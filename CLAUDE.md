@@ -1806,7 +1806,31 @@ before the audit touched anything.
 pipeline that is permanently red trains everybody to ignore a red
 deploy, which is the same failure as a muted monitor — and this
 repository lost seventeen days of publishing to a silence nobody
-questioned. If Vercel is ever genuinely wanted, it needs the domain, the
+questioned.
+
+**AND THE RED MARK OUTLIVED THE DEPLOY TARGET.** Observed on pull
+request #118, 8 September 2026: `vercel[bot]` still comments on every
+pull request, with the project shown as **Blocked** and
+`nextCommitStatus: BLOCKED`. Pausing the project stopped it deploying
+and did NOT stop it commenting, so the repository still collects a red
+marker per pull request from a pipeline that was deliberately retired a
+day earlier.
+
+That is exactly the failure the paragraph above describes, arriving
+from the direction nobody was watching — and it is worth separating
+into two facts, because only one of them is closed. **Nothing deploys:**
+the project is paused, `vercel.json` and the catch-all function are
+gone, and the domain has always resolved through Netlify. **The noise
+remains**, and no MCP tool reaches it: the Vercel API here offers
+`pause_project` and `unpause_project` and no delete, and the comments
+come from the GitHub App's installation rather than from the project.
+
+So this one IS a person, having checked for the tool first, per the
+rule below: remove the Vercel GitHub App's access to this repository at
+`github.com/settings/installations`, or delete the `usalama-sms`
+project in Vercel's dashboard. Until then, treat a red mark from
+`vercel[bot]` as furniture — which is the habit that costs, so it is
+worth the two minutes. If Vercel is ever genuinely wanted, it needs the domain, the
 environment variables, a decision about which one is authoritative, and
 this section rewritten — in one change.
 
@@ -1891,6 +1915,33 @@ and `ACCEPTED a token renamed out from under an assertion`, both named.
 `npm run test:integration` needs a real Postgres —
 `bash scripts/local-db.sh` starts one, and `npm run gate` does it for
 you.
+
+### WHAT IS ENFORCED AND WHAT IS ONLY AVAILABLE — SAY WHICH
+
+`gate` closes the coverage gap. It does not close the ENFORCEMENT gap,
+and pretending otherwise would be the same move this file keeps
+catching: a monitor with a home on paper.
+
+| | runs unattended |
+|---|---|
+| `check`, including `check:gates-fail` | **yes** — inside the Netlify build, on every publish |
+| the deny-by-default posture | **yes** — `posture.mts`, daily 05:40 UTC, against production |
+| health and freshness | **yes** — `watchdog.mts`, every ten minutes |
+| the integration suite, the 7 RLS assertions, and the six browser gates | **no.** Only when somebody runs `npm run gate` |
+
+The last row cannot move to the Netlify build: those need a Postgres
+and a Chromium, and that build has neither reliably — its Playwright
+cache has been observed MISSING, which is why `build-icons` falls back
+to verifying committed PNGs.
+
+So the honest posture is: **the build catches source-level drift, the
+scheduled functions catch database and deploy drift, and behavioural
+drift is caught by whoever runs `gate` before saying something is
+done.** That last one is a person, and a control that depends on
+somebody remembering is the kind this file calls not-a-control. It is
+named here rather than left implied, so the next person deciding what
+to automate knows exactly which row is bare — and so that "CI is dead"
+never again stands in for "we do not know what is running".
 
 The bundle budget is two numbers on purpose. The total says something
 grew; the **entry** says it grew in a place a reporter at a remote
