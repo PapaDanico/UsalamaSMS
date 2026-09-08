@@ -247,18 +247,62 @@ document.getElementById('footer-columns').innerHTML = SECTIONS.map(
 {
   const index = document.getElementById('footer-index');
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
-  if (index && path === '/') index.open = true;
+  if (index && path === '/') {
+    /* OPEN WHERE THERE IS ROOM, and only since the deadlines link moved
+       out of it. Measured at 390x844: the landing page footer was
+       1163px — 1.38 viewports — against 384px everywhere else, and the
+       expanded index alone was 844px, one whole viewport under a page
+       already six viewports long. A site index earns that where
+       somebody is deciding whether to use the product on a screen with
+       space to spare; on a handset it is the seventh viewport.
+
+       FOLLOWS THE WIDTH RATHER THAN SAMPLING IT ONCE, so rotating a
+       handset or dragging a window does not leave the disclosure
+       holding an answer that is no longer true. Once a person opens or
+       closes it themselves that is their decision, and this stops
+       overriding it. */
+    const wide = window.matchMedia('(min-width: 900px)');
+    let touched = false;
+    index.addEventListener('toggle', () => {
+      if (index.open !== wide.matches) touched = true;
+    });
+    const apply = () => {
+      if (!touched) index.open = wide.matches;
+    };
+    apply();
+    wide.addEventListener('change', apply);
+  }
 }
 
 const jurisdictions = Object.keys(MOR_OBLIGATIONS);
 const provisional = jurisdictions.filter(isProvisional);
 
-document.getElementById('footer-jurisdictions').textContent =
+/* THE SENTENCE ABOUT THE DEADLINES IS THE WAY TO THEM, and it is in
+   the always-visible half of the footer rather than inside the site
+   index. Measured at 390x844: closing that index saves 779px, and the
+   first attempt at it simply closed the disclosure — which left
+   `/#deadlines` reachable only by opening "All pages" first, because
+   the link lives in there. Smoke caught it: the product's most
+   consequential link went from one tap to two on exactly the handsets
+   this product is for.
+
+   So the link moves to the line that was already talking about the
+   thing it points at. Read from the sitemap by href rather than typed
+   here, so it cannot drift from the entry the index renders — the same
+   rule the footer columns follow, and the reason the header stopped
+   being a hand-written list. */
+const deadlinesEntry = SECTIONS.flatMap((s) => s.items).find((d) => d.href === '/#deadlines');
+const jurisdictionsNote =
   `Deadlines cover ${jurisdictions.length} jurisdiction` +
   (jurisdictions.length === 1 ? '' : 's') +
   (provisional.length
     ? `, of which ${provisional.length} carry a provisional figure pending a reading of the primary instrument.`
     : ', every one read against its primary instrument, with ICAO as the baseline where a State period has not been.');
+
+document.getElementById('footer-jurisdictions').innerHTML = deadlinesEntry
+  ? html`${jurisdictionsNote}
+      <a href="${deadlinesEntry.href}">${deadlinesEntry.label}</a>`.toString()
+  : jurisdictionsNote;
 
 /* Reveal the shell and retire the boot screen. Done here rather than in
    CSS so the swap happens when the app can actually render, not when
