@@ -1924,24 +1924,57 @@ catching: a monitor with a home on paper.
 
 | | runs unattended |
 |---|---|
-| `check`, including `check:gates-fail` | **yes** — inside the Netlify build, on every publish |
+| `check`, including `check:gates-fail` | **yes** — inside the Netlify build, every deploy |
+| the six browser gates (`gate:bundle`) | **yes** — the Netlify PRODUCTION build, every publish |
 | the deny-by-default posture | **yes** — `posture.mts`, daily 05:40 UTC, against production |
 | health and freshness | **yes** — `watchdog.mts`, every ten minutes |
-| the integration suite, the 7 RLS assertions, and the six browser gates | **no.** Only when somebody runs `npm run gate` |
+| the integration suite and the 7 RLS assertions | **no.** Only when somebody runs `npm run gate` |
 
-The last row cannot move to the Netlify build: those need a Postgres
-and a Chromium, and that build has neither reliably — its Playwright
-cache has been observed MISSING, which is why `build-icons` falls back
-to verifying committed PNGs.
+**The second row was bare and is not any more.** `netlify.toml` said
+`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"` with the comment "Netlify
+never runs it" — true, and the reason six gates ran nowhere once
+Actions died. `[context.production]` now installs Chromium and runs
+`gate:bundle` after the build, so a bundle that fails them does not
+publish.
 
-So the honest posture is: **the build catches source-level drift, the
-scheduled functions catch database and deploy drift, and behavioural
-drift is caught by whoever runs `gate` before saying something is
-done.** That last one is a person, and a control that depends on
-somebody remembering is the kind this file calls not-a-control. It is
-named here rather than left implied, so the next person deciding what
-to automate knows exactly which row is bare — and so that "CI is dead"
-never again stands in for "we do not know what is running".
+Measured before deciding, 8 September: `smoke` 185s, `check:symmetry`
+145s, `check:a11y` 118s, `check:update` 20s, `check:deliverables` 13s,
+`check:first-run` 5s. **486 seconds against a 56-second build.**
+Production only — previews would double it for a signal `gate` already
+gives before the merge, and the property worth buying is the narrow
+one: nothing reaches an operator without having been driven in a
+browser.
+
+**That is only safe because a blocked deploy is now noticed.** Netlify
+is atomic: a failed build leaves the last good deploy serving and says
+nothing, which is how seventeen days of publishing went missing. The
+watchdog has compared served-against-merged since 8 September and
+alarms at 45 minutes. Adding a gate that can block publishing BEFORE
+that existed would have traded a rare bad deploy for a silent stale
+one.
+
+### THE LAST ROW IS STILL BARE, AND IT IS THE DATABASE
+
+The integration suite needs a real Postgres. The build machine has
+none, and the two ways to give it one are both worse than the gap:
+installing a server per deploy adds minutes to a path that already
+costs eight, and pointing it at a hosted database means a test suite
+that CREATES AND DELETES ROWS holding a credential in the build
+environment. Neither is a trade this product should make quietly.
+
+What softens it is that the strongest assertion in that suite is
+already covered better elsewhere: `posture.mts` checks the
+deny-by-default posture DAILY AGAINST PRODUCTION, where `anon`,
+`authenticated` and `service_role` actually exist — the integration
+version runs against a bare Postgres and asserts nothing about grants.
+What remains uniquely in the suite is tenancy isolation, the audit
+chain, and route behaviour, all of which move only when code moves.
+
+So: **run `npm run gate` before merging code.** That is a person, and a
+control depending on somebody remembering is the kind this file refuses
+to call a control. It is named rather than implied, so nobody has to
+rediscover which row is bare — and so "CI is dead" never again stands
+in for "we do not know what is running".
 
 The bundle budget is two numbers on purpose. The total says something
 grew; the **entry** says it grew in a place a reporter at a remote

@@ -8,9 +8,65 @@
 
 [build.environment]
   NODE_VERSION = "22"
-  # The smoke suite installs its own Chromium in CI; Netlify never runs
-  # it, so skip the ~150 MB browser download on every deploy.
+  # Preview and branch deploys skip the ~150 MB browser download. The
+  # PRODUCTION context below installs it deliberately — see there.
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+
+# ---------------------------------------------------------------------
+# PRODUCTION PUBLISHES NOTHING THAT HAS NOT BEEN DRIVEN IN A BROWSER.
+#
+# The line above used to read "Netlify never runs it, so skip the
+# download", and it was TRUE and it was the reason six gates ran
+# nowhere. They ran in GitHub Actions, which has not executed a step
+# since 19 August 2026 — measured on 8 September with a workflow
+# carrying no checkout and one `echo`, which failed in four seconds like
+# all the others. So `smoke`, `check:a11y`, `check:deliverables`,
+# `check:first-run`, `check:symmetry` and `check:update` had no home at
+# all: `npm run build` is `check` plus the build steps, and `verify` is
+# a superset nothing called.
+#
+# They are the gates that catch what a source-level check cannot. The
+# accessibility sweep found `.stat__label` at 1.09:1 — not low contrast,
+# INVISIBLE, four labels on /fatigue saying what each figure counted.
+# The deliverables gate caught a print identity block present in the DOM
+# and not painted, so the handover pack printed anonymous. Neither is
+# visible to anything that reads source.
+#
+# PRODUCTION ONLY, and that is the trade. They cost 486 seconds against
+# a 56-second build, measured on 8 September. Running them on previews
+# too would double that for a signal `npm run gate` already gives before
+# the merge. The property being bought here is narrower and is the one
+# that matters: NOTHING REACHES AN OPERATOR WITHOUT HAVING BEEN DRIVEN.
+#
+# AND A BLOCKED DEPLOY IS NOW NOTICED, which is what makes this safe to
+# do at all. Netlify is atomic, so a failed build leaves the last good
+# deploy serving and says nothing — that is exactly how this repository
+# lost seventeen days of publishing. Since 8 September the watchdog
+# compares the SERVED commit against what `main` points at and alarms
+# after 45 minutes. Without that, adding a gate that can block
+# publishing would have been trading a rare bad deploy for a silent
+# stale one.
+#
+# THE SKIP FLAG ABOVE STILL APPLIES HERE, AND THAT IS DELIBERATE rather
+# than an oversight. It suppresses the download during `npm ci`; the
+# EXPLICIT `playwright install` below ignores it. Measured rather than
+# assumed, because getting it wrong blocks every production deploy:
+#
+#   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npx playwright install chromium --dry-run
+#   -> browser: chromium version 141.0.7390.37, download url ..., exit 0
+#
+# So the install is not skipped, and `npm ci` is not made slower twice
+# over. Do not "fix" this by setting the flag to 0.
+#
+# If a build ever times out here, trim this list rather than deleting
+# it: check:deliverables, check:first-run and check:update together
+# cost 38 seconds of the 486.
+# ---------------------------------------------------------------------
+[context.production]
+  command = "npm run build && npx playwright install chromium && npm run gate:bundle"
+
+[context.production.environment]
+  NODE_VERSION = "22"
 
 [functions]
   directory = "netlify/functions"
