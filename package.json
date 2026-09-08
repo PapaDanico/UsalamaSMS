@@ -28,7 +28,7 @@
     "brand": "node scripts/derive-brand.mjs",
     "stamp-sw": "node scripts/stamp-sw.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "verify": "npm run build && npm run smoke && npm run check:a11y && npm run check:deliverables && npm run check:first-run && npm run check:symmetry && npm run check:update",
+    "verify": "npm run build && npm run gate:bundle",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:up": "bash scripts/local-db.sh",
     "setup:env": "node scripts/setup-env.mjs",
@@ -57,7 +57,8 @@
     "deploy:check": "node scripts/deploy-direct.mjs",
     "check:third-party": "node scripts/check-third-party.mjs",
     "check:gates-fail": "node scripts/check-gates-fail.mjs",
-    "gate": "node scripts/gate.mjs"
+    "gate": "node scripts/gate.mjs",
+    "gate:bundle": "npm run smoke && npm run check:a11y && npm run check:deliverables && npm run check:first-run && npm run check:symmetry && npm run check:update"
   },
   "devDependencies": {
     "@netlify/functions": "^5.3.0",
