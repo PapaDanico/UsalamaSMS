@@ -1642,11 +1642,32 @@ A compliance product may fail. It may not quietly succeed against the
 wrong data. `tests/integration/function.integration.test.ts` now
 asserts the REFUSAL rather than the preference.
 
-Netlify Database is still provisioned on the site
-(`database_branch_id: "production"` appears in every deploy record).
-Nothing reads it. Disconnect it in the dashboard for the same reason
-the Supabase extension has to go: an unused integration that injects
-variables is a fallback waiting for somebody to wire up.
+Netlify Database still appears as `database_branch_id: "production"`
+in every deploy record, and earlier versions of this section said to
+disconnect it "for the same reason the Supabase extension has to go: an
+unused integration that injects variables is a fallback waiting for
+somebody to wire up".
+
+**MEASURED ON 8 SEPTEMBER 2026, AND THERE IS NOTHING TO DISCONNECT.**
+The whole environment was read: nine variables, and NOT ONE of them is
+a Netlify DB or Neon variable. No `NETLIFY_DATABASE_URL`, no
+`NETLIFY_DB_URL`. The `database_branch_id` field is Netlify's own
+metadata on the deploy record, not evidence of an injected credential —
+and the Neon extension now carries a deprecation notice of its own:
+"New database creation is no longer available through this extension."
+
+So the concern was real when the code still read `NETLIFY_DB_URL` and
+is closed now that it does not. Uninstalling the extension would be
+change for its own sake, which is its own kind of risk on a live site.
+
+**THE SAME READ CONFIRMED TWO THINGS THAT HAD ONLY BEEN ASSERTED.**
+Every credential is `is_secret: true` — `SUPABASE_SERVICE_ROLE_KEY`,
+`DATABASE_URL`, `JWT_SECRET`, `RESEND_API_KEY`, `DEIDENT_SALT` — and
+the only four that are not carry nothing sensitive: the notice address,
+the bucket name, the project URL and the public base URL. And there is
+**no Supabase extension variable of any kind**, eighteen days after the
+extension was uninstalled. The re-injection loop that ran twice in
+August has not run again.
 
 ## An AI agent with write access is a drift source, and it needs a boundary
 
@@ -1924,6 +1945,43 @@ node scripts/seed-platform-admin.mjs --email you@example.com --rotate
 in this database. `rotated:` means it existed and the password was
 simply wrong. One command answers the question that mail, the login
 screen and the API all deliberately refuse to.
+
+### IT HAPPENED AGAIN IN SEPTEMBER, AND IT WAS THE CREDENTIAL AGAIN
+
+On 7 September 2026 the owner reported being unable to sign in. Four
+measurements settled it before any code was read:
+
+| asked | answered |
+|---|---|
+| does the account exist | yes — `PLATFORM_ADMIN`, active, argon2id hash present |
+| does the API reach the database | 240 authenticated connections that day, **zero** auth failures |
+| any database errors | none, all day |
+| live refresh tokens | **four — one minted at 04:49 that morning** |
+
+That last row is the one that decided it: **a token minted that morning
+means a sign-in had already SUCCEEDED**. Whatever was being experienced,
+it was not the credential check failing.
+
+**The product was then driven as that exact account** — `PLATFORM_ADMIN`
+in the empty vendor org — and login returned 200, stored a session, and
+rendered "Signed in… You are signed in as Platform Admin". A full
+signed-in sweep of 24 routes found zero thrown exceptions and zero
+failed API calls.
+
+A fresh password was issued by the sanctioned route (hash copied from
+`seed-platform-admin.mjs` run locally, every `RefreshToken` deleted in
+the same statement) and the owner confirmed signing in with it. **The
+cause was the credential, and nothing else.**
+
+**ONE THING WAS ALMOST FIXED THAT WAS NOT BROKEN.** A successful sign-in
+re-renders `/login` rather than navigating, which reads as failure to
+somebody expecting a dashboard — a plausible-looking culprit, written up
+as a defect, and nearly changed. It was not the cause: the owner signed
+in fine once the password was right. Redirecting would have broken the
+flow where signing in is what FLUSHES A QUEUED REPORT and the screen is
+the confirmation that it sent. A plausible story that survives until
+somebody tests it is the shape this file already records twice, most
+expensively as "the Neon window".
 
 ### The vendor org was named after an operator, and now is not
 
