@@ -17,7 +17,7 @@
     "check:css": "node scripts/check-css.mjs",
     "check:glyphs": "node scripts/check-glyphs.mjs",
     "check:prose": "node scripts/check-prose.mjs",
-    "check": "npm run prisma:generate && npm run typecheck && npm run check:brand && npm run check:assets && npm run check:claims && npm run check:css && npm run check:glyphs && npm run check:prose && npm run check:retraction && npm run check:authz && npm run check:wiring && npm run check:data-api && npm run check:third-party && npm run check:switches && npm run check:empty-states && npm run test",
+    "check": "npm run prisma:generate && npm run typecheck && npm run check:brand && npm run check:assets && npm run check:claims && npm run check:css && npm run check:glyphs && npm run check:prose && npm run check:retraction && npm run check:authz && npm run check:wiring && npm run check:data-api && npm run check:third-party && npm run check:switches && npm run check:empty-states && npm run check:gates-fail && npm run test",
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "npm run check && npm run icons && vite build --config apps/web/vite.config.js && npm run stamp-sw && npm run check:dist && npm run prerender && npm run stamp-build-id && npm run check:build-id",
@@ -55,7 +55,9 @@
     "check:data-api": "node scripts/check-data-api.mjs",
     "platform": "vite-node scripts/run-platform.mjs",
     "deploy:check": "node scripts/deploy-direct.mjs",
-    "check:third-party": "node scripts/check-third-party.mjs"
+    "check:third-party": "node scripts/check-third-party.mjs",
+    "check:gates-fail": "node scripts/check-gates-fail.mjs",
+    "gate": "node scripts/gate.mjs"
   },
   "devDependencies": {
     "@netlify/functions": "^5.3.0",
