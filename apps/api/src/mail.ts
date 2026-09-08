@@ -46,6 +46,7 @@ import type { Digest, DigestItem } from "../../../packages/shared/src/digest";
 import { isWorthSending } from "../../../packages/shared/src/digest";
 import { TRIAL_DAYS } from "../../../packages/shared/src/pricing";
 import { watchdogSubject, watchdogBody, stalenessSubject, stalenessBody } from "./watchdog";
+import { postureSubject, postureBody, type PostureVerdict } from "./posture";
 
 export type MailOutcome =
   /** Handed to the provider, which accepted it. */
@@ -723,6 +724,58 @@ export async function sendWatchdogAlert(
         to: config.platformNotice,
         subject: watchdogSubject(baseUrl),
         text: watchdogBody(baseUrl, { ok: false, ...first }, { ok: false, ...second }),
+      }),
+    });
+    if (!response.ok) {
+      return { status: "FAILED", reason: `provider responded ${response.status}` };
+    }
+    let id = "";
+    try {
+      const payload = (await response.json()) as { id?: string };
+      id = payload.id ?? "";
+    } catch {
+      /* Accepted, unparseable. Still sent. */
+    }
+    return { status: "SENT", id };
+  } catch (error) {
+    return {
+      status: "FAILED",
+      reason: error instanceof Error ? error.message : "transport failed",
+    };
+  }
+}
+
+/**
+ * Tell the vendor the database's security posture has moved.
+ *
+ * A THIRD MESSAGE, and the separation is the same argument the
+ * staleness alarm makes. "Nothing is answering", "everything is
+ * answering from a fortnight ago" and "everything is answering and the
+ * reports are readable by somebody who should not read them" need three
+ * different first moves. The last one is the only one where the site
+ * looks perfect while it is happening.
+ */
+export async function sendPostureAlert(
+  verdict: Extract<PostureVerdict, { kind: "BROKEN" }>,
+  config: MailConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MailOutcome> {
+  if (!config.apiKey) return { status: "NOT_CONFIGURED" };
+  if (!config.platformNotice) return { status: "NOT_CONFIGURED" };
+
+  try {
+    const response = await fetchImpl("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + config.apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: config.from,
+        ...(config.replyTo ? { reply_to: config.replyTo } : {}),
+        to: config.platformNotice,
+        subject: postureSubject(),
+        text: postureBody(verdict),
       }),
     });
     if (!response.ok) {
