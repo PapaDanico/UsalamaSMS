@@ -40,12 +40,28 @@ async function renderAssessment(outlet, id) {
   const { assessment, criteria } = await response.json();
   const byId = new Map(assessment.items.map((item) => [item.criterionId, item]));
   outlet.innerHTML = `<section class="panel wrap"><p><a href="/seti">Back to assessments</a></p><h1>${esc(assessment.title)}</h1><p>${esc(assessment.scope)}</p><p>Assessed ${new Date(assessment.assessedOn).toLocaleDateString()} by ${esc(assessment.assessor.name)}.</p><div id="seti-items">${criteria.map((criterion) => itemCard(criterion, byId.get(criterion.id))).join("")}</div></section>`;
+  /* THE FORM IS CAPTURED BEFORE THE AWAIT, and that is the whole fix.
+     `event.currentTarget` is only valid while the event is being
+     dispatched; the moment this handler yields at `await` the browser
+     sets it to null. The two reads above the await worked, the one
+     below it threw `Cannot read properties of null (reading
+     'querySelector')` on every single save — so a rating that SAVED
+     said nothing, and a rating the API REFUSED said nothing either.
+     The one line of feedback this screen has was unreachable in both
+     directions.
+
+     Driven at 390x844 before the fix: the criterion persisted, the
+     exception fired, and the status output stayed empty. An assessor
+     filling 48 criteria had no way to tell which had taken. */
   for (const form of outlet.querySelectorAll(".seti-item")) form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const criterionId = event.currentTarget.dataset.criterion;
-    const body = Object.fromEntries(new FormData(event.currentTarget));
+    const el = event.currentTarget;
+    const criterionId = el.dataset.criterion;
+    const body = Object.fromEntries(new FormData(el));
+    const note = el.querySelector(".seti-status");
+    note.dataset.state = "pending";
+    note.textContent = "Saving…";
     const saved = await authFetch(`/api/v1/seti/${encodeURIComponent(id)}/items/${encodeURIComponent(criterionId)}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-    const note = event.currentTarget.querySelector(".seti-status");
     note.dataset.state = saved.ok ? "ok" : "error";
     note.textContent = saved.ok ? "Saved" : "Could not save: all evidence fields are required.";
   });

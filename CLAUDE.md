@@ -1225,6 +1225,41 @@ enum key, `d.hrcs` not `d.hrc`. And `withheld` is a list of objects with
 a `source`: a list of strings renders "undefined or undefined" rather
 than throwing, which is the quieter half of the same lesson.
 
+## `event.currentTarget` IS NULL AFTER AN AWAIT, AND NO GATE COULD SEE IT
+
+The SET-I criterion form read it on the line after
+`await authFetch(...)`:
+
+```js
+const saved = await authFetch(...);
+const note = event.currentTarget.querySelector(".seti-status");  // null
+```
+
+`currentTarget` is valid only while the event is being DISPATCHED. The
+moment a handler yields at `await`, the browser sets it to null. The two
+reads ABOVE the await — `dataset.criterion` and `new FormData(...)` —
+worked, which is why the rating saved correctly and the defect looked
+like nothing at all from the database side.
+
+**What it actually cost: the screen's only line of feedback never
+rendered, in either direction.** A save that worked said nothing, and a
+save the API REFUSED — "all evidence fields are required" — said nothing
+either. An assessor working through 48 criteria had no way to tell which
+had taken.
+
+**NO GATE COULD HAVE CAUGHT IT, and that is the part worth keeping.**
+`npm run check` has no DOM. `smoke` runs against `dist` with no API, so
+it cannot drive a save. The integration suite has a real Postgres and no
+browser. This needed a browser AND an API at once — the one combination
+nothing automated drives, and exactly what `.claude/skills/run-platform`
+exists for. It was found by driving the product on 8 September 2026 and
+watching the console, not by reading the diff.
+
+`check:wiring` now scans every async handler in `apps/web/src` for a
+`currentTarget` read after an `await`, guards its own subject at twenty
+files, and reports file and line. Mutation-checked: restoring the exact
+line reddens it alone. Zero other instances existed when it was added.
+
 ## A validator tested at the unit level says nothing about the route
 
 55 routes are declared in `apps/api/src/routes*.ts`. On 18 August 2026

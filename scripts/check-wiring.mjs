@@ -243,6 +243,72 @@ if (routedHrefs.length < 4) {
   }
 }
 
+/* ============================================================
+   AND `event.currentTarget` IS NULL AFTER AN AWAIT.
+
+   The SET-I criterion form read it on the line after
+   `await authFetch(...)` and threw `Cannot read properties of null
+   (reading 'querySelector')` on EVERY save. The rating persisted, so
+   nothing looked broken from the database side — but the one line of
+   feedback the screen has never rendered, in either direction: a save
+   that worked said nothing, and a save the API REFUSED said nothing
+   either. An assessor working through 48 criteria had no way to tell
+   which had taken.
+
+   NO GATE COULD SEE IT. `npm run check` has no DOM, `smoke` runs
+   against dist with no API, and the integration suite has no browser.
+   This needed both at once, which is the one combination nothing
+   automated drives — it was found by driving the product.
+
+   `currentTarget` is valid only while the event is being DISPATCHED.
+   The moment a handler yields at `await` the browser sets it to null;
+   `event.target` survives, and so does any reference captured before
+   the await. The fix is one line at the top of the handler.
+
+   Scanned rather than remembered, because an agent wrote the original
+   and the same agent still has write access to this repository.
+   ============================================================ */
+{
+  const stack = ['apps/web/src'];
+  const files = [];
+  while (stack.length) {
+    const dir = stack.pop();
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) stack.push(full);
+      else if (entry.name.endsWith('.js')) files.push(full);
+    }
+  }
+  if (files.length < 20) {
+    problems.push(
+      `only ${files.length} web sources were scanned for the currentTarget rule — ` +
+        'this check has lost its subject'
+    );
+  }
+  for (const file of files) {
+    const src = readFileSync(file, 'utf8');
+    for (const m of src.matchAll(/async\s*\((?:event|e|ev)\)\s*=>\s*\{/g)) {
+      let depth = 1;
+      let i = m.index + m[0].length;
+      while (i < src.length && depth > 0) {
+        if (src[i] === '{') depth += 1;
+        else if (src[i] === '}') depth -= 1;
+        i += 1;
+      }
+      const body = src.slice(m.index + m[0].length, i);
+      const awaitAt = body.indexOf('await');
+      if (awaitAt !== -1 && body.slice(awaitAt).includes('currentTarget')) {
+        const line = src.slice(0, m.index).split('\n').length;
+        problems.push(
+          `${file}:${line} reads event.currentTarget AFTER an await. It is null by then — ` +
+            'the browser clears it when the handler yields. Capture the element into a ' +
+            'const before the await.'
+        );
+      }
+    }
+  }
+}
+
 if (problems.length) {
   console.error('check:wiring — the screen and the API disagree:\n');
   for (const p of problems) console.error(`  · ${p}`);
