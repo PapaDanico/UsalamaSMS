@@ -753,6 +753,49 @@ monitors that never ran. Mutation-checked both ways: removing the
 debounce reddens the post-merge case, and treating an unreadable side as
 stale reddens the unknown case.
 
+### AND THE RLS SUITE MOVED THERE TOO, WHERE IT IS STRONGER
+
+`tests/integration/rls.integration.test.ts` holds the seven assertions
+over the deny-by-default posture. It needs a real Postgres, so it is not
+in `npm run check`, so it does not run in the Netlify build, so its only
+home was Actions. Re-measured on 8 September 2026: still `runner_id: 0`,
+still four to five seconds, 821 runs. That is twenty days.
+
+**On 7 September it cost something real.** The SET-I migration reached
+`main` with a header claiming the posture and SQL delivering a third of
+it, and nothing failed.
+
+`netlify/functions/posture.mts` runs those properties daily at 05:40 UTC
+against the production database, and mails `PLATFORM_NOTICE_EMAIL` when
+any of them moves. Decision logic and every failure sentence are in
+`apps/api/src/posture.ts` under `tests/posture.test.ts`; the function
+runs one query and wires them up.
+
+**IT IS STRICTLY STRONGER THAN THE VERSION THAT DIED, and that is worth
+understanding rather than treating as a consolation.** The integration
+suite runs against a bare Postgres with no Supabase roles at all — it
+says so at its own line 32 — so its grant assertion asserts nothing.
+`anon`, `authenticated` and `service_role` exist only in production, and
+the control this file calls "the actual control" had never once been
+checked where it is true.
+
+**Mutation-proved against production**, in a transaction that rolled
+back: a table with row security enabled and no RESTRICTIVE deny-all —
+the exact shape SET-I shipped in — came back as
+`without_deny_all: {PostureProbe}`, and a `GRANT SELECT ... TO
+service_role` came back as `data_api_grants: 1`. Both named. Afterwards:
+32 tables, nothing left behind, zero grants.
+
+**Daily rather than every ten minutes.** The watchdog is an alarm for an
+outage a customer is living through; this is a gate against drift, and
+the two ways the posture actually moves are a migration and the Supabase
+table editor. Neither happens between breakfast and lunch without
+somebody knowing they did it.
+
+**An unreachable database is the WATCHDOG's alarm, not this one.** Two
+alarms for one outage is how both get muted, so a failed query here
+returns UNKNOWN and sends no mail.
+
 ## Migrations do not apply themselves on deploy
 
 `netlify.toml` runs `npm run build`. It does **not** run
