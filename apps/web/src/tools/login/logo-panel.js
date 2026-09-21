@@ -147,11 +147,32 @@ async function toDataUri(file) {
   try {
     const longest = Math.max(img.naturalWidth, img.naturalHeight);
     let transparent = null;
+    let lastEffective = null;
 
     for (const edge of EDGES) {
-      /* Never scaled UP. A 90px logo enlarged to 512 is the same logo
-         with soft edges and four times the bytes. */
-      const scale = longest > edge ? edge / longest : 1;
+      /* THE SIZE THIS PASS ACTUALLY PRODUCES, which is not the edge
+         when the source is smaller than it — a mark is never scaled
+         UP, because a 90px logo enlarged to 512 is the same logo with
+         soft edges and four times the bytes.
+
+         SKIPPING A REPEAT IS WHAT REPLACED A `break`, and the break
+         was wrong. It read `if (longest <= edge) break` at the BOTTOM
+         of the first pass, where `edge` is still LOGO_MAX_EDGE — so
+         any source at or under 512px left the loop after one pass and
+         384, 320 and 256 were never tried. A 500px mark that missed
+         every rung at native size was refused with a message saying it
+         would not fit "even reduced and re-compressed", having never
+         been reduced once. Measured: per-pixel noise at 500px misses
+         every rung at native size and fits at 256.
+
+         Comparing the EFFECTIVE size instead is correct in both
+         directions: a 90px mark still encodes once, because every edge
+         describes the same canvas, and a 500px one walks 500, 384, 320
+         and 256 as it should. */
+      const effective = Math.min(longest, edge);
+      if (effective === lastEffective) continue;
+      lastEffective = effective;
+      const scale = effective / longest;
 
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
@@ -192,8 +213,8 @@ async function toDataUri(file) {
 
       /* Scaling down is the last thing tried and the only thing that
          loses detail irrecoverably, so it happens once per edge after
-         every quality has been spent at that size. */
-      if (longest <= edge) break;
+         every quality has been spent at that size. The loop ends when
+         EDGES runs out; nothing breaks out of it early. */
     }
 
     throw new Error(

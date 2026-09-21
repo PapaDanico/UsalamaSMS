@@ -147,6 +147,19 @@ const results = await page.evaluate(
           x.fillRect((i * 37) % w, (i * 53) % h, 6, 6);
         }
         x.restore();
+      } else if (kind === 'noise') {
+        /* Deterministic, so this fixture encodes to the same size on
+           every run and cannot become a flaky gate. */
+        const img = x.createImageData(w, h);
+        let seed = 12345;
+        for (let i = 0; i < img.data.length; i += 4) {
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+          img.data[i] = seed & 255;
+          img.data[i + 1] = (seed >> 8) & 255;
+          img.data[i + 2] = (seed >> 16) & 255;
+          img.data[i + 3] = 255;
+        }
+        x.putImageData(img, 0, 0);
       } else if (kind === 'flat') {
         x.fillStyle = '#0b3d5c';
         x.fillRect(0, 0, w, h);
@@ -189,7 +202,24 @@ const results = await page.evaluate(
       ['a mark on a transparent ground, 900x600 PNG', paint(900, 600, 'transparent'), 'image/png', 'alpha.png', 900],
       ['a 2000px photographic JPEG', paint(2000, 1400, 'gradient'), 'image/jpeg', 'photo.jpg', 2000],
       ['a detailed mark on a transparent ground, 800px PNG', paint(800, 800, 'transparent-detailed'), 'image/png', 'alpha-detail.png', 800],
-      ['a mark already smaller than the ceiling edge, 90px', paint(90, 90, 'flat'), 'image/png', 'small.png', 90]
+      ['a mark already smaller than the ceiling edge, 90px', paint(90, 90, 'flat'), 'image/png', 'small.png', 90],
+      /* UNDER THE CEILING EDGE AND STILL TOO HEAVY AT NATIVE SIZE.
+         THIS IS THE ONE THAT REACHES THE REDUCTION STEP.
+
+         Every other fixture is LARGER than LOGO_MAX_EDGE, so pass one
+         already downscales it and the ladder's own reduce-and-retry is
+         never what is being tested. A 500px source is under the
+         ceiling edge, so pass one encodes it at native size — and only
+         if that misses do 384, 320 and 256 matter at all.
+
+         It has to be per-pixel noise to get there. A gradient at 400px
+         encodes to 12,155 characters at WebP 0.65 and fits at native
+         size immediately, so it proves nothing; this one misses EVERY
+         rung at 500px (171,975 at the cheapest) and fits only at 256.
+         Not a logo anybody would upload — it is the boundary, and the
+         rule is that a mark under the ceiling edge still gets reduced
+         rather than refused. */
+      ['per-pixel noise at 500px, under the ceiling edge', paint(500, 500, 'noise'), 'image/png', 'noise.png', 500]
     ];
 
     /* Does the ENCODED result still carry transparency? Decoded and
