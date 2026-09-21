@@ -145,6 +145,22 @@
 # /api/* never reaches here at all: netlify/functions/api.mts declares
 # `config.path = "/api/*"`, and function routes are matched first.
 # ============================================================
+# THE OLD NAME, KEPT WORKING. /seti shipped as the route for what is
+# now /evaluation — the feature was named after an acronym that does not
+# appear in the CAA's publications (packages/shared/src/evaluation.ts
+# has the argument). A 301 rather than the SPA rewrite below, because
+# the old URL is genuinely gone rather than being routed client-side,
+# and anything holding it — a bookmark, a link in an email to a safety
+# manager — should learn the new one.
+#
+# ORDER MATTERS. Netlify takes the first matching rule, so this sits
+# ABOVE the catch-all; below it, /seti would be rewritten to index.html
+# and the router would render a not-found for a route that moved.
+[[redirects]]
+  from = "/seti"
+  to = "/evaluation"
+  status = 301
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

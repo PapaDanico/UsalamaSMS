@@ -491,9 +491,10 @@ router
     { title: 'The SMS record', surface: 'tool' }
   )
   .register(
-    '/seti',
-    (el) => lazy(el, () => import('./tools/seti/index.js').then((m) => (o) => m.render(o))),
-    { title: 'CAA SET-I assessment', surface: 'tool' }
+    '/evaluation',
+    (el) =>
+      lazy(el, () => import('./tools/evaluation/index.js').then((m) => (o) => m.render(o))),
+    { title: 'SMS evaluation self-assessment', surface: 'tool' }
   )
   .register(
     '/coverage',

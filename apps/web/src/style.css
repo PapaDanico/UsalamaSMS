@@ -4659,6 +4659,41 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .qa__answer p { margin: 0 0 var(--us-space-3); font-size: var(--us-text-sm); }
 .qa__answer p:last-child { margin-bottom: 0; }
 
+/* ── The SMS evaluation self-assessment ──────────────────────────────
+   Forty-eight criteria, grouped into the seven sections the tool is
+   numbered under. The summary is the section heading AND the control
+   that opens it, so it carries the evidenced count: an assessor
+   returning to a half-finished assessment looks for the section that
+   is not done, and making them open all seven to find out is exactly
+   the scrolling this grouping exists to remove.
+
+   The marker is dropped because the count sits where it would be, and
+   a disclosure triangle beside "3 of 9 evidenced" reads as decoration
+   rather than as state. The row is a flex with the count pushed right,
+   which survives the print block flattening it — where every section
+   is open anyway. */
+.ev-section { margin-bottom: var(--us-space-4); }
+
+.ev-section > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--us-space-3);
+  cursor: pointer;
+  font-weight: var(--us-weight-semi);
+  font-size: var(--us-text-md);
+}
+
+.ev-section > summary::-webkit-details-marker { display: none; }
+.ev-section > summary::marker { content: ''; }
+
+/* A criterion that is already evidenced is not the one an assessor is
+   looking for. The rule is quiet on purpose — this is a "done" mark on
+   a working document, not a score. */
+.ev-section .rec[data-rated='yes'] {
+  border-left: 3px solid var(--us-border);
+}
+
 /* The tutorial's numbered steps. The counter is drawn rather than
    typed, so inserting a step renumbers the rest. */
 .numbered { list-style: none; counter-reset: step; margin: var(--us-space-6) 0 0; padding: 0; }

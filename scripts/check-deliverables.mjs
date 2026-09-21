@@ -79,6 +79,12 @@ const DELIVERABLES = [
   ['/picture', "the operator's own safety position"],
   ['/toolkits/culture', 'the safety culture survey, printed before the answers are cleared'],
   ['/toolkits/icaas?action=act-1', 'the corrective action pack for the Authority\'s portal'],
+  /* The ninth. It was not here because the screen could not print at
+     all — no identity block, no button, and a run of 48 forms that
+     would have come off a printer as an unattributable stack. It is
+     the document an operator takes into an oversight meeting, so it is
+     the one that most needs the operator's name on it. */
+  ['/evaluation?id=ev-1', 'the SMS evaluation self-assessment, with the criteria still unanswered'],
 ];
 
 /* =====================================================================

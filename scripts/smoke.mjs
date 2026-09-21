@@ -92,11 +92,24 @@ const REDIRECTS = (() => {
     const status = Number(read('status') ?? 301);
     const force = /^\s*force\s*=\s*true/m.test(body);
     if (!from || !to) continue;
+    /* AN EXACT 301, which is what a renamed route leaves behind. /seti
+       became /evaluation when the feature stopped being named after an
+       acronym nobody could source, and the old URL has to keep working
+       for whatever still holds it. Modelled as a real redirect rather
+       than as a rewrite, because the two behave differently in the one
+       way that matters here: a rewrite would serve the app at /seti and
+       the router would render a not-found, which is the failure the
+       redirect exists to prevent. */
+    if (!from.includes('*') && status === 301) {
+      rules.push({ exact: from, to, status });
+      continue;
+    }
     if (!from.endsWith('/*') || status !== 200) {
       console.error(
-        `FATAL: scripts/smoke.mjs models splat rewrites only, and netlify.toml ` +
-          `declares ${from} -> ${to} (${status}). Teach this reader that shape ` +
-          `rather than letting the suite test a routing table the deploy does not have.`
+        `FATAL: scripts/smoke.mjs models splat rewrites and exact 301s, and ` +
+          `netlify.toml declares ${from} -> ${to} (${status}). Teach this reader ` +
+          `that shape rather than letting the suite test a routing table the ` +
+          `deploy does not have.`
       );
       process.exit(1);
     }
@@ -111,14 +124,33 @@ const server = createServer((req, res) => {
   let file = join(DIST, pathname);
   const isFile = existsSync(file) && !statSync(file).isDirectory();
 
+  /* FIRST MATCHING RULE WINS, IN DECLARATION ORDER, because that is
+     what Netlify does — and modelling it any other way makes this
+     server more forgiving than the deploy, which is the defect this
+     file's header is about.
+
+     The first version of this checked exact redirects before the splat
+     rewrite unconditionally. That passes whether the exact rule sits
+     above the catch-all or below it, so moving it below — where
+     Netlify would shadow it completely and serve the app at the old
+     URL — came back GREEN in the mutation matrix. Order is the thing
+     most likely to break silently here, so it is the thing the reader
+     must preserve. */
   if (pathname === '/') file = join(DIST, 'index.html');
   else if (!isFile) {
+    const rule = REDIRECTS.find(
+      (r) => (r.exact ? r.exact === pathname : pathname.startsWith(r.prefix))
+    );
+    if (!rule) {
+      res.writeHead(404).end('not found');
+      return;
+    }
     // An existing asset wins over a rewrite unless the rule is forced,
     // which is Netlify's shadowing order — /sw.js and /manifest.json
     // must reach the browser as themselves.
-    const rule = REDIRECTS.find((r) => pathname.startsWith(r.prefix));
-    if (!rule) {
-      res.writeHead(404).end('not found');
+    if (rule.exact) {
+      res.writeHead(rule.status, { location: rule.to });
+      res.end();
       return;
     }
     file = join(DIST, rule.to);
@@ -3997,6 +4029,44 @@ try {
       return (await (await caches.open(shell)).keys()).length;
     });
     assert(cached > 0, 'the shell cache is empty — offline launch would show the fallback page');
+  });
+
+  await check('THE RENAMED ROUTE LEAVES ITS OLD URL WORKING', async () => {
+    // /seti became /evaluation when the feature stopped being named
+    // after "SET-I" — an acronym that does not appear in the UK CAA's
+    // publications, where the instrument is the SMS Evaluation Tool,
+    // SRG1776. See packages/shared/src/evaluation.ts.
+    //
+    // A rename that breaks a URL is a rename that loses whoever
+    // bookmarked it, and on this screen that is a safety manager
+    // mid-assessment. netlify.toml declares an exact 301 ABOVE the
+    // splat rewrite, and this asserts both halves of that: the status
+    // and the destination, and then that the destination renders.
+    //
+    // ORDER IS THE PART THAT COULD SILENTLY BREAK. Below the catch-all,
+    // /seti would be rewritten to index.html with a 200 and the router
+    // would render a not-found for a route that moved — which looks
+    // like a working site and is the exact failure the redirect exists
+    // to prevent. A 200 here is therefore a failure, not a pass.
+    const res = await fetch(`${BASE}/seti`, { redirect: 'manual' });
+    assert(
+      res.status === 301,
+      `/seti answered ${res.status}, not 301 — the exact rule is missing or sits below the splat rewrite`
+    );
+    assert(
+      res.headers.get('location') === '/evaluation',
+      `/seti redirected to ${res.headers.get('location')}, not /evaluation`
+    );
+
+    await page.goto(`${BASE}/evaluation`, { waitUntil: 'networkidle' });
+    const heading = await page.locator('h1').first().textContent();
+    assert(
+      /evaluation/i.test(heading ?? ''),
+      `/evaluation rendered "${heading}" rather than the evaluation screen`
+    );
+    // And the acronym is gone from what a customer reads.
+    const body = await page.evaluate(() => document.body.textContent ?? '');
+    assert(!/SET-I/.test(body), 'the old unsourceable acronym is still on the screen');
   });
 
   await check('a deep link resolves after a full reload', async () => {

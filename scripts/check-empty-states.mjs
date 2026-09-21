@@ -65,6 +65,11 @@ const WAY_FORWARD = {
   'shared/router.js': [null, 'the error boundary, not an empty record set — it already offers the way back to /'],
   'tools/admin/index.js': [null, 'the console mints operators and grants entitlements from forms on this screen'],
   'tools/fatigue/index.js': ['/report', 'a fatigue report is filed on the report form, with the duty block'],
+  'tools/evaluation/index.js': [
+    null,
+    'an assessment is created from the form directly above the zero-state on this screen, ' +
+      'and it opens all 48 criteria at once',
+  ],
   'tools/glossary/index.js': [null, 'a search that matched nothing, not a record set — the input is on this screen'],
   'tools/login/team-panel.js': [null, 'colleagues are added from the form on this panel'],
   'tools/register/index.js': [null, 'the register entry form is on this screen'],

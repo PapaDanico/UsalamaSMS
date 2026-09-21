@@ -2438,7 +2438,40 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
  * half of one. `npm run check:third-party` now fails the build on that
  * class of import, so the next attempt is refused before it reaches a
  * budget line. */
-const BUDGET = { entry: 224 * 1024, js: 696 * 1024, css: 80 * 1024 };
+/* 696 -> 712, 21 September 2026 — the SMS evaluation self-assessment,
+ * rewritten from a screen nobody could work in.
+ *
+ * WHAT WAS BOUGHT. The route shipped as 73 lines of string
+ * concatenation: 48 identical forms in one unbroken run, no grouping,
+ * no progress, no print, and none of the product's own markup. An
+ * assessor three hours into a 48-criterion walk could not tell how much
+ * was left, and the artefact a self-assessment exists to produce — the
+ * pack you hand an auditor — could not be produced at all. It is now
+ * grouped into the seven sections the tool is numbered under, counts
+ * only the criteria carrying evidence, and prints with the operator's
+ * mark on it.
+ *
+ * +13.2 KB, AND ENTRY DOES NOT MOVE: 222.3 KB of its unchanged 224 KB
+ * ceiling. The route is lazy, so the weight lands on a safety manager
+ * who opens an evaluation and on nobody else — a ramp agent filing a
+ * hazard at a remote strip pays none of it. CSS is 78.6 KB of its
+ * unchanged 80 KB.
+ *
+ * THE OLD CEILING HAD NO HEADROOM AT ALL, which is worth recording
+ * because nothing in the build says so: measured on `origin/main`
+ * before this change, total JS was 696.0 KB against a 696 KB budget.
+ * The next addition of any size was going to need this raise whatever
+ * it was.
+ *
+ * AND ONE TRIM WAS TRIED AND FAILED, recorded so nobody repeats it.
+ * The four level definitions were rendering inside all 48 criteria;
+ * extracting them into one legend was worth doing for the screen and
+ * for the printed pack — 48 copies of the same four sentences wrapped
+ * around the evidence — but it made the bundle 0.6 KB LARGER, because
+ * a component costs more than the repetition it removes when the
+ * repetition is a .map in a template. The change was kept for the
+ * document it produces, not for the bytes. */
+const BUDGET = { entry: 224 * 1024, js: 712 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
