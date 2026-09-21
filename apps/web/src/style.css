@@ -1009,9 +1009,38 @@ html { scroll-padding-top: var(--us-chrome); }
   h1, h2 { page-break-after: avoid; }
   .table-scroll { overflow: visible !important; }
   /* Every collapsed disclosure prints expanded — a printed pack that
-     omits the optional section is a pack that omits the aerodrome. */
+     omits the optional section is a pack that omits the aerodrome.
+
+     AND THE SUMMARY PRINTS WITH IT. It used to be `display: none`,
+     which on the questions page deleted every QUESTION and printed a
+     run of answers with nothing saying what each one answered. An FAQ
+     whose questions are missing is not a terse FAQ, it is an
+     unreadable one — measured by rendering /faq with the media
+     emulated to print and finding the summary at zero height.
+
+     The chevron and the marker go rather than the text: they are the
+     screen's affordance for a control that, on paper, is a heading.
+
+     CSS CANNOT OPEN A <details> EVERYWHERE, which is the part worth
+     knowing. Chromium auto-expands one for printing and honours
+     ::details-content; Firefox and WebKit do neither, so on those the
+     answers were absent as well as the questions. The rule below
+     covers Chromium and `shared/print-expand.js` covers the rest by
+     opening them on `beforeprint` and restoring afterwards — a
+     stylesheet is not a mechanism for changing an element's state. */
   details { display: block !important; }
-  details > summary { display: none !important; }
+  details > summary {
+    display: block !important;
+    list-style: none;
+    font-weight: 700;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  details > summary::-webkit-details-marker { display: none !important; }
+  details > summary::marker { content: '' !important; }
+  .qa__item summary::after { display: none !important; }
+  /* Screen affordances for a disclosure nobody can click on paper. */
+  .qa-controls, .qa__link { display: none !important; }
   .card { box-shadow: none !important; }
 
   /* A PLACEHOLDER MUST NOT PRINT. THIS ONE IS NOT COSMETIC.
@@ -1129,6 +1158,14 @@ html { scroll-padding-top: var(--us-chrome); }
      document. A pack of loose pages with no operator name on them is a
      pack an auditor cannot attribute. */
   .print-id { display: block !important; }
+
+  /* ITS OWN RULE ON PURPOSE. An engine that does not recognise this
+     pseudo-element throws away the whole rule it sits in, so it sits
+     alone rather than taking the identity block with it. */
+  details::details-content {
+    content-visibility: visible !important;
+    block-size: auto !important;
+  }
 }
 
 /* Hidden entirely on screen: this exists for paper. */

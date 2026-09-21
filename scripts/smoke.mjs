@@ -3525,6 +3525,109 @@ try {
     assert(opened > 0 && opened < total, 'Expand all opened every group, not just its own');
   });
 
+  await check('THE QUESTIONS PRINT WITH THEIR ANSWERS', async () => {
+    // WHAT WENT WRONG: the print block carried
+    //
+    //     details > summary { display: none !important; }
+    //
+    // so every QUESTION was deleted from the printed page and /faq came
+    // out of a printer as a run of unattributed answers. Operators
+    // reported the PDF "not rendering properly", which is exactly what
+    // a document with half of each pair missing looks like.
+    //
+    // AND THE OTHER HALF WAS ENGINE-DEPENDENT, which is why this is
+    // measured rather than eyeballed. Chromium auto-expands a closed
+    // <details> for printing; Firefox and WebKit do not. So in Chromium
+    // the answers survived and the questions vanished, and in Safari —
+    // the browser on the iPad a safety manager carries — a closed
+    // question printed as nothing at all.
+    //
+    // The fix is in two places because the property needs both: the
+    // stylesheet keeps the summary visible and drops the chevron, and
+    // shared/print-expand.js sets `open` on beforeprint, because a
+    // stylesheet cannot change an element's state.
+    //
+    // MEASURED BY BOUNDING BOX, not by existence or by class. This
+    // repository has already had a gate that counted elements in the
+    // DOM while the print block hid them — `display: none` and a
+    // zero-height container both keep the node and print nothing.
+    await navigateTo(page, '/faq');
+    await page.waitForSelector('.qa__item', { timeout: 5000 });
+
+    // Start from the state a reader who has not touched anything is in:
+    // every disclosure closed. Set explicitly rather than toggled, per
+    // the rule in this file's header.
+    await page.evaluate(() => {
+      for (const d of document.querySelectorAll('details')) d.open = false;
+    });
+
+    // `beforeprint` is what a real print fires; emulateMedia alone does
+    // not, so the module under test would never run. Dispatching it is
+    // how the shipped listener gets driven rather than bypassed.
+    await page.emulateMedia({ media: 'print' });
+    await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+
+    // THE MECHANISM, ASSERTED DIRECTLY, and this line is the reason.
+    //
+    // Chromium auto-expands a closed <details> for printing all by
+    // itself, so the answers render here whether or not this product
+    // ships any JavaScript for it — measured: deleting the whole
+    // beforeprint expander left every assertion below green. The half
+    // that was deleted is the half that serves Firefox and WebKit, and
+    // a Chromium-only gate cannot see it.
+    //
+    // What IS engine-independent is whether `open` got set. That is
+    // exactly what shared/print-expand.js does and nothing else in the
+    // product does it, so asserting the attribute tests the module
+    // rather than the browser's good manners.
+    const unopened = await page.evaluate(
+      () => document.querySelectorAll('details:not([open])').length
+    );
+    assert(
+      unopened === 0,
+      `${unopened} disclosures were still closed after beforeprint — the expander did ` +
+        'not run. Chromium would have printed them anyway; Safari and Firefox will not.'
+    );
+
+    const printed = await page.evaluate(() => {
+      const items = Array.from(document.querySelectorAll('.qa__item'));
+      const box = (el) => {
+        if (!el) return 0;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 ? r.height : 0;
+      };
+      return {
+        total: items.length,
+        questionsShown: items.filter((d) => box(d.querySelector('summary')) > 0).length,
+        answersShown: items.filter((d) => box(d.querySelector('.qa__answer')) > 0).length,
+        // The screen's affordances have no meaning on paper.
+        controls: box(document.querySelector('.qa-controls')) > 0,
+        printButton: box(document.querySelector('#print-page')) > 0
+      };
+    });
+
+    await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+    await page.emulateMedia({ media: 'screen' });
+
+    assert(printed.total > 10, `only ${printed.total} questions found to measure`);
+    assert(
+      printed.questionsShown === printed.total,
+      `${printed.total - printed.questionsShown} of ${printed.total} QUESTIONS print at zero size`
+    );
+    assert(
+      printed.answersShown === printed.total,
+      `${printed.total - printed.answersShown} of ${printed.total} ANSWERS print at zero size`
+    );
+    assert(!printed.controls, 'Expand all / Collapse all print');
+    assert(!printed.printButton, 'the print button prints');
+
+    // AND IT GOES BACK. Somebody who prints the page and carries on
+    // reading should find it as they left it — a screen silently
+    // reorganised by a print dialog has lost the reader's place.
+    const stillOpen = await page.locator('.qa__item[open]').count();
+    assert(stillOpen === 0, `${stillOpen} questions were left open after printing`);
+  });
+
   await check('THE GLOSSARY RENDERS THE MODULE, NOT A COPY OF IT', async () => {
     // 186 lines of vocabulary transcribed from the KCAA course glossary
     // existed in the repository so the de-identifier would not scrub

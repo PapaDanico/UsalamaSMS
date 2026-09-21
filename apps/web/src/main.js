@@ -42,6 +42,7 @@ import {
   isProvisional
 } from '../../../packages/shared/src/regulations.ts';
 import { watchForInstall, offerUpdate } from './shared/prompts.js';
+import { watchForPrint } from './shared/print-expand.js';
 import { SECTIONS, WORKING_SECTIONS } from './shared/sitemap.js';
 import { render as renderReport } from './tools/report/index.js';
 import { render as renderLogin } from './tools/login/index.js';
@@ -799,6 +800,12 @@ registerServiceWorker({
 });
 
 watchForInstall();
+
+/* Every screen prints, and a collapsed disclosure that prints closed is
+   a pack with its answers missing. Bound once here rather than per
+   screen: Ctrl+P is available everywhere, including on a screen whose
+   module never thought about paper. */
+watchForPrint();
 
 /* The worker asks; the page owns the ONE implementation of the flush.
    Two implementations of backoff and conflict handling is how a hazard

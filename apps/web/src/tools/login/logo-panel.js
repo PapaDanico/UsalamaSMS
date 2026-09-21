@@ -47,12 +47,83 @@ import {
 /** The identity cache print-id.js reads. Cleared when the mark changes. */
 const ORG_KEY = 'usalamasms.org';
 
+/* THE ENCODING LADDER, and the defect it exists to fix.
+
+   This used to be one line — `canvas.toDataURL('image/png')` at 512px
+   — and then checkLogo() refused what came back. Measured in Chromium
+   with a logo carrying a gradient and anti-aliased type, which is what
+   an operator's mark actually is:
+
+     PNG at 512px   431,818 characters   against a 60,000 ceiling
+     PNG at 256px   130,294 characters   still refused
+
+   So a real logo was refused SEVEN TIMES OVER, and the refusal said
+   "export it at 512px on the longest edge" — which is precisely what
+   this function had just done. An operator who followed the advice
+   exactly got the identical message, with nothing left to try. That is
+   how "we cannot upload our logo" happens with every check passing:
+   the ceiling was enforced, the client simply never tried to meet it.
+
+   PNG IS LOSSLESS, AND A LOGO IS NOT ALWAYS FLAT. The format is right
+   for a two-colour mark and catastrophic for a gradient, where it
+   stores every dithered pixel exactly. WebP at the same 512px comes
+   back at 45,395 characters — the same image, under the ceiling, with
+   an alpha channel intact.
+
+   So the ladder tries lossless first and only then gives ground, in
+   this order, stopping at the first rung that fits:
+
+     · PNG, because a flat mark encodes small and perfectly;
+     · WebP down a short quality ramp, which keeps transparency;
+     · JPEG, ONLY where the image has no transparency to lose;
+     · and then the same ladder at a smaller edge.
+
+   QUALITY IS SPENT BEFORE PIXELS, deliberately. A 512px mark at WebP
+   0.8 prints better than a 256px lossless one, because print is where
+   this image is going and 18mm of paper wants the pixels.
+
+   AN UNSUPPORTED FORMAT IS SILENT, which is the trap in this API:
+   `toDataURL('image/webp')` on an engine without a WebP encoder
+   returns a PNG and does not say so. Every rung therefore checks the
+   type it got back rather than the type it asked for. */
+const EDGES = [LOGO_MAX_EDGE, 384, 320, 256];
+const RUNGS = [
+  { type: 'image/png' },
+  { type: 'image/webp', quality: 0.92 },
+  { type: 'image/webp', quality: 0.85 },
+  { type: 'image/webp', quality: 0.75 },
+  { type: 'image/webp', quality: 0.65 },
+  { type: 'image/jpeg', quality: 0.9, opaqueOnly: true },
+  { type: 'image/jpeg', quality: 0.8, opaqueOnly: true },
+  { type: 'image/jpeg', quality: 0.7, opaqueOnly: true }
+];
+
+/** Whether any pixel is less than fully opaque. */
+function hasAlpha(ctx, width, height) {
+  try {
+    const { data } = ctx.getImageData(0, 0, width, height);
+    for (let i = 3; i < data.length; i += 4) if (data[i] < 255) return true;
+    return false;
+  } catch {
+    /* A browser that refuses getImageData tells us nothing, and the
+       safe assumption is that transparency IS present: it costs a
+       JPEG rung, and guessing the other way flattens a transparent
+       mark onto white without being asked. */
+    return true;
+  }
+}
+
 /**
- * A chosen file, as a capped PNG data URI.
+ * A chosen file, as a data URI that fits under the ceiling.
  *
  * Rejects rather than rasterises SVG — see the note above. Everything
  * else the browser can decode is drawn to a canvas at no more than
- * LOGO_MAX_EDGE on its longest side, preserving aspect.
+ * LOGO_MAX_EDGE on its longest side, preserving aspect, and then
+ * encoded down the ladder above until it fits.
+ *
+ * Returns the URI and how it was reached, so the screen can say what
+ * it did rather than silently handing back something other than what
+ * was chosen.
  */
 async function toDataUri(file) {
   if (file.type === 'image/svg+xml' || /\.svgz?$/i.test(file.name)) {
@@ -63,23 +134,73 @@ async function toDataUri(file) {
   }
 
   const url = URL.createObjectURL(file);
+  let img;
   try {
-    const img = new Image();
+    img = new Image();
     img.src = url;
     await img.decode();
+  } catch {
+    URL.revokeObjectURL(url);
+    throw new Error('That file could not be read as an image. Choose a PNG, JPEG or WebP.');
+  }
 
+  try {
     const longest = Math.max(img.naturalWidth, img.naturalHeight);
-    /* Never scaled UP. A 90px logo enlarged to 512 is the same logo
-       with soft edges and four times the bytes. */
-    const scale = longest > LOGO_MAX_EDGE ? LOGO_MAX_EDGE / longest : 1;
+    let transparent = null;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/png');
+    for (const edge of EDGES) {
+      /* Never scaled UP. A 90px logo enlarged to 512 is the same logo
+         with soft edges and four times the bytes. */
+      const scale = longest > edge ? edge / longest : 1;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      /* Read once, off the first canvas drawn. Transparency is a
+         property of the source, not of the rung. */
+      transparent ??= hasAlpha(ctx, canvas.width, canvas.height);
+
+      for (const rung of RUNGS) {
+        if (rung.opaqueOnly && transparent) continue;
+        const uri = canvas.toDataURL(rung.type, rung.quality);
+        if (uri.length <= LOGO_MAX_CHARS) {
+          /* THE TYPE IS READ OFF THE RESULT, NOT OFF THE REQUEST, and
+             that is the whole handling of the silent fallback rather
+             than a guard beside it. `toDataURL` on an engine with no
+             encoder for the type asked for returns a PNG and does not
+             say so, so `rung.type` is a claim and the URI is the fact.
+             Reported this way the claim cannot be wrong.
+
+             THE GUARD THAT USED TO SIT HERE — skip any candidate whose
+             type came back different — was UNREACHABLE, and the
+             mutation matrix is what said so: deleting it changed
+             nothing, because PNG is the first rung at every edge. A
+             silently-substituted PNG is byte-identical to the PNG this
+             loop has already tried and rejected at this size, so it is
+             over the ceiling too and falls through on length alone.
+             A condition that looks load-bearing and cannot execute is
+             a check that cannot fail, which this repository has
+             removed rather than kept before now. */
+          const actual = /^data:([^;]+);/.exec(uri)?.[1] ?? rung.type;
+          return { uri, type: actual, edge: Math.max(canvas.width, canvas.height) };
+        }
+      }
+
+      /* Scaling down is the last thing tried and the only thing that
+         loses detail irrecoverably, so it happens once per edge after
+         every quality has been spent at that size. */
+      if (longest <= edge) break;
+    }
+
+    throw new Error(
+      `That image will not fit under the ${Math.round(LOGO_MAX_CHARS / 1024)} KB ceiling ` +
+        'even reduced and re-compressed, which usually means it is a photograph rather ' +
+        'than a mark. A logo on a plain or transparent background will fit easily.'
+    );
   } finally {
     /* Revoked in `finally`, so a file the browser could not decode does
        not leak the object URL for the life of the tab. */
@@ -164,7 +285,7 @@ export async function render(outlet) {
     if (!chosen) return;
     status.textContent = 'Reading…';
     try {
-      const uri = await toDataUri(chosen);
+      const { uri, type, edge } = await toDataUri(chosen);
       /* THE SAME FUNCTION THE SERVER USES. Told here so somebody is not
          waiting on an upload to learn it is too big — and refused there
          regardless, because this one is a courtesy. */
@@ -179,7 +300,14 @@ export async function render(outlet) {
       wrap.innerHTML =
         `<img id="logo-preview" alt="The mark about to be saved" ` +
         `style="max-height:64px;max-width:220px;display:block" src="${uri}">`;
-      status.textContent = `Ready to save — ${Math.round(verdict.chars / 1024)} KB encoded.`;
+      /* WHAT IT ACTUALLY DID, not what was chosen. The ladder may have
+         changed the format and the size to fit the ceiling, and the
+         preview above is the evidence it still looks right — so the
+         line under it says which rung it landed on rather than leaving
+         somebody to wonder why their PNG came back as WebP. */
+      status.textContent =
+        `Ready to save — ${Math.round(verdict.chars / 1024)} KB, ` +
+        `${type.replace('image/', '').toUpperCase()} at ${edge}px. Check the preview.`;
     } catch (err) {
       pending = null;
       status.textContent = err?.message ?? 'That file could not be read as an image.';
