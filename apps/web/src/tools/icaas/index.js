@@ -210,6 +210,7 @@ function Header() {
   return html`<header class="page-head">
     <span class="eyebrow">Toolkit</span>
     <h1>KCAA corrective action plan</h1>
+    <div class="print-id-slot"></div>
     <p class="lede">${LEDE}</p>
   </header>`;
 }
@@ -387,7 +388,6 @@ export async function render(outlet) {
     ${ToolNav('/toolkits/icaas')}
     <section class="panel wrap">
       ${Header()}
-      <div class="print-id-slot"></div>
       ${Pack(data)}
     </section>
   `.toString();

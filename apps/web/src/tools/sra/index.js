@@ -164,7 +164,7 @@ export function render(outlet) {
       <div class="wrap">
         <span class="eyebrow">Toolkit</span>
         <h1>Safety risk assessment</h1>
-      <div class="print-id-slot"></div>
+        <div class="print-id-slot"></div>
         <p class="lede">
           For a change rather than for the standing register: a new route, a
           new type, a base closing, a roster that moves. The five steps are

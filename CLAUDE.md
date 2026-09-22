@@ -931,6 +931,103 @@ unless configured to. An absence in a log you have not sized is an
 absence of evidence about the log. The failing SELECT is the proof;
 the silence was never going to be.
 
+## A GATE THAT READS STRUCTURE CANNOT SEE A WRONG WORD
+
+Every gate in this repository looked at shape. `check:a11y` runs axe,
+`check:deliverables` measures a bounding box, `check:symmetry` takes 315
+layout measurements, `check:prose` reads SOURCE files. On 22 September
+2026 the product was read the way a reader reads it — the rendered text,
+and the printed page — and both passes found defects that had survived
+all of them.
+
+### `undefined` printed on a screen that reaches a regulator
+
+`/picture` rendered *"median of 3; nine in ten within undefined"*.
+
+`html` in `shared/html.js` resolves null and undefined to the EMPTY
+STRING, so the obvious leak cannot happen here — and that is exactly why
+nobody looked for the one that can. A PLAIN template literal nested
+inside the tagged one is an ordinary string, already built by the time
+`html` sees it, and "undefined" is six letters of prose by then.
+
+The cause was a FIXTURE reading `{ median: 9, n: 3, p: 90 }`. The key is
+`p90`; and `n: 3` with a median at all is a shape `sampleOf` cannot
+produce, because below MIN_SAMPLE it returns both as null. A fixture
+asserting a state the API never emits tests a branch the product does
+not have — and three sweeps rendered that word and reported ok.
+
+### "The answer arrived" is not "the answer is readable"
+
+Two screens guarded on `if (!data)` — a test of PRESENCE — and then
+indexed straight into it:
+
+| screen | read | result |
+|---|---|---|
+| `/fatigue` | `data.counts.withinDeclared` | page at **two nodes** — blank |
+| `/toolkits/spi` | `data.rows.map(...)` | section left holding stale text |
+
+The throw happens mid-render, so the honest "could not be reached"
+notice — already written, six lines above the throw in both files — is
+jumped straight over. It is reachable: the service worker caches API
+answers, so a body stored against an older shape is served with status
+200 to a browser running the new bundle, as is a proxy's copy and a
+half-deployed API.
+
+**The fix is not `?? 0`.** A zero painted over an unknown is the failure
+this product exists to refuse. Check the shape, and give a body the
+screen cannot read the same sentence as no body at all.
+
+`npm run check:nulls` holds both properties over every screen in three
+states — signed out, the operator's record, and **a 200 carrying `{}`**,
+which is the smallest body a 200 can be. It TESTS ITSELF FIRST: a known
+leak is planted in a rendered page and the scanner has to find it,
+because a text walk that matched nothing would print ok over the whole
+product and retire the suspicion.
+
+Prose that legitimately uses one of those words — /sms says "6 of 6
+still undefined" about requirements nobody has written yet — goes in
+`PROSE` at the top of the gate with the sentence saying why.
+
+### And the printed pack, read as paper
+
+`check:deliverables` asserted the identity block was PAINTED and never
+asked WHERE. Measured at A4 with the media emulated to print:
+
+| defect | measured |
+|---|---|
+| navigation printed | 133px of `.toolnav` on sheet one of **six** documents; the first thing on the culture survey, above the operator's name |
+| the masthead was not on sheet one | `/sms` 597px down a 1123px sheet; `/toolkits/culture` at **4,890px**, the last sheet of five |
+| sheets two onward were anonymous | eight sheets, one attributable |
+| the title printed twice | screen heading first, so the opening line was not whose document it is |
+| body prose printed at `#5c5852` | correct on screen, and these documents are photocopied and faxed — each generation loses the light end first |
+
+The running footer is `position: fixed`, which Chromium's print path
+repeats per page. **Verified in the PDF's own content streams**, not
+assumed: a fixed footer over three pages appears as `0 0 688 40 re f` in
+the stream of pages one, two and three, where without it pages two and
+three carry no content stream at all.
+
+**It carries no page number and says so.** `counter(page)` needs an
+`@page` margin box, Chromium does not implement one, and a second PDF
+engine is a second place for the numbers to disagree. So every sheet is
+ATTRIBUTABLE and a reader cannot detect a missing one. That is a limit,
+not a feature, and it is written down as one.
+
+**The fixture logo was a single transparent pixel**, which satisfied
+`mark: yes` and meant the printed masthead had never been seen with a
+logo in it — so the `max-height: 18mm` cap, which exists because a 512px
+mark otherwise prints four inches tall, could never fire.
+
+### The rule underneath all of it
+
+A gate asserts the question it asks. Structure and words are two
+questions, and so are "is it there" and "where is it". This file already
+records the monitor version of that — health and freshness — and these
+are the same sentence one layer down.
+
+---
+
+
 ## An APPLIED migration is immutable, including its comments
 
 `_prisma_migrations.checksum` is the sha256 of `migration.sql`, so
@@ -1010,6 +1107,84 @@ from `20260818033214_fatigue_limits_and_report_detail`. The REVOKE is
 wrapped in a `pg_roles` existence check because `anon`, `authenticated`
 and `service_role` are Supabase's and the same migration runs against a
 bare Postgres in the integration suite.
+
+## THERE ARE THREE DOORS INTO THE SAFETY OFFICE, AND THE THIRD IS ONE REQUEST
+
+`mayCreateRole` closes minting yourself an eye. `mayResetCredential`
+closes resetting one you did not mint. Both take four requests and a
+password handover, and both are recorded above at length.
+
+**MOVING an account takes ONE request and hands nothing over**, and
+until 22 September 2026 nothing in this product could do it at all — so
+an operator could hire and could offboard and could not PROMOTE. A
+safety officer becoming the safety manager meant a SECOND account for
+the same person, and a safety record that attributes one reporter's
+filings to two identities is a safety record nobody can read.
+
+The moment a role picker exists, so does this:
+
+    SYSTEM_ADMIN, own token, GET /api/v1/export   -> 403
+    PUT /api/v1/users/<self>/role SAFETY_MANAGER  -> 200
+    sign in again,           GET /api/v1/export   -> every narrative
+
+`mayChangeRole` takes **BOTH ENDS** of the change, which the other two
+do not need to. Guarding only the destination lets an administrator
+demote the safety manager to FRONTLINE — an account it is held away from
+on purpose; guarding only the origin lets it promote a reporter into the
+safety office. All three share `readsNarrative`, deliberately, so they
+cannot drift about where the boundary is, and `rbac.test.ts` asserts
+that they still agree.
+
+Two refusals are the ROUTE's rather than the matrix's, because they are
+about which ACCOUNT rather than which role: **your own role, for
+everybody including the accountable executive** — otherwise the one role
+that reads every narrative could make itself the administrator and lock
+the operator out of its own safety office — and **the last active
+accountable executive**, the same one-way door `/api/v1/users/:id/active`
+already refuses.
+
+**THE ROLE RIDES IN THE ACCESS TOKEN**, so every live session is revoked
+on a promotion as much as on a demotion: the asymmetric version leaves a
+demoted account reading narratives for another quarter of an hour. The
+revoke BOUNDS the window rather than closing it, so the response names
+the fifteen minutes instead of reporting a clean success.
+
+## A SECOND SPELLING OF ONE RULE IS HOW TWO LAYERS COME TO DISAGREE
+
+`POST /api/v1/users` hand-rolled its own email check, and its domain half
+permitted **exactly one dot**:
+
+| address | answer |
+|---|---|
+| `pilot@fly540.com` | accepted |
+| `x@gmail.com` | accepted |
+| `sam@airline.co.ke` | **REFUSED** |
+| `ops@kenya-airways.co.ke` | **REFUSED** |
+| `s@ba.co.uk` | **REFUSED** |
+| `j@mail.icao.int` | **REFUSED** |
+
+Kenya's second-level domain is `.co.ke`. **Every Kenyan company address
+was refused by the one route that adds a colleague** — in the market
+this product is built for, on a product whose own demo accounts are on
+`demo.usalamasms.test`. An operator could sign up as `ae@airline.co.ke`,
+because signup validates with Zod's `.email()`, and then add nobody from
+their own company.
+
+**NO TEST COULD HAVE CAUGHT IT AND NONE DID.** Every layer agreed with
+itself. Signup, login and reset all use `.email()`; only this route
+disagreed; and every test in its file used a single-dot `.test` address.
+That is the Jurisdiction enum defect one field along, and the same
+sentence applies: *a suite that only ever exercises one shape of a value
+cannot see a defect in the alternatives.*
+
+It was found by DRIVING THE PRODUCT — adding a colleague in a browser
+against the real API and reading the refusal — which is what
+`.claude/skills/run-platform` exists for, and the second defect this
+month that only that combination could reach.
+
+The fix was to delete the second spelling, not to add a dot to it.
+
+---
 
 ## The accountable executive could not file a report
 
@@ -2340,10 +2515,15 @@ catching: a monitor with a home on paper.
 | | runs unattended |
 |---|---|
 | `check`, including `check:gates-fail` | **yes** — inside the Netlify build, every deploy |
-| the six browser gates (`gate:bundle`) | **yes** — the Netlify PRODUCTION build, every publish |
+| the seven browser gates (`gate:bundle`) | **yes** — the Netlify PRODUCTION build, every publish |
 | the deny-by-default posture | **yes** — `posture.mts`, daily 05:40 UTC, against production |
 | health and freshness | **yes** — `watchdog.mts`, every ten minutes |
 | the integration suite and the 7 RLS assertions | **no.** Only when somebody runs `npm run gate` |
+
+**THE SEVENTH IS `check:nulls`, ADDED 22 SEPTEMBER 2026**, and its
+41 seconds were bought by running it four lanes wide rather than out of
+the deploy headroom — 145s serial, same 211 assertions over 105 renders.
+Re-read `deploy_time` after it lands.
 
 **The second row was bare and is not any more.** `netlify.toml` said
 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"` with the comment "Netlify

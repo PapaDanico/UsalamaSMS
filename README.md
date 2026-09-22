@@ -162,14 +162,14 @@ npm install
 npm run check          # prisma generate, typecheck, brand, assets, claims, css, glyphs, tests
 npm run check:brand    # 56 contrast assertions, incl. dichromacy simulation
 npm run check:assets   # every file served from public/ is declared, with a ceiling
-npm run check:claims   # 134 assertions that the registries match the docs
+npm run check:claims   # 141 assertions that the registries match the docs
 npm run check:glyphs   # every character on a screen is one the face can draw
 npm run check:authz    # no route shows a model to a role its own endpoint refuses
-npm test               # 1070 unit tests
+npm test               # 1079 unit tests
 npm run typecheck      # tsc --noEmit, strict
 npm run verify         # build, then drive the bundle in headless Chromium
 npm run check:update   # 7 checks across TWO versions — the PWA update path
-npm run test:integration   # 511 checks against a real Postgres
+npm run test:integration   # 530 checks against a real Postgres
 npm run seed               # first org + users; prints passwords once
 npm run seed:demo -- --rotate   # re-issue demo passwords, revoking live sessions
 npm run setup:env          # set DATABASE_URL + the two secrets on Netlify
@@ -193,10 +193,19 @@ appeared after the fact, and its Reload button posted to
 did nothing at all. The worker waits now, the person decides, and four
 checks across two builds keep it that way.
 
-Bundle: **213.5 KB entry JS + 53.6 KB CSS**, which is **75 KB over the wire**
-gzipped, against budgets the build enforces and refuses to raise
-silently. Every route past the first paint is lazily loaded, so the
-entry figure is what a person filing a report at a strip actually pays.
+Bundle budgets the build enforces and refuses to raise silently:
+**228 KB entry JS**, **720 KB of JavaScript in total**, **82 KB CSS**.
+Every route past the first paint is lazily loaded, so the entry budget
+is what a person filing a report at a strip actually pays, and raising
+either number needs a receipt in `scripts/stamp-sw.mjs` saying what was
+bought for it.
+
+These are budgets rather than measured bytes on purpose. This paragraph
+used to state the bytes — and by September 2026 it was wrong by 47% on
+the CSS figure, because a byte count is stale on the next commit that
+adds a line. The claims gate now checks these three against the numbers
+`stamp-sw.mjs` actually enforces, so the front page cannot drift from
+the build again.
 
 Plus **67 KB of self-hosted type**, latin subset, precached by the
 service worker so the second load is offline too: DM Sans at 61 KB for

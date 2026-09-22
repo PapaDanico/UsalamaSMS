@@ -20,6 +20,30 @@
    THE CAVEAT IS RENDERED, NOT FOOTNOTED. An operator must not read a
    quiet fatigue page as evidence it holds an FRMS — that is a
    State-approved undertaking this product neither provides nor claims.
+
+   ------------------------------------------------------------
+   AND "THE ANSWER ARRIVED" IS NOT "THE ANSWER IS READABLE".
+
+   This screen used to guard on `if (!data)`, which is a test of
+   PRESENCE, and then read `data.counts.withinDeclared` — so a 200
+   carrying a body of the wrong shape threw halfway through the render
+   and left the page at TWO NODES. Measured: blank, no heading, no
+   sentence, nothing in the console a safety manager would ever see.
+   The honest notice for an unreachable office was already written six
+   lines above and the crash jumped straight over it.
+
+   IT IS REACHABLE, which is why it is fixed rather than noted. The
+   service worker caches API answers, so a body stored against an older
+   shape is served with status 200 to a browser running the new bundle;
+   so is a proxy's cached copy, and so is a half-deployed API. Every one
+   of those is a 200 this screen cannot read.
+
+   THE FIX IS NOT `?? 0`. A zero painted over an unknown is the failure
+   this product exists to refuse — `today.ts` says it in full about
+   UNKNOWN, and a fatigue screen reporting "0 past a declared limit"
+   because it could not parse the answer is the most dangerous possible
+   version of it. So the shape is CHECKED, and a body this screen cannot
+   read gets the same sentence as no body at all.
    ============================================================ */
 import { html } from '../../shared/html.js';
 import { authFetch, isSignedIn } from '../../shared/session.js';
@@ -47,6 +71,31 @@ function Report(r) {
       ? html`<ul>${r.factors.map((f) => html`<li>${f}</li>`)}</ul>`
       : ''}
   </article>`;
+}
+
+/* THE SHAPE THIS SCREEN READS, asserted rather than assumed.
+
+   Every field the render below indexes into, and nothing else — a
+   predicate that checked more than the screen uses would refuse a body
+   the screen could have rendered, which is the same fault in the other
+   direction.
+
+   `declared` is the branch, so `limits.instrument` is only required
+   when it is true: an operator with no declared limits has no
+   instrument to name, and demanding one would refuse the state every
+   new operator starts in. */
+function readable(data) {
+  if (!data || typeof data !== 'object') return false;
+  if (typeof data.total !== 'number') return false;
+  if (typeof data.caveat !== 'string') return false;
+  if (!Array.isArray(data.reports)) return false;
+  const c = data.counts;
+  if (!c || typeof c !== 'object') return false;
+  for (const k of ['withinDeclared', 'exceededDeclared', 'impairmentReported', 'incomplete']) {
+    if (typeof c[k] !== 'number') return false;
+  }
+  if (data.declared && typeof data.limits?.instrument !== 'string') return false;
+  return true;
 }
 
 export async function render(outlet) {
@@ -88,7 +137,13 @@ export async function render(outlet) {
     return;
   }
 
-  if (!data) {
+  /* ONE GUARD FOR BOTH, and they are deliberately not distinguished on
+     screen. "No answer" and "an answer this screen cannot read" are two
+     different faults to whoever fixes them and the SAME fault to a
+     safety manager: the figures are not available and nothing on this
+     page should be believed. Splitting them would invite reading the
+     second as partial success. */
+  if (!readable(data)) {
     outlet.innerHTML = html`
       <section class="panel wrap">
         <header class="page-head">
@@ -96,8 +151,12 @@ export async function render(outlet) {
           <h1>Fatigue</h1>
         </header>
         <div class="notice">
-          <strong>The safety office could not be reached.</strong>
-          This screen reads the organisation's record, so it needs a connection.
+          <strong>The fatigue figures could not be read.</strong>
+          This screen reads the organisation's record, so it needs a
+          connection — and it will not show part of an answer it cannot
+          account for. Nothing here means your reports are clear; it means
+          they have not been counted. Reload, and if it persists the safety
+          office has not answered.
         </div>
       </section>`.toString();
     return;

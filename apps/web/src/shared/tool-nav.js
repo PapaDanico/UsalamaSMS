@@ -40,6 +40,15 @@
    builds its sentence from the same array — so a fifth toolkit appears
    here by existing rather than by somebody remembering this file.
 
+   AND IT DOES NOT PRINT. Measured at A4 with the media emulated to
+   print, before this class was added: 133 pixels of it on page one of
+   SIX handed-over documents, and on the safety culture survey it was
+   the FIRST thing on the sheet — above the operator's name. A regulator
+   reading loose paper is given eight tappable pills to somewhere else.
+   Navigation is the one kind of content that means nothing at all off
+   a screen, so it is the first thing a printed document should drop.
+
+   ------------------------------------------------------------
    NOT STICKY, deliberately. There is already sticky chrome on these
    screens — the sync strip — and scripts/smoke.mjs checks that in-page
    anchors scroll clear of it. A second sticky layer is a second thing
@@ -83,7 +92,7 @@ const sentenceCase = (s) => s.charAt(0).toUpperCase() + s.slice(1);
  */
 export function ToolNav(current = '') {
   return html`
-    <nav class="toolnav" aria-label="Toolkits">
+    <nav class="toolnav no-print" aria-label="Toolkits">
       <a class="toolnav__back" href="/toolkits">
         <span aria-hidden="true">&larr;</span> All toolkits
       </a>

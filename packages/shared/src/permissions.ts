@@ -368,3 +368,76 @@ export function mayResetCredential(actor: Role, target: Role): boolean {
 
   return true;
 }
+
+/**
+ * MAY THIS ROLE MOVE AN ACCOUNT FROM ONE ROLE TO ANOTHER?
+ *
+ * ---------------------------------------------------------------
+ * THE THIRD DOOR INTO THE SAME ROOM, AND IT WAS THE WIDEST.
+ *
+ * `mayCreateRole` closes minting yourself an eye. `mayResetCredential`
+ * closes resetting one you did not mint. Neither says anything about
+ * MOVING an account that already exists, because until now nothing in
+ * this product could. The moment a role picker appears beside a
+ * colleague's name, the breach is one click rather than four requests:
+ *
+ *   SYSTEM_ADMIN, own token, GET /api/v1/export   -> 403
+ *   PUT /api/v1/users/<self>/role SAFETY_MANAGER  -> would be 200
+ *   refresh the session, GET /api/v1/export       -> 200, every narrative
+ *
+ * No password is set, no second account is created, nothing is handed
+ * over. The administrator simply writes a different word into its own
+ * row. That is why this function exists rather than the route asking
+ * `can(actor, "user.manage")` and stopping there.
+ *
+ * ---------------------------------------------------------------
+ * IT TAKES BOTH ENDS, WHICH THE OTHER TWO DO NOT NEED TO.
+ *
+ * A change is a pair. Guarding only the destination would let an
+ * administrator demote the safety manager to FRONTLINE — an account it
+ * is deliberately held away from — and guarding only the origin would
+ * let it promote a frontline reporter into the safety office. Both are
+ * refused by the one condition, and it is the SAME condition
+ * `mayResetCredential` uses, deliberately: an actor who reads no
+ * narrative may not touch an account at either end of the narrative
+ * boundary.
+ *
+ * ---------------------------------------------------------------
+ * PLATFORM_ADMIN IS REFUSED ON BOTH SIDES.
+ *
+ * As a destination for the reason `mayCreateRole` gives — a tenant that
+ * could mint one could read the other tenants. As an ORIGIN because the
+ * vendor's own account is not an operator's to reorganise, and the
+ * route's lookup being tenant-scoped is the primary control rather than
+ * the only one.
+ *
+ * ---------------------------------------------------------------
+ * WHAT IS DELIBERATELY *NOT* HERE.
+ *
+ * Two refusals belong to the route rather than to the matrix, because
+ * they are about WHICH ACCOUNT rather than about which role, and a
+ * function taking two roles cannot see either:
+ *
+ *   · YOUR OWN ROLE. Self-promotion is refused for everybody including
+ *     the accountable executive, and it locks nobody out — handing over
+ *     is appointing the successor first, then being moved by them;
+ *   · THE LAST ACTIVE ACCOUNTABLE EXECUTIVE. That role signs the safety
+ *     policy and is the only one that can reset the safety office's
+ *     credential, so moving the only one off it is the same one-way
+ *     door `/api/v1/users/:id/active` already refuses.
+ *
+ * A no-op — `from` equal to `to` — is permitted here and answered
+ * idempotently by the route. Refusing it in the matrix would make the
+ * picker unable to render the role somebody already holds.
+ */
+export function mayChangeRole(actor: Role, from: Role, to: Role): boolean {
+  if (from === "PLATFORM_ADMIN" || to === "PLATFORM_ADMIN") return false;
+
+  if (!can(actor, "user.manage")) return false;
+
+  if (!readsNarrative(actor) && (readsNarrative(from) || readsNarrative(to))) {
+    return false;
+  }
+
+  return true;
+}

@@ -529,7 +529,7 @@ export function render(outlet) {
       <div class="wrap">
         <span class="eyebrow">Toolkit</span>
         <h1>SMS maturity assessment</h1>
-      <div class="print-id-slot"></div>
+        <div class="print-id-slot"></div>
         <p class="lede">
           Twelve questions against the ICAO SMS framework's four components. It
           produces a position per component and a work list — not a score to put
@@ -537,7 +537,8 @@ export function render(outlet) {
         </p>
         <dl class="stat-strip">
           <div class="stat">
-            <dt class="stat__value">12</dt>
+            <dt class="stat__value" id="mat-assessed"
+              >${Object.keys(answers).length}/${ELEMENT_COUNT}</dt>
             <dd class="stat__label">Elements assessed</dd>
           </div>
           <div class="stat">
@@ -652,6 +653,28 @@ export function render(outlet) {
     });
 
   const progress = outlet.querySelector('#mat-progress');
+  /* =================================================================
+     "ELEMENTS ASSESSED 12", ON A DOCUMENT WHERE NONE WERE.
+
+     This figure was the literal `12` — the number of elements in the
+     framework — under a label that says how many the OPERATOR has
+     assessed. On screen it reads as scope, sitting beside "~15 min"
+     and "26 Nov 2026". Printed, the maturity assessment is a document
+     an auditor is handed, and its headline says all twelve were
+     assessed on a pack where the position panel three inches below
+     reads "Answer an element and the position appears here".
+
+     Measured at A4 with the media emulated to print, against a fixture
+     with nothing assessed: both statements on sheet two, contradicting
+     each other.
+
+     The screen already knew. `Progress(answers, ELEMENT_COUNT)` is
+     computed from the same `answers` and repainted on every change —
+     the stat strip simply never learned, and /sms prints "0/8" for
+     exactly this reason one screen along. Charter rule 10: counts are
+     computed, never typed.
+     ================================================================= */
+  const assessed = outlet.querySelector('#mat-assessed');
 
   const repaint = () => {
     body.innerHTML = Result(
@@ -665,6 +688,12 @@ export function render(outlet) {
        form holds the radio somebody just pressed and the text field
        they may be tabbing out of. */
     progress.innerHTML = Progress(answers, ELEMENT_COUNT).toString();
+    /* AND THE HEADLINE FIGURE, from the same `answers` on the same
+       event, for the reason above: two counts of one thing that
+       repaint separately are two counts that can disagree. */
+    if (assessed) {
+      assessed.textContent = `${Object.keys(answers).length}/${ELEMENT_COUNT}`;
+    }
   };
 
   form.addEventListener('change', (event) => {

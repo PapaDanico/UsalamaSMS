@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { RoleEnum, type Role } from "../packages/shared/src/index";
 import {
-  can, mayCreateRole, mayResetCredential, readsNarrative, NARRATIVE_PERMISSIONS,
+  can, mayCreateRole, mayResetCredential, mayChangeRole, readsNarrative,
+  NARRATIVE_PERMISSIONS,
 } from "../packages/shared/src/permissions";
 
 
@@ -146,6 +147,152 @@ describe("who may reset whose credential", () => {
           mayResetCredential(actor, target),
           `${actor} -> ${target} disagrees between creating and resetting`,
         ).toBe(mayCreateRole(actor, target));
+      }
+    }
+  });
+});
+
+
+/* =====================================================================
+   WHO MAY MOVE WHOM — the third door into the same room.
+
+   `mayCreateRole` closes minting yourself an eye; `mayResetCredential`
+   closes resetting one you did not mint. Both take four requests and a
+   password handover. Moving an account takes ONE, and until the role
+   picker existed nothing in this product could do it at all — so this
+   is the widest of the three doors and the last one to get a lock.
+
+   Every assertion below is derived from the enum rather than listed, so
+   a tenth role arrives covered.
+   ===================================================================== */
+describe("mayChangeRole", () => {
+  const narrative = (r: Role) =>
+    [...NARRATIVE_PERMISSIONS].some((p) => can(r, p));
+  const roles = RoleEnum.options as readonly Role[];
+
+  it("REFUSES PLATFORM_ADMIN AS A DESTINATION, to every role without exception", () => {
+    for (const actor of roles) {
+      for (const from of roles) {
+        expect(
+          mayChangeRole(actor, from, "PLATFORM_ADMIN"),
+          `${actor} could promote a ${from} to vendor`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("REFUSES PLATFORM_ADMIN AS AN ORIGIN — the vendor's account is not an operator's to reorganise", () => {
+    for (const actor of roles) {
+      for (const to of roles) {
+        expect(
+          mayChangeRole(actor, "PLATFORM_ADMIN", to),
+          `${actor} could move the vendor account to ${to}`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("REFUSES EVERY ROLE THAT DOES NOT HOLD user.manage", () => {
+    for (const actor of roles) {
+      if (can(actor, "user.manage")) continue;
+      for (const from of roles) {
+        for (const to of roles) {
+          expect(
+            mayChangeRole(actor, from, to),
+            `${actor} holds no user.manage and moved ${from} -> ${to}`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
+  /* THE ASSERTION THIS FUNCTION EXISTS FOR. An administrator writing a
+     different word into a row is the whole breach — no password is set
+     and no account is created, so neither of the other two rules is
+     even consulted along the way. */
+  it("STOPS AN ADMINISTRATOR PROMOTING ANYBODY INTO THE SAFETY OFFICE", () => {
+    expect(narrative("SYSTEM_ADMIN")).toBe(false);
+    for (const from of roles) {
+      for (const to of roles) {
+        if (!narrative(to)) continue;
+        expect(
+          mayChangeRole("SYSTEM_ADMIN", from, to),
+          `SYSTEM_ADMIN moved a ${from} to ${to}, which reads narratives`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  /* THE HALF A DESTINATION-ONLY RULE WOULD HAVE MISSED. Demoting the
+     safety manager to FRONTLINE confers nothing on the administrator
+     and is still an account it is deliberately held away from — and it
+     is one step from a reset, which `mayResetCredential` refuses for
+     the same reason. Guarding one end of a pair is guarding none. */
+  it("STOPS AN ADMINISTRATOR MOVING ANYBODY *OUT* OF THE SAFETY OFFICE", () => {
+    for (const from of roles) {
+      if (!narrative(from)) continue;
+      for (const to of roles) {
+        expect(
+          mayChangeRole("SYSTEM_ADMIN", from, to),
+          `SYSTEM_ADMIN moved a ${from} — a narrative role — to ${to}`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("LETS AN ADMINISTRATOR REORGANISE THE ACCOUNTS THAT READ NOTHING", () => {
+    /* Not a vacuous pass: the pair has to exist. SYSTEM_ADMIN and
+       REGULATOR_INSPECTOR both read no narrative, so moving between
+       them grants the administrator nothing it did not have. */
+    expect(narrative("REGULATOR_INSPECTOR")).toBe(false);
+    expect(mayChangeRole("SYSTEM_ADMIN", "REGULATOR_INSPECTOR", "SYSTEM_ADMIN")).toBe(true);
+    expect(mayChangeRole("SYSTEM_ADMIN", "SYSTEM_ADMIN", "REGULATOR_INSPECTOR")).toBe(true);
+  });
+
+  /* THE PRODUCT HAS TO WORK. A subset rule would stop the person
+     answerable for the safety management system appointing their own
+     safety manager, which is the single most normal act of running one
+     — the same objection `mayCreateRole` records. */
+  it("LETS THE ACCOUNTABLE EXECUTIVE APPOINT AND REORGANISE THE SAFETY OFFICE", () => {
+    expect(narrative("ACCOUNTABLE_EXECUTIVE")).toBe(true);
+    expect(can("ACCOUNTABLE_EXECUTIVE", "user.manage")).toBe(true);
+    for (const from of roles) {
+      for (const to of roles) {
+        if (from === "PLATFORM_ADMIN" || to === "PLATFORM_ADMIN") continue;
+        expect(
+          mayChangeRole("ACCOUNTABLE_EXECUTIVE", from, to),
+          `the accountable executive could not move a ${from} to ${to}`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  /* A no-op has to be PERMITTED rather than refused, or the picker
+     cannot render the role somebody already holds and the screen has to
+     invent a state the matrix does not describe. Idempotence is the
+     route's job, and it answers `changed: false`. */
+  it("PERMITS THE ROLE SOMEBODY ALREADY HOLDS, so the picker can show it", () => {
+    expect(mayChangeRole("ACCOUNTABLE_EXECUTIVE", "SAFETY_MANAGER", "SAFETY_MANAGER")).toBe(true);
+    expect(mayChangeRole("SYSTEM_ADMIN", "SYSTEM_ADMIN", "SYSTEM_ADMIN")).toBe(true);
+  });
+
+  /* THE THREE DOORS AGREE ABOUT WHERE THE BOUNDARY IS. They share
+     `readsNarrative` deliberately so they cannot drift, and this is the
+     assertion that notices if one of them stops sharing it. */
+  it("AGREES WITH mayCreateRole AND mayResetCredential ON THE NARRATIVE BOUNDARY", () => {
+    for (const actor of roles) {
+      for (const to of roles) {
+        if (to === "PLATFORM_ADMIN") continue;
+        /* Moving an account that reads nothing INTO a role is the same
+           grant as creating one in it, so the two functions must answer
+           identically. REGULATOR_INSPECTOR is the origin because it is
+           a real role that reads no narrative — asserted, not assumed,
+           since the whole comparison is vacuous if it does. */
+        expect(narrative("REGULATOR_INSPECTOR")).toBe(false);
+        expect(
+          mayChangeRole(actor, "REGULATOR_INSPECTOR", to),
+          `${actor} disagreed about ${to}`,
+        ).toBe(mayCreateRole(actor, to));
       }
     }
   });

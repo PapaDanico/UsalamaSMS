@@ -63,15 +63,26 @@ const HOOKS = new Map([
       'handler has to find THIS form\'s status output rather than the 47 ' +
       'others on the page.',
   ],
-  [
-    'print-id-slot',
-    'A JS insertion point, not a visual. The four screens that render ' +
-      'synchronously put an empty div here and attachPrintId() fills it once ' +
-      'the operator name arrives; what lands inside is .print-id, which IS ' +
-      'styled. Giving the slot itself a rule would put a box on the page in ' +
-      'the interval before the fetch returns, and an empty box above a risk ' +
-      'register is exactly the half-attributed header printId() refuses.',
-  ],
+  /* `print-id-slot` USED TO BE HERE and is deliberately not any more.
+
+     It was declared a hook on the reasoning that giving the slot a rule
+     would put an empty box above a risk register in the interval before
+     the operator's name arrives — which is still true, and no rule
+     gives it one. What changed is that the print stylesheet now READS
+     the slot without styling it:
+
+       h1:has(+ .print-id-slot .print-id) { display: none }
+
+     That hides the screen's own heading on a printed document whose
+     very next element is a filled masthead, because the masthead
+     carries the same title in a better form. The slot is the condition,
+     not the subject.
+
+     This gate cannot tell those apart and it is RIGHT not to try: a
+     selector that mentions a class is a rule somebody has to find when
+     they change that class, which is the whole property being
+     protected. So the declaration goes rather than the gate being
+     taught an exception. */
 ]);
 
 function walk(dir, out = []) {

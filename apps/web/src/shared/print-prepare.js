@@ -154,6 +154,28 @@ function transpose() {
        — the blank questionnaire, on the sheet whose own copy says the
        responses are not on it. An option nobody chose is marked so the
        stylesheet can drop the row entirely. */
+    /* AN OPEN QUESTION, ON THE RECORD RATHER THAN DECIDED QUIETLY.
+
+       Below, a text or select field that is EMPTY AND REQUIRED keeps
+       its rule, because "there the absence is the finding". This branch
+       returns before that rule is reached, so an unanswered radio group
+       loses every row and the question disappears from the page — a
+       reader cannot tell it from a question that was never asked.
+
+       That is correct for the culture survey, which is why it was
+       written this way: the unanswered questionnaire is exactly what
+       must not print. It is NOT obviously correct for a required
+       group on an assessment, where the gap is what an auditor came
+       to find.
+
+       MEASURED BEFORE WRITING THIS: there are zero `required` radios
+       in `apps/web/src` today, so nothing is currently lost and this
+       is latent rather than live. Left as it is deliberately —
+       widening a printing rule by inference from a case that does not
+       exist is how a rule stops meaning anything, which is the same
+       argument `tests/filing-rights.test.ts` records about the
+       permission matrix. Whoever adds the first required radio group
+       to a deliverable settles it. */
     if (el.type === 'radio' || el.type === 'checkbox') {
       const row = el.closest('label, .mat-option, .chip, li') ?? el.parentElement;
       if (row) {

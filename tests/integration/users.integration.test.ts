@@ -40,10 +40,26 @@ const token = (sub: string, org: string, role: string) =>
   jwt.sign({ sub, org, role, typ: "access" }, JWT_SECRET,
     { algorithm: "HS256", issuer: "usalamasms", expiresIn: "15m" });
 
-const create = (who: string, org: string, role: string, body: unknown) =>
+/* `from` NAMES THE CALLER'S ADDRESS, and it exists because this route
+   is rate limited to 20 requests per 15 minutes and the limiter keys on
+   `x-nf-client-connection-ip`. `app.inject` presents the same address
+   every time, so a table of validator cases exhausts the bucket and the
+   run reports 429 where it means 400 — which is a test failing for a
+   reason that has nothing to do with what it asserts.
+
+   Giving each case its own address is the honest fix rather than
+   raising the limit for tests: the limit stays exactly as production
+   runs it, and what changes is that these are different callers, which
+   is what a table of independent cases actually is. */
+const create = (
+  who: string, org: string, role: string, body: unknown, from = "10.0.0.1",
+) =>
   app.inject({
     method: "POST", url: "/api/v1/users",
-    headers: { authorization: `Bearer ${token(who, org, role)}` },
+    headers: {
+      authorization: `Bearer ${token(who, org, role)}`,
+      "x-nf-client-connection-ip": from,
+    },
     payload: body as never,
   });
 
@@ -210,4 +226,72 @@ describe.skipIf(!hasDatabase)("creating a colleague", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).not.toMatch(/them@lake\.test/);
   });
+
+  /* =====================================================================
+     EVERY `.co.ke` ADDRESS WAS REFUSED, WHICH IS THE WHOLE MARKET.
+
+     This route hand-rolled an email rule whose domain half permitted
+     exactly one dot, so `sam@airline.co.ke` — the ordinary shape of a
+     Kenyan company address, in the market this product is built for —
+     came back 400 while `x@gmail.com` went through. An operator could
+     sign up as `ae@airline.co.ke`, because signup validates with Zod,
+     and then add nobody from their own company.
+
+     NO TEST COULD HAVE CAUGHT IT AND NONE DID. Every test in this file
+     used a `.test` single-dot address, every layer agreed with itself,
+     and the defect was found by creating a colleague in a browser
+     against the real API and reading the refusal.
+
+     So the cases below are REAL DOMAIN SHAPES rather than invented
+     ones, which is the property that would have failed: a suite that
+     only ever drives one shape of a value cannot see a defect in the
+     others. The same sentence this repository already records about
+     the `Jurisdiction` enum, one field along.
+     ===================================================================== */
+  const ACCEPTED = [
+    ["sam@airline.co.ke", "a Kenyan company address — the home market"],
+    ["ops@kenya-airways.co.ke", "a hyphenated Kenyan company address"],
+    ["s@ba.co.uk", "two-label country domain, the same shape"],
+    ["j@mail.icao.int", "a subdomain, which an authority's mail often is"],
+    ["pilot@fly540.com", "the single-dot case, which already worked"],
+    ["capt@dn.consulting", "a long TLD"],
+  ] as const;
+
+  for (const [email, why] of ACCEPTED) {
+    it(`ACCEPTS ${email} — ${why}`, async () => {
+      const res = await create(
+        execId, orgId, "ACCOUNTABLE_EXECUTIVE",
+        { name: "Colleague", email, role: "FRONTLINE" },
+        `accept-${email}`,
+      );
+      expect(res.statusCode, res.body).toBe(201);
+      expect(res.json().email).toBe(email);
+    });
+  }
+
+  /* AND IT STILL REFUSES WHAT THE ORIGINAL RULE WAS WRITTEN FOR. A fix
+     that accepted everything would be worse than the defect: the cost
+     of a malformed address is a colleague who cannot sign in and an
+     administrator who thinks they have been added. */
+  const REFUSED = [
+    ["", "nothing at all"],
+    ["@", "the shape the very first version of this check accepted"],
+    ["a@", "a local part and no domain"],
+    ["@b.com", "a domain and no local part"],
+    ["user@localhost", "no dot in the domain — unroutable mail"],
+    ["two words@airline.co.ke", "whitespace in the local part"],
+    [`${"a".repeat(250)}@airline.co.ke`, "past the RFC 5321 maximum of 254"],
+  ] as const;
+
+  for (const [email, why] of REFUSED) {
+    it(`REFUSES ${JSON.stringify(email.slice(0, 24))} — ${why}`, async () => {
+      const res = await create(
+        execId, orgId, "ACCOUNTABLE_EXECUTIVE",
+        { name: "Colleague", email, role: "FRONTLINE" },
+        `refuse-${email}`,
+      );
+      expect(res.statusCode, res.body).toBe(400);
+      expect(res.json().error).toBe("email_required");
+    });
+  }
 });

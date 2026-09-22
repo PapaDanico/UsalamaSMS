@@ -2507,7 +2507,69 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
  * sat at 223.9 KB against 224 — one tenth of a kilobyte, so the next
  * change of any kind would have failed the build on a ceiling nobody
  * had looked at. */
-const BUDGET = { entry: 228 * 1024, js: 716 * 1024, css: 82 * 1024 };
+
+/* TOTAL 696 -> 700 KB, AND THE FIRST THING THE MEASUREMENT FOUND WAS
+   THAT 696 WAS ALREADY SPENT TO THE BYTE.
+
+   Measured at the commit before this change: js (total) 712,683 bytes,
+   which this gate prints as "696.0 KB of 696 KB". Zero headroom. Not
+   over — exactly at it, which is worse than over, because a ceiling
+   with nothing behind it means THE NEXT CHANGE OF ANY KIND FAILS THE
+   BUILD, and in this repository a failed build is a deploy that does
+   not publish and says nothing about it. Seventeen days of publishing
+   have already been lost to that silence once.
+
+   So the raise is four, not three: three for what is bought below and
+   one so the next person is not in the same position. Nobody set out
+   to land on 696.0/696 — it is what a sequence of raises that each
+   asked "does it fit" rather than "what is left" adds up to.
+
+   WHAT IT BUYS. Attributed by reverting one piece at a time against
+   the same tree and rebuilding, because a receipt whose parts do not
+   sum to its total has not been checked:
+
+     role change (permissions + the picker)  +2,313
+     two answer-shape guards                   +739
+     total                                   +3,052   712,683 -> 715,735
+     entry                                   UNMOVED   221.2 KB, both builds
+     css                        80,059 -> 80,806  +747, 78.9 of 80 KB
+
+   2,313 + 739 = 3,052 exactly.
+
+   The role change is the capability an operator did not have: hiring
+   and offboarding both existed and PROMOTION did not, so a safety
+   officer becoming the safety manager meant a second account for the
+   same person and a safety record that attributes one reporter's
+   filings to two identities. The weight is `mayChangeRole` plus a
+   picker, and it sits in the team panel — a chunk nobody reaches
+   without `user.manage`.
+
+   The 739 bytes are two screens that CRASHED on a 200 they could not
+   read. /fatigue guarded on `if (!data)` — presence, not shape — and
+   then read `data.counts.withinDeclared`, so a body of the wrong shape
+   threw mid-render and left the page at TWO NODES: blank, no heading,
+   no sentence. The honest notice was already written six lines above
+   and the throw jumped over it. /toolkits/spi did the same on
+   `data.rows.map`. Both are reachable — the service worker caches API
+   answers, so a body stored against an older shape is served with
+   status 200 to a browser running the new bundle.
+
+   ENTRY HAS NOT MOVED IN FOUR RAISES. It is 221.2 of 224, and nothing
+   bought here is on a screen a reporter at a remote strip opens. */
+
+/* AND THE TWO RAISES ABOVE LANDED IN THE SAME WEEK, SO THIS NUMBER IS
+   MEASURED RATHER THAN ADDED.
+
+   The SMS evaluation rewrite and the print/role work were developed on
+   separate branches and each raised the ceiling against ITS OWN base.
+   Adding 716 and 3,052 bytes would be arithmetic over two different
+   trees — the kind of number this file exists to refuse. The figure
+   below is read off a build of the MERGED tree: 717.3 KB total, 223.9
+   entry, 81.2 CSS — with the same headroom argument both receipts make.
+   A ceiling with nothing behind it fails the next change of any kind,
+   and on this repository a failed build is a deploy that does not
+   publish and says nothing about it. */
+const BUDGET = { entry: 228 * 1024, js: 720 * 1024, css: 82 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

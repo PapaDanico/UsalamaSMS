@@ -104,7 +104,19 @@ const PICTURE = {
     queueScope: "all", trend: "FLAT",
     months: [{ month: "2026-06", count: 2 }, { month: "2026-07", count: 3 },
              { month: "2026-08", count: 2 }],
-    closure: { median: 9, n: 3, p: 90, note: "Median over three closed reports." },
+    /* `p90`, NOT `p`, AND n AT OR ABOVE MIN_SAMPLE.
+
+       This line read `{ median: 9, n: 3, p: 90 }` and was wrong twice.
+       The key is `p90` in `Sample`, so /picture rendered "nine in ten
+       within undefined" — on a deliverable that prints and reaches a
+       regulator's desk — through the a11y sweep, the deliverables gate
+       and the symmetry sweep, none of which look at rendered words.
+
+       And `n: 3` with a median at all is a shape `sampleOf` cannot
+       produce: below MIN_SAMPLE (5) it returns median AND p90 as null
+       with a note instead. A fixture asserting a state the API never
+       emits tests a branch the product does not have. */
+    closure: { median: 9, n: 6, p90: 21, note: null },
     closureTruncated: false,
     note: "Seven reports over ninety days.",
   },

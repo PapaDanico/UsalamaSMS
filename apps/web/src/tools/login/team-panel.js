@@ -30,6 +30,26 @@
        breach. permissions.ts carries that argument in full.
 
    ------------------------------------------------------------
+   AND THEN SOMEBODY CHANGED POST.
+
+   Hiring and offboarding were both here and PROMOTION was not, which
+   made a safety officer becoming the safety manager a thing an operator
+   could only do by creating a second account for the same person — and
+   a safety record that attributes one person's filings to two
+   identities is a safety record nobody can read. The picker beside each
+   colleague is the same one the add form uses, filtered by
+   `mayChangeRole` instead of `mayCreateRole`.
+
+   THE TWO REFUSALS THE PICKER ITSELF ENFORCES are the ones a control
+   should never offer: your own row has no picker, because the server
+   answers 409 and a control whose only outcome is a refusal teaches
+   somebody the product is unreliable; and the only active accountable
+   executive has none either, for the same reason the Deactivate button
+   is withheld from them. Both refusals stay on the server as well —
+   this screen is not the only caller, and a disabled control is one
+   edit from being enabled.
+
+   ------------------------------------------------------------
    THE PASSWORD IS SHOWN ONCE AND THE SCREEN IS NOT RE-RENDERED after
    it appears — the same interaction the vendor console uses, for the
    same reason: a refresh that wiped the only copy of a credential the
@@ -38,7 +58,10 @@
 import { html } from '../../shared/html.js';
 import { authFetch, isSignedIn } from '../../shared/session.js';
 import { RoleEnum } from '../../../../../packages/shared/src/index.ts';
-import { mayCreateRole } from '../../../../../packages/shared/src/permissions.ts';
+import {
+  mayCreateRole,
+  mayChangeRole,
+} from '../../../../../packages/shared/src/permissions.ts';
 
 /* What each role is FOR, in the words an operator uses about their own
    people rather than the enum's. A picker that reads SAFETY_OFFICER
@@ -55,12 +78,33 @@ const ROLE_LABEL = {
   PLATFORM_ADMIN: '',
 };
 
-function Person(u, me) {
+/* The roles this caller may move THIS account to, derived from the
+   matrix rather than listed — a role added to the enum appears here
+   without anybody remembering, and one the caller may not confer cannot
+   appear at all. The role the account already holds is included and
+   pre-selected, because a picker that omits the present state cannot
+   show it. */
+function movableTo(actorRole, targetRole) {
+  if (!actorRole) return [];
+  return RoleEnum.options.filter((r) => mayChangeRole(actorRole, targetRole, r));
+}
+
+function Person(u, me, actorRole, soleExecutive) {
   /* NO BUTTON AGAINST YOURSELF. The server refuses it with a 409 and a
      sentence, and offering a control whose only outcome is a refusal
      teaches somebody that the product is unreliable. The refusal stays
      on the server because this screen is not the only caller. */
   const self = u.id === me;
+
+  /* WITHHELD FROM THE LAST ONE, not disabled on it. The role signs the
+     safety policy and is the only one that can reset the safety
+     office's credential, so moving the only holder off it is the
+     one-way door the server refuses with `last_accountable_executive`.
+     The sentence below is what a disabled control could not say. */
+  const locked = !self && u.role === 'ACCOUNTABLE_EXECUTIVE' && soleExecutive;
+  const options = self || locked ? [] : movableTo(actorRole, u.role);
+  const changeable = options.length > 1;
+
   return html`<article class="rec" data-person>
     <h3>${u.name}</h3>
     <p class="rec__meta">
@@ -68,14 +112,37 @@ function Person(u, me) {
       <span>${(ROLE_LABEL[u.role] ?? u.role).split(' — ')[0]}</span>
       ${u.active ? '' : html`<span>deactivated</span>`}
     </p>
+    ${changeable
+      ? html`<form class="rec__act no-print" data-role-form="${u.id}" novalidate>
+          <label>What they do now
+            <select name="role" data-was="${u.role}">
+              ${options.map(
+                (r) => html`<option value="${r}"${r === u.role ? ' selected' : ''}
+                  >${ROLE_LABEL[r] ?? r}</option>`
+              )}
+            </select></label>
+          <button type="submit" class="btn btn-ghost btn-sm">Change their role</button>
+        </form>`
+      : ''}
+    ${locked
+      ? html`<p class="rec__note">
+          The only active accountable executive. That post signs the safety
+          policy and is the only one that can reset the safety office's
+          credentials — appoint the replacement first, then move this account.
+        </p>`
+      : ''}
     ${self
-      ? ''
+      ? html`<p class="rec__note">
+          Your own account. Nobody changes their own role, so ask whoever else
+          manages accounts here.
+        </p>`
       : html`<button
           type="button"
           class="btn btn-ghost btn-sm"
           data-active-toggle="${u.id}"
           data-to="${u.active ? 'false' : 'true'}"
         >${u.active ? 'Deactivate' : 'Reactivate'}</button>`}
+    <p class="field-error" data-err="role-${u.id}" role="status" aria-live="polite"></p>
   </article>`;
 }
 
@@ -119,6 +186,13 @@ export async function render(outlet) {
     ? RoleEnum.options.filter((r) => mayCreateRole(role, r))
     : [];
 
+  /* COUNTED FROM THE LIST THE SCREEN ALREADY HAS, and ACTIVE is the
+     clause that matters — the server counts active holders, so a screen
+     counting every row would offer a picker on the last working
+     executive whenever a deactivated one happened to exist. */
+  const soleExecutive =
+    users.filter((u) => u.role === 'ACCOUNTABLE_EXECUTIVE' && u.active).length <= 1;
+
   outlet.innerHTML = html`
     <section class="panel wrap">
       <header class="page-head">
@@ -159,7 +233,9 @@ export async function render(outlet) {
 
           <h2>Who is here</h2>
           ${users.length
-            ? html`<div class="rec-list">${users.map((u) => Person(u, myId))}</div>`
+            ? html`<div class="rec-list">${users.map((u) =>
+                Person(u, myId, role, soleExecutive)
+              )}</div>`
             : html`<p class="empty-state"><span>Only you, so far.</span></p>`}
           <p class="field-error" data-err="active" role="status" aria-live="polite"></p>
         `}
@@ -182,6 +258,80 @@ export async function render(outlet) {
   if (!outlet.dataset.teamBound) {
     outlet.dataset.teamBound = '1';
     outlet.addEventListener('click', onToggle);
+    /* SUBMIT, DELEGATED, AND CAPTURING. There is one role form per
+       colleague and they are replaced on every re-render, so binding
+       each one individually is the listener-stacking bug the flag above
+       exists to prevent, one per person. `submit` does not bubble in
+       every engine's reading of the spec the way `click` does, so the
+       listener is registered in the capture phase where it reaches the
+       outlet regardless. */
+    outlet.addEventListener('submit', onRoleChange, true);
+  }
+
+  async function onRoleChange(event) {
+    const form = event.target.closest?.('[data-role-form]');
+    if (!form) return;
+    event.preventDefault();
+
+    const id = form.dataset.roleForm;
+    /* RE-QUERIED INSIDE THE HANDLER. `innerHTML` replaces it on every
+       render, so a reference captured outside points at a detached node
+       and every message after the first would be written where nobody
+       can see it. */
+    const err = outlet.querySelector(`[data-err="role-${id}"]`);
+    const select = form.elements.role;
+    const was = select.dataset.was;
+    const to = select.value;
+
+    if (err) err.textContent = '';
+    if (to === was) {
+      if (err) err.textContent = 'That is the role they already hold. Nothing changed.';
+      return;
+    }
+
+    /* CONFIRMED, because it signs them out of every device and the
+       control sits in a list of colleagues where a mis-tap is cheap to
+       make and expensive to discover — the same reasoning the
+       deactivation confirm records. */
+    const label = (ROLE_LABEL[to] ?? to).split(' — ')[0];
+    if (!globalThis.confirm?.(
+      `Change this account to ${label}? They will be signed out everywhere, and ` +
+      'the next sign-in carries the new role. Their reports stay attributed to them.'
+    )) return;
+
+    /* THE BUTTON, NOT THE FORM, and read BEFORE the await — the SET-I
+       criterion form in this product read `event.currentTarget` after
+       one and got null, which cost a screen its only line of feedback
+       in both directions. Everything this handler needs from the DOM is
+       taken here. */
+    const submit = form.querySelector('button[type=submit]');
+    if (submit) submit.disabled = true;
+
+    try {
+      const res = await authFetch(`/api/v1/users/${id}/role`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ role: to }),
+      });
+      const answer = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        /* THE SERVER'S SENTENCE. Each of the three refusals — your own
+           account, the last accountable executive, and the narrative
+           boundary — says what to do instead. */
+        if (err) {
+          err.textContent =
+            answer.message ?? 'That was not accepted. Nothing changed.';
+        }
+        if (submit) submit.disabled = false;
+        return;
+      }
+      await render(outlet);
+    } catch {
+      if (err) {
+        err.textContent = 'The safety office could not be reached. Nothing changed.';
+      }
+      if (submit) submit.disabled = false;
+    }
   }
 
   async function onToggle(event) {
