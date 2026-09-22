@@ -144,7 +144,6 @@ function results(rows) {
         operator whose people will report but expect consequences knows exactly what to
         fix on Monday.
       </p>
-      <div class="print-id-slot"></div>
     </div>`;
 }
 
@@ -159,6 +158,7 @@ export async function render(outlet) {
         <header class="page-head">
           <span class="eyebrow">Proactive — safety culture</span>
           <h1>Will your people actually file?</h1>
+          <div class="print-id-slot"></div>
           <p class="lede">
             Fourteen questions, about five minutes. Pass one device around the crew room;
             each person answers and taps Add. <strong>Nothing leaves this device</strong> —

@@ -513,7 +513,7 @@ export function render(outlet) {
       <div class="wrap">
         <span class="eyebrow">Toolkit</span>
         <h1>Safety performance indicators</h1>
-      <div class="print-id-slot"></div>
+        <div class="print-id-slot"></div>
         <p class="lede">
           Annex 19 element 3.1 asks for indicators with targets and alert levels,
           reviewed on a cadence. This computes the alert levels from your own

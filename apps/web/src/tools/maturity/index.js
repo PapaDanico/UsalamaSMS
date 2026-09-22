@@ -529,7 +529,7 @@ export function render(outlet) {
       <div class="wrap">
         <span class="eyebrow">Toolkit</span>
         <h1>SMS maturity assessment</h1>
-      <div class="print-id-slot"></div>
+        <div class="print-id-slot"></div>
         <p class="lede">
           Twelve questions against the ICAO SMS framework's four components. It
           produces a position per component and a work list — not a score to put

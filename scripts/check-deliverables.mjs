@@ -159,9 +159,31 @@ const SEED = {
   '/toolkits/culture': [['usalama.culture.responses.v1', CULTURE_RESPONSES]],
 };
 
+/* A MARK WITH REAL PIXELS IN IT, and the previous one is the reason.
+
+   This was a 1x1 transparent PNG. It satisfied every assertion in this
+   file — the image element painted, so `mark: yes` — and it meant the
+   printed masthead had never once been SEEN with an operator's logo in
+   it. The `max-height: 18mm / max-width: 60mm` cap in the print
+   stylesheet exists because a correctly-sized 512px mark otherwise
+   prints four inches tall and pushes the document it heads onto sheet
+   two; against one pixel that cap can never fire.
+
+   240x80, which is the shape an airline wordmark actually is, and wide
+   enough that the 60mm width cap is the one that binds rather than the
+   height. Generated rather than borrowed: a real operator's mark does
+   not belong in this repository.
+   ================================================================== */
 const LOGO =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42' +
-  'mPk5+f/z0AEYBxVSF+FAP5FDvcfRYWgAAAAAElFTkSuQmCC';
+  'data:image/png;base64,' +
+  'iVBORw0KGgoAAAANSUhEUgAAAPAAAABQCAIAAACoK28rAAAA/klEQVR4nO3SQQ' +
+  'mAQAAAwQthBn/27+RPMMB1EDllGZgA+9ix7QdkjM8L4EWGJsXQpBiaFEOTYmhS' +
+  'DE2KoUkxNCmGJsXQpBiaFEOTYmhSDE2KoUkxNCmGJsXQpBiaFEOTYmhSDE2KoU' +
+  'l5MvR9nbCGoUkxNCmGJsXQpBiaFEOTYmhSDE2KoUkxNCmGJsXQpBiaFEOTYmhS' +
+  'DE2KoUkxNCmGJsXQpBiaFEOTYmhSDE2KoUkxNCmGJsXQpBiaFEOTsmJo+C1Dk2' +
+  'JoUgxNiqFJMTQphibF0KQYmhRDk2JoUgxNiqFJMTQphibF0KQYmhRDk2JoUgxN' +
+  'iqFJMTQphibF0KRMLAiDLx+q9bAAAAAASUVORK5CYII=';
+
 const ORG = {
   orgName: 'Strip Air', aocNumber: 'KE-AOC-014', jurisdiction: 'KE', logo: LOGO,
 };
@@ -239,6 +261,13 @@ try {
             const r = e.getBoundingClientRect();
             return r.width > 0 && r.height > 0;
           }).length;
+        const box = (sel) => {
+          const e = document.querySelector(sel);
+          if (!e) return null;
+          const r = e.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) return null;
+          return { top: Math.round(r.top + window.scrollY), height: Math.round(r.height) };
+        };
         return {
           identity: document.querySelector('.print-id')?.innerText ?? '',
           blocks: painted('.print-id'),
@@ -246,10 +275,21 @@ try {
           heading: document.querySelector('main h1')?.innerText ?? '',
           clips: document.documentElement.scrollWidth >
                  document.documentElement.clientWidth + 1,
+          /* WHERE the masthead is, not merely that it exists. */
+          identityTop: box('.print-id')?.top ?? null,
+          /* The running footer, which has to be there for sheets two
+             onward to be attributable at all. */
+          runner: painted('.print-runner'),
+          /* Anything that is navigation. A printed document cannot be
+             navigated, so every one of these is dead ink. */
+          nav: painted('.toolnav') + painted('nav[aria-label="Toolkits"]'),
+          /* The controls. `.btn` is already hidden by the print
+             stylesheet; this is the assertion that it still is. */
+          controls: painted('button') + painted('.btn'),
         };
       });
       measured += 1;
-      rows.push([route, m.blocks, m.mark, m.clips]);
+      rows.push([route, m.blocks, m.mark, m.clips, m.identityTop, m.runner, m.nav + m.controls]);
 
       /* The screen rendered at all. A route that errored prints an empty
          page, has no identity block, and would otherwise be reported as
@@ -273,6 +313,72 @@ try {
       if (m.clips) {
         failures.push(`${route} — scrolls sideways at ${A4.width}px, so it prints cut off`);
       }
+
+      /* =============================================================
+         THE MASTHEAD IS ON SHEET ONE, NEAR THE TOP OF IT.
+
+         This gate asserted that the identity block was PAINTED and said
+         nothing about where. Measured when that question was finally
+         asked:
+
+           /sms               597px down a 1123px sheet, behind the
+                              dark band, the stat strip and a contents
+                              list
+           /toolkits/culture  inside the RESULTS block, at 4,500px —
+                              the LAST sheet of a five-sheet survey,
+                              and absent entirely below five responses
+
+         A pack whose first sheet is anonymous is the exact failure the
+         block exists to prevent, and both of those passed this gate for
+         as long as it has existed.
+
+         A THIRD OF A SHEET is the threshold, not the very top: a
+         document may legitimately open with a mark or a rule above its
+         title block, and a limit tight enough to forbid that would be
+         asserting a layout rather than a property. 374px of 1123.
+         ============================================================= */
+      const FIRST_THIRD = Math.round(A4.height / 3);
+      if (m.blocks > 0 && m.identityTop !== null && m.identityTop > FIRST_THIRD) {
+        failures.push(
+          `${route} — the identity block prints ${m.identityTop}px down, past the ` +
+          `first third of sheet one (${FIRST_THIRD}px). Sheet one is what an auditor ` +
+          `files the pack under`
+        );
+      }
+
+      /* THE IDENTITY IS ON EVERY SHEET, not only the first. The running
+         footer is `position: fixed`, which Chromium's print path repeats
+         on each page — print-id.js carries the measurement and the one
+         thing it cannot do, which is number the sheets. Without it a
+         twelve-element record is seven anonymous sheets and one
+         attributed one. */
+      if (m.blocks > 0 && m.runner === 0) {
+        failures.push(
+          `${route} — no running footer, so every sheet after the first prints ` +
+          `with nothing on it saying whose document this is`
+        );
+      }
+
+      /* NAVIGATION IS THE ONE KIND OF CONTENT THAT MEANS NOTHING OFF A
+         SCREEN. Measured before `.toolnav` was marked no-print: 133px
+         of it on sheet one of SIX handed-over documents, and on the
+         safety culture survey it was the first thing on the page —
+         above the operator's name. A regulator reading loose paper was
+         being offered eight pills to tap. */
+      if (m.nav > 0) {
+        failures.push(
+          `${route} — screen navigation prints. A reader holding paper cannot ` +
+          `follow it, and it is taking space on sheet one`
+        );
+      }
+
+      /* And the controls, which the print stylesheet has always hidden.
+         Asserted rather than assumed: the rule is one edit from being
+         scoped away, and a form with live buttons on paper invites
+         somebody to fill it in with a pen and expect it to save. */
+      if (m.controls > 0) {
+        failures.push(`${route} — ${m.controls} control(s) print. Buttons are not paper`);
+      }
     } catch (err) {
       failures.push(`${route} — could not be measured: ${err.message.split('\n')[0]}`);
     }
@@ -284,12 +390,19 @@ try {
 }
 
 console.log(`check:deliverables — ${DELIVERABLES.length} handover documents at A4, media print\n`);
-for (const [route, blocks, mark, clips] of rows) {
-  const ok = blocks > 0 && mark > 0 && !clips;
+/* THE REPORT NAMES EVERY PROPERTY THE GATE ASSERTS. A summary that
+   printed three columns while checking six is a gate whose output
+   understates it, and the next person to read it would conclude the
+   other three are not covered. */
+for (const [route, blocks, mark, clips, top, runner, chrome] of rows) {
+  const FIRST_THIRD = Math.round(A4.height / 3);
+  const topOk = blocks > 0 && top !== null && top <= FIRST_THIRD;
+  const ok = blocks > 0 && mark > 0 && !clips && topOk && runner > 0 && chrome === 0;
   console.log(
-    `  ${ok ? 'ok  ' : 'FAIL'} ${route.padEnd(20)} ` +
-    `identity ${blocks > 0 ? 'yes' : 'NO '}   mark ${mark > 0 ? 'yes' : 'NO '}   ` +
-    `${clips ? 'CLIPS' : 'fits'}`
+    `  ${ok ? 'ok  ' : 'FAIL'} ${route.padEnd(28)} ` +
+    `identity ${blocks > 0 ? 'yes' : 'NO '}  mark ${mark > 0 ? 'yes' : 'NO '}  ` +
+    `${clips ? 'CLIPS' : 'fits'}  masthead ${topOk ? String(top).padStart(4) + 'px' : ' NO   '}  ` +
+    `footer ${runner > 0 ? 'yes' : 'NO '}  chrome ${chrome === 0 ? 'none' : String(chrome)}`
   );
 }
 
@@ -316,6 +429,7 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `\ncheck:deliverables passed — ${measured} documents, each naming the operator, ` +
-  'carrying its mark, and fitting the page.'
+  `\ncheck:deliverables passed — ${measured} documents. Each names the operator in ` +
+  'the first third of sheet one, carries its mark, repeats the identity on every\n' +
+  'sheet, fits the page, and prints no navigation and no controls.'
 );

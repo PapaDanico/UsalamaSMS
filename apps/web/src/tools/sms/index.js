@@ -43,6 +43,31 @@
 
 import { html, raw } from '../../shared/html.js';
 import { isSignedIn, getSession, authFetch } from '../../shared/session.js';
+/* THE MASTHEAD SITS BEFORE THE BAND, AND IT USED TO SIT ON PAGE ONE AT
+   597 PIXELS.
+
+   `#sms-masthead` is the empty div at the top of the shell below, and
+   the identity block is rendered into it. It was rendered into
+   `#sms-body` instead, which comes after the dark band, the stat strip
+   and the table of contents — so measured at A4 with the media
+   emulated to print, the operator's name appeared 597px down a 1123px
+   sheet: more than halfway, behind three blocks of screen furniture.
+
+   This is the longest document the product produces — eight sheets —
+   and the whole reason the identity block exists is that a pack of
+   loose paper has to be attributable at a glance.
+
+   The div is empty on screen and costs a reader nothing: `.print-id` is
+   `display: none` there, and the print rule is what reveals it.
+
+   AND THE NOTE IS HERE RATHER THAN BESIDE THE MARKUP. Every screen in
+   this product renders through a tagged template literal, so an HTML
+   comment inside one is STRING CONTENT: no minifier removes it and a
+   reporter at a remote strip downloads it. The first version of this
+   change put the note there. check:prose exists because that has
+   broken the build three times — and it refused this file until the
+   note moved, including while the note was itself inside a JavaScript
+   comment, which is the gate being blunt in the safe direction. */
 import { printId, loadOrg } from '../../shared/print-id.js';
 import { SMS_COMPONENTS } from '../../../../../packages/shared/src/maturity.ts';
 import { can } from '../../../../../packages/shared/src/index.ts';
@@ -808,6 +833,7 @@ export async function render(outlet) {
   };
 
   outlet.innerHTML = html`
+    <div id="sms-masthead"></div>
     <section class="band-dark">
       <div class="wrap">
         <span class="eyebrow">The SMS record</span>
@@ -1243,8 +1269,14 @@ export async function render(outlet) {
         <dd class="stat__label">Elements in the framework</dd></div>
     `.toString();
 
-    body.innerHTML = printId(org, 'Safety management system record — Annex 19, twelve elements').toString()
-      + configBlock().toString()
+    const masthead = outlet.querySelector('#sms-masthead');
+    if (masthead) {
+      masthead.innerHTML = printId(
+        org, 'Safety management system record — Annex 19, twelve elements'
+      ).toString();
+    }
+
+    body.innerHTML = configBlock().toString()
       + SMS_COMPONENTS.map(
       (component) => html`<section class="doc-section" id="component-${component.id}">
         <h2><span class="mat-element__id">${component.id}</span> ${component.name}</h2>

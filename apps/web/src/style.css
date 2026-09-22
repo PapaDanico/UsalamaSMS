@@ -1001,6 +1001,99 @@ html { scroll-padding-top: var(--us-chrome); }
   @page { margin: 14mm; }
   html, body { background: #fff !important; }
   body { color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* =========================================================
+     THE MUTED INKS ARE REDEFINED, NOT OVERRIDDEN ELEMENT BY ELEMENT.
+
+     `body { color: #000 }` above sets the inherited colour and does
+     nothing about the text that carries its own. Measured on the
+     printed twelve-element record: the lede, every `.rec__meta`, every
+     small-caps field label and every footnote printed in
+     `--us-ink-600`, which is #5c5852 — a mid grey-brown.
+
+     ON A SCREEN THAT IS CORRECT. It is the quiet tier, it passes AA on
+     Warm Sand, and `check:a11y` asserts so. On PAPER it is a different
+     question, and one nothing in this repository had asked: these
+     documents are photocopied, scanned and faxed to an authority, and
+     each of those generations loses the light end first. The labels
+     saying what each field IS were the lightest text on the page.
+
+     So the three text tokens are reassigned for print. One place, every
+     screen, and nothing that carries MEANING in colour is touched — the
+     risk bands keep theirs, and they are never colour alone anyway.
+
+     Not all three to #000: the hierarchy is worth keeping, and #2b2b2b
+     against #000 is still a visible tier while sitting far above what a
+     photocopier drops. */
+  :root {
+    --us-text-primary: #000 !important;
+    --us-text-secondary: #000 !important;
+    --us-text-tertiary: #2b2b2b !important;
+    --us-ink-900: #000 !important;
+    --us-ink-800: #000 !important;
+    --us-ink-600: #2b2b2b !important;
+  }
+
+  /* ONE TITLE BLOCK PER DOCUMENT.
+
+     The toolkit screens print the title TWICE and the first one is
+     above the operator's name:
+
+       Safety risk assessment                     <- the screen's h1
+       Strip Air                                  <- the masthead
+       Safety risk assessment — ICAO Doc 9859...
+
+     The masthead's version is the better one — it carries the
+     instrument and the clause — and the document's first line ought to
+     be whose document it is. So where a rendered masthead is the very
+     next thing after the heading, the heading goes.
+
+     THE SELECTOR IS THE WHOLE CARE HERE. `:has(+ .print-id-slot
+     .print-id)` matches only a heading whose adjacent sibling slot has
+     actually been FILLED — and `printId()` returns nothing at all when
+     the operator is unknown, which is the refusal that stops a pack
+     going out half-attributed. So on a device-local toolkit opened by
+     somebody with no session, the masthead is absent and the screen's
+     own heading prints, which is the correct fallback rather than a
+     document with no title on it.
+
+     /sms and /picture are deliberately untouched: their headings say
+     something the masthead does not ("Four components, twelve
+     elements"), so there is nothing duplicated to remove. */
+  h1:has(+ .print-id-slot .print-id) { display: none !important; }
+
+  /* THE SECTION NUMBER IS NUMBERING, NOT AN ACCENT.
+
+     `.mat-element__id` carries the element's number — "1" before
+     "Safety policy and objectives", "2.2" before an element name — and
+     it is teal, which on screen marks it as the product's own mark on a
+     framework's numbering. Printed, it is the clause number of a
+     section in a document an inspector reads against Annex 19, and a
+     clause number in a second colour and a smaller size reads as
+     decoration rather than as part of the heading it numbers.
+
+     Same size as the heading it sits in, so it scales with h2 and h3
+     rather than staying at the screen's caption size. */
+  .mat-element__id {
+    color: #000 !important;
+    font-size: inherit !important;
+    letter-spacing: .02em;
+  }
+
+  /* A LINK TO SOMEWHERE IN THE SAME DOCUMENT IS NOT A LINK ON PAPER.
+     Every anchor in these packs is an in-page fragment — the contents
+     list, the element cross-references — so on a printed sheet the
+     colour and the underline are an affordance for something a reader
+     cannot do. Plain text, and the heading it points at is on a later
+     sheet where they will reach it by turning the page.
+
+     Only `href^="#"`: an absolute URL in a printed document is a
+     citation, and stripping its styling would hide that there was a
+     source. */
+  a[href^="#"] {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
   .nav, .dropdown-menu, .footer, .btn, .nav-toggle, .skip-link,
   .sync-strip, .prompt-dock, .no-print { display: none !important; }
   .band-dark, .band-parchment { background: #fff !important; color: #000 !important; padding: 0 0 10px !important; }
@@ -1158,6 +1251,53 @@ html { scroll-padding-top: var(--us-chrome); }
      document. A pack of loose pages with no operator name on them is a
      pack an auditor cannot attribute. */
   .print-id { display: block !important; }
+
+  /* THE RUNNING FOOTER, ON EVERY SHEET.
+
+     `position: fixed` is repeated by Chromium's print path on each
+     page, which is the only mechanism available here — `@page` margin
+     boxes are not implemented and this product deliberately prints
+     through the browser rather than through a second PDF engine.
+     Verified in the PDF content streams rather than assumed; the note
+     in print-id.js has the measurement and states the one thing this
+     cannot do, which is number the sheets.
+
+     `bottom: 0` is the bottom of the PAGE BOX, inside the 14mm @page
+     margin, so it sits in the margin's inner edge rather than over the
+     text. The body gets that height back as padding below, or the last
+     paragraph of each sheet prints underneath it. */
+  .print-runner {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    gap: 0 4mm;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-top: 1.5mm;
+    border-top: .4pt solid #000;
+    font-size: 7.5pt;
+    line-height: 1.3;
+    color: #000;
+    background: #fff;
+  }
+  /* The operator is what a reader scanning a pile needs first, so it
+     is the one part of the line that is not quiet. */
+  .print-runner__org { font-weight: 700; }
+  .print-runner__what { flex: 1 1 auto; text-align: center; }
+  .print-runner__meta { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ROOM FOR IT UNDER EVERY SHEET. A fixed footer is out of flow, so
+     without this the last line of each page prints behind the rule. */
+  body { padding-bottom: 12mm !important; }
+
+  /* THE SCREEN'S SECTION LABEL, WHICH MEANS NOTHING ON PAPER. "Toolkit",
+     "Safety assurance", "The SMS record" — each one tells a reader
+     where they are in the application, and a printed document has a
+     masthead naming what it IS two lines further down. Two titles in a
+     row is the reader wondering which is the document. */
+  .eyebrow { display: none !important; }
 
   /* ITS OWN RULE ON PURPOSE. An engine that does not recognise this
      pseudo-element throws away the whole rule it sits in, so it sits
@@ -4173,6 +4313,34 @@ html { scroll-padding-top: var(--us-chrome); }
    readable on a 320px screen. */
 .oblig-table th { font-size: var(--us-text-2xs); text-transform: uppercase; letter-spacing: .08em; }
 .oblig-table td:first-child { font-weight: 600; }
+
+/* =========================================================
+   A SHA-256 IS SIXTY-FOUR CHARACTERS WITH NO BREAK IN IT.
+
+   The corrective action pack prints an evidence table whose second
+   column is the digest of each attached file — the one thing in that
+   document that proves the file an authority is looking at is the file
+   the operator attached. Measured on the printed pack: the digest ran
+   the full width of its cell with no gutter, shouldered the filename
+   column into two lines, and finished hard against the card's edge.
+
+   `break-all` rather than `break-word`: a hex digest has no word
+   boundaries to prefer, so anywhere is as good as anywhere and the
+   alternative is one unbreakable 64-character run. Tabular figures so
+   the wrapped lines stack in even columns, which is what makes a
+   human-checked digest checkable at all.
+
+   The column is capped rather than left to take what it wants, because
+   a table's first column is the one a reader scans and it should not
+   be the one that gets squeezed. */
+.oblig-table code {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--us-text-2xs);
+  line-height: 1.5;
+}
+.oblig-table td:first-child { min-width: 9rem; }
 .risk-picture__bar {
   display: block;
   width: min(12rem, 100%);

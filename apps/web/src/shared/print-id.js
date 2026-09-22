@@ -29,6 +29,33 @@
 
    Hidden on screen by .print-id in the stylesheet, so this costs a
    reader nothing.
+
+   ------------------------------------------------------------
+   AND THE IDENTITY IS ON EVERY SHEET, NOT ONLY THE FIRST.
+
+   Measured: the twelve-element record prints across EIGHT A4 sheets and
+   the operator's name was on one of them. Sheets two to eight are
+   anonymous paper. A regulator files a pack, a board reads three pages
+   of it, somebody photocopies the middle — and the one property this
+   block exists to provide is gone for seven eighths of the document.
+
+   `.print-runner` is a `position: fixed` element, which Chromium's
+   print path repeats on every page. That was verified in the PDF's own
+   content streams rather than assumed: a fixed footer over a
+   three-page document appears as `0 0 688 40 re f` in the stream of
+   page one, page two AND page three, where without it pages two and
+   three carry no content stream at all.
+
+   THERE IS NO PAGE NUMBER, AND THAT IS A LIMIT RATHER THAN A CHOICE.
+   A number needs `counter(page)` in an `@page` margin box, which
+   Chromium does not implement, and the route to paper here is
+   deliberately the browser's own print — a second PDF engine is a
+   second place for the numbers to disagree. So the footer makes every
+   sheet ATTRIBUTABLE and does not let a reader detect a missing one.
+   Say that plainly rather than implying a completeness the mechanism
+   cannot deliver; if sheet counting is ever genuinely needed it is a
+   deliberate decision about a second engine, with this paragraph as
+   the argument against.
    ============================================================ */
 
 import { html } from './html.js';
@@ -114,6 +141,37 @@ export function printId(org, what) {
         Produced with UsalamaSMS
       </p>
       <hr class="print-id__rule" />
+      ${runningFoot(org, what, printed)}
+    </div>
+  `;
+}
+
+/* THE FOOTER THAT REPEATS. See the header for why it is `position:
+   fixed` and why it carries no page number.
+
+   Inside `.print-id` deliberately, so it inherits the one refusal that
+   matters: no operator name, no block at all, and therefore no footer
+   either. A running footer reading "Produced with UsalamaSMS" across
+   eight sheets of somebody's audit pack would be the vendor's name on a
+   document with no customer's — the half-attributed state `printId`
+   already refuses at the top of the page.
+
+   THE DOCUMENT TITLE IS ABBREVIATED AT THE EM DASH. Every `what` this
+   product passes is "<document> — <instrument and clause>", and the
+   clause is on the masthead where there is room for it. A footer is one
+   line at 8pt and a running head that wraps is worse than a short one.
+
+   A single line, and the order is what a reader scanning a pile needs
+   first: whose document, then which document. */
+function runningFoot(org, what, printed) {
+  const title = String(what).split(' — ')[0];
+  return html`
+    <div class="print-runner" aria-hidden="true">
+      <span class="print-runner__org">${org.orgName}</span>
+      <span class="print-runner__what">${title}</span>
+      <span class="print-runner__meta">
+        ${org.aocNumber ? `AOC ${org.aocNumber} · ` : ''}${printed}
+      </span>
     </div>
   `;
 }

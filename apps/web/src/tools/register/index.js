@@ -499,7 +499,7 @@ export function render(outlet) {
       <div class="wrap">
         <span class="eyebrow">Toolkit</span>
         <h1>Risk register</h1>
-      <div class="print-id-slot"></div>
+        <div class="print-id-slot"></div>
         <p class="lede">
           Hazard, consequence, controls, residual risk — with an owner and a
           review date, which are the two fields an auditor checks first. The
