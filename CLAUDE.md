@@ -552,6 +552,50 @@ running it is", and it is worth the ten minutes it takes to measure.
 Guessing at the stage from the last log line points at vite; the exit
 code rules vite out.
 
+### AND ON 22 SEPTEMBER IT CAME BACK AS A **4**, ON A PREVIEW ONLY
+
+Pull request #127 carried **eight lines of prose in `CLAUDE.md`** and
+nothing else. Its preview failed in sixty seconds:
+
+    Failed during stage 'building site': Build script returned non-zero exit code: 4
+
+Four measurements, taken before any story about a cause:
+
+| asked | answered |
+|---|---|
+| `npm run check` on that exact tree | **exit 0** — 64 files, 1070 tests |
+| `npm run build` on that exact tree | **exit 0** — vite, stamp-sw, check:dist, prerender, both build-id steps |
+| does any build step OPEN `CLAUDE.md` | **no** — every hit under `scripts/`, `apps/` and `packages/` is the string inside a comment |
+| does anything exit 4 | **no** — `exit(4)` appears nowhere in the repository |
+
+Budgets were not close either: entry 223.9 of 228 KB, total 713.9 of
+716, css 79.4 of 82.
+
+**THE MERGE WAS THE INSTRUMENT, AND IT WAS CHEAPER THAN THE EMPTY
+COMMIT.** The owner authorised merging the red pull request, so the
+identical tree went through the identical chain a second time as a
+PRODUCTION build. It published: `commit_ref 76c98803`, `state ready`,
+`error_message null`, `deploy_time 508`, all four functions deployed.
+Fifteen minutes apart, nothing changed between them.
+
+So the matrix now reads 1 for every failure this repository can
+actually produce, **2** from the builder in August, and **4** from the
+builder in September. Neither of the last two can be raised by any
+command in the chain, and both cleared on their own.
+
+**THE USEFUL RULE IS NOT "IGNORE A RED PREVIEW".** It is that a red
+preview and a red PRODUCTION build mean different things, and only the
+second one costs a customer anything. A preview that fails alone
+leaves production exactly as it was; a production build that fails
+leaves the site serving an older commit and says nothing, which is the
+seventeen-day silence this file records elsewhere. **Read
+`currentDeploy.commit_ref` after the merge either way** — that is the
+reading that distinguishes them, and it takes one call.
+
+Merging past a red preview is the OWNER's call and not an agent's, and
+it is only defensible once the four measurements above have been made.
+Without them it is indistinguishable from ignoring the gate.
+
 **IT IS NOT A GATE, WHICH IS THE PART WORTH KNOWING.** Every check this
 repository owns runs and passes on the machine that publishes. The
 thing that breaks is the bundler, in the one phase this repo has no
