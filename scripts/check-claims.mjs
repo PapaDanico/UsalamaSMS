@@ -2075,6 +2075,69 @@ assert(
   );
 }
 
+/* =====================================================================
+   THE BUNDLE FIGURES ON THE FRONT PAGE, AND THEY HAD ROTTED BY HALF.
+
+   README said "213.5 KB entry JS + 53.6 KB CSS, 75 KB over the wire".
+   Measured against the build on 22 September 2026: 221.2 KB entry,
+   78.9 KB CSS, 82.1 KB gzipped. The CSS figure was wrong by 47%.
+
+   THE GATE THAT SHOULD HAVE CAUGHT IT IS THIS ONE, and the reason it
+   did not is that nothing here had an opinion about those three
+   numbers. Charter rule 10 says counts are computed and never typed,
+   and a byte count typed into a README is the purest possible example
+   of the thing the rule forbids: it is wrong on the next commit that
+   adds a line of CSS.
+
+   SO THE README NOW STATES THE BUDGETS RATHER THAN THE BYTES, and this
+   asserts they are the budgets `stamp-sw.mjs` actually enforces. A
+   budget is a decision somebody made, changes only when somebody
+   changes it deliberately with a receipt, and is the number a reader
+   should care about anyway — "what will this build refuse to exceed"
+   is a promise, where "what did it weigh on one afternoon" is trivia.
+
+   Raising a budget without correcting the front page now fails the
+   build, which is the property the old sentence never had. */
+const stampSw = read('scripts/stamp-sw.mjs');
+const budgetMatch =
+  /const BUDGET = \{ entry: (\d+) \* 1024, js: (\d+) \* 1024, css: (\d+) \* 1024 \}/
+    .exec(stampSw);
+
+assert('the enforced bundle budgets were located at all', Boolean(budgetMatch));
+
+if (budgetMatch) {
+  const budgets = {
+    entry: Number(budgetMatch[1]),
+    js: Number(budgetMatch[2]),
+    css: Number(budgetMatch[3]),
+  };
+
+  /* Read as three separate figures rather than one sentence, because a
+     single regex over the whole claim passes as soon as any part of it
+     is missing — the same vacuous-match failure this gate records
+     about present-tense PARTIAL claims. */
+  const stated = {
+    entry: /(\d+)\s*KB entry JS/.exec(readme),
+    js: /(\d+)\s*KB of JavaScript in total/.exec(readme),
+    css: /(\d+)\s*KB CSS/.exec(readme),
+  };
+
+  for (const key of ['entry', 'js', 'css']) {
+    assert(
+      `README states the ${key} bundle budget`,
+      Boolean(stated[key]),
+      'the sentence naming it is gone, so nothing here can check it',
+    );
+    if (stated[key]) {
+      assert(
+        `README ${key} budget matches what stamp-sw.mjs enforces`,
+        Number(stated[key][1]) === budgets[key],
+        `README says ${stated[key][1]} KB, the build enforces ${budgets[key]} KB`,
+      );
+    }
+  }
+}
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} claim failure(s):\n`);
   for (const f of failures) console.error(`  · ${f}`);

@@ -59,7 +59,8 @@
     "check:gates-fail": "node scripts/check-gates-fail.mjs",
     "check:logo-encoding": "node scripts/check-logo-encoding.mjs",
     "gate": "node scripts/gate.mjs",
-    "gate:bundle": "npm run smoke && npm run check:a11y && npm run check:deliverables && npm run check:first-run && npm run check:logo-encoding && npm run check:symmetry && npm run check:update"
+    "check:nulls": "node scripts/check-nulls.mjs",
+    "gate:bundle": "npm run smoke && npm run check:a11y && npm run check:nulls && npm run check:deliverables && npm run check:first-run && npm run check:logo-encoding && npm run check:symmetry && npm run check:update"
   },
   "devDependencies": {
     "@netlify/functions": "^5.3.0",

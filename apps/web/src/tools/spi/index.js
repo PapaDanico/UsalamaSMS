@@ -1115,7 +1115,30 @@ export function render(outlet) {
     } catch {
       /* Falls through to the sentence below. */
     }
-    if (!data) {
+    /* PRESENCE IS NOT SHAPE, and this guard used to test only the
+       first. `data.rows.map` on a 200 carrying a body of the wrong
+       shape threw mid-assignment, so the slot kept whatever it held
+       before and the sentence written for exactly this case — three
+       lines down, already correct — was jumped straight over.
+
+       It is reachable: the service worker caches API answers, so a body
+       stored against an older shape is served with status 200 to a
+       browser running the new bundle, and so is a proxy's copy or a
+       half-deployed API.
+
+       Every field the render below indexes into is named here, and
+       nothing more. `rows` is the one that threw; `withheld` and the
+       per-row `indicators` and `available` arrays would each have
+       thrown one line later. */
+    const readable =
+      data &&
+      Array.isArray(data.rows) &&
+      Array.isArray(data.withheld) &&
+      data.rows.every(
+        (r) => r && Array.isArray(r.indicators) && Array.isArray(r.available)
+      );
+
+    if (!readable) {
       slot.innerHTML = html`<p class="hint">
         The national comparison could not be read. That is not the same as your
         indicators covering nothing — this section simply has no answer right now.

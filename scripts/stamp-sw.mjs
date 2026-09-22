@@ -2438,7 +2438,55 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
  * half of one. `npm run check:third-party` now fails the build on that
  * class of import, so the next attempt is refused before it reaches a
  * budget line. */
-const BUDGET = { entry: 224 * 1024, js: 696 * 1024, css: 80 * 1024 };
+/* TOTAL 696 -> 700 KB, AND THE FIRST THING THE MEASUREMENT FOUND WAS
+   THAT 696 WAS ALREADY SPENT TO THE BYTE.
+
+   Measured at the commit before this change: js (total) 712,683 bytes,
+   which this gate prints as "696.0 KB of 696 KB". Zero headroom. Not
+   over — exactly at it, which is worse than over, because a ceiling
+   with nothing behind it means THE NEXT CHANGE OF ANY KIND FAILS THE
+   BUILD, and in this repository a failed build is a deploy that does
+   not publish and says nothing about it. Seventeen days of publishing
+   have already been lost to that silence once.
+
+   So the raise is four, not three: three for what is bought below and
+   one so the next person is not in the same position. Nobody set out
+   to land on 696.0/696 — it is what a sequence of raises that each
+   asked "does it fit" rather than "what is left" adds up to.
+
+   WHAT IT BUYS. Attributed by reverting one piece at a time against
+   the same tree and rebuilding, because a receipt whose parts do not
+   sum to its total has not been checked:
+
+     role change (permissions + the picker)  +2,313
+     two answer-shape guards                   +739
+     total                                   +3,052   712,683 -> 715,735
+     entry                                   UNMOVED   221.2 KB, both builds
+     css                        80,059 -> 80,806  +747, 78.9 of 80 KB
+
+   2,313 + 739 = 3,052 exactly.
+
+   The role change is the capability an operator did not have: hiring
+   and offboarding both existed and PROMOTION did not, so a safety
+   officer becoming the safety manager meant a second account for the
+   same person and a safety record that attributes one reporter's
+   filings to two identities. The weight is `mayChangeRole` plus a
+   picker, and it sits in the team panel — a chunk nobody reaches
+   without `user.manage`.
+
+   The 739 bytes are two screens that CRASHED on a 200 they could not
+   read. /fatigue guarded on `if (!data)` — presence, not shape — and
+   then read `data.counts.withinDeclared`, so a body of the wrong shape
+   threw mid-render and left the page at TWO NODES: blank, no heading,
+   no sentence. The honest notice was already written six lines above
+   and the throw jumped over it. /toolkits/spi did the same on
+   `data.rows.map`. Both are reachable — the service worker caches API
+   answers, so a body stored against an older shape is served with
+   status 200 to a browser running the new bundle.
+
+   ENTRY HAS NOT MOVED IN FOUR RAISES. It is 221.2 of 224, and nothing
+   bought here is on a screen a reporter at a remote strip opens. */
+const BUDGET = { entry: 224 * 1024, js: 700 * 1024, css: 80 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
