@@ -2186,13 +2186,54 @@ worth the two minutes.
 the next pull request** — measured, not assumed: the head that
 followed carried one status and it was Netlify's.
 
-What is left is narrower and still a person. A push to `main` can
-still draw a status, because that is a production deploy rather than a
-preview. `deploymentPolicy.gitSources`, which would disable git as a
-deployment source, answers **404 "Deployment Policy not found"** on
-this account — the feature is not on the plan. There is no delete or
-git-unlink call in this MCP surface. The remedy remains the App
-uninstall.
+**AND THE HALF THAT IS LEFT IS MEASURED, NOT ASSUMED.** A push to
+`main` still draws the status, because that is a production deploy
+rather than a preview. Read on 22 September across the three most
+recent merges — `91e714c`, `1d5541a`, `3927dfc` — **every one carries
+`Vercel=failure`**. Disabling previews fixed the pull requests and
+nothing else.
+
+### THE UNINSTALL WAS ATTEMPTED THROUGH FIVE SURFACES AND IS NOT
+
+Written down because "it is a person" is the kind of sentence this
+file has been wrong about before, and because the next agent asked to
+do it should not spend an afternoon rediscovering these:
+
+| surface | result |
+|---|---|
+| GitHub MCP tools | repo-scoped — PRs, issues, files, actions. No installation tools at all |
+| `GET /user/installations` with the user token | **403 at the harness proxy** — *"sessions are bound to their configured repositories. Use repository-scoped endpoints"* |
+| `GET /app/installations` | **403**, the same path-class refusal |
+| `GET /repos/{owner}/{repo}/installation` | **401** — reaches GitHub, and needs a JWT signed with the VERCEL app's private key. Only Vercel holds it |
+| `api.vercel.com` directly | **HTTP 000**, not reachable, and no Vercel credential in the environment |
+| `update_project` with `{"link": null}` — unlinking git, which would stop the statuses at source | **rejected by the tool's own schema**: *Unrecognized key: "link"*. The MCP surface cannot unlink a repository |
+
+The token in this environment IS the owner's — it authenticates as
+`PapaDanico` — so the block is the path class rather than the
+identity: `repos/PapaDanico/UsalamaSMS` answers 200 in the same
+breath. Uninstalling a GitHub App is not a repository-scoped
+operation and never will be.
+
+`deploymentPolicy.gitSources`, which would disable git as a deployment
+source, answers **404 "Deployment Policy not found"** — the feature is
+not on this plan. The Vercel MCP has no delete-project and no
+git-unlink, and its integration-configuration tools are read-only.
+
+**AND ONE OBVIOUS-LOOKING LEVER WAS NOT PULLED, deliberately.**
+`commandForIgnoringBuildStep` would make Vercel skip the build, and
+the failure here is `Account is blocked` with `readyState: BLOCKED`
+0.6 seconds after creation — the deployment is refused before any
+build starts, so an ignored-build-step cannot fire. Setting it would
+have been a change that looks load-bearing and cannot execute, which
+is the defect this file has a section about. Not applied, and the
+reasoning recorded instead of the setting.
+
+**SO THE REMEDY IS THIRTY SECONDS OF SOMEBODY'S TIME**, at
+`github.com/settings/installations` → Vercel → either remove
+`UsalamaSMS` from its repository access, or uninstall it. Until then
+the red mark on a `main` merge is furniture — and this section is the
+proof that it is furniture rather than an excuse to stop reading red
+marks.
 
 Before touching any of it: the project reads `live: false`, its
 domains are two `*.vercel.app` hostnames, and its latest deployment is
