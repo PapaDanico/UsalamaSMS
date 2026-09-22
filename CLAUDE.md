@@ -2214,9 +2214,14 @@ identity: `repos/PapaDanico/UsalamaSMS` answers 200 in the same
 breath. Uninstalling a GitHub App is not a repository-scoped
 operation and never will be.
 
-`deploymentPolicy.gitSources`, which would disable git as a deployment
-source, answers **404 "Deployment Policy not found"** — the feature is
-not on this plan. The Vercel MCP has no delete-project and no
+`deploymentPolicy` is refused on BOTH its rule types, and the second
+attempt is the one that settles it. `gitSources` answers **404
+"Deployment Policy not found"**, and so does `deploymentSources` with
+`sources: ["git"]` disabled for production and preview — which is a
+WRITE, not a read of an unset policy, so the 404 is the feature being
+absent from this plan rather than the policy merely being empty. Two
+rule types, one refusal; the distinction is worth the second call
+because a 404 on a read proves nothing. The Vercel MCP has no delete-project and no
 git-unlink, and its integration-configuration tools are read-only.
 
 **AND ONE OBVIOUS-LOOKING LEVER WAS NOT PULLED, deliberately.**
