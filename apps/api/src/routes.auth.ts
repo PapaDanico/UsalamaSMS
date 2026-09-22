@@ -918,27 +918,47 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const name = String(req.body?.name ?? "").trim();
       const roleRaw = String(req.body?.role ?? "");
 
-      /* Basic RFC 5321 shape: local@domain with at least one dot in the
-         domain part. The previous check only required an `@` character,
-         accepting `@`, `a@`, `@b`, `user@localhost`, etc. The regex
-         does not cover every edge case in the RFC but it rejects the
-         most common inputs that pass `email.includes("@")` and would
-         fail to deliver. The UNIQUE constraint on the column means a
-         badly-formed address that somehow slips through can only waste
-         one row; the real cost is a user who cannot sign in.
+      /* =================================================================
+         EVERY `.co.ke` ADDRESS WAS REFUSED, WHICH IS THE WHOLE MARKET.
 
-         ReDoS note: the original [^\s@]+@[^\s@]+\.[^\s@]+$ pattern
-         had a polynomial backtracking path on pathological input. The
-         replacement checks length first (hard exit before regex), then
-         uses a pattern where the two domain halves are separated by a
-         literal dot that neither side can match — the dot removes the
-         ambiguity that caused backtracking.
-         - local: [^\s@]+ — can never contain @ or whitespace
-         - domain-left: [^\s@.]+ — can never contain . or @ or whitespace
-         - dot: literal \. — consumed exactly once
-         - TLD: [^\s@.]+ — same exclusion, no overlap with domain-left */
-      const emailRe = /^[^\s@]+@[^\s@.]+\.[^\s@.]+$/;
-      if (email.length > 254 || !emailRe.test(email)) {
+         This route hand-rolled its own rule:
+
+           /^[^\s@]+@[^\s@.]+\.[^\s@.]+$/
+
+         and the domain half of it permits EXACTLY ONE DOT. Measured:
+
+           pilot@fly540.com          accepted
+           x@gmail.com               accepted
+           sam@airline.co.ke         REFUSED
+           ops@kenya-airways.co.ke   REFUSED
+           s@ba.co.uk                REFUSED
+           j@mail.icao.int           REFUSED
+
+         Kenya's second-level domain is `.co.ke`. This product is built
+         for Kenyan operators, its own demo accounts are on
+         `demo.usalamasms.test`, and the one route that adds a colleague
+         refused all of them — so an operator could sign up as
+         `ae@airline.co.ke` and then not add a single person from their
+         own company.
+
+         IT WAS NOT FOUND BY A TEST AND COULD NOT HAVE BEEN. Signup,
+         login and password reset all validate with Zod's `.email()`,
+         which accepts these addresses; only this route disagreed, and
+         every layer was self-consistent. It surfaced by driving the
+         real product — creating a colleague in a browser against the
+         real API — and reading the refusal.
+
+         SO THE SECOND SPELLING GOES RATHER THAN GETTING A THIRD DOT.
+         `SignupSchema`, `LoginSchema` and the reset schema all use
+         Zod's `.email()`; this now uses the same one, and there is no
+         longer a rule that can drift from the rule the rest of the
+         product enforces. Two spellings of one rule is how two layers
+         come to disagree, and this is what that costs.
+
+         The length cap stays and is checked first: 254 is the RFC 5321
+         maximum, the column is unique, and a hard exit before any
+         parsing is the ReDoS note's real content. */
+      if (email.length > 254 || !z.string().email().safeParse(email).success) {
         return reply.code(400).send({ error: "email_required" });
       }
       if (name.length < 2 || name.length > 160) {
