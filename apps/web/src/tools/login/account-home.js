@@ -131,7 +131,17 @@ export async function mount(slot, session = getSession() ?? {}) {
               <dd>${me.jurisdiction}</dd>
             </div>`
           : ''}
+        <div>
+          <dt>Fleet</dt>
+          <dd>
+            ${typeof me?.fleetSize === 'number' && me.fleetSize > 0
+              ? html`${me.fleetSize} aircraft`
+              : html`<span class="hint">Not recorded — this is what prices the operator</span>`}
+          </dd>
+        </div>
       </dl>
+
+      <div id="fleet-size-slot"></div>
 
       <p class="hint">
         <a href="/account/profile">Change your name or password</a>
@@ -163,4 +173,20 @@ export async function mount(slot, session = getSession() ?? {}) {
           </p>
         </section>`}
   `.toString();
+
+  /* OFFERED ONLY WHERE IT IS MISSING, AND ONLY TO SOMEBODY WHO MAY SET
+     IT. An operator that has recorded a fleet size does not need a
+     form about it on their account screen, and a reporter cannot write
+     one — `/api/v1/auth/me` returns the permission set precisely so
+     the account area does not keep a second copy of the matrix.
+
+     The route refuses regardless of what this decides: a client-side
+     check is a courtesy, never a control. */
+  const needsFleet = !(typeof me?.fleetSize === 'number' && me.fleetSize > 0);
+  const mayManage = (me?.permissions ?? []).includes('config.manage');
+  const fleetSlot = slot.querySelector('#fleet-size-slot');
+  if (fleetSlot && needsFleet && mayManage) {
+    const { mountFleetSize } = await import('../../shared/fleet-size.js');
+    mountFleetSize(fleetSlot, { onSaved: () => void mount(slot, session) });
+  }
 }

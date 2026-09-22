@@ -1252,6 +1252,19 @@ assert(
         "invoice, not about their safety management system.",
     ],
     [
+      "/api/v1/org/profile",
+      "HOW MANY AIRCRAFT AN OPERATOR FLIES IS WHAT PRICES IT, not something it " +
+        "evidences to an inspector. The fleet size decides which band the " +
+        "subscription falls in and nothing else reads it; an inspector asks what " +
+        "the safety management system can show, and 'we fly nine aircraft' is a " +
+        "fact about the invoice. Listing it on /coverage would be the page " +
+        "counting a commercial step as a regulatory one — the same overstatement " +
+        "the signup and console exemptions above exist to avoid. It has a route " +
+        "of its own because it was previously writable only at signup and by the " +
+        "vendor, which left an operator unable to be quoted a price at the moment " +
+        "it wanted to pay.",
+    ],
+    [
       "/api/v1/users",
       "GIVING A COLLEAGUE A LOGIN IS ACCOUNT ADMINISTRATION, not one of the twelve " +
         "things an SMS has to do — the same reasoning /api/v1/auth/password carries. " +

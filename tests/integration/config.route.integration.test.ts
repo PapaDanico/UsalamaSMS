@@ -89,6 +89,14 @@ describe.skipIf(!hasDatabase)("what an operator calls its own things", () => {
   const reporter = () => tokenFor(reporterId, orgId, "FRONTLINE");
   const otherManager = () => tokenFor(otherManagerId, otherOrgId, "SAFETY_MANAGER");
 
+  const putProfile = (token: string, body: unknown) =>
+    app.inject({
+      method: "PUT",
+      url: "/api/v1/org/profile",
+      headers: { authorization: `Bearer ${token}` },
+      payload: body as never,
+    });
+
   const put = (token: string, body: unknown) =>
     app.inject({
       method: "PUT",
@@ -250,5 +258,85 @@ describe.skipIf(!hasDatabase)("what an operator calls its own things", () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().config["somethingTheProductDoesNotKeep"]).toBeUndefined();
+  });
+
+  /* ============================================================
+     THE NUMBER THAT PRICES THE OPERATOR.
+
+     `fleetSize` was optional at signup and, after signup, writable
+     only by the vendor's console. So an operator that skipped it had
+     no way to supply it — and `requireEntitlement` refuses to guess a
+     band, on the argument that a wrong price is worse than no price
+     because the operator budgets against it. The result was a paywall
+     that said "we cannot quote you" and offered nowhere to fix it, on
+     the screen somebody reached BECAUSE they wanted to pay.
+
+     Measured on production on 21 September 2026: the one live
+     operator had recorded an AOC number, two fleet types, sixteen
+     bases and four operation types, and left this null.
+     ============================================================ */
+  describe("the fleet size an operator can finally record for itself", () => {
+    it("RECORDS IT AND ANSWERS WITH THE BAND IT JUST BECAME", async () => {
+      const res = await putProfile(manager(), { fleetSize: 9 });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.fleetSize).toBe(9);
+      /* The band comes back with it so the screen that asked can show
+         the price immediately rather than making somebody reload to
+         find out what they just bought into. */
+      expect(body.band).toBeTruthy();
+      expect(typeof body.band.usdMonthly).toBe("number");
+
+      const org = await prisma().org.findUnique({ where: { id: orgId } });
+      expect(org?.fleetSize).toBe(9);
+    });
+
+    it("writes an audit entry, because a price-bearing number is not a preference", async () => {
+      await putProfile(manager(), { fleetSize: 12 });
+      const entries = await prisma().auditLog.findMany({ where: { orgId } });
+      const entry = entries.find((e) => e.action === "org.profile.set");
+      expect(entry).toBeTruthy();
+      expect(entry?.entityType).toBe("Org");
+    });
+
+    it("A ROLE WITHOUT config.manage CANNOT SET IT", async () => {
+      const res = await putProfile(reporter(), { fleetSize: 9 });
+      expect(res.statusCode).toBe(403);
+      const org = await prisma().org.findUnique({ where: { id: orgId } });
+      expect(org?.fleetSize).toBeNull();
+    });
+
+    it("refuses a fleet that is not a whole number of aircraft", async () => {
+      for (const bad of [0, -3, 2001, 4.5, "nine", null, undefined]) {
+        const res = await putProfile(manager(), { fleetSize: bad });
+        expect(res.statusCode, `fleetSize=${String(bad)} was accepted`).toBe(400);
+      }
+      const org = await prisma().org.findUnique({ where: { id: orgId } });
+      expect(org?.fleetSize).toBeNull();
+    });
+
+    it("CANNOT REACH ANOTHER OPERATOR, which is the whole tenancy rule", async () => {
+      await putProfile(otherManager(), { fleetSize: 40 });
+      const mine = await prisma().org.findUnique({ where: { id: orgId } });
+      const theirs = await prisma().org.findUnique({ where: { id: otherOrgId } });
+      expect(mine?.fleetSize).toBeNull();
+      expect(theirs?.fleetSize).toBe(40);
+    });
+
+    it("comes back on /api/v1/auth/me, so the account screen can show the gap", async () => {
+      const before = await app.inject({
+        method: "GET", url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${manager()}` },
+      });
+      expect(before.json().fleetSize).toBeNull();
+
+      await putProfile(manager(), { fleetSize: 6 });
+
+      const after = await app.inject({
+        method: "GET", url: "/api/v1/auth/me",
+        headers: { authorization: `Bearer ${manager()}` },
+      });
+      expect(after.json().fleetSize).toBe(6);
+    });
   });
 });
