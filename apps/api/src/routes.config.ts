@@ -32,7 +32,22 @@ import { can } from "@usalamasms/shared";
    whether or not they ever open a settings screen. */
 import { normaliseConfig } from "../../../packages/shared/src/tenant";
 import { checkLogo } from "../../../packages/shared/src/logo";
+import { bandForFleet } from "../../../packages/shared/src/pricing";
 import { prisma, authenticate, appendAudit, tenantWhere } from "./core";
+
+/* A whole number of aircraft. The same 1..2000 the vendor console
+   accepts — a fleet of zero is not an operator, and the upper bound is
+   there so a typo cannot land somebody in a band nobody sells.
+
+   Checked by hand rather than with a schema library, which is what
+   every other route in this file does: `checkLogo` and
+   `normaliseConfig` are the validators here. */
+function readFleetSize(body: unknown): number | null {
+  const value = (body as { fleetSize?: unknown } | undefined)?.fleetSize;
+  const n = typeof value === "string" ? Number(value) : value;
+  if (typeof n !== "number" || !Number.isInteger(n) || n < 1 || n > 2000) return null;
+  return n;
+}
 
 export async function configRoutes(app: FastifyInstance): Promise<void> {
   const limited = {
@@ -143,6 +158,75 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
        that sent a sixth severity should see that it was not kept rather
        than render its own copy of what it hoped it had saved. */
     return reply.send({ config });
+  });
+
+  /* =====================================================================
+     THE NUMBER THAT PRICES THE OPERATOR, AND WHY IT NEEDED A ROUTE.
+
+     `fleetSize` is optional at signup — the panel offers it, the
+     schema accepts it, and somebody in a hurry skips it. After that
+     there was NO WAY for an operator to record it: it was written by
+     signup and by the vendor console, and by nothing else.
+
+     That is a commercial dead end rather than a cosmetic gap.
+     `requireEntitlement` refuses to guess a band — "a wrong price is
+     worse than no price, because the operator budgets against it" —
+     so a lapsed operator with no fleet size meets a wall that says we
+     cannot quote them and offers nowhere to fix it. At the exact
+     moment they were trying to pay.
+
+     Measured on production, 21 September 2026: the one live operator
+     had filled in an AOC number, two fleet types, sixteen bases and
+     four operation types, and left this null.
+
+     SAME AUTHORITY AS THE REST OF THE OPERATOR'S SETTINGS. What the
+     operation costs is the accountable executive's and the safety
+     manager's business, not a reporter's.
+     ===================================================================== */
+  app.put("/api/v1/org/profile", limited, async (req, reply) => {
+    const auth = req.auth!;
+    if (!can(auth.role as never, "config.manage")) {
+      return reply.code(403).send({
+        error: "forbidden",
+        message:
+          "The operator's own details are held by the safety manager and the " +
+          "accountable executive.",
+      });
+    }
+
+    const fleetSize = readFleetSize(req.body);
+    if (fleetSize === null) {
+      return reply.code(400).send({
+        error: "rejected",
+        message:
+          "A fleet size is a whole number of aircraft, from 1 to 2000. It is what " +
+          "decides which band this operator is in.",
+      });
+    }
+
+    const saved = await prisma.org.update({
+      where: { id: auth.org },
+      data: { fleetSize },
+      select: { id: true, fleetSize: true },
+    });
+
+    await appendAudit({
+      orgId: auth.org,
+      userId: auth.sub,
+      action: "org.profile.set",
+      entityType: "Org",
+      entityId: saved.id,
+      detail: { fleetSize: saved.fleetSize },
+    });
+
+    /* THE BAND COMES BACK WITH IT, so the screen that asked can show
+       the price immediately rather than making somebody reload to find
+       out what they just bought into. Computed here from the number
+       just stored, by the same function the entitlement check uses. */
+    return reply.send({
+      fleetSize: saved.fleetSize,
+      band: saved.fleetSize && saved.fleetSize > 0 ? bandForFleet(saved.fleetSize) : null,
+    });
   });
 
   /* =====================================================================

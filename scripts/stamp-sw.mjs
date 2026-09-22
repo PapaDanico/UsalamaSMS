@@ -2438,6 +2438,76 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
  * half of one. `npm run check:third-party` now fails the build on that
  * class of import, so the next attempt is refused before it reaches a
  * budget line. */
+/* 696 -> 712, 21 September 2026 — the SMS evaluation self-assessment,
+ * rewritten from a screen nobody could work in.
+ *
+ * WHAT WAS BOUGHT. The route shipped as 73 lines of string
+ * concatenation: 48 identical forms in one unbroken run, no grouping,
+ * no progress, no print, and none of the product's own markup. An
+ * assessor three hours into a 48-criterion walk could not tell how much
+ * was left, and the artefact a self-assessment exists to produce — the
+ * pack you hand an auditor — could not be produced at all. It is now
+ * grouped into the seven sections the tool is numbered under, counts
+ * only the criteria carrying evidence, and prints with the operator's
+ * mark on it.
+ *
+ * +13.2 KB, AND ENTRY DOES NOT MOVE: 222.3 KB of its unchanged 224 KB
+ * ceiling. The route is lazy, so the weight lands on a safety manager
+ * who opens an evaluation and on nobody else — a ramp agent filing a
+ * hazard at a remote strip pays none of it. CSS is 78.6 KB of its
+ * unchanged 80 KB.
+ *
+ * THE OLD CEILING HAD NO HEADROOM AT ALL, which is worth recording
+ * because nothing in the build says so: measured on `origin/main`
+ * before this change, total JS was 696.0 KB against a 696 KB budget.
+ * The next addition of any size was going to need this raise whatever
+ * it was.
+ *
+ * AND ONE TRIM WAS TRIED AND FAILED, recorded so nobody repeats it.
+ * The four level definitions were rendering inside all 48 criteria;
+ * extracting them into one legend was worth doing for the screen and
+ * for the printed pack — 48 copies of the same four sentences wrapped
+ * around the evidence — but it made the bundle 0.6 KB LARGER, because
+ * a component costs more than the repetition it removes when the
+ * repetition is a .map in a template. The change was kept for the
+ * document it produces, not for the bytes. */
+/* entry 224 -> 228, total 712 -> 716, css 80 -> 82, 22 September 2026 —
+ * the nine deliverables print as records rather than as the forms that
+ * took them.
+ *
+ * WHAT WAS BOUGHT, measured at A4 across all nine before and after:
+ *
+ *     /evaluation        34 pages, 48 dropdowns, 232 empty boxes  ->  7 pages, 0, 0
+ *     /toolkits/culture   6 pages, 70 radio buttons               ->  2 pages, 0
+ *     /sms                7 pages, 22 empty boxes                 ->  5 pages, 0
+ *
+ * On paper a <select> printed with its chevron, a date field printed
+ * "01/31/2027" beside a calendar icon, every required marker printed
+ * its asterisk, and an empty textarea printed as a box with a resize
+ * handle. `shared/print-prepare.js` transposes each control into its
+ * value on `beforeprint` and puts the page back afterwards.
+ *
+ * THE ENTRY CHUNK PAYS FOR THIS, WHICH NEEDS SAYING PLAINLY. +1.6 KB
+ * on the path a reporter at a remote strip downloads, for documents
+ * that reporter will never print. It is in the entry chunk because
+ * `beforeprint` is dispatched synchronously — a dynamic import cannot
+ * resolve before the print dialog renders, so a lazy version of this
+ * would simply not run. The alternative, registering it from each of
+ * the nine screens, is the "did somebody remember the import" failure
+ * this repository already has a gate about.
+ *
+ * So: 1.6 KB against nine handover documents that were, measurably,
+ * printing as blank forms. Stated rather than buried, because the
+ * entry ceiling protects the one path this product is sold on.
+ *
+ * CSS moves 80 -> 82 for the same change: the print block gained the
+ * value typography, the omit rules and the choice rules.
+ *
+ * HEADROOM IS THE REASON FOR THE SIZE OF THE RAISE. Before it, entry
+ * sat at 223.9 KB against 224 — one tenth of a kilobyte, so the next
+ * change of any kind would have failed the build on a ceiling nobody
+ * had looked at. */
+
 /* TOTAL 696 -> 700 KB, AND THE FIRST THING THE MEASUREMENT FOUND WAS
    THAT 696 WAS ALREADY SPENT TO THE BYTE.
 
@@ -2486,7 +2556,20 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
 
    ENTRY HAS NOT MOVED IN FOUR RAISES. It is 221.2 of 224, and nothing
    bought here is on a screen a reporter at a remote strip opens. */
-const BUDGET = { entry: 224 * 1024, js: 700 * 1024, css: 80 * 1024 };
+
+/* AND THE TWO RAISES ABOVE LANDED IN THE SAME WEEK, SO THIS NUMBER IS
+   MEASURED RATHER THAN ADDED.
+
+   The SMS evaluation rewrite and the print/role work were developed on
+   separate branches and each raised the ceiling against ITS OWN base.
+   Adding 716 and 3,052 bytes would be arithmetic over two different
+   trees — the kind of number this file exists to refuse. The figure
+   below is read off a build of the MERGED tree: 717.3 KB total, 223.9
+   entry, 81.2 CSS — with the same headroom argument both receipts make.
+   A ceiling with nothing behind it fails the next change of any kind,
+   and on this repository a failed build is a deploy that does not
+   publish and says nothing about it. */
+const BUDGET = { entry: 228 * 1024, js: 720 * 1024, css: 82 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

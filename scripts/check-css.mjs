@@ -48,6 +48,21 @@ const HOOKS = new Map([
       'like. It exists because a row can carry TWO of those sentences at once, ' +
       'and querySelector(".reg-entry__flag") would find the wrong one.',
   ],
+  [
+    'ev-item',
+    'The per-criterion form on the SMS evaluation self-assessment. It is ' +
+      'visually a run of .field rows inside a .rec, and styling it again here ' +
+      'would be a second opinion about what a form looks like. The class ' +
+      'exists so one listener per outlet can bind every criterion form — ' +
+      'there are 48 of them on the page.',
+  ],
+  [
+    'ev-status',
+    'The slot each criterion form writes its save result into. It is ' +
+      'visually a .hint, which it also carries; this class exists because the ' +
+      'handler has to find THIS form\'s status output rather than the 47 ' +
+      'others on the page.',
+  ],
   /* `print-id-slot` USED TO BE HERE and is deliberately not any more.
 
      It was declared a hook on the reasoning that giving the slot a rule

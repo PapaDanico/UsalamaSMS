@@ -70,6 +70,30 @@ const A4 = { width: 794, height: 1123 };
    the document IS. A toolkit added without an entry here is a workflow
    that ends on screen with nothing to give anybody — the state all six
    of these were in before the print identity block existed. */
+/* HOW MANY PAGES EACH PACK MAY RUN TO, against the fixtures above —
+   which are fixed, so this is deterministic rather than a guess about
+   a real operator's volume.
+
+   Set with headroom over what each measures today. It is not a
+   typographic opinion: it is the tripwire for a document that has
+   quietly become a form again. The evaluation ran to 34 pages before
+   the controls were transposed into their values, and no gate noticed
+   because no gate had ever asked how long the thing was. */
+const MAX_PAGES = {
+  '/toolkits/sra': 4,
+  '/toolkits/register': 4,
+  '/toolkits/spi': 5,
+  '/toolkits/maturity': 7,
+  '/sms': 8,
+  '/picture': 5,
+  '/toolkits/culture': 4,
+  '/toolkits/icaas?action=act-1': 4,
+  '/evaluation?id=ev-1': 10,
+};
+
+/* A4 less the 14mm margins @page declares, in CSS pixels. */
+const PRINTABLE_PX = 1123 - 2 * 14 * (96 / 25.4);
+
 const DELIVERABLES = [
   ['/toolkits/sra', 'the safety risk assessment, ICAO Doc 9859 five steps'],
   ['/toolkits/register', "the risk register regulation 9 asks for"],
@@ -79,6 +103,12 @@ const DELIVERABLES = [
   ['/picture', "the operator's own safety position"],
   ['/toolkits/culture', 'the safety culture survey, printed before the answers are cleared'],
   ['/toolkits/icaas?action=act-1', 'the corrective action pack for the Authority\'s portal'],
+  /* The ninth. It was not here because the screen could not print at
+     all — no identity block, no button, and a run of 48 forms that
+     would have come off a printer as an unattributable stack. It is
+     the document an operator takes into an oversight meeting, so it is
+     the one that most needs the operator's name on it. */
+  ['/evaluation?id=ev-1', 'the SMS evaluation self-assessment, with the criteria still unanswered'],
 ];
 
 /* =====================================================================
@@ -243,7 +273,14 @@ try {
       await page.goto(BASE + route, { waitUntil: 'networkidle' });
       await page.waitForTimeout(500);
       await page.emulateMedia({ media: 'print' });
-      await page.waitForTimeout(200);
+      /* THE EVENT THE PRODUCT ANSWERS, which this gate did not fire.
+         `shared/print-prepare.js` opens the disclosures and transposes
+         every control into its value on `beforeprint`; emulating the
+         media alone changes the stylesheet and runs none of it. So the
+         gate was measuring a page the product had not prepared —
+         passing on a document no printer would ever produce. */
+      await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+      await page.waitForTimeout(250);
 
       /* PAINTED, NOT MERELY PRESENT. The first version of this counted
          `querySelectorAll('.print-id').length`, and its own mutation
@@ -283,13 +320,41 @@ try {
           /* Anything that is navigation. A printed document cannot be
              navigated, so every one of these is dead ink. */
           nav: painted('.toolnav') + painted('nav[aria-label="Toolkits"]'),
-          /* The controls. `.btn` is already hidden by the print
-             stylesheet; this is the assertion that it still is. */
-          controls: painted('button') + painted('.btn'),
+          /* A DELIVERABLE CARRIES NO WORKING CONTROLS. Measured across
+             all nine at A4: the evaluation printed 48 dropdowns and
+             232 empty boxes over 34 pages, and the culture survey
+             printed 70 radio buttons — the blank questionnaire, on the
+             sheet whose own copy says the responses are not on it.
+             A control on paper is furniture at best and, in the case
+             of a chevron beside a chosen option, a thing a reader can
+             mistake for an unmade choice.
+
+             THIS SELECTOR SUPERSEDES A NARROWER ONE. The print-quality
+             pass written on another branch asked only about `button`
+             and `.btn`, which the print stylesheet already hides; this
+             one asks about every control a person can operate, and it
+             is the one that found the 48 dropdowns. Kept on the merge
+             because a union of two selectors is not a union of two
+             properties — the broader one contains the narrower. */
+          controls: painted('select, button, input[type=radio], ' +
+            'input[type=checkbox], input[type=range], input[type=text], ' +
+            'input[type=date], input[type=number], textarea'),
+          /* HOW LONG THE PACK RUNS. The page ceiling is what would
+             have caught the 34-page evaluation on the day, and it is
+             the one number a reader feels before they read a word. */
+          height: Math.max(document.body.scrollHeight,
+                           document.documentElement.scrollHeight),
         };
       });
       measured += 1;
-      rows.push([route, m.blocks, m.mark, m.clips, m.identityTop, m.runner, m.nav + m.controls]);
+      /* COMPUTED BEFORE THE ROW IS PUSHED. It was computed after, so
+         every row printed "0pp" and the pass condition `pages <=
+         ceiling` was 0 <= ceiling — true for every document no matter
+         how long. A check that cannot fail, caught by reading the
+         output rather than the exit code. */
+      m.pages = Math.max(1, Math.ceil(m.height / PRINTABLE_PX));
+      rows.push([route, m.blocks, m.mark, m.clips, m.pages, m.controls,
+                 m.identityTop, m.runner, m.nav]);
 
       /* The screen rendered at all. A route that errored prints an empty
          page, has no identity block, and would otherwise be reported as
@@ -372,12 +437,22 @@ try {
         );
       }
 
-      /* And the controls, which the print stylesheet has always hidden.
-         Asserted rather than assumed: the rule is one edit from being
-         scoped away, and a form with live buttons on paper invites
-         somebody to fill it in with a pen and expect it to save. */
       if (m.controls > 0) {
-        failures.push(`${route} — ${m.controls} control(s) print. Buttons are not paper`);
+        failures.push(
+          `${route} — ${m.controls} working control(s) print on the page. A deliverable ` +
+            `carries the operator's answers as text, not the widgets that took them`
+        );
+      }
+      const pages = m.pages;
+      const ceiling = MAX_PAGES[route];
+      if (ceiling === undefined) {
+        failures.push(`${route} — no page ceiling declared in MAX_PAGES. Add one`);
+      } else if (pages > ceiling) {
+        failures.push(
+          `${route} — runs to ${pages} pages against a ceiling of ${ceiling}. ` +
+            `Either the document grew legitimately and the ceiling moves with a ` +
+            `reason, or it has turned back into a form`
+        );
       }
     } catch (err) {
       failures.push(`${route} — could not be measured: ${err.message.split('\n')[0]}`);
@@ -391,18 +466,21 @@ try {
 
 console.log(`check:deliverables — ${DELIVERABLES.length} handover documents at A4, media print\n`);
 /* THE REPORT NAMES EVERY PROPERTY THE GATE ASSERTS. A summary that
-   printed three columns while checking six is a gate whose output
+   printed five columns while checking eight is a gate whose output
    understates it, and the next person to read it would conclude the
    other three are not covered. */
-for (const [route, blocks, mark, clips, top, runner, chrome] of rows) {
+for (const [route, blocks, mark, clips, pages, controls, top, runner, nav] of rows) {
   const FIRST_THIRD = Math.round(A4.height / 3);
   const topOk = blocks > 0 && top !== null && top <= FIRST_THIRD;
-  const ok = blocks > 0 && mark > 0 && !clips && topOk && runner > 0 && chrome === 0;
+  const ok = blocks > 0 && mark > 0 && !clips && controls === 0 &&
+    pages <= (MAX_PAGES[route] ?? 0) && topOk && runner > 0 && nav === 0;
   console.log(
     `  ${ok ? 'ok  ' : 'FAIL'} ${route.padEnd(28)} ` +
     `identity ${blocks > 0 ? 'yes' : 'NO '}  mark ${mark > 0 ? 'yes' : 'NO '}  ` +
-    `${clips ? 'CLIPS' : 'fits'}  masthead ${topOk ? String(top).padStart(4) + 'px' : ' NO   '}  ` +
-    `footer ${runner > 0 ? 'yes' : 'NO '}  chrome ${chrome === 0 ? 'none' : String(chrome)}`
+    `${clips ? 'CLIPS' : 'fits'}  ${String(pages).padStart(2)}pp  ` +
+    `${controls === 0 ? 'no controls' : `${controls} CONTROLS`}  ` +
+    `masthead ${topOk ? String(top).padStart(4) + 'px' : ' NO   '}  ` +
+    `footer ${runner > 0 ? 'yes' : 'NO '}  nav ${nav === 0 ? 'none' : String(nav)}`
   );
 }
 
