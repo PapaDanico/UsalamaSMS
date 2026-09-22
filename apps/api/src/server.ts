@@ -10,7 +10,7 @@
 // passes its unit tests.
 // =====================================================================
 import Fastify, { type FastifyInstance, type FastifyError } from "fastify";
-import rateLimit from "@fastify/rate-limit";
+
 import {
   ENV, prisma, verifyAuditChain, authenticate, requirePermission,
   deIdentifyVcr, ResidualIdentifiersError,
