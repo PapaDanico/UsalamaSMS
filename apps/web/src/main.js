@@ -42,7 +42,7 @@ import {
   isProvisional
 } from '../../../packages/shared/src/regulations.ts';
 import { watchForInstall, offerUpdate } from './shared/prompts.js';
-import { watchForPrint } from './shared/print-expand.js';
+import { watchForPrint } from './shared/print-prepare.js';
 import { SECTIONS, WORKING_SECTIONS } from './shared/sitemap.js';
 import { render as renderReport } from './tools/report/index.js';
 import { render as renderLogin } from './tools/login/index.js';

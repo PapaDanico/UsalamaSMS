@@ -24,6 +24,14 @@
    ============================================================ */
 import { html } from '../../shared/html.js';
 import { ToolNav } from '../../shared/tool-nav.js';
+/* THE QUESTIONNAIRE DOES NOT PRINT, and this screen's own copy is the
+   argument: "Print this page for the record... the individual
+   responses are not on it". The printed artefact is the SCORES.
+
+   Measured before `no-print` was added, printing this screen produced
+   SIX PAGES OF 70 EMPTY RADIO BUTTONS — the blank form, on the sheet
+   an operator files as evidence that the survey was run. The scores
+   were on page one and everything after it was furniture. */
 import { attachPrintId } from '../../shared/print-id.js';
 import {
   CULTURE_ITEMS, CULTURE_SCALE, CULTURE_MIN_RESPONSES,
@@ -167,7 +175,7 @@ export async function render(outlet) {
           </p>
         </header>
 
-        <div class="panel wrap" data-surface="tool">
+        <div class="panel wrap no-print" data-surface="tool">
           <h2 class="section-title">Add a response</h2>
           <form id="culture-form">
             <ol class="culture-items">

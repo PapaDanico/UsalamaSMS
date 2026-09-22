@@ -2471,7 +2471,43 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
  * a component costs more than the repetition it removes when the
  * repetition is a .map in a template. The change was kept for the
  * document it produces, not for the bytes. */
-const BUDGET = { entry: 224 * 1024, js: 712 * 1024, css: 80 * 1024 };
+/* entry 224 -> 228, total 712 -> 716, css 80 -> 82, 22 September 2026 —
+ * the nine deliverables print as records rather than as the forms that
+ * took them.
+ *
+ * WHAT WAS BOUGHT, measured at A4 across all nine before and after:
+ *
+ *     /evaluation        34 pages, 48 dropdowns, 232 empty boxes  ->  7 pages, 0, 0
+ *     /toolkits/culture   6 pages, 70 radio buttons               ->  2 pages, 0
+ *     /sms                7 pages, 22 empty boxes                 ->  5 pages, 0
+ *
+ * On paper a <select> printed with its chevron, a date field printed
+ * "01/31/2027" beside a calendar icon, every required marker printed
+ * its asterisk, and an empty textarea printed as a box with a resize
+ * handle. `shared/print-prepare.js` transposes each control into its
+ * value on `beforeprint` and puts the page back afterwards.
+ *
+ * THE ENTRY CHUNK PAYS FOR THIS, WHICH NEEDS SAYING PLAINLY. +1.6 KB
+ * on the path a reporter at a remote strip downloads, for documents
+ * that reporter will never print. It is in the entry chunk because
+ * `beforeprint` is dispatched synchronously — a dynamic import cannot
+ * resolve before the print dialog renders, so a lazy version of this
+ * would simply not run. The alternative, registering it from each of
+ * the nine screens, is the "did somebody remember the import" failure
+ * this repository already has a gate about.
+ *
+ * So: 1.6 KB against nine handover documents that were, measurably,
+ * printing as blank forms. Stated rather than buried, because the
+ * entry ceiling protects the one path this product is sold on.
+ *
+ * CSS moves 80 -> 82 for the same change: the print block gained the
+ * value typography, the omit rules and the choice rules.
+ *
+ * HEADROOM IS THE REASON FOR THE SIZE OF THE RAISE. Before it, entry
+ * sat at 223.9 KB against 224 — one tenth of a kilobyte, so the next
+ * change of any kind would have failed the build on a ceiling nobody
+ * had looked at. */
+const BUDGET = { entry: 228 * 1024, js: 716 * 1024, css: 82 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;

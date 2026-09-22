@@ -1025,7 +1025,7 @@ html { scroll-padding-top: var(--us-chrome); }
      knowing. Chromium auto-expands one for printing and honours
      ::details-content; Firefox and WebKit do neither, so on those the
      answers were absent as well as the questions. The rule below
-     covers Chromium and `shared/print-expand.js` covers the rest by
+     covers Chromium and `shared/print-prepare.js` covers the rest by
      opening them on `beforeprint` and restoring afterwards — a
      stylesheet is not a mechanism for changing an element's state. */
   details { display: block !important; }
@@ -1060,11 +1060,103 @@ html { scroll-padding-top: var(--us-chrome); }
      a box — hiding it would collapse nothing and change no layout. */
   ::placeholder { color: transparent !important; opacity: 0 !important; }
 
-  /* AND AN EMPTY FIELD IS A BLANK, NOT A BOX. A bordered rectangle on
-     paper is something to fill in; this pack is a record of what was
-     decided, not a form to hand back. A rule underneath reads as "this
-     was left blank", which is the honest rendering of an empty field
-     in a document. */
+  /* THE CONTROL IS NOT THE ANSWER. `shared/print-prepare.js` writes
+     each control's value beside it as text on `beforeprint`; the
+     control itself is then furniture and comes off the page.
+
+     WHAT THAT REPLACED, measured at A4 across all nine deliverables: a
+     <select> printed with its chevron, a date field printed
+     "01/31/2027" next to a calendar icon, and an empty textarea
+     printed as a box with a resize handle. The old rule below turned
+     the borders off and drew a rule underneath, which made a form look
+     tidier without making it a document.
+
+     `[data-print-transposed]` is set only when a value has actually
+     been written out, so a control this module never reached still
+     prints the old way rather than vanishing with its answer. */
+  [data-print-transposed] {
+    display: none !important;
+  }
+
+  /* An option nobody chose is the question, not the answer. */
+  [data-print-choice='unchosen'] {
+    display: none !important;
+  }
+  [data-print-choice='chosen'] {
+    border: 0 !important;
+    padding-left: 0 !important;
+    font-weight: var(--us-weight-semi);
+  }
+  [data-print-choice='chosen'] input {
+    display: none !important;
+  }
+
+  /* THE VALUE, TYPESET. Slightly larger than the label above it and
+     set in the body face: on a handed-over document the operator's
+     answer is the content and the field name is the scaffolding. */
+  .print-value {
+    display: block;
+    color: #000 !important;
+    font-size: 10.5pt;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    margin: 1px 0 2px;
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* An empty field prints as a rule rather than as nothing — this
+     repository's existing decision, and the honest rendering of a
+     question nobody has answered. It is a hairline, not a box: there
+     is nothing to fill in on paper. */
+  .print-value--blank {
+    min-height: 0.9em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  }
+
+  /* AN UNASSESSED CRITERION IS ONE LINE, NOT SIX EMPTY FIELDS.
+
+     THE MEASUREMENT THAT FORCED THIS: the evaluation printed 34 PAGES
+     with 232 empty boxes on it. Forty-six of the forty-eight criteria
+     were unanswered, and each one printed a level, an evidence box, a
+     source box, an owner, a date and a notes box — all blank. A
+     reader looking for what the operator cannot yet show had to find
+     it among nine pages of empty rules.
+
+     Stated once instead, per criterion. The gap is still on the page —
+     it has to be, it is the whole point of the assessment — but as a
+     sentence a person reads rather than a form nobody filled. */
+  .rec[data-rated='no'] form { display: none !important; }
+  .rec[data-rated='no'] .ev-unassessed {
+    display: block !important;
+    font-style: italic;
+    color: #000 !important;
+  }
+
+  [data-print-omit] { display: none !important; }
+
+  /* THE RHYTHM OF A RECORD. Field name, then answer, then air. Set
+     against each other the two were nearly the same weight and the
+     page read as a wall; the name is now smaller and the pair is
+     separated from the next one, so an auditor's eye finds the
+     answers rather than parsing the labels. */
+  .field { margin: 0 0 var(--us-space-3) !important; }
+  .field-label {
+    font-size: 8.5pt !important;
+    letter-spacing: 0.02em;
+    color: #000 !important;
+  }
+
+  /* HELP TEXT IS FOR THE PERSON FILLING IT IN. "The post, not the
+     person — people move" is good guidance at a keyboard and noise in
+     an auditor's copy, where it sits between the answer and the next
+     question saying nothing about this operator. */
+  .field-hint {
+    display: none !important;
+  }
+
+  /* Anything the transposition did NOT reach keeps the old treatment:
+     a rule rather than a box. */
   .input-field, input[type='text'], input[type='date'], textarea, select {
     border: 0 !important;
     border-bottom: 1px solid rgba(0, 0, 0, 0.4) !important;
@@ -4693,6 +4785,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .ev-section .rec[data-rated='yes'] {
   border-left: 3px solid var(--us-border);
 }
+
+/* The line only paper reads. On screen an unanswered criterion IS its
+   form — that is the work. On paper six empty boxes say nothing a
+   single sentence does not, and there were 46 of them. */
+.ev-unassessed { display: none; }
 
 /* The tutorial's numbered steps. The counter is drawn rather than
    typed, so inserting a step renumbers the rest. */

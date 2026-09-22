@@ -398,6 +398,8 @@ function Criterion(criterion, item = {}) {
     <article class="rec" data-rated="${isRated(item) ? 'yes' : 'no'}">
       <h3>${criterion.id} — ${criterion.title}</h3>
 
+      <p class="ev-unassessed">Not yet assessed.</p>
+
       <form class="ev-item" data-criterion="${criterion.id}">
         <label class="field">
           <span class="field-label">Where this has got to *</span>

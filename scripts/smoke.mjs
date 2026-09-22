@@ -3576,7 +3576,7 @@ try {
     //
     // The fix is in two places because the property needs both: the
     // stylesheet keeps the summary visible and drops the chevron, and
-    // shared/print-expand.js sets `open` on beforeprint, because a
+    // shared/print-prepare.js sets `open` on beforeprint, because a
     // stylesheet cannot change an element's state.
     //
     // MEASURED BY BOUNDING BOX, not by existence or by class. This
@@ -3609,7 +3609,7 @@ try {
     // a Chromium-only gate cannot see it.
     //
     // What IS engine-independent is whether `open` got set. That is
-    // exactly what shared/print-expand.js does and nothing else in the
+    // exactly what shared/print-prepare.js does and nothing else in the
     // product does it, so asserting the attribute tests the module
     // rather than the browser's good manners.
     const unopened = await page.evaluate(
