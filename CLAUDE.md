@@ -887,6 +887,50 @@ changed.
 - **BLOCKED** — a failed or rolled-back row is present. Nothing applies
   until it is resolved.
 
+### AND IT HAPPENED AGAIN ON 21 SEPTEMBER, WITH A CUSTOMER ON THE SYSTEM
+
+Production was **BEHIND by one real migration**, and the state had been
+live for over a month. `20260818170326_spi_appendix_ii_submission`
+adds twelve columns to `Spi`; `schema.prisma` declares all twelve;
+production had none of them. Driven rather than inferred — the exact
+SELECT Prisma issues:
+
+    ERROR: 42703: column "areaOfOperations" does not exist
+
+**A SELECT NAMING A MISSING COLUMN FAILS AT PLAN TIME, ROWS OR NO
+ROWS.** There were zero `Spi` rows in production, and every call to
+`prisma.spi.findMany()` failed anyway.
+
+Blast radius, measured per call site rather than per table:
+
+| reads `Spi` | how | verdict |
+|---|---|---|
+| `routes.spi.ts` list | `include`, no `select` | **BROKEN** — /toolkits/spi |
+| `routes.export.ts` | no `select` | **BROKEN** — the operator's own export |
+| `routes.picture.ts` | explicit `select` | survived |
+| `digest.compute.ts` | `count()` | survived |
+
+So the two casualties were the indicators screen — one of the nine
+printed deliverables, and the Amendment 2 selling point — and the
+export, which is the data-ownership promise in `/terms`. **A `select`
+is what saved the other two**, which is an argument for narrow selects
+that has nothing to do with bandwidth.
+
+**THE LEDGER WAS 40 ROWS AGAINST 42 MIGRATIONS ON DISK.** The second
+was `20260819151711_fuzzy_nick_fury`, an intentionally-empty migration
+generated from a Drizzle compatibility schema that no longer exists —
+an agent artefact. Repaired through the Supabase MCP: the DDL verbatim
+from the repository's own file, then both `_prisma_migrations` rows
+with the **sha256 of `migration.sql`** as checksum. 42/42, zero
+unfinished, zero rolled back, and the posture unchanged at 32/32.
+
+**THE POSTGRES LOGS SAID NOTHING, AND THAT PROVED NOTHING.** No error
+appeared for the whole day. The source held **thirty rows in twelve
+hours** — Supabase's `postgres_logs` does not carry statement errors
+unless configured to. An absence in a log you have not sized is an
+absence of evidence about the log. The failing SELECT is the proof;
+the silence was never going to be.
+
 ## An APPLIED migration is immutable, including its comments
 
 `_prisma_migrations.checksum` is the sha256 of `migration.sql`, so
@@ -1111,11 +1155,12 @@ retracted rows.
 
 ## A document is measured on the page, not in the DOM
 
-`npm run check:deliverables` renders the six handover documents — the
-risk assessment, the register, the indicators, the maturity assessment,
-the twelve-element record and the risk picture — at **A4 with the media
-emulated to print**, and asserts each names the operator, carries its
-mark, and fits the width.
+`npm run check:deliverables` renders the **nine** handover documents —
+the risk assessment, the register, the indicators, the maturity
+assessment, the twelve-element record, the risk picture, the culture
+survey, the KCAA corrective action pack and the SMS evaluation
+self-assessment — at **A4 with the media emulated to print**, and
+asserts each names the operator, carries its mark, and fits the width.
 
 The first version counted `querySelectorAll('.print-id').length`, and
 its own mutation matrix caught it: adding
@@ -1138,6 +1183,203 @@ middle. The gate therefore seeds the org cache and asserts the
 *reachable* property. A first attempt seeded only the session, reported
 all six as unattributed, and was the probe being wrong rather than the
 product.
+
+### AND THE GATE HAD NEVER LOOKED AT WHAT WAS ON THE PAGE
+
+Everything above is about ATTRIBUTION — whose document this is. On 22
+September 2026 all nine deliverables were rendered at A4, with the
+media emulated to print, and READ. Nothing had ever done that. The
+gate asserted the operator's name, the mark and the page width, and
+asked nothing about the content:
+
+| | pages | controls | empty boxes |
+|---|---|---|---|
+| `/evaluation` | **34** | 48 dropdowns | **232** |
+| `/toolkits/culture` | 6 | **70 radio buttons** | 0 |
+| `/sms` | 7 | 2 | 22 |
+| `/toolkits/maturity` | 5 | 0 | 12 |
+
+A `<select>` printed with its chevron. An `<input type="date">`
+printed `01/31/2027` beside a calendar icon — the browser's locale,
+and ambiguous against 31/01 on a Kenyan operator's pack. Every
+required marker printed its asterisk, a footnote mark pointing at
+nothing. Every field printed the help text written to guide somebody
+FILLING IT IN. An empty textarea printed as a box with a resize handle
+in the corner.
+
+The culture survey printed **seventy blank radio buttons over six
+pages** — the unanswered questionnaire — on the sheet whose own copy
+says *"print this page for the record… the individual responses are
+not on it"*.
+
+**THE STYLESHEET HAD BEEN DRESSING THE CONTROLS UP.** The rule was
+borders off and a rule underneath, which makes a form look tidier
+without making it a document. That is the whole lesson: the print
+block was styling a screen rather than producing an artefact.
+
+**A DELIVERABLE PRINTS THE OPERATOR'S ANSWER AND NOTHING THAT ONLY
+MEANS SOMETHING AT A KEYBOARD.** `shared/print-prepare.js` transposes
+every control into its value on `beforeprint` and puts the page back
+on `afterprint`. CSS cannot do it — it cannot read a select's chosen
+option or an input's value — which is the same reason the disclosure
+rule needs JavaScript.
+
+  · a date becomes "31 January 2027", which cannot be read two ways;
+  · a placeholder option is excluded, so no answer is asserted that
+    nobody gave;
+  · an unchosen radio row is the QUESTION and comes off the page;
+  · the required marker is stripped from the label, where no selector
+    could reach it, because it is written into the label's own text;
+  · an empty OPTIONAL field leaves the page entirely — a reader told
+    that a field exists and nobody used it has learned nothing;
+  · an empty REQUIRED field keeps a hairline rule, because there the
+    absence IS the finding.
+
+After: evaluation 7 pages, culture 2, sms 5, and **zero working
+controls on any of the nine**.
+
+**TWO SCREENS NEEDED THEIR OWN DECISION**, and a generic rule could
+not have made either. The culture questionnaire does not print at all.
+An unassessed criterion on the evaluation prints one italic line
+rather than six blank fields — there were forty-six of them, which is
+nine pages of empty rules between a reader and the gaps they came to
+find.
+
+### THE GATE WAS MEASURING A PAGE THE PRODUCT HAD NOT PREPARED
+
+`check:deliverables` set `emulateMedia({ media: 'print' })` and never
+dispatched `beforeprint`. So none of the preparation ran, and the gate
+passed on a document no printer would ever produce. Emulating the
+media changes the stylesheet and runs none of the product's own
+response to printing.
+
+It now fires the event, and asserts two things it never asked: that no
+working control prints, and how many pages each pack runs to.
+`MAX_PAGES` is the tripwire for a document that has quietly become a
+form again — it is what would have caught the 34-page evaluation on
+the day.
+
+**AND THE FIRST VERSION OF THAT PAGE CEILING COULD NOT FAIL.** Every
+row printed `0pp`, because the count was computed AFTER the row was
+pushed, so the pass condition was `0 <= ceiling` for every document
+however long it ran. Caught by reading the output rather than the exit
+code — which is the only way that class of defect is ever caught.
+
+Mutations, both red: the transposition removed (a control prints on
+`/toolkits/sra`), and the unassessed collapse removed (the evaluation
+runs to 16 pages against a ceiling of 10).
+
+## A VALIDATOR IS PERFECT IN A CLIENT THAT CANNOT SATISFY IT
+
+`packages/shared/src/logo.ts` holds a 60,000-character ceiling on an
+operator's mark, and it was correct the whole time. The upload was
+broken for every operator with a real logo, and **1,070 unit tests, a
+green `npm run check` and a passing `tests/logo.test.ts` all said
+otherwise.**
+
+`logo-panel.js` re-encoded every chosen file with one line —
+`canvas.toDataURL('image/png')` at 512px — and checkLogo then refused
+what came back. Measured in Chromium against a mark with a gradient
+and anti-aliased type, which is what a logo actually is:
+
+| | characters | against 60,000 |
+|---|---|---|
+| PNG at 512px | **431,818** | refused |
+| PNG at 256px | **130,294** | refused |
+
+Seven times over. And the refusal read *"export it at 512px on the
+longest edge"* — **which is exactly what the client had just done.**
+An operator who followed the instruction precisely got the identical
+message with nothing left to try. FanJet Express hit it at 08:25 on 21
+September; the audit chain holds one `org.logo.clear` and no
+`org.logo.set`, ever.
+
+**THE CEILING WAS NEVER THE DEFECT.** It is load-bearing — the mark
+rides on every page an operator prints. The defect was one layer up,
+in the half that has to MEET it, and that half needs a canvas and an
+image encoder, which no unit test in this repository has.
+
+The client now spends quality before pixels: PNG, then a WebP ramp,
+then JPEG only where there is no transparency to lose, then the same
+ladder at a smaller edge. The same mark encodes at 49,863 characters
+as WebP, still at 512px.
+
+### THE MATRIX CAME BACK GREEN ON THREE OF FOUR, EACH FOR ITS OWN REASON
+
+This is the most useful thing in this section. A gate was written, it
+passed, and its first matrix said the gate was worthless:
+
+- **a refusal scored as neither pass nor fail.** With the whole defect
+  restored, two marks came back refused, the gate printed them, and
+  exited **0**. A gate that reports the failure it exists to catch and
+  then returns success is worse than none;
+- **the SVG fixture was `'<svg/>'`**, which has no dimensions, so
+  `img.decode()` rejected it and the refusal came from the image
+  decoder rather than from the rule under test. Deleting the rule left
+  the gate green;
+- **"never scaled up" was measured against the ceiling** instead of
+  against the source, so a 90px mark blown up to 512 passed;
+- **the transparency rule was unreachable in Chromium**, where WebP
+  always succeeds before a JPEG rung is tried. It only decides
+  anything on an engine with no WebP encoder, which the gate now
+  simulates by overriding `toDataURL`.
+
+**AND ONE MUTATION IN A LATER ROUND WAS INVALID**, which is the same
+trap this file already records about untracked files: restoring the
+early `break` came back GREEN because the second half of the edit had
+not applied. Verify the mutation CHANGED THE FILE before believing its
+verdict.
+
+### THE DEFECT THE GATE COULD NOT SEE, AND A REVIEW COULD
+
+The ladder ended with `if (longest <= edge) break;` evaluated at the
+BOTTOM of the first pass, where `edge` is still 512. So any source at
+or under 512px left the loop after one pass and 384, 320 and 256 were
+never tried — a mark that missed every rung at native size was refused
+with a message saying it would not fit *"even reduced and
+re-compressed"*, having never been reduced once.
+
+Every fixture was LARGER than 512px, so pass one always downscaled and
+the reduce-and-retry step was never the thing under test. It was found
+by reading the diff, not by running it.
+
+**THE FIXTURE FOR IT HAD TO BE BUILT TWICE**, and that is worth
+keeping: a 400px gradient encodes to 12,155 characters at WebP 0.65
+and fits at native size immediately, so the first attempt at the
+fixture PASSED AGAINST THE DEFECT. Per-pixel deterministic noise at
+500px misses every rung at native size and fits only at 256, which is
+the one shape that reaches the step.
+
+## A COLLAPSED DISCLOSURE PRINTS EXPANDED ONLY IN CHROMIUM
+
+The print block carried `details > summary { display: none }`, so
+every QUESTION was deleted from the printed page and `/faq` came out
+of a printer as a run of unattributed answers. The stylesheet had
+claimed "it prints expanded" since the questions page was written.
+
+**THE OTHER HALF WAS ENGINE-DEPENDENT.** Chromium auto-expands a
+closed `<details>` for printing and honours `::details-content`;
+Firefox and WebKit do neither. So in Chromium the answers survived and
+the questions vanished, and in Safari — the browser on the iPad a
+safety manager carries — a closed question printed as nothing at all.
+
+**A STYLESHEET CANNOT CHANGE AN ELEMENT'S STATE.** `open` is a
+property. `shared/print-prepare.js` sets it on `beforeprint` and
+restores it afterwards, because a screen silently reorganised by a
+print dialog has lost the reader's place.
+
+**A CHROMIUM-ONLY GATE CANNOT SEE THE HALF THAT MATTERS.** Deleting
+the whole expander left every assertion green, because Chromium would
+have printed the answers anyway. What IS engine-independent is whether
+`open` got set, so the smoke check asserts the attribute rather than
+the rendering.
+
+**AND CHROMIUM FIRES BOTH SIGNALS FOR ONE PRINT** — the media query
+flips and `beforeprint` is dispatched. The first version recorded the
+closed disclosures on each call, so the second call recorded the set
+still closed (by then empty) and `restore()` had nothing to put back.
+The reader got the page back fully expanded. `opened === null` is the
+guard, and the smoke gate caught it on the module's first run.
 
 ## One thing is blocked on a person, and it is not a code problem
 
@@ -1176,6 +1418,52 @@ COMPUTATION is grounded, including the STDEVP alert-level method. What
 nobody has seen is which fields the portal asks an operator to fill.
 That is one person, one login, one screenshot — and until then the
 export shape is unverified rather than wrong.
+
+## A COMMERCIAL DEAD END IS A DEFECT, AND NOTHING WAS WATCHING FOR ONE
+
+Every gate in this repository asks whether the product is correct,
+honest and reachable. None of them asks whether it can be PAID FOR.
+
+`Org.fleetSize` is optional at signup. After signup it was written by
+the signup route and by the vendor's console, and **by nothing an
+operator can reach.** `requireEntitlement` refuses to guess a band, on
+the argument already written into `core.ts` — a wrong price is worse
+than no price, because the operator budgets against it — so it answers
+`band: null`.
+
+Put together: a lapsed operator with no fleet size met a wall that
+said *we cannot quote you* and offered nowhere to fix it, **on the
+screen they reached because they wanted to pay.**
+
+Measured on production on 21 September 2026, with a design partner
+testing on a live account: they had recorded an AOC number, two fleet
+types, sixteen bases and four operation types, and left this null.
+Their trial ends 21 October.
+
+`PUT /api/v1/org/profile` closes it — `config.manage`, audited,
+tenancy-scoped — and answers with the BAND it just became, so the
+screen that asked shows the price rather than making somebody reload
+to find out what they bought into. One form in `shared/fleet-size.js`
+mounted twice: on the account screen, and at the paywall itself, where
+the problem is discovered. Two copies of a form writing a
+price-bearing number is two places for the validation to drift.
+
+**THE CLAIMS GATE REFUSED THE ROUTE, AND WAS RIGHT TO.** Every write
+route must be admitted by an element on `/coverage`. This one is not
+an Annex 19 element: an inspector asks what the safety management
+system can show, and "we fly nine aircraft" is a fact about the
+invoice. Listing it would be the coverage page counting a commercial
+step as a regulatory one — the same overstatement the signup and
+console exemptions exist to avoid. Exempted with that reasoning
+written beside the others.
+
+**THE FIX THAT WAS ALREADY THERE IS THE WARNING.** `routes.auth.ts`
+carries a comment titled "THE FLEET SIZE WAS ASKED FOR AND THROWN
+AWAY" — signup collected it and never wrote it, fixed on 18 August.
+That fix was live and deployed when this operator signed up. They
+simply left the field blank, because it is optional, and there was no
+second place to supply it. **A defect can be fixed at its origin and
+still be live one layer along.**
 
 ## A sweep that renders signed out has not seen the product
 
@@ -1350,6 +1638,65 @@ deadline: a deadline runs a countdown, so the product is telling the
 operator what the law requires and must have read it; a duty limit is a
 comparison against a figure the operator supplied. Decide which shape a
 new capability has before opening any instrument.
+
+## A NAME CAN BE UNSOURCEABLE THE WAY A FIGURE CAN
+
+Charter rule 12 is about numbers with legal force. On 21 September
+2026 the same failure arrived wearing a NAME.
+
+The evaluation screen shipped as **"SET-I"**, presented to customers
+as a UK CAA instrument. A search of the CAA's publications returns no
+tool by that name. What exists is the **SMS Evaluation Tool**,
+published as form **SRG1776** (V7, November 2023) beside CAP 795.
+"SET-I" is most likely a contraction of "SMS Evaluation Tool, phase
+I" — the CAA does run a phased evaluation — and **"most likely" is not
+a citation.** It was written by an agent rather than read off the
+instrument.
+
+So the operator-facing name is now the one that can be cited, and the
+acronym survives nowhere a customer reads.
+
+**THE PROVENANCE IS DECLARED RATHER THAN IMPLIED**, which is the
+answer `cictt.ts` already gives to the same question.
+`EVALUATION_VERIFIED_AGAINST_PRIMARY` is **false** and the screen says
+so to the assessor. The four levels — present, suitable, operating,
+effective — ARE corroborated against the CAA's published description.
+The 48 criteria and their numbering are NOT: they came with the
+feature, no primary instrument has been read against them, and
+`caa.co.uk` is refused at this environment's egress proxy like every
+other regulatory host. A criterion list carrying official-looking
+reference numbers is exactly the kind of thing that gets believed on
+sight.
+
+**THE DATABASE STILL SAYS `Seti`, DELIBERATELY.** `SetiAssessment`,
+`SetiAssessmentItem`, the `SetiLevel` enum, the `/api/v1/seti` path
+and the `seti.*` audit actions all keep their names. Renaming them is
+a migration that rewrites two tables and an enum on a live database
+for something no operator ever sees — and an action renamed halfway
+through an audit chain makes the history unsearchable by either name.
+The rename covers what a person reads. Both names are current; one is
+the product's and one is the storage's, and that is written down so
+nobody has to guess which.
+
+**A RENAME THAT BREAKS A URL LOSES WHOEVER BOOKMARKED IT.** `/seti`
+answers a **301** to `/evaluation`, declared ABOVE the splat rewrite
+because Netlify takes the first matching rule.
+
+### AND THE SMOKE SERVER WAS MORE FORGIVING THAN THE DEPLOY
+
+`smoke.mjs` reads the redirect table out of `netlify.toml` and
+**REFUSED** the new rule rather than silently testing a routing table
+the deploy does not have. That is the guard working exactly as
+designed, and it is why it was written.
+
+Teaching it the shape cost one mutation. The first version answered
+exact redirects BEFORE the splat unconditionally, which passes whether
+the rule sits above the catch-all or below it — so moving it below,
+where Netlify would shadow it entirely and serve the app at the old
+URL, came back **GREEN**. It now matches in declaration order, first
+rule wins, as Netlify does. A test server that is more forgiving than
+the real one tests itself, which this file already says about the SPA
+fallback and had to learn twice.
 
 ## Two different connection strings, for two different jobs
 
@@ -1830,7 +2177,27 @@ rule below: remove the Vercel GitHub App's access to this repository at
 `github.com/settings/installations`, or delete the `usalama-sms`
 project in Vercel's dashboard. Until then, treat a red mark from
 `vercel[bot]` as furniture — which is the habit that costs, so it is
-worth the two minutes. If Vercel is ever genuinely wanted, it needs the domain, the
+worth the two minutes.
+
+**HALF OF IT WAS AN API CALL AFTER ALL**, which is this file's own
+"look for the tool first" rule paying out again. On 21 September 2026
+`previewDeploymentsDisabled: true` was set on the project through
+`update_project`, and the `Vercel` status **disappeared entirely from
+the next pull request** — measured, not assumed: the head that
+followed carried one status and it was Netlify's.
+
+What is left is narrower and still a person. A push to `main` can
+still draw a status, because that is a production deploy rather than a
+preview. `deploymentPolicy.gitSources`, which would disable git as a
+deployment source, answers **404 "Deployment Policy not found"** on
+this account — the feature is not on the plan. There is no delete or
+git-unlink call in this MCP surface. The remedy remains the App
+uninstall.
+
+Before touching any of it: the project reads `live: false`, its
+domains are two `*.vercel.app` hostnames, and its latest deployment is
+`BLOCKED`. It serves nothing, so changing its settings cannot reach
+`usalamasms.com`. Check that first if it is ever reinstated. If Vercel is ever genuinely wanted, it needs the domain, the
 environment variables, a decision about which one is authoritative, and
 this section rewritten — in one change.
 
@@ -1838,9 +2205,11 @@ this section rewritten — in one change.
 
 **`npm run gate`.** One command, and it is the only one that covers
 everything: it starts a Postgres if there is none, applies every
-migration, runs `check`, runs the mutation matrix, runs the 505
+migration, runs `check`, runs the mutation matrix, runs the 511
 integration tests including the seven RLS posture assertions, and
-drives the built bundle in Chromium. 818 seconds on 8 September 2026.
+drives the built bundle in Chromium. 818 seconds on 8 September 2026;
+**807 seconds on 22 September**, with three more browser gates and six
+more integration tests in it than the first figure covered.
 
 `npm run check` and `npm run verify` still exist and still mean what
 they meant. Use `gate` when the sentence you are about to write is
@@ -1855,7 +2224,7 @@ every piece had a home on paper:
 | what | ran where, actually |
 |---|---|
 | `npm run check` | the Netlify build. Genuinely enforced |
-| the 505 integration tests | **nowhere since 19 August** |
+| the 511 integration tests | **nowhere since 19 August** |
 | the 7 RLS posture assertions | **nowhere since 19 August** |
 | `smoke`, `check:a11y`, `check:deliverables`, `check:first-run`, `check:symmetry`, `check:update` | **nowhere, in either place** |
 | the 11-mutation matrix proving the gates still bite | **nowhere** — it was `run:` blocks in a dead workflow |
@@ -1999,6 +2368,22 @@ The bundle budget is two numbers on purpose. The total says something
 grew; the **entry** says it grew in a place a reporter at a remote
 strip has to pay for. Raising either needs a receipt in
 `scripts/stamp-sw.mjs` saying what was bought.
+
+**READ THE HEADROOM, NOT ONLY THE VERDICT.** On 21 September 2026
+`origin/main` measured **696.0 KB against a 696 KB ceiling** and the
+build passed. The next change of any size was going to fail on a
+number nobody had looked at, and the one that did was unrelated to the
+ceiling it hit. `budget ok` is not the same as room to work; when a
+raise is warranted, size it so the following change does not need
+another one.
+
+**AND A TRIM CAN COST MORE THAN THE REPETITION IT REMOVES.** The four
+evaluation level definitions rendered inside all 48 criteria; pulling
+them into one legend was plainly right for the screen and for the
+printed pack, and made the bundle **0.6 KB LARGER** — a component
+costs more than a `.map` in a template. It was kept for the document
+it produces rather than for the bytes, and the receipt says so.
+Measure the trim; do not assume it.
 
 ## An aggregate route must check the permission of every record it reads
 
