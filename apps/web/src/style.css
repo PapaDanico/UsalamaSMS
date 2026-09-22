@@ -5406,6 +5406,74 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   color: var(--us-text-tertiary);
 }
 
+/* THE ONE CONTROL INSIDE A RECORD THAT IS NOT A BUTTON.
+
+   Every other act on a `.rec` is a single button, so the row needed no
+   layout of its own. Changing somebody's role is a choice and then an
+   act, which is a select and a button, and two block-level controls
+   stacked under a colleague's name read as a form the reader has to
+   fill in rather than as an option they may take.
+
+   So it is one line at reading width and stacks only when it genuinely
+   cannot fit. `align-items: end` rather than `baseline`: the label sits
+   above its select, so baselines align the LABEL text with the button
+   and leave the control itself hanging below it.
+
+   MARKED no-print AT THE CALL SITE. The role each person holds is
+   already in `.rec__meta`, so a printed list of who works here loses
+   nothing — and an empty select captioned "What they do now" on paper
+   is a control somebody is invited to operate with a pen. */
+.rec__act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--us-space-2) var(--us-space-3);
+  margin: var(--us-space-3) 0 0;
+}
+.rec__act label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--us-space-1);
+  flex: 1 1 18rem;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--us-text-2xs);
+  font-weight: var(--us-weight-semi);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--us-text-tertiary);
+}
+/* The select carries the row's normal reading size even though its
+   label is small caps — the label names the field once, the value is
+   what somebody reads and re-reads. */
+.rec__act select {
+  width: 100%;
+  min-width: 0;
+  font-size: var(--us-text-sm);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: var(--us-weight-regular);
+  color: var(--us-text);
+}
+.rec__act .btn { flex: 0 0 auto; }
+@media (max-width: 520px) {
+  .rec__act .btn { width: 100%; }
+}
+
+/* WHY A CONTROL IS ABSENT, which a disabled control cannot say.
+
+   Two records carry no role picker — your own account, and the only
+   active accountable executive — and in both cases the useful thing is
+   the sentence, not a greyed-out select. Quiet, because it is an
+   explanation rather than a warning: nothing has gone wrong. */
+.rec__note {
+  margin: var(--us-space-2) 0 0;
+  font-size: var(--us-text-2xs);
+  line-height: 1.55;
+  color: var(--us-text-tertiary);
+  max-width: 60ch;
+}
+
 /* Adding to the record is a disclosure, not a form sitting open under
    every element. Eight open forms on one screen is a page of inputs
    with the record buried under them. */

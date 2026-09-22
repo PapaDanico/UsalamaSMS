@@ -11,7 +11,11 @@ import { LoginSchema } from "@usalamasms/shared";
 import { SignupSchema } from "../../../packages/shared/src/signup";
 import { z } from "zod";
 import { PERMISSIONS, RoleEnum, type Role } from "@usalamasms/shared";
-import { mayCreateRole, mayResetCredential } from "../../../packages/shared/src/permissions";
+import {
+  mayCreateRole,
+  mayResetCredential,
+  mayChangeRole,
+} from "../../../packages/shared/src/permissions";
 
 /* THE SAME SHAPE THE CONSOLE ISSUES, so a credential from either path
    reads identically to whoever receives it. Duplicated deliberately
@@ -1131,6 +1135,178 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           : "Signed out of every device, and no new session can be started. A session " +
             "opened in the last 15 minutes stays valid until it expires. Their reports, " +
             "and every audit entry naming them, are untouched.",
+      };
+    },
+  );
+
+  /* =====================================================================
+     SOMEBODY CHANGES POST, AND UNTIL NOW NOTHING COULD SAY SO.
+
+     An operator could hire (`POST /api/v1/users`) and could offboard
+     (`POST /api/v1/users/:id/active`) and could not PROMOTE. A safety
+     officer who becomes the safety manager, a frontline pilot appointed
+     to key management, an accountable executive handing over on
+     retirement — every one of those is an ordinary Tuesday in an
+     airline and none of them had a mechanism. The two routes available
+     were creating a SECOND account for the same person, which makes the
+     safety record attribute their filings to two identities, or an
+     UPDATE by hand against production.
+
+     ---------------------------------------------------------------
+     THE ESCALATION IS WIDER HERE THAN ON EITHER OF THE OTHER TWO, and
+     `mayChangeRole` in permissions.ts carries that argument in full.
+     The short version: creating an account or resetting one both take
+     several steps and hand something over. Writing a different role
+     into your own row takes one request. It is refused twice — once by
+     the matrix, once by the self check below — because the two refusals
+     fail for different reasons and a single one of them being edited
+     away should not open the door.
+
+     ---------------------------------------------------------------
+     THE ROLE IS IN THE ACCESS TOKEN, WHICH IS WHY THE SESSIONS GO.
+
+     `authenticate` verifies a signature and does not re-read the user,
+     so the role the holder was carrying stays authoritative until that
+     token expires — ENV.ACCESS_TTL, fifteen minutes. On a DEMOTION that
+     is a window in which the old permissions still work, and on a
+     PROMOTION it is a window in which the new ones do not, so the
+     person reads "your role cannot do that" about a role they now hold
+     and concludes the product is broken.
+
+     Revoking the refresh tokens bounds it and does not close it. The
+     response therefore NAMES the window rather than reporting a clean
+     success, which is the same discipline the deactivation route above
+     records: reporting "done" about something that is done in fifteen
+     minutes is the quiet-failure shape this product refuses.
+     ===================================================================== */
+  app.put<{ Params: { id: string }; Body: { role?: unknown } }>(
+    "/api/v1/users/:id/role",
+    {
+      preHandler: [authenticate, requirePermission("user.manage")],
+      config: { rateLimit: { max: 20, timeWindow: "15 minutes" } },
+    },
+    async (req, reply) => {
+      const auth = req.auth!;
+
+      const parsed = RoleEnum.safeParse(String(req.body?.role ?? ""));
+      if (!parsed.success) return reply.code(400).send({ error: "unknown_role" });
+      const role = parsed.data;
+
+      /* Scoped in the WHERE rather than fetched and then checked — the
+         reset route records why, and the reason is the same one: a
+         lookup by id alone that is filtered afterwards is one edit away
+         from being a cross-tenant read. */
+      const target = await prisma.user.findFirst({
+        where: { id: req.params.id, orgId: auth.org },
+        select: { id: true, email: true, name: true, role: true, active: true },
+      });
+      if (!target) return reply.code(404).send({ error: "user_not_found" });
+
+      /* YOUR OWN ROLE, FIRST, and for everybody. An accountable
+         executive is permitted by the matrix to move anybody to
+         anything, so without this line the one role that reads every
+         narrative could also make itself the account administrator and
+         lock the operator out of its own safety office. Refused before
+         the matrix is consulted so that the message is about the act
+         rather than about the roles. */
+      if (target.id === auth.sub) {
+        return reply.code(409).send({
+          error: "cannot_change_own_role",
+          message:
+            "You cannot change your own role — that is the one change nobody " +
+            "else has to agree to. Appoint the person taking over first, then " +
+            "ask them to move you.",
+        });
+      }
+
+      if (!mayChangeRole(auth.role as never, target.role as never, role)) {
+        return reply.code(403).send({
+          error: "role_change_not_permitted",
+          /* NAMED, for the reason the create route gives: "forbidden"
+             reads as a malfunction to an administrator who can plainly
+             see the role in a list. */
+          message:
+            role === "PLATFORM_ADMIN" || target.role === "PLATFORM_ADMIN"
+              ? "That role belongs to the supplier of this product and is not an " +
+                "operator's to grant or to remove."
+              : "Your role cannot move an account into or out of the safety office — " +
+                "those accounts read reports filed in confidence. Ask the " +
+                "accountable executive.",
+        });
+      }
+
+      /* IDEMPOTENT, AND IT SAYS WHICH IT WAS. Same reasoning as the
+         activation route: repeating the request is harmless, and an
+         audit entry per click would make the chain report an
+         appointment that did not happen. */
+      if (target.role === role) {
+        return { id: target.id, role, changed: false };
+      }
+
+      /* THE LAST ACCOUNTABLE EXECUTIVE STAYS ONE, and the argument is
+         the deactivation route's verbatim: that role signs the safety
+         policy and is the only one that can reset the safety office's
+         credential, so an operator with none has no way to appoint one
+         — `mayCreateRole` will not let an administrator mint the
+         replacement. Moving the only one off the role is the same
+         one-way door as deactivating them. */
+      if (target.role === "ACCOUNTABLE_EXECUTIVE") {
+        const others = await prisma.user.count({
+          where: {
+            orgId: auth.org, role: "ACCOUNTABLE_EXECUTIVE",
+            active: true, id: { not: target.id },
+          },
+        });
+        if (others === 0) {
+          return reply.code(409).send({
+            error: "last_accountable_executive",
+            message:
+              "This is the only active accountable executive. That role signs the " +
+              "safety policy and is the only one that can reset the safety office's " +
+              "credentials. Appoint the replacement first, then move this account.",
+          });
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({ where: { id: target.id }, data: { role } });
+
+        /* EVERY LIVE SESSION, on a promotion as much as on a demotion.
+           The comment above this route explains why both directions
+           need it; the asymmetric version — revoking only when
+           permissions narrow — is the one that leaves a demoted account
+           reading narratives for another quarter of an hour. */
+        await tx.refreshToken.updateMany({
+          where: { userId: target.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+
+        await appendAuditTx(tx, {
+          orgId: auth.org,
+          userId: auth.sub,
+          action: "user.role.changed",
+          entityType: "User",
+          entityId: target.id,
+          /* BOTH ENDS. "Who appointed whom to what, and what they held
+             before" is the question an auditor asks of an appointment,
+             and a record of only the destination cannot answer it. */
+          detail: {
+            targetEmail: target.email,
+            fromRole: target.role,
+            toRole: role,
+          },
+        });
+      });
+
+      return {
+        id: target.id,
+        role,
+        previousRole: target.role,
+        changed: true,
+        note:
+          "Signed out of every device, so the next sign-in carries the new role. " +
+          "A session opened in the last 15 minutes keeps the old one until it " +
+          "expires. Their reports, and every audit entry naming them, are untouched.",
       };
     },
   );
