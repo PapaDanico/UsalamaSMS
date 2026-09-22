@@ -367,9 +367,12 @@ export const SECTIONS = [
         short: 'Culture'
       },
       {
-        href: '/seti',
-        label: 'SET-I-aligned Self-Assessment',
-        short: 'SET-I assessment'
+        /* NAMED FOR THE INSTRUMENT IT IS BUILT FROM. It shipped as
+           "SET-I", an acronym that does not appear in the CAA's
+           publications — see packages/shared/src/evaluation.ts. */
+        href: '/evaluation',
+        label: 'SMS Evaluation Self-Assessment',
+        short: 'Evaluation'
       },
       {
         href: '/coverage',

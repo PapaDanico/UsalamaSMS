@@ -1158,6 +1158,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           name: true,
           aocNumber: true,
           jurisdiction: true,
+          /* THE NUMBER THAT PRICES THE OPERATOR. It is optional at
+             signup and was therefore absent for an operator that
+             filled in everything else — and `bandForFleet` refuses to
+             answer without it, so the paywall could not quote a price
+             at the exact moment somebody wanted to pay. It comes back
+             here so the account screen can show the gap and offer to
+             close it. */
+          fleetSize: true,
           /* THE LOGO COMES BACK ON /me, not from /config, and that is a
              performance decision rather than a modelling one. The print
              block reads its identity from here already; putting the
@@ -1192,6 +1200,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       orgName: org?.name ?? null,
       aocNumber: org?.aocNumber ?? null,
       jurisdiction: org?.jurisdiction ?? null,
+      fleetSize: org?.fleetSize ?? null,
       logo: org?.config?.logo ?? null,
       /* THE PERMISSIONS THEMSELVES, and this is what stops the account
          area becoming a second copy of the matrix.

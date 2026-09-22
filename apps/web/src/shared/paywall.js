@@ -71,11 +71,15 @@ export function renderPaywall(slot, body) {
             a month, covering ${band.fleet}. Every Annex 19 element is in every
             band; what differs is the size of the operation, not the obligation.
           </p>`
-        : html`<p data-band-unknown>
-            We cannot quote a price because no fleet size is recorded against
-            this operator. Ask us and we will confirm it rather than guess —
-            a price you budget against should not be one we assumed.
-          </p>`}
+        : html`<div data-band-unknown>
+            <p>
+              We cannot quote a price because no fleet size is recorded against
+              this operator — and a price you budget against should not be one we
+              assumed. Tell us how many aircraft you fly and the band appears
+              here immediately.
+            </p>
+            <div data-fleet-slot></div>
+          </div>`}
       <p class="mat-actions">
         <button type="button" class="btn btn-primary btn-sm" data-upgrade>
           Ask to upgrade
@@ -84,6 +88,24 @@ export function renderPaywall(slot, body) {
       </p>
       <p class="hint" data-upgrade-result role="status" aria-live="polite"></p>
     </div>`.toString();
+
+  /* THE FIX, WHERE THE PROBLEM IS. The unknown-band branch used to
+     end the conversation: it explained why there was no price and
+     offered no way to produce one, on the screen somebody reached
+     BECAUSE they wanted to pay. The form writes the number and the
+     server returns the band with it, so the same panel re-renders
+     with the price on it.
+
+     Loaded lazily: a paywall is rare, and the entry chunk is charged
+     to every reporter who never sees one. */
+  const fleetSlot = slot.querySelector('[data-fleet-slot]');
+  if (fleetSlot) {
+    void import('./fleet-size.js').then(({ mountFleetSize }) =>
+      mountFleetSize(fleetSlot, {
+        onSaved: (saved) => renderPaywall(slot, { ...body, ...saved }),
+      })
+    );
+  }
 
   const button = slot.querySelector('[data-upgrade]');
   const result = slot.querySelector('[data-upgrade-result]');

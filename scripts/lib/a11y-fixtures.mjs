@@ -183,6 +183,41 @@ const CAP = {
   },
 };
 
+/* AN SMS EVALUATION PART-ANSWERED, which is the only state worth
+   rendering. A fresh assessment is 48 empty criteria and proves
+   nothing about the document; a complete one hides the whole point of
+   the screen, which is the list you cannot yet answer. Two evidenced
+   out of 48 renders both halves — the progress figure and the gap.
+
+   `ORDERED BY criterionId` the way the route returns them. */
+export const EVALUATION = {
+  assessment: {
+    id: "ev-1",
+    title: "Oversight readiness, 2026",
+    scope: "AOC KE-AOC-014, all bases, 2026 calendar year.",
+    assessedOn: "2026-09-21T00:00:00.000Z",
+    assessor: { name: "Wanjiru Kamau", role: "SAFETY_MANAGER" },
+    items: [
+      {
+        criterionId: "0.1.1",
+        level: "OPERATING",
+        evidence: "Board minutes for Q1 and Q2 2026 record the safety review as a standing item.",
+        sourceRefs: "SMS Manual rev 4, s.2.1, p.11",
+        ownerPost: "Accountable Manager",
+        reviewDueOn: "2027-01-31T00:00:00.000Z",
+      },
+      {
+        criterionId: "0.1.2",
+        level: "PRESENT",
+        evidence: "Just culture policy signed by the Accountable Manager on 2 March 2026.",
+        sourceRefs: "SMS Manual rev 4, s.2.3",
+        ownerPost: "Safety Manager",
+        reviewDueOn: "2027-03-01T00:00:00.000Z",
+      },
+    ],
+  },
+};
+
 export const FIXTURES = [
   ["/api/v1/auth/refresh", { accessToken: "a", refreshToken: "b", role: "SAFETY_MANAGER", orgId: "org-1" }],
   ["/api/v1/auth/me", { name: "Wanjiru Kamau", email: "sm@strip.test", role: "SAFETY_MANAGER", orgName: "Strip Air" }],
@@ -192,6 +227,10 @@ export const FIXTURES = [
   ["/api/v1/picture", PICTURE],
   ["/api/v1/actions", ACTIONS],
   ["/api/v1/icaas/cap/", CAP],
+  /* The detail route first: "/api/v1/seti" is a prefix of it, and
+     bodyFor returns the FIRST match. */
+  ["/api/v1/seti/", EVALUATION],
+  ["/api/v1/seti", { assessments: [{ id: "ev-1", title: EVALUATION.assessment.title, assessedOn: EVALUATION.assessment.assessedOn, _count: { items: 48 } }] }],
   ["/api/v1/digest", DIGEST],
 ];
 

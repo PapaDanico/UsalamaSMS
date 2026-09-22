@@ -1,8 +1,25 @@
-// CAA SET-I evidence ledger. Ratings are stored only alongside evidence,
-// source references, an accountable post, and a review date.
+/* The SMS evaluation ledger. Ratings are stored only alongside
+   evidence, source references, an accountable post and a review date.
+
+   THE ROUTE PATH AND THE TABLES STILL SAY `seti`, and that is a
+   decision rather than an oversight — `packages/shared/src/evaluation.ts`
+   carries the argument. The operator-facing name changed because the
+   old one could not be sourced; the storage names did not, because
+   renaming two tables and an enum on a live database buys nothing
+   anybody sees and an applied migration here is immutable.
+
+   The audit actions keep their names for the same reason and a
+   stronger one: `seti.assessment.create` rows already exist in the
+   chain, and an action renamed halfway through a ledger makes the
+   history unsearchable by either name. */
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { can, SETI_BY_ID, SETI_CRITERIA, SETI_LEVELS } from "@usalamasms/shared";
+import {
+  can,
+  EVALUATION_BY_ID,
+  EVALUATION_CRITERIA,
+  EVALUATION_LEVELS,
+} from "@usalamasms/shared";
 import { authenticate, appendAuditTx, prisma, tenantWhere } from "./core";
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -16,7 +33,7 @@ const CreateAssessment = z.object({
 });
 
 const UpdateItem = z.object({
-  level: z.enum(SETI_LEVELS),
+  level: z.enum(EVALUATION_LEVELS),
   evidence: z.string().trim().min(10).max(12000),
   sourceRefs: z.string().trim().min(3).max(4000),
   ownerPost: z.string().trim().min(2).max(160),
@@ -28,7 +45,7 @@ function mayAssess(role: string): boolean {
   return can(role as never, "sms.audit.conduct") || can(role as never, "sms.audit.verify");
 }
 
-export async function setiRoutes(app: FastifyInstance): Promise<void> {
+export async function evaluationRoutes(app: FastifyInstance): Promise<void> {
   const limited = { preHandler: [authenticate], config: { rateLimit: { max: 60, timeWindow: "1 minute" } } };
 
   app.get("/api/v1/seti", limited, async (req, reply) => {
@@ -59,7 +76,7 @@ export async function setiRoutes(app: FastifyInstance): Promise<void> {
              does not infer it from the parent, and the column is NOT
              NULL, so omitting it fails every create. */
           items: {
-            create: SETI_CRITERIA.map((criterion) => ({
+            create: EVALUATION_CRITERIA.map((criterion) => ({
               orgId: req.auth!.org,
               criterionId: criterion.id,
             })),
@@ -73,7 +90,7 @@ export async function setiRoutes(app: FastifyInstance): Promise<void> {
         action: "seti.assessment.create",
         entityType: "SetiAssessment",
         entityId: created.id,
-        detail: { criteria: SETI_CRITERIA.length },
+        detail: { criteria: EVALUATION_CRITERIA.length },
       });
       return created;
     });
@@ -88,13 +105,13 @@ export async function setiRoutes(app: FastifyInstance): Promise<void> {
       include: { items: { orderBy: { criterionId: "asc" } }, assessor: { select: { name: true, role: true } } },
     });
     if (!assessment) return reply.code(404).send({ error: "not_found" });
-    return reply.send({ assessment, criteria: SETI_CRITERIA });
+    return reply.send({ assessment, criteria: EVALUATION_CRITERIA });
   });
 
   app.put("/api/v1/seti/:id/items/:criterionId", limited, async (req, reply) => {
     if (!mayAssess(req.auth!.role)) return reply.code(403).send({ error: "forbidden" });
     const { id, criterionId } = req.params as { id: string; criterionId: string };
-    if (!SETI_BY_ID.has(criterionId)) return reply.code(404).send({ error: "unknown_criterion" });
+    if (!EVALUATION_BY_ID.has(criterionId)) return reply.code(404).send({ error: "unknown_criterion" });
     const parsed = UpdateItem.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid", detail: parsed.error.flatten() });
 

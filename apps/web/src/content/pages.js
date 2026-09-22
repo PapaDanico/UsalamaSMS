@@ -432,6 +432,75 @@ const TUTORIAL_SECTIONS = [
       ]
     },
     {
+      id: 'act-four',
+      kind: 'steps',
+      title: 'Act four — finding out what you could not show',
+      lede: `The three acts above build the record. This one tests it the way a
+             regulator will: by walking the criteria an SMS evaluation is
+             conducted against and asking, of each one, what you would actually
+             put in front of somebody. It is the act to do BEFORE the letter
+             arrives, because every gap it finds is one you still have time to
+             close.`,
+      items: [
+        {
+          title: 'Start an assessment and say what it covers',
+          body: `<p>Open the
+                 <a href="/evaluation">SMS evaluation self-assessment</a> and create
+                 one. Name it for the moment it belongs to — "Oversight readiness,
+                 2026" — and write a scope that says which approvals, operations and
+                 bases it covers.</p>
+                 <p>It opens all 48 criteria at once, in the seven sections the tool
+                 is numbered under, every one of them empty. That is deliberate: the
+                 list you cannot yet answer is the output, and a tool that only
+                 showed you the ones you had done would hide it.</p>`,
+          pitfall: `Treating it as the regulator's verdict. It is your own
+                    assessment against their criteria — the screen says so on
+                    every view, and so does the printed pack. An operator who
+                    told an inspector they had "passed the evaluation" because
+                    this screen was green would be in a worse position than one
+                    who had never opened it.`
+        },
+        {
+          title: 'Answer a criterion with the thing you would show, not a claim',
+          body: `<p>Each criterion asks for four things before it will take a
+                 rating: what you would show, where it is written down, which post
+                 is accountable, and when it is next reviewed. Save one and the
+                 count at the top moves.</p>
+                 <p>The rating itself is the CAA's own progression —
+                 <strong>present</strong> (it exists), <strong>suitable</strong> (it
+                 fits an operation your size and risk), <strong>operating</strong>
+                 (people are actually doing it) and <strong>effective</strong> (it
+                 is achieving what it exists to achieve, and somebody is checking).
+                 The first two are what a first evaluation asks; the second two
+                 follow about a year into operating.</p>`,
+          pitfall: `Writing the policy's title in the evidence box. "SMS Manual
+                    section 3" is a reference, not evidence — it belongs in the
+                    box below. Evidence is the thing an assessor would read:
+                    the minutes, the signed page, the trend somebody acted on.
+                    A criterion whose evidence is the name of a document is the
+                    one that comes apart when they ask to see it.`
+        },
+        {
+          title: 'Print the gaps and give them owners',
+          body: `<p>The figure at the top counts only criteria carrying evidence,
+                 so what is left is a real list rather than a list of untouched
+                 dropdowns. Print the assessment — it carries your operator's name
+                 and mark — and take the unanswered criteria to whoever owns
+                 them.</p>
+                 <p>Most gaps at this point are not missing systems. They are
+                 systems nobody has written down, which is a morning's work per
+                 criterion and the difference between an evaluation that goes well
+                 and one that does not.</p>`,
+          pitfall: `Rating everything EFFECTIVE because the operation feels
+                    well run. It may well be — but effective means somebody is
+                    measuring whether it is working, and if that measurement
+                    does not exist, the honest rating is operating. A
+                    self-assessment that flatters you produces a document that
+                    looks like assurance and is not.`
+        }
+      ]
+    },
+    {
       id: 'anonymous',
       title: 'On anonymous reporting',
       body: `
@@ -478,16 +547,30 @@ const TUTORIAL_STEPS = TUTORIAL_SECTIONS.filter((s) => s.kind === 'steps').reduc
   0
 );
 
+/* HOW MANY ACTS, COUNTED RATHER THAN TYPED — and this one had already
+   gone wrong. The lede said "Two acts" and the stat said "Steps, in two
+   acts" while there were THREE, and had been since the KCAA act was
+   added. `check:claims` could not see it: every figure that gate
+   compares is written in digits, and the one place a count gets spelled
+   out is the sentence a customer reads. Charter rule 10 applies to a
+   number in prose exactly as it does to a number in a table. */
+const TUTORIAL_ACTS = TUTORIAL_SECTIONS.filter((s) => s.kind === 'steps').length;
+
+const ACT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+const ACTS_IN_WORDS = ACT_WORDS[TUTORIAL_ACTS] ?? String(TUTORIAL_ACTS);
+
 export const TUTORIALS = {
   eyebrow: 'Tutorials',
   title: 'From a first report to a record an auditor can read',
-  lede: `Two acts. The first gets a report filed and arriving; the second turns
-         what arrives into a risk somebody has signed for. Each step names what
-         you need in front of you, what it produces, and the mistake most
-         operators make at it.`,
+  lede: `${ACTS_IN_WORDS.charAt(0).toUpperCase()}${ACTS_IN_WORDS.slice(1)} acts. The
+         first gets a report filed and arriving; the second turns what arrives
+         into a risk somebody has signed for; the third hands the record to the
+         Authority; the fourth tests it against the criteria a regulator
+         evaluates an SMS by. Each step names what you need in front of you,
+         what it produces, and the mistake most operators make at it.`,
   stats: [
-    { value: '~90 min', label: 'End to end' },
-    { value: String(TUTORIAL_STEPS), label: 'Steps, in two acts' },
+    { value: '~2 hrs', label: 'End to end' },
+    { value: String(TUTORIAL_STEPS), label: `Steps, in ${ACTS_IN_WORDS} acts` },
     { value: '0', label: 'Signups to read this' },
     { value: '1', label: 'Auditable record out' }
   ],

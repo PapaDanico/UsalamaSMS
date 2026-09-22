@@ -42,7 +42,7 @@ import {
   isProvisional
 } from '../../../packages/shared/src/regulations.ts';
 import { watchForInstall, offerUpdate } from './shared/prompts.js';
-import { watchForPrint } from './shared/print-expand.js';
+import { watchForPrint } from './shared/print-prepare.js';
 import { SECTIONS, WORKING_SECTIONS } from './shared/sitemap.js';
 import { render as renderReport } from './tools/report/index.js';
 import { render as renderLogin } from './tools/login/index.js';
@@ -491,9 +491,10 @@ router
     { title: 'The SMS record', surface: 'tool' }
   )
   .register(
-    '/seti',
-    (el) => lazy(el, () => import('./tools/seti/index.js').then((m) => (o) => m.render(o))),
-    { title: 'CAA SET-I assessment', surface: 'tool' }
+    '/evaluation',
+    (el) =>
+      lazy(el, () => import('./tools/evaluation/index.js').then((m) => (o) => m.render(o))),
+    { title: 'SMS evaluation self-assessment', surface: 'tool' }
   )
   .register(
     '/coverage',
