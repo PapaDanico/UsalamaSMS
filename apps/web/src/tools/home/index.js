@@ -30,6 +30,13 @@
 
 import { html, raw } from '../../shared/html.js';
 import { Mark } from '../../components/Logo.js';
+import { ROUTED_TOOLKITS } from '../../shared/sitemap.js';
+import {
+  SEVERITY_SCALE,
+  LIKELIHOOD_SCALE,
+  riskScore,
+  tolerability
+} from '../../../../../packages/shared/src/risk.ts';
 import {
   MOR_OBLIGATIONS,
   splitByIcaoBaseline,
@@ -115,63 +122,85 @@ const STEPS = [
    here it costs nothing. It went in as HTML first and put the entry
    chunk 1.1 KB over budget, which is the only reason anybody noticed. */
 /* ======================================================================
-   THE REPORTING CLOCK, IN THE HERO — the product demonstrating itself
-   rather than describing itself.
+   THE HERO PANEL — the product demonstrating itself rather than
+   describing itself.
 
-   Driven at 1440, the right half of this hero was EMPTY. The mark, the
-   heading, the lede and the two buttons all sit in a 62-character
-   measure on the left and roughly seven hundred pixels of the most
-   valuable space on the front door were ground.
+   IT USED TO BE THE REPORTING CLOCK, AND THAT WAS REPETITION.
+   The clock listed every authority and its shortest period. The
+   deadline table eight hundred pixels below listed every authority and
+   every period. Same registry, same nine rows, twice on one page:
+   "Without delay" printed eight times in the panel and again in the
+   table, "Provisional" seven times and again. The most valuable space
+   on the front door was spent on a table the reader was about to meet
+   in full. The deadlines now appear once, where they are complete.
 
-   Kanda fills the same slot with THE REGULATORY CLOCK: three real
-   instruments, their status and their dates, live on the landing page.
-   The effect is not decorative — a visitor sees the product working
-   before they have clicked anything, which is a different claim from a
-   paragraph saying that it works.
+   WHAT REPLACES IT IS THE OTHER HALF OF THE PRODUCT. A visitor sees
+   what a report BECOMES: the ICAO Doc 9859 matrix, twenty-five cells,
+   every one computed here by the same `riskScore` and `tolerability`
+   the assessor calls. Nothing is illustrative and nothing is seeded —
+   there is no fixture behind this, so it cannot drift from the product
+   and there is nothing to update when the scale moves.
 
-   THE FIGURES ARE THE SAME ONES THE PRODUCT RUNS ON. MOR_OBLIGATIONS
-   is the registry every countdown in this application is computed
-   from, and the deadline table further down this page is generated
-   from it too. So this panel cannot drift from the product: there is
-   nothing here to update when a period changes, and a jurisdiction
-   added to the registry appears in the hero without anybody
-   remembering to add it.
+   IT IS A REAL INSTRUMENT RATHER THAN A SCREENSHOT, which is the
+   reason it is markup instead of an image: it costs no bundle weight
+   in assets, it scales to a handset, it is in the accessibility tree,
+   and a printer renders it. A picture of a matrix is a claim that one
+   exists; this IS the one the product runs on.
 
-   THE SHORTEST PERIOD, where an instrument sets several by class. That
-   is the honest summary of a multi-class rule in one line — the number
-   that runs out first is the one an operator has to plan against, and
-   the full table below carries every class.
+   THE LETTER IS NOT DECORATION. Colour carries tolerability and so
+   does the I/T/A code, because a red/green scale collapses for a
+   dichromatic reader and the matrix still has to be readable on the
+   monochrome fax that reaches a regulator.
    ====================================================================== */
-function Clock() {
-  const codes = Object.keys(MOR_OBLIGATIONS);
+const CODE = { INTOLERABLE: 'I', TOLERABLE: 'T', ACCEPTABLE: 'A' };
+
+function RiskPanel() {
   return html`
-    <aside class="hero-clock" aria-labelledby="hero-clock-title">
-      <p class="hero-clock__title" id="hero-clock-title">The reporting clock</p>
-      <ul class="hero-clock__list" role="list">
-        ${codes.map((code) => {
-          const o = MOR_OBLIGATIONS[code];
-          const shortest = o.hoursByClass
-            ? Math.min(...Object.values(o.hoursByClass))
-            : o.hours;
-          return html`<li class="hero-clock__row">
-            <span class="hero-clock__who">
-              ${o.authority}
-              ${isProvisional(code)
-                ? html`<span class="tag tag--provisional">Provisional</span>`
-                : ''}
-            </span>
-            <span class="hero-clock__when">
-              ${shortest === null
-                ? 'Without delay'
-                : html`<b>${shortest}</b> ${shortest === 1 ? 'hour' : 'hours'}`}
-            </span>
-            <span class="hero-clock__from">
-              from ${o.clockStart === 'AWARENESS' ? 'awareness' : 'the occurrence'}
-            </span>
-          </li>`;
-        })}
-      </ul>
-      <a class="hero-clock__more" href="#deadlines">Every period, and the instrument behind it</a>
+    <aside class="hero-panel" aria-labelledby="hero-panel-title">
+      <p class="hero-panel__title" id="hero-panel-title">Risk classification, live</p>
+      <p class="hero-panel__axes">
+        Severity <b>A</b>&ndash;<b>E</b> against likelihood <b>5</b>&ndash;<b>1</b>,
+        ICAO Doc 9859
+      </p>
+      <div class="table-scroll">
+        <table class="risk-matrix">
+          <caption class="visually-hidden">
+            ICAO Doc 9859 risk index: severity A to E against likelihood 5 to 1,
+            each cell resolving to intolerable, tolerable or acceptable.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col"><span class="visually-hidden">Severity</span></th>
+              ${LIKELIHOOD_SCALE.map(
+                ({ code, label }) => html`<th scope="col" title="${label}">${code}</th>`
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            ${SEVERITY_SCALE.map(
+              ({ key: sev, code: letter, label: sevLabel }) => html`
+                <tr>
+                  <th scope="row" title="${sevLabel}">${letter}</th>
+                  ${LIKELIHOOD_SCALE.map(({ key: lik, label: likLabel }) => {
+                    const t = tolerability(sev, lik);
+                    return html`<td>
+                      <div class="risk-matrix__cell" data-tolerability="${t}">
+                        <span
+                          >${riskScore(sev, lik)}<span class="visually-hidden">
+                            — ${sevLabel}, ${likLabel}: ${t.toLowerCase()}</span
+                          ></span
+                        >
+                        <span class="risk-matrix__code" aria-hidden="true">${CODE[t]}</span>
+                      </div>
+                    </td>`;
+                  })}
+                </tr>
+              `
+            )}
+          </tbody>
+        </table>
+      </div>
+      <a class="hero-panel__more" href="/methodology#risk">How a report becomes a number</a>
     </aside>
   `;
 }
@@ -202,7 +231,7 @@ function Hero() {
         </div>
         </div>
 
-        ${Clock()}
+        ${RiskPanel()}
 
         <ul class="trust-strip">
           ${TRUST.map(
@@ -384,6 +413,55 @@ function Deadlines() {
   `;
 }
 
+/* ============================================================
+   WHAT AN OPERATOR ACTUALLY GETS, NAMED.
+
+   THE PAGE HAD NO ANSWER TO "what do I get". It carried two claims
+   and two regulatory tables, and a director deciding whether to adopt
+   this could read the whole front door without learning that the
+   product contains a risk register, an indicator set, a culture
+   survey or a corrective action plan. Every one of those is built,
+   routed and printable, and none of them was mentioned.
+
+   THE LIST IS THE REGISTRY, NOT A LIST TYPED HERE. `ROUTED_TOOLKITS`
+   is what the menu, the toolkits index and check:wiring all read, so
+   a ninth instrument appears on the front door the day it is routed
+   and a retired one leaves. The count is `.length` for the same
+   reason — charter rule 10, and the one number on this page nobody
+   has to remember to update.
+
+   WHAT IT DOES NOT CLAIM is that all of them print. Nine documents
+   are rendered and asserted by check:deliverables, and that set is
+   not this set — /sms and /evaluation are in it and are not routed
+   toolkits, and the training programme is routed and is not in it.
+   Coupling the two counts here would be a claim no gate holds, so
+   the printing sentence names the property that IS gated and leaves
+   the arithmetic alone.
+   ============================================================ */
+function Instruments() {
+  return html`
+    <section class="band-dark">
+      <div class="wrap">
+        <span class="eyebrow">What you get</span>
+        <h2>${ROUTED_TOOLKITS.length} instruments, open on the first day</h2>
+        <p class="lede lede--tight">
+          Not modules to be enabled or a tier to be upgraded into. Every one of
+          these is routed, built and in the product now &mdash; and the ones
+          that are documents print at A4 with the operator&rsquo;s own name and
+          mark on every page.
+        </p>
+        <ul class="instrument-grid" role="list">
+          ${ROUTED_TOOLKITS.map(
+            (t) => html`<li class="instrument">
+              <a href="${t.href}"><span>${t.short}</span></a>
+            </li>`
+          )}
+        </ul>
+      </div>
+    </section>
+  `;
+}
+
 function Standard() {
   return html`
     <section class="panel wrap">
@@ -407,6 +485,6 @@ function Standard() {
 
 export function render(outlet) {
   outlet.innerHTML = html`
-    ${Hero()} ${Steps()} ${Deadlines()} ${Standard()}
+    ${Hero()} ${Steps()} ${Instruments()} ${Deadlines()} ${Standard()}
   `.toString();
 }

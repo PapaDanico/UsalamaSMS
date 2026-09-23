@@ -2569,7 +2569,40 @@ console.log(`  service worker stamped ${buildId} — ${assets.length} assets pre
    A ceiling with nothing behind it fails the next change of any kind,
    and on this repository a failed build is a deploy that does not
    publish and says nothing about it. */
-const BUDGET = { entry: 228 * 1024, js: 720 * 1024, css: 82 * 1024 };
+/* THE LANDING PAGE REBUILD, AND A COLOUR THAT HAD NEVER BEEN PAINTED.
+
+   Measured on the merged tree: 719.6 KB total against a 720 ceiling
+   and 81.8 CSS against 82. Both passed. Both are also the state the
+   section above calls out — a ceiling with nothing behind it, where
+   the next change of any size fails on a number nobody looked at and
+   a failed build on this repository is a deploy that does not publish
+   and says nothing about it. So this raise is sized for the change
+   AFTER it, not for this one.
+
+   WHAT WAS BOUGHT, and it is mostly CSS rather than JavaScript.
+
+   The hero panel stopped being the reporting clock and became the
+   Doc 9859 matrix. That is close to weight-NEUTRAL in script: the
+   clock's nine-row render came out, twenty-five computed cells went
+   in, and `risk.ts` was already reachable. It is not an image, which
+   is the whole reason it is affordable — a screenshot of a matrix at
+   this size would have cost more than every byte in this raise, and
+   would not scale, print, or reach the accessibility tree.
+
+   The instrument grid reads ROUTED_TOOLKITS, which the menu already
+   imports, so it adds markup and a grid rule rather than a payload.
+
+   THE REAL CSS IS A DEFECT FIX. Every cell of the risk matrix
+   computed to rgba(0, 0, 0, 0) — the three most heavily gated tokens
+   in the stylesheet, validated against each other through two kinds
+   of dichromacy, and applied by nothing in the matrix they were
+   designed for. Restoring the fills is six declarations and the
+   comment that explains why no gate could see it.
+
+   ENTRY HAS NOT MOVED, for the fifth raise running: 223.9 of 228. The
+   landing page is a lazy chunk, so none of this is charged to the
+   reporter at a remote strip who opens /report and nothing else. */
+const BUDGET = { entry: 228 * 1024, js: 736 * 1024, css: 88 * 1024 };
 
 const sizes = { js: 0, css: 0, entry: 0 };
 let entryAsset = null;
