@@ -94,14 +94,16 @@ export function render(outlet) {
         <section class="doc-section">
           <h2>Read this before adopting it</h2>
           <p class="note">
-            <b>This is not a complete SMS</b>
-            An operator using it as its sole safety management system would not
-            satisfy Annex 19, and would not pass an audit that asked for the other
-            elements. It is the reporting and risk-classification layer. Everything
-            it does not do is listed below by name rather than omitted.
+            <b>Running this is not the same as discharging the obligation</b>
+            Every element below is built, and every element below also carries a
+            residual this product names rather than omits &mdash; the emergency
+            response plan itself, the content of your manuals, the independence of
+            your safety manager, the schedule of your audit programme. An operator
+            adopting it is adopting the part a system can do. The rest is yours,
+            and it is listed below by name rather than left out.
           </p>
           <p class="note">
-            <strong>SET-I alignment is not CAA conformance.</strong> The self-assessment ledger records the supplied SET-I criteria, evidence, accountable posts and review dates. It does not reproduce the official UK CAA assessment, record a regulator assessment, or establish regulatory conformance.
+            <strong>Evaluation alignment is not CAA conformance.</strong> The self-assessment ledger records the supplied criteria, evidence, accountable posts and review dates. It does not reproduce the official UK CAA SMS Evaluation Tool, record a regulator assessment, or establish regulatory conformance.
           </p>
           <p>
             <strong>The twelve are not our list.</strong> They are the Second Schedule to

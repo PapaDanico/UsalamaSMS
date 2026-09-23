@@ -186,12 +186,14 @@ function Hero() {
         <h1>Safety intelligence for African skies</h1>
         <p class="tagline">Safety born of African soil</p>
         <p class="lede">
-          The reporting and risk-classification layer of an SMS, for operators
-          of three to fifteen aircraft. It records a report without a
-          connection, computes the reporting window the operator's own authority
-          sets, and keeps every narrative inside that operator's organisation.
-          It is not a complete safety management system, and
-          <a href="/about#notyet">says what it is not</a>.
+          Safety management for operators of three to fifteen aircraft. It
+          records a report without a connection, computes the reporting window
+          the operator's own authority sets, classifies risk on the Doc 9859
+          matrix, and keeps every narrative inside that operator's organisation.
+          It addresses twelve of the twelve elements Annex 19 sets out, and
+          names what each one still needs from you &mdash; because running
+          software is not the same as discharging the obligation.
+          <a href="/about#notyet">What twelve of twelve does not mean</a>.
         </p>
 
         <div class="hero-actions">
