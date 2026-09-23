@@ -230,7 +230,7 @@ function Hero() {
         </ul>
 
         <div class="hero-actions">
-          <a class="btn btn-primary" href="/account">Start free for ${TRIAL_DAYS} days</a>
+          <a class="btn btn-primary" href="/signup">Start free for ${TRIAL_DAYS} days</a>
           <a class="btn btn-ghost-lt" href="/report">File a report</a>
         </div>
         <p class="hero-note">
@@ -516,7 +516,7 @@ function Price() {
         )}
       </ul>
       <p class="doc-actions">
-        <a class="btn btn-primary" href="/account">Start free for ${TRIAL_DAYS} days</a>
+        <a class="btn btn-primary" href="/signup">Start free for ${TRIAL_DAYS} days</a>
         <a class="btn btn-ghost" href="/pricing">What each band includes</a>
       </p>
     </section>
