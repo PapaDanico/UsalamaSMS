@@ -589,16 +589,20 @@ export const FAQ = {
       items: [
         {
           q: 'What is this, precisely?',
-          a: `<p>The reporting and risk-classification layer of an SMS, for
-              small and mid-sized aircraft operators: occurrence and hazard
-              reporting, a computed regulatory deadline per jurisdiction, ICAO
-              Doc 9859 risk classification, and an append-only record with a
-              verifiable hash chain. It installs as an app on a phone and works
-              with the network off.</p>
-              <p>It is deliberately <strong>not</strong> a complete SMS. Annex 19
-              defines twelve elements; this substantially covers two.
-              <a href="/about#notyet">What it is not, and what you still
-              need</a> lists the rest, and the
+          a: `<p>Safety management software for small and mid-sized aircraft
+              operators: occurrence and hazard reporting, a computed regulatory
+              deadline per jurisdiction, ICAO Doc 9859 risk classification, and
+              an append-only record with a verifiable hash chain. It installs as
+              an app on a phone and works with the network off.</p>
+              <p>It addresses twelve of the twelve elements Annex 19 sets out
+              &mdash; and running the software is <strong>not</strong> the same as
+              discharging the obligation. Each element also carries a residual the
+              product names rather than hides: the emergency response plan itself,
+              the content of your manuals, the independence of your safety manager,
+              the schedule of your audit programme.
+              <a href="/about#notyet">What twelve of twelve does not mean</a> sets
+              out the rest, the <a href="/coverage">coverage table</a> grades every
+              element and states what it does not hold, and the
               <a href="/toolkits/maturity">maturity assessment</a> measures where
               your operation stands on them.</p>`
         },
@@ -994,7 +998,7 @@ export const TERMS = {
       body: `
         <p>UsalamaSMS records safety reports, computes reporting windows from
         published instruments, and classifies risk against ICAO Doc 9859. Its
-        SET-I-aligned self-assessment records organisation evidence against the
+        SMS evaluation self-assessment records organisation evidence against the
         supplied criteria, but is not the official UK CAA tool, a regulator
         assessment, or evidence of conformance. It does not determine whether an
         occurrence is reportable, whether a hazard is acceptable, or whether an
