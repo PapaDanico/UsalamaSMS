@@ -31,6 +31,7 @@
 import { html, raw } from '../../shared/html.js';
 import { Mark } from '../../components/Logo.js';
 import { ROUTED_TOOLKITS } from '../../shared/sitemap.js';
+import { BANDS, TRIAL_DAYS } from '../../../../../packages/shared/src/pricing.ts';
 import {
   SEVERITY_SCALE,
   LIKELIHOOD_SCALE,
@@ -215,20 +216,27 @@ function Hero() {
         <h1>Safety intelligence for African skies</h1>
         <p class="tagline">Safety born of African soil</p>
         <p class="lede">
-          Safety management for operators of three to fifteen aircraft. It
-          records a report without a connection, computes the reporting window
-          the operator's own authority sets, classifies risk on the Doc 9859
-          matrix, and keeps every narrative inside that operator's organisation.
-          It addresses twelve of the twelve elements Annex 19 sets out, and
-          names what each one still needs from you &mdash; because running
-          software is not the same as discharging the obligation.
-          <a href="/about#notyet">What twelve of twelve does not mean</a>.
+          The whole safety management system, for the operators the incumbents
+          priced out. Twelve of Annex 19&rsquo;s twelve elements &mdash; reporting,
+          hazards, risk, indicators, audits, training &mdash; from
+          <strong>$${BANDS[0].usdMonthly} a month</strong>, for the whole
+          operator rather than for ten seats.
         </p>
 
+        <ul class="hero-proof" role="list">
+          <li>Works with the radio off</li>
+          <li>Unlimited reporters, every band</li>
+          <li>Your record exports whole, any time</li>
+        </ul>
+
         <div class="hero-actions">
-          <a class="btn btn-primary" href="/report">File a report</a>
-          <a class="btn btn-ghost-lt" href="/toolkits/maturity">See where your SMS stands</a>
+          <a class="btn btn-primary" href="/signup">Start free for ${TRIAL_DAYS} days</a>
+          <a class="btn btn-ghost-lt" href="/report">File a report</a>
         </div>
+        <p class="hero-note">
+          No card. Nothing to install. <a href="/pricing">See the bands</a> or
+          <a href="/toolkits/maturity">check where your SMS stands</a> first.
+        </p>
         </div>
 
         ${RiskPanel()}
@@ -253,7 +261,7 @@ function Steps() {
   return html`
     <section class="panel wrap">
       <span class="eyebrow">How it works</span>
-      <h2>Three steps, none of which require a connection</h2>
+      <h2>From a bird strike to a filed record, in three steps</h2>
       <div class="step-grid">
         ${STEPS.map(
           (s) => html`<article class="card step">
@@ -462,6 +470,59 @@ function Instruments() {
   `;
 }
 
+/* ============================================================
+   THE PRICE, ON THE FRONT DOOR.
+
+   THE PAGE HAD NO COMMERCIAL ANSWER AT ALL. A director could read
+   every word of it and not learn what this costs, who it is for, or
+   how it compares — and the one line on the site that does the
+   commercial work, "for the operators the incumbents priced out", was
+   in the FOOTER. A first point of contact that cannot answer "what
+   does it cost" has sent the reader to find out somewhere else.
+
+   EVERY FIGURE IS READ FROM `BANDS`, which is the registry the
+   paywall, the account screen and /pricing all price from. Charter
+   rule 10 — a price typed here would be a second price, and this
+   file's own pricing module opens by saying what happens then.
+
+   THE DIFFERENTIATOR IS THE UNIT, NOT THE NUMBER, and it is the one
+   thing a buyer comparing quotes will not get from a competitor's
+   page: these bands are the WHOLE OPERATOR with unlimited reporters,
+   where the incumbents quote per seat. An operator reading $239
+   against someone else's $640 is not comparing like with like — they
+   are comparing an operator with ten logins.
+   ============================================================ */
+function Price() {
+  return html`
+    <section class="panel wrap">
+      <span class="eyebrow">What it costs</span>
+      <h2>Priced for the operator, not per seat</h2>
+      <p class="lede lede--tight">
+        Every band carries all twelve Annex 19 elements and unlimited reporters
+        &mdash; a band is the whole operator. Ten-seat licences elsewhere start
+        at several times the top band here, and stop at ten people.
+      </p>
+      <ul class="band-grid" role="list">
+        ${BANDS.map(
+          (b) => html`<li class="band-card">
+            <p class="band-card__name">${b.name}</p>
+            <p class="band-card__price">
+              <span class="band-card__amount">$${b.usdMonthly}</span>
+              <span class="band-card__per">/month</span>
+            </p>
+            <p class="band-card__fleet">${b.fleet}</p>
+            <p class="band-card__who">${b.who}</p>
+          </li>`
+        )}
+      </ul>
+      <p class="doc-actions">
+        <a class="btn btn-primary" href="/signup">Start free for ${TRIAL_DAYS} days</a>
+        <a class="btn btn-ghost" href="/pricing">What each band includes</a>
+      </p>
+    </section>
+  `;
+}
+
 function Standard() {
   return html`
     <section class="panel wrap">
@@ -485,6 +546,6 @@ function Standard() {
 
 export function render(outlet) {
   outlet.innerHTML = html`
-    ${Hero()} ${Steps()} ${Instruments()} ${Deadlines()} ${Standard()}
+    ${Hero()} ${Steps()} ${Instruments()} ${Price()} ${Deadlines()} ${Standard()}
   `.toString();
 }
