@@ -94,13 +94,14 @@ export function render(outlet) {
         <section class="doc-section">
           <h2>Read this before adopting it</h2>
           <p class="note">
-            <b>Running this is not the same as discharging the obligation</b>
-            Every element below is built, and every element below also carries a
-            residual this product names rather than omits &mdash; the emergency
-            response plan itself, the content of your manuals, the independence of
-            your safety manager, the schedule of your audit programme. An operator
-            adopting it is adopting the part a system can do. The rest is yours,
-            and it is listed below by name rather than left out.
+            <b>This is not a complete SMS</b>
+            Every element below is built, and running the software is not the same
+            as discharging the obligation. Each one also carries a residual this
+            product names rather than omits &mdash; the emergency response plan
+            itself, the content of your manuals, the independence of your safety
+            manager, the schedule of your audit programme. An operator adopting
+            this is adopting the part a system can do. The rest is yours, and it is
+            listed below by name rather than left out.
           </p>
           <p class="note">
             <strong>Evaluation alignment is not CAA conformance.</strong> The self-assessment ledger records the supplied criteria, evidence, accountable posts and review dates. It does not reproduce the official UK CAA SMS Evaluation Tool, record a regulator assessment, or establish regulatory conformance.

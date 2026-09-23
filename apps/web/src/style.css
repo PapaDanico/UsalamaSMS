@@ -1772,10 +1772,53 @@ html { scroll-padding-top: var(--us-chrome); }
   margin-left: 2px;
 }
 
+/* ============================================================
+   THE MATRIX HAD NO COLOUR AT ALL, AND THE GATE COULD NOT SEE IT.
+
+   `--us-risk-intolerable`, `-tolerable` and `-acceptable` are the most
+   heavily gated tokens in this file. check-brand.mjs holds each one
+   against its own foreground, against white, against Warm Sand, and
+   against the other two — then repeats every pairwise test through two
+   kinds of dichromacy, because a red/green scale passes a naive
+   contrast check and collapses for the reader it matters to. There is
+   a mutation in check:gates-fail whose whole job is to prove a mid
+   green cannot get back onto that scale.
+
+   Measured on 23 September 2026: every cell of the Doc 9859 matrix on
+   /methodology computed to `rgba(0, 0, 0, 0)`. Transparent. The three
+   fills were painted by the register's spine, the risk chip, the
+   progress bar and the culture badge — and by nothing in the matrix
+   the tokens were designed for.
+
+   NO GATE COULD HAVE CAUGHT IT, which is why it lasted. check:a11y
+   reads ink on white and finds 12.6:1, because a missing background is
+   not a contrast failure. check:brand validates the tokens, not
+   whether anything applies them — a validator perfect in a client that
+   never calls it, which this repository already records one layer up
+   about checkLogo. check:deliverables counts controls and pages and
+   has no opinion on fill.
+
+   The letter code carried the meaning on its own, so the matrix was
+   never WRONG — it was the accessible fallback channel doing the whole
+   job while the primary channel was absent. That is the quiet kind of
+   defect: nothing renders broken, it just renders grey, and a safety
+   manager shows an auditor a risk matrix with no risk in it.
+   ============================================================ */
+.risk-matrix__cell[data-tolerability='INTOLERABLE'] {
+  background: var(--us-risk-intolerable);
+  color: var(--us-risk-intolerable-on);
+}
+.risk-matrix__cell[data-tolerability='ACCEPTABLE'] {
+  background: var(--us-risk-acceptable);
+  color: var(--us-risk-acceptable-on);
+}
+
 /* TOLERABLE is the lightest of the three fills, which inverts the usual
    severity-as-weight reading. A darker gold border claws some of that
    back without touching the brand value. */
 .risk-matrix__cell[data-tolerability='TOLERABLE'] {
+  background: var(--us-risk-tolerable);
+  color: var(--us-risk-tolerable-on);
   box-shadow: inset 0 0 0 2px var(--us-gold-text);
 }
 
@@ -3568,7 +3611,7 @@ html { scroll-padding-top: var(--us-chrome); }
   /* Everything that is not the panel stays in column one. Listed by
      what it is rather than by nth-child, so inserting a line into the
      hero does not silently move something into the panel's column. */
-  .band-dark--hero .wrap > :not(.hero-clock) { grid-column: 1; }
+  .band-dark--hero .wrap > :not(.hero-panel) { grid-column: 1; }
   /* COLUMN ONE IS ONE GRID ROW, NOT SEVEN, and that is what fixes the
      gap under the mark.
 
@@ -3586,14 +3629,14 @@ html { scroll-padding-top: var(--us-chrome); }
      the copy is one flex column in one cell and the panel has nothing
      left to inflate. */
   .band-dark--hero .hero-copy { display: flex; flex-direction: column; align-items: flex-start; }
-  .band-dark--hero .hero-clock {
+  .band-dark--hero .hero-panel {
     grid-column: 2;
     grid-row: 1 / -1;
     margin: 0;
   }
 }
 
-.hero-clock {
+.hero-panel {
   margin: var(--us-space-8) 0 0;
   padding: var(--us-space-5);
   border: 1px solid rgb(var(--us-sand-rgb) / 0.18);
@@ -3601,7 +3644,7 @@ html { scroll-padding-top: var(--us-chrome); }
   background: rgb(var(--us-sand-rgb) / 0.05);
 }
 
-.hero-clock__title {
+.hero-panel__title {
   margin: 0 0 var(--us-space-4);
   font-size: var(--us-text-2xs);
   font-weight: 700;
@@ -3610,46 +3653,12 @@ html { scroll-padding-top: var(--us-chrome); }
   color: var(--us-gold);
 }
 
-.hero-clock__list { list-style: none; margin: 0; padding: 0; }
-
-.hero-clock__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px var(--us-space-3);
-  padding: var(--us-space-3) 0;
-  border-top: 1px solid rgb(var(--us-sand-rgb) / 0.12);
-  font-size: var(--us-text-sm);
-}
-.hero-clock__row:first-child { border-top: 0; padding-top: 0; }
-
-.hero-clock__who {
-  color: var(--us-sand);
-  font-weight: var(--us-weight-semi);
-  min-width: 0;
-}
-
-/* The figure, and it aligns down the column — tabular because these
-   are numbers somebody compares rather than reads. */
-.hero-clock__when {
-  color: var(--us-sand);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  text-align: right;
-}
-.hero-clock__when b { color: var(--us-gold); font-size: var(--us-text-md); }
-
-.hero-clock__from {
-  grid-column: 1 / -1;
-  font-size: var(--us-text-2xs);
-  color: rgb(var(--us-sand-rgb) / 0.66);
-}
-
 /* A STANDALONE TARGET, not a link inside a sentence, so WCAG 2.2
    SC 2.5.8's 24px floor applies to it and the inline exception does
    not. It rendered at 18px tall and the gate caught it. Padded rather
    than enlarged: the type stays quiet and the hit area is the thing
    that grows. */
-.hero-clock__more {
+.hero-panel__more {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -3657,7 +3666,83 @@ html { scroll-padding-top: var(--us-chrome); }
   font-size: var(--us-text-xs);
   color: rgb(var(--us-sand-rgb) / 0.86);
 }
-.hero-clock__more:hover { color: var(--us-gold); }
+.hero-panel__more:hover { color: var(--us-gold); }
+
+/* ---------------------------------------------------------------------
+   THE MATRIX IN THE HERO.
+
+   The cells bring their own fills and foregrounds — the three gated
+   risk tokens — so nothing here touches them. What the dark ground
+   needs is the FRAME: the severity letters and likelihood digits are
+   ink by default and would vanish, and the panel is narrower than the
+   methodology page so the labels run as codes rather than words.
+   --------------------------------------------------------------------- */
+.hero-panel__axes {
+  margin: calc(var(--us-space-3) * -1) 0 var(--us-space-3);
+  font-size: var(--us-text-2xs);
+  color: rgb(var(--us-sand-rgb) / 0.66);
+}
+
+.hero-panel .risk-matrix th {
+  color: rgb(var(--us-sand-rgb) / 0.82);
+  font-variant-numeric: tabular-nums;
+  padding: 2px;
+}
+.hero-panel .risk-matrix td { padding: 2px; }
+.hero-panel .risk-matrix__cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--us-space-2) 2px;
+  border-radius: var(--us-radius-sm);
+  font-size: var(--us-text-sm);
+  font-weight: var(--us-weight-semi);
+}
+
+/* ---------------------------------------------------------------------
+   THE INSTRUMENT GRID. Auto-fit rather than a fixed column count: the
+   list is read from ROUTED_TOOLKITS, so the ninth one has to land
+   without anybody editing a number here too.
+   --------------------------------------------------------------------- */
+.instrument-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--us-space-3);
+  list-style: none;
+  margin: var(--us-space-6) 0 0;
+  padding: 0;
+}
+
+/* The whole cell is the target, not the words inside it — WCAG 2.2
+   SC 2.5.8 wants 24px and a link set in a grid cell should not make a
+   reader aim at the text. */
+.instrument a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  height: 100%;
+  padding: var(--us-space-3) var(--us-space-4);
+  border: 1px solid rgb(var(--us-sand-rgb) / 0.18);
+  border-radius: var(--us-radius-md);
+  background: rgb(var(--us-sand-rgb) / 0.05);
+  color: var(--us-sand);
+  font-weight: var(--us-weight-semi);
+  text-decoration: none;
+}
+/* The registry stores these lower case because they read as fragments
+   inside a sentence elsewhere. Here each one is a title.
+
+   THE SPAN IS LOAD-BEARING. `::first-letter` does not apply to a flex
+   container, and the anchor is one so the whole cell can be the hit
+   target — so the rule sat on the anchor doing nothing and every
+   instrument rendered lower case. It applies to a block-level child. */
+.instrument a > span { display: block; }
+.instrument a > span::first-letter { text-transform: uppercase; }
+.instrument a:hover {
+  border-color: var(--us-gold);
+  color: var(--us-gold);
+}
 
 .band-dark--hero {
   background:

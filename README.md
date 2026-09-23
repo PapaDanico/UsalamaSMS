@@ -194,7 +194,7 @@ did nothing at all. The worker waits now, the person decides, and four
 checks across two builds keep it that way.
 
 Bundle budgets the build enforces and refuses to raise silently:
-**228 KB entry JS**, **720 KB of JavaScript in total**, **82 KB CSS**.
+**228 KB entry JS**, **736 KB of JavaScript in total**, **88 KB CSS**.
 Every route past the first paint is lazily loaded, so the entry budget
 is what a person filing a report at a strip actually pays, and raising
 either number needs a receipt in `scripts/stamp-sw.mjs` saying what was
