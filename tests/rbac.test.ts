@@ -297,3 +297,20 @@ describe("mayChangeRole", () => {
     }
   });
 });
+
+/* THE ACCOUNTABLE EXECUTIVE VERIFIES AND DOES NOT CONDUCT. Owner's
+   decision, 24 September 2026: the post accountable for the SMS signs
+   off the evaluation the safety manager runs. Both halves are asserted,
+   because holding conduct as well would let one person run an
+   assessment and sign it off. */
+describe("SMS evaluation — who conducts and who verifies", () => {
+  it("the accountable executive verifies", () => {
+    expect(can("ACCOUNTABLE_EXECUTIVE", "sms.audit.verify")).toBe(true);
+  });
+  it("and does not conduct", () => {
+    expect(can("ACCOUNTABLE_EXECUTIVE", "sms.audit.conduct")).toBe(false);
+  });
+  it("the safety manager still conducts", () => {
+    expect(can("SAFETY_MANAGER", "sms.audit.conduct")).toBe(true);
+  });
+});

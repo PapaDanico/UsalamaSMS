@@ -167,9 +167,20 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ----------------------------- Refresh -----------------------------
+  //
+  // THE CEILING IS PER CLIENT ADDRESS, AND AN OFFICE IS ONE ADDRESS.
+  // The access token lives in memory only, so every full page load
+  // spends one refresh. At 60 per 15 minutes a crew room behind one NAT
+  // — twenty people reloading at shift change — exhausted the bucket
+  // and every one of them was signed out by a 429. Measured on
+  // 24 September 2026 by driving eight roles from one address.
+  //
+  // 600 costs nothing real: the token is at least 32 random characters,
+  // so the limit was never what stops guessing it. What stops a stolen
+  // one is the reuse detection below, which this does not touch.
   app.post(
     "/api/v1/auth/refresh",
-    { config: { rateLimit: { max: 60, timeWindow: "15 minutes" } } },
+    { config: { rateLimit: { max: 600, timeWindow: "15 minutes" } } },
     async (req, reply) => {
       const token = (req.body as { refreshToken?: unknown } | undefined)?.refreshToken;
       if (typeof token !== "string" || token.length < 32) {
