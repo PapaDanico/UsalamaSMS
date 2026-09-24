@@ -199,6 +199,21 @@ async function renderIndex(outlet) {
   const list = outlet.querySelector('#ev-list');
   try {
     const response = await authFetch('/api/v1/seti');
+    /* A REFUSAL IS NOT AN OUTAGE. This used to fold a 403 into the
+       network message, so an accountable executive — who holds neither
+       audit permission, deliberately — was told to check a connection
+       that was fine, beside a form the API would also refuse. A 403
+       now says it is the role, names who can act, and takes the form
+       away. Only a failure to reach the API keeps the connection line. */
+    if (response.status === 403) {
+      outlet.querySelector('#ev-create')?.closest('.card')?.remove();
+      list.innerHTML = html`<p class="empty-state">
+        Your role does not include conducting or verifying an SMS audit, so
+        assessments cannot be read or started from this account. The safety
+        manager conducts one, and key management verifies it.
+      </p>`.toString();
+      return;
+    }
     if (!response.ok) throw new Error('unavailable');
     const { assessments } = await response.json();
     list.innerHTML = assessments.length
@@ -227,8 +242,8 @@ async function renderIndex(outlet) {
         </p>`.toString();
   } catch {
     list.innerHTML = html`<p class="empty-state">
-      The assessment ledger could not be read. Check your connection — and that your
-      role includes conducting or verifying an SMS audit.
+      The assessment ledger could not be reached. Check your connection and try
+      again.
     </p>`.toString();
   }
 

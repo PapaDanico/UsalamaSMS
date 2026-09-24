@@ -120,6 +120,18 @@ async function load(body) {
       authFetch('/api/v1/actions')
     ]);
 
+    /* A refusal is not an outage — the same distinction /picture
+       already draws. Telling a role the register does not open to that
+       it has no signal sends somebody looking for a fault that is not
+       there. */
+    if (regRes.status === 403 || actRes.status === 403) {
+      body.innerHTML = html`<p class="notice">
+        Your role does not include reading the risk register and its actions,
+        so this picture cannot be drawn for you.
+      </p>`.toString();
+      return;
+    }
+
     if (!regRes.ok || !actRes.ok) {
       body.innerHTML = html`<p class="notice notice--urgent">
         The safety office could not be reached. Try again when there is signal.
