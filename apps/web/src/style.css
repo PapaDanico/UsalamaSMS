@@ -6317,7 +6317,22 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    toolkit and asserts the two do not overlap. */
 .doc > .toolnav { grid-column: 1 / -1; }
 
+/* A SELECT SIZES ITSELF TO ITS LONGEST OPTION, not to its container.
+   On a phone that pushed /account/team 19px sideways: "Account
+   administrator — accounts only, no safety record" is wider than a
+   390px card. Every select, so the next long option cannot do it again. */
+select {
+  max-width: 100%;
+}
+
+/* A standalone target, so WCAG 2.2 SC 2.5.8's 24px floor applies. It
+   measured 20px at 390px wide on every toolkit — the way OUT of each
+   one, on the handset crews use. Padded, not enlarged, as
+   .hero-panel__more is. */
 .toolnav__back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   font-size: var(--us-text-sm);
   font-weight: var(--us-weight-medium);
   color: var(--us-teal-text);
