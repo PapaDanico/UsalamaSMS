@@ -266,8 +266,8 @@ const filters = { type: '', state: '', location: '' };
    rule 8.
    ============================================================ */
 /* A 403 IS AN ANSWER, NOT AN OUTAGE. The null above stays the right
-   reply to "we do not know", but a role that files reports and does not
-   triage them — frontline crew — was told the safety office could not
+   reply to "we do not know", but a role the queue does not open to —
+   frontline crew, a regulator's inspector — was told the safety office could not
    be reached while it was reachable and had simply said no. Recorded
    separately so the notice can tell the truth about which it was. */
 let queueRefused = false;
@@ -400,7 +400,7 @@ export async function render(outlet) {
       ${!remote
         ? html`<p class="notice">
             ${isSignedIn() && queueRefused
-              ? 'Showing this device only. Your role files reports rather than triaging them, so the operator’s queue is not shown to you. What you file here reaches the safety office, and they take it from there.'
+              ? 'Showing this device only. Your role does not include the operator’s reporting queue, so it is not shown to you. Anything filed from this device still reaches the safety office.'
               : isSignedIn()
               ? 'Showing this device only — the safety office could not be reached. Reports filed elsewhere are not in this list, and a report cannot be triaged or closed until there is a connection.'
               : 'Showing this device only. Sign in to see the whole operator’s queue and to triage, investigate or close a report.'}
