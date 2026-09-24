@@ -172,6 +172,15 @@ export const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
        administrator is the vendor, who must never write into a tenant's
        safety record. */
     "report.create",
+    /* VERIFICATION, decided by the owner on 24 September 2026. The post
+       ACCOUNTABLE for the SMS could not open the operator's own SMS
+       evaluation — both permissions that open it also rate it, so read
+       access was all or nothing. Verify is the half that fits: it signs
+       off what the safety manager conducts, and it also lets this post
+       confirm a closed audit finding actually worked. Conduct stays with
+       the safety manager, so the one who runs an assessment and the one
+       who signs it off are still two people. */
+    "sms.audit.verify",
     "spi.read", "moc.approve", "document.read", "audit.read", "training.read.own",
     "config.manage",
     /* APPOINTING THE PEOPLE, because signup creates exactly one of these
