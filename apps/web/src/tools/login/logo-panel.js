@@ -327,15 +327,23 @@ export async function render(outlet) {
          line under it says which rung it landed on rather than leaving
          somebody to wonder why their PNG came back as WebP. */
       status.textContent =
-        `Ready to save — ${Math.round(verdict.chars / 1024)} KB, ` +
-        `${type.replace('image/', '').toUpperCase()} at ${edge}px. Check the preview.`;
+        `Encoded — ${Math.round(verdict.chars / 1024)} KB, ` +
+        `${type.replace('image/', '').toUpperCase()} at ${edge}px. Saving…`;
+      await save();
     } catch (err) {
       pending = null;
       status.textContent = err?.message ?? 'That file could not be read as an image.';
     }
   });
 
-  outlet.querySelector('#logo-save').addEventListener('click', async () => {
+  /* SAVED ON CHOICE, not on a second press. Production recorded no
+     successful save from any operator, ever — three removals and nothing
+     else — while every mark driven locally encoded and saved. The one
+     step that separates the two is a button pressed after the preview,
+     and a person who has just watched their logo appear reasonably
+     believes it is done. Choosing a file now saves it; the button stays
+     as the retry when the network drops. */
+  const save = async () => {
     if (!pending) {
       status.textContent = 'Choose an image first.';
       return;
@@ -353,12 +361,18 @@ export async function render(outlet) {
         return;
       }
       forgetCachedOrg();
+      const wrap = outlet.querySelector('#logo-preview-wrap');
+      const img = wrap.querySelector('img');
+      if (img) img.alt = 'The mark currently set';
       status.textContent = 'Saved. Packs you print from now on carry it.';
     } catch {
       status.textContent =
-        'The safety office could not be reached, and the mark has not changed.';
+        'The safety office could not be reached, and the mark has not changed. ' +
+        'Press "Save the mark" to try again.';
     }
-  });
+  };
+
+  outlet.querySelector('#logo-save').addEventListener('click', () => void save());
 
   outlet.querySelector('#logo-clear').addEventListener('click', async () => {
     status.textContent = 'Removing…';

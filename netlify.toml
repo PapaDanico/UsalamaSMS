@@ -75,7 +75,11 @@
   # then fails at runtime with a missing-engine error that reads like a
   # Prisma bug rather than a packaging one.
   included_files = ["node_modules/.prisma/client/**", "prisma/**"]
-  external_node_modules = ["@prisma/client", ".prisma/client", "argon2"]
+  # mammoth (the Word manual parser) is CommonJS and calls require("fs");
+  # inlined into the ESM bundle that fails at runtime with "Dynamic require
+  # of fs is not supported" — measured by bundling it, 24 September 2026.
+  # Shipped from node_modules instead, as argon2 already is.
+  external_node_modules = ["@prisma/client", ".prisma/client", "argon2", "mammoth"]
 
 # The CSP is the mechanism behind this product's half of charter rule 7.
 # Nothing off-origin: no font CDN, no analytics, no tag manager. The

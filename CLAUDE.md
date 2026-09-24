@@ -1767,6 +1767,39 @@ watching the console, not by reading the diff.
 files, and reports file and line. Mutation-checked: restoring the exact
 line reddens it alone. Zero other instances existed when it was added.
 
+## A REFUSAL IS NOT AN OUTAGE, AND A DRIVER THAT CANNOT SIGN IN MEASURES NOTHING
+
+Found on 24 September 2026 by driving every route as all eight demo roles,
+at desktop and at 390px. Three lessons, each paid for once.
+
+**A 403 must never read as a lost connection.** `/triage`, `/evaluation`
+and `/toolkits/risk-picture` folded a refusal into their network message,
+so a pilot who was online was told to find signal. `/picture` already drew
+the line correctly (`res.status === 403` gets a role sentence); the others
+now do too. Any new screen that fetches must branch on 403 before `!ok`.
+
+**The refresh ceiling is per client ADDRESS, and an office is one
+address.** The access token lives in memory, so every full page load
+spends a refresh. At 60 per 15 minutes a crew room behind one NAT was
+signed out by 429s. It is 600 now. A sweep script that loads many pages
+from one address trips the same limit — give each role its own
+`x-nf-client-connection-ip` or the 401/429 cascade is the harness, not
+the product.
+
+**ASSERT THE LOGIN, EVERY TIME.** Restarting the local database dropped
+the demo accounts. Every "signed-in" probe afterwards was signed out, and
+the offline-filing test reported a report that never sent — correctly,
+because a signed-out device holds reports by design. An hour went into
+diagnosing a product defect that was a failed sign-in. The fix is one
+line: after clicking Sign in, require "signed in as" on the page or throw.
+Re-run `seed-demo.mjs --rotate` after any database restart.
+
+Proven the same day, with logins asserted: a FRONTLINE report filed with
+the connection cut sends nothing, sends with a 200 on reconnect, leaves the
+outbox empty and arrives in the safety manager's queue — with the service
+worker on and with it off. That is Phase 1's gate, driven rather than
+inferred.
+
 ## A validator tested at the unit level says nothing about the route
 
 55 routes are declared in `apps/api/src/routes*.ts`. On 18 August 2026
