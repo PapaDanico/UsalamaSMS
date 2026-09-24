@@ -199,3 +199,15 @@ describe("whether the site is serving what was merged", () => {
     expect(body).toContain("The site is UP");
   });
 });
+
+describe("describeFailure", () => {
+  it("keeps the transport cause that fetch hides behind 'fetch failed'", async () => {
+    const { describeFailure } = await import("../apps/api/src/watchdog");
+    const cause = Object.assign(new Error("connect ECONNREFUSED 1.2.3.4:443"), { code: "ECONNREFUSED" });
+    expect(describeFailure(new TypeError("fetch failed", { cause }))).toBe(
+      "fetch failed (ECONNREFUSED: connect ECONNREFUSED 1.2.3.4:443)",
+    );
+    expect(describeFailure(new Error("plain"))).toBe("plain");
+    expect(describeFailure("x")).toBe("request failed");
+  });
+});
