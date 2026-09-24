@@ -31,13 +31,7 @@
 import { html, raw } from '../../shared/html.js';
 import { Mark } from '../../components/Logo.js';
 import { ROUTED_TOOLKITS } from '../../shared/sitemap.js';
-import { BANDS, TRIAL_DAYS } from '../../../../../packages/shared/src/pricing.ts';
-import {
-  SEVERITY_SCALE,
-  LIKELIHOOD_SCALE,
-  riskScore,
-  tolerability
-} from '../../../../../packages/shared/src/risk.ts';
+import { TRIAL_DAYS } from '../../../../../packages/shared/src/pricing.ts';
 import {
   MOR_OBLIGATIONS,
   splitByIcaoBaseline,
@@ -123,85 +117,43 @@ const STEPS = [
    here it costs nothing. It went in as HTML first and put the entry
    chunk 1.1 KB over budget, which is the only reason anybody noticed. */
 /* ======================================================================
-   THE HERO PANEL — the product demonstrating itself rather than
-   describing itself.
+   THE HERO PANEL SELLS THE PRODUCT, NOT THE METHOD.
 
-   IT USED TO BE THE REPORTING CLOCK, AND THAT WAS REPETITION.
-   The clock listed every authority and its shortest period. The
-   deadline table eight hundred pixels below listed every authority and
-   every period. Same registry, same nine rows, twice on one page:
-   "Without delay" printed eight times in the panel and again in the
-   table, "Provisional" seven times and again. The most valuable space
-   on the front door was spent on a table the reader was about to meet
-   in full. The deadlines now appear once, where they are complete.
+   It carried the live ICAO Doc 9859 matrix. Correct and gated, and the
+   owner's call was that a first-time visitor needs to see what they
+   get rather than how risk is scored. The matrix still lives on
+   /methodology, where the reader has asked how it works.
 
-   WHAT REPLACES IT IS THE OTHER HALF OF THE PRODUCT. A visitor sees
-   what a report BECOMES: the ICAO Doc 9859 matrix, twenty-five cells,
-   every one computed here by the same `riskScore` and `tolerability`
-   the assessor calls. Nothing is illustrative and nothing is seeded —
-   there is no fixture behind this, so it cannot drift from the product
-   and there is nothing to update when the scale moves.
-
-   IT IS A REAL INSTRUMENT RATHER THAN A SCREENSHOT, which is the
-   reason it is markup instead of an image: it costs no bundle weight
-   in assets, it scales to a handset, it is in the accessibility tree,
-   and a printer renders it. A picture of a matrix is a claim that one
-   exists; this IS the one the product runs on.
-
-   THE LETTER IS NOT DECORATION. Colour carries tolerability and so
-   does the I/T/A code, because a red/green scale collapses for a
-   dichromatic reader and the matrix still has to be readable on the
-   monochrome fax that reaches a regulator.
+   Every line is a capability the product has today; nothing here is
+   a count, so nothing here can drift from the registries.
    ====================================================================== */
-const CODE = { INTOLERABLE: 'I', TOLERABLE: 'T', ACCEPTABLE: 'A' };
+const FEATURES = [
+  ['Offline reporting', 'from the ramp, the hangar or a remote strip'],
+  ['Confidential and anonymous', 'reporters choose whether a name is attached'],
+  ['Authority deadlines', 'computed for every mandatory report'],
+  ['Hazard and risk register', 'with owners, mitigations and reviews'],
+  ['Safety indicators', 'alert and target levels from your own data'],
+  ['Audits, findings and actions', 'tracked to closure'],
+  ['Training and currency', 'lapses flagged before they bite'],
+  ['Audit-ready documents', 'printed under your name and logo'],
+];
 
-function RiskPanel() {
+function FeaturePanel() {
   return html`
     <aside class="hero-panel" aria-labelledby="hero-panel-title">
-      <p class="hero-panel__title" id="hero-panel-title">Risk classification, live</p>
-      <p class="hero-panel__axes">
-        Severity <b>A</b>&ndash;<b>E</b> against likelihood <b>5</b>&ndash;<b>1</b>,
-        ICAO Doc 9859
-      </p>
-      <div class="table-scroll">
-        <table class="risk-matrix">
-          <caption class="visually-hidden">
-            ICAO Doc 9859 risk index: severity A to E against likelihood 5 to 1,
-            each cell resolving to intolerable, tolerable or acceptable.
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col"><span class="visually-hidden">Severity</span></th>
-              ${LIKELIHOOD_SCALE.map(
-                ({ code, label }) => html`<th scope="col" title="${label}">${code}</th>`
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            ${SEVERITY_SCALE.map(
-              ({ key: sev, code: letter, label: sevLabel }) => html`
-                <tr>
-                  <th scope="row" title="${sevLabel}">${letter}</th>
-                  ${LIKELIHOOD_SCALE.map(({ key: lik, label: likLabel }) => {
-                    const t = tolerability(sev, lik);
-                    return html`<td>
-                      <div class="risk-matrix__cell" data-tolerability="${t}">
-                        <span
-                          >${riskScore(sev, lik)}<span class="visually-hidden">
-                            — ${sevLabel}, ${likLabel}: ${t.toLowerCase()}</span
-                          ></span
-                        >
-                        <span class="risk-matrix__code" aria-hidden="true">${CODE[t]}</span>
-                      </div>
-                    </td>`;
-                  })}
-                </tr>
-              `
-            )}
-          </tbody>
-        </table>
-      </div>
-      <a class="hero-panel__more" href="/methodology#risk">How a report becomes a number</a>
+      <p class="hero-panel__title" id="hero-panel-title">Everything your safety office needs</p>
+      <ul class="hero-panel__list" role="list">
+        ${FEATURES.map(
+          ([name, detail]) => html`<li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+            <span><b>${name}</b> &mdash; ${detail}</span>
+          </li>`
+        )}
+      </ul>
+      <a class="hero-panel__more" href="/coverage">See everything it covers</a>
     </aside>
   `;
 }
@@ -216,16 +168,16 @@ function Hero() {
         <h1>Safety intelligence for African skies</h1>
         <p class="tagline">Safety born of African soil</p>
         <p class="lede">
-          The whole safety management system, for the operators the incumbents
-          priced out. Twelve of Annex 19&rsquo;s twelve elements &mdash; reporting,
-          hazards, risk, indicators, audits, training &mdash; from
-          <strong>$${BANDS[0].usdMonthly} a month</strong>, for the whole
-          operator rather than for ten seats.
+          The whole safety management system in one place &mdash; reporting,
+          hazards, risk, indicators, audits and training, across all twelve of
+          Annex 19&rsquo;s elements. Your crews report from the ramp, your
+          safety office sees it the moment they do, and the auditor gets a
+          record that proves itself.
         </p>
 
         <ul class="hero-proof" role="list">
           <li>Works with the radio off</li>
-          <li>Unlimited reporters, every band</li>
+          <li>Every person on your operator can report</li>
           <li>Your record exports whole, any time</li>
         </ul>
 
@@ -234,12 +186,12 @@ function Hero() {
           <a class="btn btn-ghost-lt" href="/report">File a report</a>
         </div>
         <p class="hero-note">
-          No card. Nothing to install. <a href="/pricing">See the bands</a> or
-          <a href="/toolkits/maturity">check where your SMS stands</a> first.
+          No card. Nothing to install.
+          <a href="/toolkits/maturity">Check where your SMS stands</a> first.
         </p>
         </div>
 
-        ${RiskPanel()}
+        ${FeaturePanel()}
 
         <ul class="trust-strip">
           ${TRUST.map(
@@ -471,53 +423,64 @@ function Instruments() {
 }
 
 /* ============================================================
-   THE PRICE, ON THE FRONT DOOR.
+   WHAT IT DOES FOR YOU.
 
-   THE PAGE HAD NO COMMERCIAL ANSWER AT ALL. A director could read
-   every word of it and not learn what this costs, who it is for, or
-   how it compares — and the one line on the site that does the
-   commercial work, "for the operators the incumbents priced out", was
-   in the FOOTER. A first point of contact that cannot answer "what
-   does it cost" has sent the reader to find out somewhere else.
+   The owner's instruction was to take the price off the front door
+   and sell on what the product does. /pricing still carries the
+   bands, computed from BANDS; this section carries no figure at all,
+   so there is nothing here for a price change to leave stale.
 
-   EVERY FIGURE IS READ FROM `BANDS`, which is the registry the
-   paywall, the account screen and /pricing all price from. Charter
-   rule 10 — a price typed here would be a second price, and this
-   file's own pricing module opens by saying what happens then.
-
-   THE DIFFERENTIATOR IS THE UNIT, NOT THE NUMBER, and it is the one
-   thing a buyer comparing quotes will not get from a competitor's
-   page: these bands are the WHOLE OPERATOR with unlimited reporters,
-   where the incumbents quote per seat. An operator reading $239
-   against someone else's $640 is not comparing like with like — they
-   are comparing an operator with ten logins.
+   Every card names a capability that exists and the benefit to the
+   person using it. No card claims conformance or an outcome the
+   product cannot keep — /coverage is where that argument lives.
    ============================================================ */
-function Price() {
+const BENEFITS = [
+  {
+    title: 'Reports that arrive',
+    body: 'A crew member files from the ramp, the hangar or a remote strip with no signal. The report is safe on the device and sends itself when a connection returns. Anonymous means anonymous: no identifier is stored.',
+  },
+  {
+    title: 'No missed deadline',
+    body: 'Every mandatory report carries its authority deadline, computed live from the moment of the occurrence. The queue shows what is owed, to whom, and how long is left.',
+  },
+  {
+    title: 'Risk you can defend',
+    body: 'Hazards go into a register assessed on the ICAO Doc 9859 matrix, with mitigations, owners and review dates. Your risk picture shows where the risk actually sits, not where it was last quarter.',
+  },
+  {
+    title: 'Indicators that warn early',
+    body: 'Safety performance indicators with alert and target levels computed from your own data, so a trend is flagged while there is still time to act on it.',
+  },
+  {
+    title: 'Audit-ready on demand',
+    body: 'Findings, corrective actions, training records and change assessments in one place. The documents an inspector asks for print under your name and mark, ready to hand over.',
+  },
+  {
+    title: 'A record that proves itself',
+    body: 'Every change is written to a hash-chained audit trail, each operator sees only its own data, and your whole record exports at any time. It is yours.',
+  },
+];
+
+function Benefits() {
   return html`
     <section class="panel wrap">
-      <span class="eyebrow">What it costs</span>
-      <h2>Priced for the operator, not per seat</h2>
+      <span class="eyebrow">What it does for you</span>
+      <h2>Less paperwork, fewer surprises, a safer operation</h2>
       <p class="lede lede--tight">
-        Every band carries all twelve Annex 19 elements and unlimited reporters
-        &mdash; a band is the whole operator. Ten-seat licences elsewhere start
-        at several times the top band here, and stop at ten people.
+        One system from the first report to the regulator&rsquo;s visit &mdash;
+        built for operators who fly where the network doesn&rsquo;t reach.
       </p>
-      <ul class="band-grid" role="list">
-        ${BANDS.map(
-          (b) => html`<li class="band-card">
-            <p class="band-card__name">${b.name}</p>
-            <p class="band-card__price">
-              <span class="band-card__amount">$${b.usdMonthly}</span>
-              <span class="band-card__per">/month</span>
-            </p>
-            <p class="band-card__fleet">${b.fleet}</p>
-            <p class="band-card__who">${b.who}</p>
+      <ul class="benefit-grid" role="list">
+        ${BENEFITS.map(
+          (b) => html`<li class="benefit-card">
+            <h3 class="benefit-card__title">${b.title}</h3>
+            <p class="benefit-card__body">${b.body}</p>
           </li>`
         )}
       </ul>
       <p class="doc-actions">
         <a class="btn btn-primary" href="/signup">Start free for ${TRIAL_DAYS} days</a>
-        <a class="btn btn-ghost" href="/pricing">What each band includes</a>
+        <a class="btn btn-ghost" href="/coverage">See everything it covers</a>
       </p>
     </section>
   `;
@@ -546,6 +509,6 @@ function Standard() {
 
 export function render(outlet) {
   outlet.innerHTML = html`
-    ${Hero()} ${Steps()} ${Instruments()} ${Price()} ${Deadlines()} ${Standard()}
+    ${Hero()} ${Steps()} ${Instruments()} ${Benefits()} ${Deadlines()} ${Standard()}
   `.toString();
 }

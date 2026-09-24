@@ -3668,36 +3668,30 @@ html { scroll-padding-top: var(--us-chrome); }
 }
 .hero-panel__more:hover { color: var(--us-gold); }
 
-/* ---------------------------------------------------------------------
-   THE MATRIX IN THE HERO.
-
-   The cells bring their own fills and foregrounds — the three gated
-   risk tokens — so nothing here touches them. What the dark ground
-   needs is the FRAME: the severity letters and likelihood digits are
-   ink by default and would vanish, and the panel is narrower than the
-   methodology page so the labels run as codes rather than words.
-   --------------------------------------------------------------------- */
-.hero-panel__axes {
-  margin: calc(var(--us-space-3) * -1) 0 var(--us-space-3);
-  font-size: var(--us-text-2xs);
-  color: rgb(var(--us-sand-rgb) / 0.66);
+/* The feature list in the hero panel. A tick in gold carries the
+   rhythm; the text stays sand on the dark ground. */
+.hero-panel__list {
+  display: grid;
+  gap: var(--us-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-
-.hero-panel .risk-matrix th {
-  color: rgb(var(--us-sand-rgb) / 0.82);
-  font-variant-numeric: tabular-nums;
-  padding: 2px;
-}
-.hero-panel .risk-matrix td { padding: 2px; }
-.hero-panel .risk-matrix__cell {
+.hero-panel__list li {
   display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 2px;
-  padding: var(--us-space-2) 2px;
-  border-radius: var(--us-radius-sm);
+  gap: var(--us-space-2);
+  align-items: flex-start;
   font-size: var(--us-text-sm);
-  font-weight: var(--us-weight-semi);
+  line-height: 1.4;
+  color: rgb(var(--us-sand-rgb) / 0.82);
+}
+.hero-panel__list b { color: var(--us-sand); font-weight: var(--us-weight-semi); }
+.hero-panel__list svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--us-gold);
 }
 
 /* ---------------------------------------------------------------------
@@ -3775,45 +3769,31 @@ html { scroll-padding-top: var(--us-chrome); }
 .hero-note a { color: rgb(var(--us-sand-rgb) / 0.92); text-decoration: underline; }
 .hero-note a:hover { color: var(--us-gold); }
 
-/* The bands. Auto-fit so a fifth band lands without editing a count
-   here — the grid reads BANDS and so must the columns. */
-.band-grid {
+/* The benefits. Auto-fit, so a card added to BENEFITS needs no
+   column count here. */
+.benefit-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
   gap: var(--us-space-4);
   list-style: none;
   margin: var(--us-space-6) 0 var(--us-space-6);
   padding: 0;
 }
-.band-card {
+.benefit-card {
   padding: var(--us-space-5);
   border: 1px solid var(--us-border);
+  border-top: 3px solid var(--us-teal-text);
   border-radius: var(--us-radius-lg);
   background: var(--us-surface);
 }
-.band-card__name {
+.benefit-card__title {
   margin: 0;
-  font-size: var(--us-text-2xs);
-  font-weight: 700;
-  letter-spacing: var(--us-tracking-wide);
-  text-transform: uppercase;
-  color: var(--us-text-tertiary);
-}
-.band-card__price { margin: var(--us-space-2) 0 0; }
-.band-card__amount {
-  font-size: var(--us-text-2xl);
+  font-size: var(--us-text-lg);
   font-weight: var(--us-weight-bold);
   letter-spacing: var(--us-tracking-tight);
 }
-.band-card__per { font-size: var(--us-text-sm); color: var(--us-text-tertiary); }
-.band-card__fleet {
-  margin: var(--us-space-1) 0 0;
-  font-size: var(--us-text-sm);
-  font-weight: var(--us-weight-semi);
-  color: var(--us-teal-text);
-}
-.band-card__who {
-  margin: var(--us-space-3) 0 0;
+.benefit-card__body {
+  margin: var(--us-space-2) 0 0;
   font-size: var(--us-text-sm);
   color: var(--us-text-secondary);
 }
