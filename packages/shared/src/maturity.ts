@@ -721,9 +721,10 @@ export const COVERAGE: ReadonlyArray<ElementCoverage> = Object.freeze([
       "read the revision NOW IN FORCE. Reading one revision does not mark anybody as " +
       "having read the next.",
     missing:
-      "The documents themselves. The product controls the register and the distribution " +
-      "record; it does not store the content, so the manual still lives wherever the " +
-      "operator keeps it and this points at which revision that should be.",
+      "A judgement on what the manuals say. An approved SMS manual or ERP is stored exactly " +
+      "as uploaded and its text is read, so the register shows which Annex 19 elements the " +
+      "manual mentions and which emergency contacts the plan holds \u2014 but a mention is " +
+      "not an assessment, and a scanned manual with no text layer is stored without that summary.",
     href: "/sms",
   },
   {

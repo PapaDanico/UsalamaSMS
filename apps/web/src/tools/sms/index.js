@@ -86,6 +86,8 @@ import {
   ASSIGNABLE_BANDS,
 } from '../../../../../packages/shared/src/tenant.ts';
 import { SAFETY_ROLES } from '../../../../../packages/shared/src/posts.ts';
+import { MANUAL_KINDS } from '../../../../../packages/shared/src/manual.ts';
+import { uploadManual } from '../../shared/manual-upload.js';
 
 /* Which element each surface belongs to, so the screen is assembled
    from the framework rather than from a list somebody typed in this
@@ -422,6 +424,19 @@ const RENDER = {
           <span>${d.reviewBy ? `review by ${fmtDate(d.reviewBy)}` : 'no review date'}</span>
           <span>${count === 1 ? '1 person has read this revision' : `${count} people have read this revision`}</span>
         </p>
+        ${d.bytes
+          ? html`<p class="rec__meta">
+              <span>${MANUAL_KINDS.find((k) => k.id === d.kind)?.label ?? 'Document'} held ·
+                ${(d.bytes / 1048576).toFixed(1)} MB${d.pageCount ? ` · ${d.pageCount} pages` : ''}</span>
+              <button type="button" class="btn btn-ghost btn-sm" data-download="${d.id}"
+                data-name="${d.filename ?? d.reference}">Download</button>
+              ${d.parsedAt
+                ? html`<button type="button" class="btn btn-ghost btn-sm" data-analysis="${d.id}"
+                    aria-expanded="false">What the manual contains</button>`
+                : ''}
+            </p>
+            <div class="manual-analysis" data-analysis-for="${d.id}" hidden></div>`
+          : html`<p class="rec__meta"><span>Held outside this register</span></p>`}
         ${readOn
           ? html`<p class="rec__meta"><span>You read this revision on ${fmtDate(readOn)}</span></p>`
           : html`<p class="rec__meta">
@@ -705,10 +720,18 @@ const FORMS = {
     { name: 'planUpdated', label: 'The plan was changed as a result', type: 'checkbox' }
   ],
   documents: [
+    { name: 'kind', label: 'What it is', type: 'select',
+      options: MANUAL_KINDS.map((k) => [k.id, k.label]) },
     { name: 'reference', label: 'Reference', required: true, placeholder: 'SMS-001' },
     { name: 'title', label: 'Title', required: true },
     { name: 'version', label: 'Version', required: true, placeholder: '3.0' },
-    { name: 'reviewBy', label: 'Review by', type: 'date' }
+    { name: 'reviewBy', label: 'Review by', type: 'date' },
+    /* THE APPROVED MANUAL ITSELF. Optional, because a register entry for
+       a manual held elsewhere is still a true entry. When one is chosen
+       it is sent in pieces before the entry is created, and read on the
+       way in. */
+    { name: 'file', label: 'The approved manual (PDF or Word)', type: 'file',
+      accept: '.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
   ],
   findings: [
     { name: 'auditRef', label: 'Audit reference', required: true, placeholder: 'IA-2026-03' },
@@ -730,6 +753,53 @@ const FORMS = {
     { name: 'body', label: 'What people need to know', type: 'textarea', rows: 4, required: true }
   ]
 };
+
+/* WHAT THE PARSER FOUND — phrased as what the manual MENTIONS, with the
+   page, so the reader can check it against the manual in a minute. It
+   is never a verdict on whether the manual is adequate. */
+function ManualAnalysis(a) {
+  const p = a?.parsed ?? {};
+  if (p.error || p.noText) {
+    return html`<p class="notice">${p.error ??
+      'No text could be read from this file — it may be a scanned copy. The manual is stored ' +
+      'unchanged; only the summary below is unavailable.'}</p>`;
+  }
+  const outline = (p.outline ?? []).slice(0, 40);
+  return html`
+    ${p.sms
+      ? html`<h5>Annex 19 elements the manual mentions</h5>
+          <p class="hint">Where each element's usual terms first appear. A mention is not an
+            assessment: whether the process described is adequate is for the safety manager and
+            the regulator.</p>
+          <ul class="manual-list" role="list">
+            ${p.sms.map((e) => html`<li class="${e.found ? 'is-found' : 'is-missing'}">
+              <b>${e.id} ${e.name}</b> —
+              ${e.found ? html`page ${e.page}: <q>${e.excerpt}</q>` : html`<em>not found in the text</em>`}
+            </li>`)}
+          </ul>`
+      : ''}
+    ${p.erp
+      ? html`<h5>Parties the plan names</h5>
+          <ul class="manual-list" role="list">
+            ${p.erp.parties.map((x) => html`<li class="${x.found ? 'is-found' : 'is-missing'}">
+              <b>${x.party}</b> — ${x.found ? `page ${x.page}` : html`<em>not named — check before the plan is needed</em>`}
+            </li>`)}
+          </ul>
+          <h5>Contact numbers and addresses found</h5>
+          ${p.erp.contacts.length
+            ? html`<ul class="manual-list" role="list">
+                ${p.erp.contacts.map((c) => html`<li><b>${c.value}</b> — page ${c.page}: ${c.context}</li>`)}
+              </ul>`
+            : html`<p class="hint"><em>No telephone number or email address was found.</em></p>`}`
+      : ''}
+    <h5>Contents</h5>
+    ${outline.length
+      ? html`<ol class="manual-list" role="list">
+          ${outline.map((o) => html`<li>${o.number ? `${o.number} ` : ''}${o.title} <span class="hint">p. ${o.page}</span></li>`)}
+        </ol>`
+      : html`<p class="hint"><em>No numbered headings were recognised.</em></p>`}
+  `;
+}
 
 function Field(f, people) {
   const id = `sms-${f.name}`;
@@ -754,6 +824,14 @@ function Field(f, people) {
       <select class="input-field" name="${f.name}" id="${id}">
         ${f.options.map(([v, l]) => html`<option value="${v}">${l}</option>`)}
       </select>
+    </label>`;
+  }
+  if (f.type === 'file') {
+    return html`<label class="field" for="${id}">
+      <span class="field-label">${f.label}</span>
+      <input class="input-field" name="${f.name}" id="${id}" type="file" accept="${f.accept ?? ''}" />
+      <span class="field-hint">Up to 25 MB. It is stored exactly as uploaded, and its text is
+        read so the register can show its contents at a glance.</span>
     </label>`;
   }
   if (f.type === 'textarea') {
@@ -1492,6 +1570,7 @@ export async function render(outlet) {
         payload[f.name] = el.checked;
         continue;
       }
+      if (f.type === 'file') continue;
       const value = String(el.value ?? '').trim();
       if (!value) {
         if (f.required) {
@@ -1515,6 +1594,23 @@ export async function render(outlet) {
     }
     say('');
 
+    /* A FILE GOES FIRST, in pieces, and the entry is created against it.
+       If the upload fails nothing is registered, so the register never
+       claims a file it does not hold. */
+    const fileField = FORMS[surface.key].find((f) => f.type === 'file');
+    const chosen = fileField ? form.elements[fileField.name]?.files?.[0] : null;
+    if (chosen) {
+      try {
+        payload.uploadId = await uploadManual(chosen, (sent, total) =>
+          say(`Uploading the manual — ${Math.round((sent / total) * 100)}%`)
+        );
+        say('Reading the manual…');
+      } catch (e) {
+        say(e?.message ?? 'The manual could not be uploaded. Nothing was recorded.');
+        return;
+      }
+    }
+
     let res;
     try {
       res = await authFetch(surface.postEndpoint ?? surface.endpoint, {
@@ -1530,7 +1626,8 @@ export async function render(outlet) {
     if (!res.ok) {
       let detail = '';
       try {
-        detail = (await res.json())?.detail ?? '';
+        const answer = await res.json();
+        detail = answer?.detail ?? answer?.message ?? '';
       } catch {
         detail = '';
       }
@@ -1585,6 +1682,52 @@ export async function render(outlet) {
        readings, and a second acknowledgement returns the FIRST
        timestamp rather than moving it. Guarding an idempotent, honest
        statement behind a dialog teaches people to dismiss dialogs. */
+    /* THE FILE, fetched with the session rather than by a plain link —
+       the route requires a bearer token, which a link cannot carry. */
+    const download = event.target.closest?.('[data-download]');
+    if (download) {
+      try {
+        const res = await authFetch(`/api/v1/sms/documents/${download.dataset.download}/file`);
+        if (!res.ok) {
+          const answer = await res.json().catch(() => ({}));
+          window.alert(answer.message ?? 'The file could not be fetched.');
+          return;
+        }
+        const url = URL.createObjectURL(await res.blob());
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = download.dataset.name || 'manual';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      } catch {
+        window.alert('The safety office could not be reached. Nothing was downloaded.');
+      }
+      return;
+    }
+
+    const analysis = event.target.closest?.('[data-analysis]');
+    if (analysis) {
+      const slot = body.querySelector(`[data-analysis-for="${analysis.dataset.analysis}"]`);
+      if (!slot) return;
+      if (!slot.hidden) {
+        slot.hidden = true;
+        analysis.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      slot.hidden = false;
+      analysis.setAttribute('aria-expanded', 'true');
+      slot.textContent = 'Reading…';
+      try {
+        const res = await authFetch(`/api/v1/sms/documents/${analysis.dataset.analysis}/analysis`);
+        const answer = await res.json().catch(() => ({}));
+        slot.innerHTML = res.ok ? ManualAnalysis(answer.analysis).toString()
+          : html`<p class="hint">${answer.message ?? 'What the manual contains could not be read.'}</p>`.toString();
+      } catch {
+        slot.textContent = 'The safety office could not be reached.';
+      }
+      return;
+    }
+
     const reader = event.target.closest?.('[data-read]');
     if (reader) {
       const label = reader.textContent;

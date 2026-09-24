@@ -99,6 +99,11 @@ const EXPORT_FORMAT = 2;
  * would do.
  */
 export const EXPORT_EXCLUSIONS: Readonly<Record<string, string>> = Object.freeze({
+  DocumentUpload:
+    "A manual in transit, not a record. Pieces of a file are appended here while it " +
+    "uploads, and the row is deleted the moment the finished file becomes a controlled " +
+    "document — which IS exported. An abandoned upload expires within the hour. Exporting " +
+    "half a PDF would put bytes in the operator's copy that are not any document they hold.",
   SetiAssessmentItem:
     "PRESENT IN THE FILE, but nested under its assessment rather than read on its own — " +
     "`setiAssessment.findMany` includes `items`, so every rating, its evidence, its source " +
@@ -242,7 +247,17 @@ export async function exportRoutes(app: FastifyInstance): Promise<void> {
         prisma.accountability.findMany({ where, take: PROBE, orderBy: [{ post: "asc" }] }),
         prisma.appointment.findMany({ where, take: PROBE, orderBy: [{ appointedOn: "asc" }] }),
         prisma.emergencyExercise.findMany({ where, take: PROBE, orderBy: [{ heldOn: "asc" }] }),
-        prisma.controlledDocument.findMany({ where, take: PROBE, orderBy: [{ reference: "asc" }] }),
+        /* EVERY REGISTER FIELD, WITHOUT THE FILE. A manual can be 25 MB, and
+           a Function answer is capped near 6 MB — so one uploaded manual
+           would make the whole export fail, which is the promise broken
+           by its own success. Each file is fetched by
+           /api/v1/sms/documents/:id/file, exactly as uploaded and
+           hash-checked; `sha256` and `bytes` stay in this row so the
+           copy says which file belongs to which revision. */
+        prisma.controlledDocument.findMany({
+          where, take: PROBE, orderBy: [{ reference: "asc" }],
+          omit: { data: true, extractedText: true },
+        }),
         prisma.auditFinding.findMany({ where, take: PROBE, orderBy: [{ createdAt: "asc" }] }),
         prisma.trainingRecord.findMany({ where, take: PROBE, orderBy: [{ completedOn: "asc" }] }),
         prisma.safetyCommunication.findMany({ where, take: PROBE, orderBy: [{ publishedOn: "asc" }] }),

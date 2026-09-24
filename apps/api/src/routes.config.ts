@@ -285,6 +285,23 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
        courtesy, never a control. */
     const verdict = checkLogo(supplied);
     if (!verdict.ok) {
+      /* A REFUSAL IS RECORDED, not only a success. Production held three
+         removals and no save, and nothing could say why an attempt had
+         failed because only the outcomes that changed something were
+         audited. The size and the reason are enough to diagnose; the
+         image itself is not stored. */
+      await appendAudit({
+        orgId: auth.org,
+        userId: auth.sub,
+        action: "org.logo.reject",
+        entityType: "OrgConfig",
+        entityId: auth.org,
+        detail: {
+          reason: verdict.message.slice(0, 200),
+          chars: typeof supplied === "string" ? supplied.length : null,
+          prefix: typeof supplied === "string" ? supplied.slice(0, 30) : typeof supplied,
+        },
+      });
       return reply.code(400).send({ error: "rejected", message: verdict.message });
     }
 

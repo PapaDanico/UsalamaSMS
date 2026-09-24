@@ -211,6 +211,7 @@ model Org {
   exercises         EmergencyExercise[]
   emergencyContacts EmergencyContact[]
   documents         ControlledDocument[]
+  documentUploads   DocumentUpload[]
   findings          AuditFinding[]
   training          TrainingRecord[]
   communications    SafetyCommunication[]
@@ -236,7 +237,7 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  org      Org            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org      Org             @relation(fields: [orgId], references: [id], onDelete: Cascade)
   reports  SafetyReport[]
   tokens   RefreshToken[]
   receipts SyncReceipt[]
@@ -249,6 +250,7 @@ model User {
   policyReads       PolicyAcknowledgement[]
   appointments      Appointment[]             @relation("appointee")
   documentsApproved ControlledDocument[]      @relation("documentApprover")
+  documentUploads   DocumentUpload[]
   findingsVerified  AuditFinding[]            @relation("findingVerifier")
   training          TrainingRecord[]          @relation("trainee")
   authorityNotices  SafetyReport[]            @relation("authorityNotifier")
@@ -712,7 +714,7 @@ model Hazard {
   /// has an unknown method, not a proactive one. See
   /// packages/shared/src/discovery.ts: backfilling the unknowns would
   /// manufacture exactly the evidence an operator is asked to produce.
-  discovery   String?
+  discovery String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -799,9 +801,9 @@ enum RiskStatus {
 }
 
 model Spi {
-  id           String   @id @default(uuid())
-  orgId        String
-  name         String
+  id                String    @id @default(uuid())
+  orgId             String
+  name              String
   // A safety performance indicator, in the shape the product actually
   // computes with. Annex 19 Amendment 2 raises these from good practice
   // to the substance of performance-based oversight, and regulation
@@ -821,18 +823,18 @@ model Spi {
   // stored alert level is the same defect as a stored deadline —
   // correct on the day it was written and silently wrong after the next
   // period lands. Charter rule 6.
-  kind         String
+  kind              String
   // What the exposure counts, in the operator's words: sectors, hours,
   // movements, turnarounds.
-  exposureUnit String
+  exposureUnit      String
   // Rate basis: events per this many units of exposure.
-  per          Float
-  direction    String
+  per               Float
+  direction         String
   // The target, as a rate on the same basis. Optional because an
   // operator may be measuring before it is ready to commit to a figure,
   // and a required target is how indicators go untracked.
-  target       Float?
-  owner        String
+  target            Float?
+  owner             String
   /// WHICH NATIONAL HIGH-RISK CATEGORY THIS INDICATOR BEARS ON, if any.
   ///
   /// Amendment 2 makes the link between an operator's indicators and
@@ -854,7 +856,7 @@ model Spi {
   /// declared once in taxonomy.ts and an enum here would be a second
   /// copy that drifts — which is exactly how `LOC_I` and the plan's
   /// `LOC-I` came to disagree.
-  hrc          String?
+  hrc               String?
   // =====================================================================
   // THE SUBMISSION HALF — Appendix II of CAA-AC-SMS009, read against
   // the document on 18 August 2026.
@@ -895,11 +897,11 @@ model Spi {
   // not submit and does not claim to (the same line icaas.ts draws).
   // `acceptance` is "ACCEPTED" | "NOT_ACCEPTED", null until a letter
   // exists; `submittedOn` is when the operator filed the form.
-  submittedOn  DateTime?
-  acceptance   String?
-  acceptedOn   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  submittedOn       DateTime?
+  acceptance        String?
+  acceptedOn        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   org     Org         @relation(fields: [orgId], references: [id], onDelete: Cascade)
   periods SpiPeriod[]
@@ -1387,11 +1389,11 @@ model EmergencyContact {
 
 /// Element 1.5 — SMS documentation, under control.
 model ControlledDocument {
-  id           String    @id @default(uuid())
-  orgId        String
-  title        String
-  reference    String
-  version      String
+  id        String @id @default(uuid())
+  orgId     String
+  title     String
+  reference String
+  version   String
 
   /// THE DOCUMENT ITSELF, WHICH IS WHY ELEMENT 1.5 WAS ONLY PARTIAL.
   ///
@@ -1418,6 +1420,21 @@ model ControlledDocument {
   sha256      String?
   /// Display only, for the download filename. Nothing is built from it.
   filename    String?
+
+  /// WHAT KIND OF MANUAL, so the parser knows what to look for. One of
+  /// MANUAL_KINDS in packages/shared/src/manual.ts; a string rather than
+  /// an enum so a new kind is a code change, not a migration.
+  kind          String?
+  /// The text the parser read, for search and for the reader to check the
+  /// parser against. Never used to judge the manual.
+  extractedText String?
+  pageCount     Int?
+  /// Outline, and per kind: Annex 19 topics mentioned (SMS) or contacts
+  /// found (ERP). What the text MENTIONS, never whether it complies.
+  parsed        Json?
+  parsedAt      DateTime?
+  parserVersion String?
+
   approvedById String?
   approvedOn   DateTime?
   reviewBy     DateTime?
@@ -1431,6 +1448,31 @@ model ControlledDocument {
   @@unique([orgId, reference, version])
   @@index([orgId, reviewBy])
   @@index([approvedById], map: "idx_controlleddocument_approvedbyid")
+}
+
+/// A manual arriving in pieces. Netlify refuses a request body over about
+/// six megabytes, and an SMS manual is routinely larger, so the file is
+/// sent in chunks appended here in order and assembled when complete.
+/// Transient: a completed upload becomes a ControlledDocument and this
+/// row is deleted; an abandoned one expires.
+model DocumentUpload {
+  id          String   @id @default(uuid())
+  orgId       String
+  userId      String
+  filename    String
+  contentType String
+  totalBytes  Int
+  received    Int      @default(0)
+  chunks      Int      @default(0)
+  data        Bytes    @default("")
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  org  Org  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, expiresAt])
+  @@index([userId], map: "idx_documentupload_userid")
 }
 
 /// Element 1.5 — who has read which REVISION of a controlled document.
@@ -1523,26 +1565,26 @@ enum SetiLevel {
 }
 
 model SetiAssessment {
-  id          String               @id @default(uuid())
-  orgId       String
-  title       String
-  scope       String               @db.Text
-  assessedOn  DateTime
-  status      SetiAssessmentStatus @default(DRAFT)
-  assessorId  String
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  id         String               @id @default(uuid())
+  orgId      String
+  title      String
+  scope      String               @db.Text
+  assessedOn DateTime
+  status     SetiAssessmentStatus @default(DRAFT)
+  assessorId String
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
 
-  org       Org                  @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  assessor  User                 @relation("setiAssessor", fields: [assessorId], references: [id], onDelete: Restrict)
-  items     SetiAssessmentItem[]
+  org      Org                  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  assessor User                 @relation("setiAssessor", fields: [assessorId], references: [id], onDelete: Restrict)
+  items    SetiAssessmentItem[]
 
   @@index([orgId, assessedOn])
   @@index([assessorId], map: "idx_setiassessment_assessorid")
 }
 
 model SetiAssessmentItem {
-  id            String    @id @default(uuid())
+  id            String     @id @default(uuid())
   /// Carried even though the parent holds it: every tenant-owned table
   /// in this schema indexes `orgId` first, so a query against this table
   /// can be scoped without a join it might forget.
@@ -1550,12 +1592,12 @@ model SetiAssessmentItem {
   assessmentId  String
   criterionId   String
   level         SetiLevel?
-  evidence      String?   @db.Text
-  sourceRefs    String?   @db.Text
+  evidence      String?    @db.Text
+  sourceRefs    String?    @db.Text
   ownerPost     String?
   reviewDueOn   DateTime?
-  assessorNotes String?   @db.Text
-  updatedAt     DateTime  @updatedAt
+  assessorNotes String?    @db.Text
+  updatedAt     DateTime   @updatedAt
 
   assessment SetiAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   org        Org            @relation(fields: [orgId], references: [id], onDelete: Cascade)
@@ -1699,7 +1741,6 @@ model OrgConfig {
   /// per operator — and a unique constraint IS an index. A second one on
   /// the same column serves no read and costs every write.
 }
-
 
 /// EVIDENCE ATTACHED TO A REPORT — a photograph of the damage, a scan
 /// of a form, the techlog page somebody wrote on.

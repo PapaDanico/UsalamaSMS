@@ -6482,3 +6482,21 @@ select {
 }
 .seti-status[data-state='ok'] { color: var(--us-teal-text); }
 .seti-status[data-state='error'] { color: var(--us-state-error); }
+
+/* What the parser found in a manual, under its register row. */
+.manual-analysis {
+  margin: var(--us-space-3) 0 0;
+  padding: var(--us-space-4);
+  border: 1px solid var(--us-border);
+  border-radius: var(--us-radius-lg);
+  background: var(--us-surface);
+}
+.manual-analysis h5 { margin: var(--us-space-3) 0 var(--us-space-2); }
+.manual-analysis h5:first-child { margin-top: 0; }
+.manual-list {
+  margin: 0;
+  padding-left: var(--us-space-5);
+  font-size: var(--us-text-sm);
+}
+.manual-list li { margin: var(--us-space-1) 0; }
+.manual-list .is-missing { color: var(--us-text-secondary); }

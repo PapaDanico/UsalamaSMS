@@ -45,6 +45,17 @@ import type { Prisma } from "@prisma/client";
 import {
   checkEvidence, isBase64, EVIDENCE_MAX_BODY_BYTES,
 } from "../../../packages/shared/src/evidence";
+import {
+  checkManual, MANUAL_KINDS, MANUAL_CHUNK_BYTES, MANUAL_MAX_BYTES,
+  MANUAL_MAX_CHUNKS, MANUAL_TYPES, MANUAL_UPLOAD_TTL_MS, type ManualKind,
+} from "../../../packages/shared/src/manual";
+import { parseManual } from "./manual-parse";
+
+/* The file and the extracted text are never part of a list or a create
+   response: one manual can be 25 MB of bytes and 2 MB of text, and the
+   register is read on every visit to /sms. Downloaded and analysed
+   through their own routes. */
+const HEAVY = { data: true, extractedText: true } as const;
 
 const LIST_LIMIT = 200;
 
@@ -115,6 +126,16 @@ const DocumentInput = z.object({
   contentType: z.string().max(120).optional(),
   data: z.string().max(EVIDENCE_MAX_BODY_BYTES).optional(),
   filename: z.string().max(160).optional(),
+  /* A MANUAL, uploaded in chunks first. When present the file comes from
+     that upload rather than from `data`, and is parsed on the way in. */
+  uploadId: z.string().uuid().optional(),
+  kind: z.enum(MANUAL_KINDS.map((k) => k.id) as [ManualKind, ...ManualKind[]]).optional(),
+});
+
+const UploadStart = z.object({
+  filename: z.string().min(1).max(160),
+  contentType: z.string().max(120),
+  totalBytes: z.number().int().positive().max(MANUAL_MAX_BYTES),
 });
 
 const FindingInput = z.object({
@@ -502,6 +523,7 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
       where: { ...tenantWhere(req), supersededOn: null },
       orderBy: [{ reference: "asc" }],
       take: LIST_LIMIT,
+      omit: HEAVY,
       /* The count, and whether the CALLER has read it. Element 1.5 is
          about distribution, and both numbers are the distribution: how
          many have read the revision in force, and whether the person
@@ -637,7 +659,41 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
     /* Typed as Prisma's own create input rather than a hand-written
        shape, so a column rename breaks here instead of at runtime. */
     let file: Partial<Prisma.ControlledDocumentUncheckedCreateInput> = {};
-    if (body.data.data !== undefined) {
+    let uploadToDelete: string | null = null;
+    if (body.data.uploadId !== undefined) {
+      /* THE MANUAL PATH. The chunks were appended in order by the upload
+         route; here the whole file is checked, hashed and read. Only the
+         person who started the upload, in their own operator, can use it. */
+      const up = await prisma.documentUpload.findFirst({
+        where: { id: body.data.uploadId, orgId: req.auth!.org, userId: req.auth!.sub },
+      });
+      if (!up) return reply.code(404).send({ error: "upload_not_found" });
+      if (up.received !== up.totalBytes) {
+        return reply.code(409).send({
+          error: "upload_incomplete",
+          message: `Only ${up.received} of ${up.totalBytes} bytes arrived. Upload the file again.`,
+        });
+      }
+      const raw = Buffer.from(up.data);
+      const verdict = checkManual(up.contentType, raw.subarray(0, 8), raw.length);
+      if (!verdict.ok) return reply.code(400).send({ error: "rejected", message: verdict.message });
+      const kind: ManualKind = body.data.kind ?? "OTHER";
+      const parsed = await parseManual(raw, verdict.type, kind);
+      file = {
+        data: new Uint8Array(raw),
+        contentType: verdict.type,
+        bytes: raw.length,
+        sha256: createHash("sha256").update(raw).digest("hex"),
+        filename: up.filename.slice(0, 160),
+        kind,
+        extractedText: parsed.text || null,
+        pageCount: parsed.pageCount || null,
+        parsed: parsed.analysis as unknown as Prisma.InputJsonValue,
+        parsedAt: new Date(),
+        parserVersion: parsed.parserVersion,
+      };
+      uploadToDelete = up.id;
+    } else if (body.data.data !== undefined) {
       /* isBase64 FIRST. Buffer.from(x, "base64") never throws — it
          silently drops anything it does not recognise — so a truncated
          upload would otherwise be stored as a shorter, valid-looking
@@ -686,11 +742,122 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
       await appendAuditTx(tx, {
         orgId: req.auth!.org, userId: req.auth!.sub, action: "document.approve",
         entityType: "ControlledDocument", entityId: created.id,
-        detail: { reference: created.reference, version: created.version },
+        detail: { reference: created.reference, version: created.version, kind: created.kind },
       });
-      return created;
+      if (uploadToDelete) await tx.documentUpload.delete({ where: { id: uploadToDelete } });
+      const { data: _d, extractedText: _t, ...light } = created;
+      return light;
     });
     return reply.code(201).send({ document: row });
+  });
+
+  /* =====================================================================
+     MANUALS ARRIVE IN CHUNKS.
+
+     A Netlify Function refuses a request body above about six megabytes,
+     and an approved SMS manual or ERP is routinely larger. So the browser
+     starts an upload, sends the file in two-megabyte pieces IN ORDER, and
+     then registers the document against the finished upload, which is
+     when it is checked, hashed and parsed.
+
+     ORDER IS ENFORCED IN ONE STATEMENT. A chunk is appended only if its
+     index equals the number already received — the UPDATE's WHERE clause
+     — so a retried or reordered piece can never be appended twice or out
+     of place, and a gap is refused rather than stitched over.
+     ===================================================================== */
+  app.post("/api/v1/sms/documents/uploads", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "document.manage")) return reply.code(403).send({ error: "forbidden" });
+    const body = UploadStart.safeParse(req.body);
+    if (!body.success) {
+      return reply.code(400).send({
+        error: "invalid_upload",
+        message: `Manuals are held up to ${MANUAL_MAX_BYTES / 1048576} MB, as PDF or Word (.docx).`,
+      });
+    }
+    if (!MANUAL_TYPES.includes(body.data.contentType)) {
+      return reply.code(400).send({
+        error: "rejected",
+        message: "Manuals are accepted as PDF or Word (.docx).",
+      });
+    }
+    // Abandoned uploads are cleared as new ones start, so none outlive
+    // their hour without needing a scheduler.
+    await prisma.documentUpload.deleteMany({
+      where: { orgId: req.auth!.org, expiresAt: { lt: new Date() } },
+    });
+    const up = await prisma.documentUpload.create({
+      data: {
+        orgId: req.auth!.org,
+        userId: req.auth!.sub,
+        filename: body.data.filename,
+        contentType: body.data.contentType,
+        totalBytes: body.data.totalBytes,
+        expiresAt: new Date(Date.now() + MANUAL_UPLOAD_TTL_MS),
+      },
+      select: { id: true },
+    });
+    return reply.code(201).send({ upload: up, chunkBytes: MANUAL_CHUNK_BYTES });
+  });
+
+  app.put(
+    "/api/v1/sms/documents/uploads/:id/chunks/:n",
+    { ...limited, bodyLimit: Math.ceil((MANUAL_CHUNK_BYTES * 4) / 3) + 64 * 1024 },
+    async (req, reply) => {
+      if (!guard(req.auth!.role, "document.manage")) return reply.code(403).send({ error: "forbidden" });
+      const { id, n } = req.params as { id: string; n: string };
+      const index = Number(n);
+      const data = (req.body as { data?: unknown } | undefined)?.data;
+      if (!Number.isInteger(index) || index < 0 || index >= MANUAL_MAX_CHUNKS) {
+        return reply.code(400).send({ error: "invalid_chunk" });
+      }
+      if (typeof data !== "string" || !isBase64(data)) {
+        return reply.code(400).send({
+          error: "rejected",
+          message: "That piece of the file did not arrive intact. Upload the file again.",
+        });
+      }
+      const piece = Buffer.from(data, "base64");
+      if (piece.length === 0 || piece.length > MANUAL_CHUNK_BYTES) {
+        return reply.code(400).send({ error: "invalid_chunk" });
+      }
+      const up = await prisma.documentUpload.findFirst({
+        where: { id, orgId: req.auth!.org, userId: req.auth!.sub, expiresAt: { gt: new Date() } },
+        select: { received: true, totalBytes: true, chunks: true },
+      });
+      if (!up) return reply.code(404).send({ error: "upload_not_found" });
+      if (up.received + piece.length > up.totalBytes) {
+        return reply.code(400).send({ error: "too_much", message: "More arrived than the file's size." });
+      }
+      const changed = await prisma.$executeRaw`
+        UPDATE "DocumentUpload"
+           SET "data" = "data" || ${piece}, "received" = "received" + ${piece.length}, "chunks" = "chunks" + 1
+         WHERE "id" = ${id} AND "orgId" = ${req.auth!.org} AND "chunks" = ${index}`;
+      if (changed !== 1) {
+        return reply.code(409).send({
+          error: "out_of_order",
+          message: `Expected piece ${up.chunks}, received piece ${index}.`,
+          expected: up.chunks,
+        });
+      }
+      return reply.send({ received: up.received + piece.length, totalBytes: up.totalBytes });
+    },
+  );
+
+  /* WHAT THE PARSER FOUND, read separately from the register so the list
+     stays small. document.read: anybody who may read the manual may read
+     what its own pages say. */
+  app.get("/api/v1/sms/documents/:id/analysis", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "document.read")) return reply.code(403).send({ error: "forbidden" });
+    const { id } = req.params as { id: string };
+    const row = await prisma.controlledDocument.findFirst({
+      where: { ...tenantWhere(req), id },
+      select: {
+        id: true, title: true, reference: true, version: true, kind: true,
+        pageCount: true, parsed: true, parsedAt: true, parserVersion: true, contentType: true,
+      },
+    });
+    if (!row) return reply.code(404).send({ error: "not_found" });
+    return reply.send({ analysis: row });
   });
 
   /* =====================================================================
