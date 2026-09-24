@@ -301,6 +301,24 @@ function hostOf(baseUrl: string): string {
  * is the same class of mistake as reading `state: ready` off a deploy
  * that describes the PREVIOUS publish.
  */
+/**
+ * Node's fetch reports every transport failure as "fetch failed" and
+ * keeps the reason on `cause` — DNS, refused, reset, TLS, timeout. On
+ * 24 September 2026 an alert arrived reading "fetch failed" twice and
+ * nothing else, while the database logged healthy connections all
+ * evening: the one fact that would have said where the fault was had
+ * been thrown away. The cause's code and message ride in the detail.
+ */
+export function describeFailure(error: unknown): string {
+  if (!(error instanceof Error)) return "request failed";
+  const cause = (error as Error & { cause?: unknown }).cause;
+  if (cause instanceof Error) {
+    const code = (cause as Error & { code?: string }).code;
+    return `${error.message} (${[code, cause.message].filter(Boolean).join(": ")})`;
+  }
+  return error.message;
+}
+
 export async function probeReadiness(
   baseUrl: string,
   fetchImpl: typeof fetch = fetch,
@@ -321,7 +339,7 @@ export async function probeReadiness(
     return {
       status: 0,
       ok: false,
-      detail: error instanceof Error ? error.message : "request failed",
+      detail: describeFailure(error),
     };
   }
 }
