@@ -2,7 +2,7 @@
 
 **Safety intelligence for African skies.**
 
-Aviation safety management for the operators the incumbents priced out —
+Aviation safety management built for how regional operators actually fly —
 offline-first, multi-jurisdiction, and built against ICAO Annex 19
 Amendment 2 rather than retrofitted to it.
 

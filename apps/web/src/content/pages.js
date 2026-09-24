@@ -26,7 +26,7 @@
 
 export const ABOUT = {
   eyebrow: 'About us',
-  title: 'The whole safety management system, for the operators the incumbents priced out',
+  title: 'The whole safety management system, built for how regional operators actually fly',
   lede: `Twelve of ICAO Annex 19's twelve elements, built for the 3-to-15 aircraft
          operator in East and Central Africa — the one running an SMS on paper
          because the software market starts above what the operation earns. What each
