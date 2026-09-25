@@ -4,6 +4,7 @@
    as a manual that mentions nothing. */
 import { describe, it, expect } from "vitest";
 import {
+  searchManual, searchTerms,
   checkManual, outline, smsCoverage, erpContacts, analyseManual,
   PDF_TYPE, DOCX_TYPE, MANUAL_MAX_BYTES,
 } from "../packages/shared/src/manual";
@@ -102,5 +103,27 @@ describe("analyseManual", () => {
   it("marks a manual with no text layer as unreadable rather than as mentioning nothing", () => {
     expect(analyseManual("SMS_MANUAL", ["", " ", ""]).noText).toBe(true);
     expect(analyseManual("SMS_MANUAL", ["1.1 Safety policy and objectives. ".repeat(20)]).noText).toBe(false);
+  });
+});
+
+describe("searchManual", () => {
+  const text = ["Fuel is stored in bowsers.", "A fuel spill is reported to the duty manager at once.", "Spill kits are checked weekly."].join("\n\f\n");
+  it("answers only with a page carrying every word", () => {
+    expect(searchManual(text, searchTerms("Fuel SPILL"))).toEqual([
+      { page: 2, snippet: "A fuel spill is reported to the duty manager at once." },
+    ]);
+    expect(searchManual(text, searchTerms("bowsers weekly"))).toEqual([]);
+  });
+  it("drops one-letter words and repeats, and refuses nothing to search for", () => {
+    expect(searchTerms("a fuel, FUEL spill!")).toEqual(["fuel", "spill"]);
+    expect(searchTerms(undefined)).toEqual([]);
+    expect(searchManual(text, [])).toEqual([]);
+  });
+  it("trims a long page to the words, marked as cut", () => {
+    const long = "x ".repeat(200) + "next of kin" + " y".repeat(200);
+    const [hit] = searchManual(long, searchTerms("kin"));
+    expect(hit?.snippet.startsWith("…")).toBe(true);
+    expect(hit?.snippet.endsWith("…")).toBe(true);
+    expect(hit?.snippet).toContain("next of kin");
   });
 });

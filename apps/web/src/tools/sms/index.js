@@ -396,8 +396,9 @@ const RENDER = {
       </article>`
     ),
 
-  documents: (rows) =>
-    rows.map((d) => {
+  documents: (rows) => [
+    rows.some((d) => d.parsedAt) ? ManualSearch() : '',
+    ...rows.map((d) => {
       /* THE DISTRIBUTION RECORD, WHICH THE SERVER HAS ALWAYS RETURNED
          AND THIS SCREEN HAS NEVER SHOWN.
 
@@ -445,7 +446,8 @@ const RENDER = {
               </button>
             </p>`}
       </article>`;
-    }),
+    })
+  ],
 
   findings: (rows) =>
     rows.map((f) => {
@@ -757,6 +759,33 @@ const FORMS = {
 /* WHAT THE PARSER FOUND — phrased as what the manual MENTIONS, with the
    page, so the reader can check it against the manual in a minute. It
    is never a verdict on whether the manual is adequate. */
+/* SEARCH INSIDE THE MANUALS, shown only when a manual has been read —
+   a box that can only ever answer "nothing" is a box that teaches
+   people not to use it. */
+function ManualSearch() {
+  return html`<form class="manual-search" data-manual-search role="search">
+    <label for="manual-q">Search inside your manuals</label>
+    <div class="manual-search__row">
+      <input id="manual-q" name="q" type="search" minlength="2" required
+        placeholder="e.g. fuel spill, next of kin">
+      <button type="submit" class="btn btn-sm">Search</button>
+    </div>
+    <label class="manual-search__all"><input type="checkbox" name="all" value="1">
+      Include superseded revisions</label>
+    <div class="manual-search__results" aria-live="polite"></div>
+  </form>`;
+}
+
+function ManualSearchResults(answer) {
+  if (!answer.results.length) {
+    return html`<p class="hint">No manual carries all of ${answer.terms.map((t) => `"${t}"`).join(', ')} on one page.</p>`;
+  }
+  return html`<ul class="manual-list">${answer.results.map((d) => html`<li>
+    <strong>${d.reference} · ${d.title}</strong> v${d.version}${d.supersededOn ? ' (superseded)' : ''}
+    <ul>${d.hits.map((h) => html`<li><span class="tag">p. ${h.page}</span> ${h.snippet}</li>`)}</ul>
+  </li>`)}</ul>`;
+}
+
 function ManualAnalysis(a) {
   const p = a?.parsed ?? {};
   if (p.error || p.noText) {
@@ -1431,6 +1460,27 @@ export async function render(outlet) {
 
   body.addEventListener('submit', async (event) => {
     const form = event.target;
+
+    if (form?.matches?.('[data-manual-search]')) {
+      event.preventDefault();
+      const out = form.querySelector('.manual-search__results');
+      const data = new FormData(form);
+      const params = new URLSearchParams({ q: String(data.get('q') ?? '') });
+      if (data.get('all')) params.set('all', '1');
+      out.textContent = 'Searching…';
+      try {
+        const res = await authFetch(`/api/v1/sms/documents/search?${params}`);
+        const answer = await res.json().catch(() => ({}));
+        out.innerHTML = res.ok && Array.isArray(answer.results)
+          ? ManualSearchResults(answer).toString()
+          : html`<p class="hint">${res.status === 403
+              ? 'Your role does not include reading the document register.'
+              : answer.message ?? 'The search could not be completed.'}</p>`.toString();
+      } catch {
+        out.textContent = 'The safety office could not be reached. Nothing was searched.';
+      }
+      return;
+    }
 
     /* THE VOLUNTARY SCHEME, handled before the collection forms because
        it is not one. It has no data-post element id — there is one

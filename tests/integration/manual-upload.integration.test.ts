@@ -115,6 +115,30 @@ describe.skipIf(!hasDatabase)("manual upload and parsing", () => {
     expect(list[0].extractedText).toBeUndefined();
   });
 
+  it("search finds the page carrying every word, and never another operator's manual", async () => {
+    const { token } = await userWith("SAFETY_MANAGER");
+    const id = await upload(token, makePdf(SMS_PAGES), PDF_TYPE, "sms.pdf");
+    const made = await call("POST", "/api/v1/sms/documents", token, {
+      title: "SMS Manual", reference: "SMS-MAN", version: "3", uploadId: id, kind: "SMS_MANUAL",
+    });
+    expect(made.statusCode, made.body).toBe(201);
+
+    const hit = (await call("GET", "/api/v1/sms/documents/search?q=hazards%20REPORTED", token)).json();
+    expect(hit.results).toHaveLength(1);
+    expect(hit.results[0].hits).toEqual([expect.objectContaining({ page: 3 })]);
+    expect(hit.results[0].extractedText, "search must not return the text").toBeUndefined();
+
+    // Both words exist in the manual, never on one page: not an answer.
+    const split = (await call("GET", "/api/v1/sms/documents/search?q=accountable%20hazards", token)).json();
+    expect(split.results).toHaveLength(0);
+
+    expect((await call("GET", "/api/v1/sms/documents/search?q=a", token)).statusCode).toBe(400);
+
+    const other = await userWith("SAFETY_MANAGER", "Other Air");
+    const theirs = (await call("GET", "/api/v1/sms/documents/search?q=hazards", other.token)).json();
+    expect(theirs.results).toHaveLength(0);
+  });
+
   it("a Word ERP is read for contacts and for the parties it names", async () => {
     const { token } = await userWith("SAFETY_MANAGER");
     const docx = await makeDocx([
