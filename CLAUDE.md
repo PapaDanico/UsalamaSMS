@@ -797,6 +797,26 @@ monitors that never ran. Mutation-checked both ways: removing the
 debounce reddens the post-merge case, and treating an unreadable side as
 stale reddens the unknown case.
 
+### AND ON 24 SEPTEMBER THE FRESHNESS ALARM FIRED, AND WAS RIGHT
+
+PR #137 merged at 20:27 UTC. Its PREVIEW built and published in 66
+seconds; its PRODUCTION build never published. `currentDeploy.commit_ref`
+stayed on #136's `d9c8c5d` for seven hours, and the watchdog mailed
+"serving an old build" once the 45-minute debounce passed. It was the
+first time the freshness half caught a real stale deploy.
+
+No Netlify status, check run or GitHub deployment exists for the #137
+merge commit at all, so whether the build failed or never started is not
+knowable from here, and it is not written down as either. What is known:
+the tree was fine (the preview built it), and **the next push to `main`
+published normally** — #138 at 03:45, `commit_ref 3742fac`, deploy_time
+550, all five functions, carrying #137 with it.
+
+**The remedy for a missing production build is the next real merge, never
+an empty commit.** A real change landing on `main` rebuilds everything
+behind it, which is why the check after every merge reads `commit_ref`
+against the SHA just merged rather than trusting that the merge went out.
+
 ### AND THE RLS SUITE MOVED THERE TOO, WHERE IT IS STRONGER
 
 `tests/integration/rls.integration.test.ts` holds the seven assertions
