@@ -43,6 +43,7 @@ import {
   fetchMainHead,
   freshnessFrom,
   isStale,
+  shouldMailStaleness,
 } from "../../apps/api/src/watchdog.js";
 import { sendWatchdogAlert, sendStalenessAlert, mailConfigFromEnv } from "../../apps/api/src/mail.js";
 
@@ -77,11 +78,13 @@ export default async function handler(): Promise<Response> {
     const freshness = await checkFreshness(baseUrl);
 
     if (isStale(freshness)) {
-      const outcome = await sendStalenessAlert(
-        baseUrl,
-        { served: freshness.served, head: freshness.head, behindMs: freshness.behindMs },
-        config,
-      );
+      const outcome = shouldMailStaleness(freshness.behindMs)
+        ? await sendStalenessAlert(
+            baseUrl,
+            { served: freshness.served, head: freshness.head, behindMs: freshness.behindMs },
+            config,
+          )
+        : ({ status: "ALREADY_SENT" } as const);
       return Response.json(
         {
           ok: false,

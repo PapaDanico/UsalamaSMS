@@ -116,6 +116,25 @@ export function isStale(f: Freshness): f is Extract<Freshness, { kind: "STALE" }
   return f.kind === "STALE";
 }
 
+/** How often the scheduled watchdog runs (netlify/functions/watchdog.mts). */
+export const WATCHDOG_EVERY_MS = 10 * 60 * 1000;
+export const STALE_REMIND_EVERY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * ONE EMAIL PER STALE SPELL, THEN ONE A DAY. On 24 September a stale
+ * deploy lasted seven hours and the watchdog mailed on every ten-minute
+ * run while it lasted: forty-odd copies of one fact. That is how an alarm
+ * gets muted. Still stateless: the run that falls in the first ten-minute
+ * window after the debounce sends, and so does the one in the same window
+ * each day after, while the deploy stays stale. The fact is still in every
+ * run's response body; only the mail is thinned.
+ */
+export function shouldMailStaleness(behindMs: number, everyMs: number = WATCHDOG_EVERY_MS): boolean {
+  const since = behindMs - STALE_AFTER_MS;
+  if (since < 0) return false;
+  return since % STALE_REMIND_EVERY_MS < everyMs;
+}
+
 export function stalenessSubject(baseUrl: string): string {
   return `UsalamaSMS is serving an old build — ${hostOf(baseUrl)}`;
 }
