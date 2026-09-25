@@ -6500,3 +6500,10 @@ select {
 }
 .manual-list li { margin: var(--us-space-1) 0; }
 .manual-list .is-missing { color: var(--us-text-secondary); }
+
+.manual-search { display: grid; gap: 0.4rem; margin-block-end: 1rem; }
+.manual-search__row { display: flex; gap: 0.5rem; }
+.manual-search__row input { flex: 1; min-width: 0; }
+.manual-search__results:empty { display: none; }
+.manual-search__all { font-size: 0.875rem; display: flex; gap: 0.4rem; align-items: center; }
+@media print { .manual-search { display: none; } }

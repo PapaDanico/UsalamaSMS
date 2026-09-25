@@ -48,6 +48,7 @@ import {
 import {
   checkManual, MANUAL_KINDS, MANUAL_CHUNK_BYTES, MANUAL_MAX_BYTES,
   MANUAL_MAX_CHUNKS, MANUAL_TYPES, MANUAL_UPLOAD_TTL_MS, type ManualKind,
+  searchManual, searchTerms,
 } from "../../../packages/shared/src/manual";
 import { parseManual } from "./manual-parse";
 
@@ -846,6 +847,34 @@ export async function smsRoutes(app: FastifyInstance): Promise<void> {
   /* WHAT THE PARSER FOUND, read separately from the register so the list
      stays small. document.read: anybody who may read the manual may read
      what its own pages say. */
+  /* SEARCH ACROSS THE OPERATOR'S MANUALS. The database narrows to the
+     documents carrying every word; the page and the sentence come from
+     searchManual, so "every word on ONE page" is decided in one place.
+     Revisions in force only unless asked — an answer from a superseded
+     ERP is the wrong answer given confidently. */
+  app.get("/api/v1/sms/documents/search", limited, async (req, reply) => {
+    if (!guard(req.auth!.role, "document.read")) return reply.code(403).send({ error: "forbidden" });
+    const q = req.query as { q?: unknown; all?: unknown };
+    const terms = searchTerms(q.q);
+    if (!terms.length) {
+      return reply.code(400).send({ error: "invalid", message: "Search for at least one word of two letters or more." });
+    }
+    const docs = await prisma.controlledDocument.findMany({
+      where: {
+        ...tenantWhere(req),
+        ...(q.all === "1" ? {} : { supersededOn: null }),
+        AND: terms.map((t) => ({ extractedText: { contains: t, mode: "insensitive" as const } })),
+      },
+      select: { id: true, title: true, reference: true, version: true, kind: true, supersededOn: true, extractedText: true },
+      orderBy: [{ reference: "asc" }, { version: "desc" }],
+      take: 25,
+    });
+    const results = docs
+      .map(({ extractedText, ...d }) => ({ ...d, hits: searchManual(extractedText ?? "", terms) }))
+      .filter((d) => d.hits.length);
+    return reply.send({ terms, results });
+  });
+
   app.get("/api/v1/sms/documents/:id/analysis", limited, async (req, reply) => {
     if (!guard(req.auth!.role, "document.read")) return reply.code(403).send({ error: "forbidden" });
     const { id } = req.params as { id: string };

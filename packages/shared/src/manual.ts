@@ -307,3 +307,49 @@ export function analyseManual(kind: ManualKind, pages: ReadonlyArray<string>): M
   if (kind === "ERP") return { ...base, erp: erpContacts(pages) };
   return base;
 }
+
+/* =====================================================================
+   SEARCH INSIDE A MANUAL.
+
+   "Where does our ERP say who calls the next of kin?" is a question
+   asked during an event, against a manual nobody has open. The text is
+   already stored per page (form feeds between them), so the answer is
+   the page and the sentence around the words, not a relevance score.
+
+   EVERY word must appear on the page. A page carrying "fuel" in one
+   chapter and "spill" in another is not an answer to "fuel spill", and
+   a search that pretends it is sends somebody to the wrong page at the
+   worst possible moment. Words under two letters are dropped; nothing
+   else is interpreted, so a query means what it says.
+   ===================================================================== */
+export const SEARCH_MAX_TERMS = 8;
+
+export interface SearchHit {
+  page: number;
+  snippet: string;
+}
+
+export function searchTerms(query: unknown): string[] {
+  if (typeof query !== "string") return [];
+  const words = query.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 2);
+  return [...new Set(words)].slice(0, SEARCH_MAX_TERMS);
+}
+
+export function searchManual(text: string, terms: ReadonlyArray<string>, max = 10): SearchHit[] {
+  if (!terms.length) return [];
+  const hits: SearchHit[] = [];
+  const pages = text.split("\f");
+  for (let i = 0; i < pages.length && hits.length < max; i++) {
+    const page = (pages[i] ?? "").replace(/\s+/g, " ").trim();
+    const lower = page.toLowerCase();
+    if (!terms.every((t) => lower.includes(t))) continue;
+    const at = lower.indexOf(terms[0] ?? "");
+    const from = Math.max(0, at - 90);
+    const to = Math.min(page.length, at + (terms[0]?.length ?? 0) + 110);
+    hits.push({
+      page: i + 1,
+      snippet: `${from > 0 ? "…" : ""}${page.slice(from, to)}${to < page.length ? "…" : ""}`,
+    });
+  }
+  return hits;
+}
