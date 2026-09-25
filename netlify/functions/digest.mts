@@ -49,6 +49,7 @@ import type { Config } from "@netlify/functions";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { computeDigest } from "../../apps/api/src/digest.compute.js";
+import { sweepExpiredUploads } from "../../apps/api/src/uploads.js";
 import { sendDigest, sendTrialDigest, mailConfigFromEnv } from "../../apps/api/src/mail.js";
 import { isWorthSending } from "../../packages/shared/src/digest.js";
 import { can } from "../../packages/shared/src/index.js";
@@ -152,6 +153,9 @@ export default async function handler(): Promise<Response> {
     });
   }
 
+  // A failed sweep must never cost anybody their digest; null says it failed.
+  const uploadsSwept = await sweepExpiredUploads(prisma, now).catch(() => null);
+
   const orgs = await prisma.org.findMany({
     select: { id: true, createdAt: true, trialEndsOn: true, paidThrough: true },
     take: ORG_LIMIT,
@@ -250,6 +254,7 @@ export default async function handler(): Promise<Response> {
        complete one from a count alone. */
     truncated: orgs.length === ORG_LIMIT,
     sent,
+    uploadsSwept,
     trialSent,
     nothingToSay: silent,
     failures,

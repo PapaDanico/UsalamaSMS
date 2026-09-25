@@ -397,7 +397,7 @@ const RENDER = {
     ),
 
   documents: (rows) => [
-    rows.some((d) => d.parsedAt) ? ManualSearch() : '',
+    rows.some((d) => d.parsedAt && !d.parsed?.noText) ? ManualSearch() : '',
     ...rows.map((d) => {
       /* THE DISTRIBUTION RECORD, WHICH THE SERVER HAS ALWAYS RETURNED
          AND THIS SCREEN HAS NEVER SHOWN.
@@ -436,6 +436,10 @@ const RENDER = {
                     aria-expanded="false">What the manual contains</button>`
                 : ''}
             </p>
+            ${d.parsed?.noText
+              ? html`<p class="hint">No text could be read from this file — it may be a scanned
+                  copy. It is held and downloadable, but search cannot find anything in it.</p>`
+              : ''}
             <div class="manual-analysis" data-analysis-for="${d.id}" hidden></div>`
           : html`<p class="rec__meta"><span>Held outside this register</span></p>`}
         ${readOn
