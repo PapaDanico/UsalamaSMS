@@ -56,7 +56,9 @@ export type MailOutcome =
   /** The digest was empty. Never a failure — see isWorthSending. */
   | { readonly status: "NOTHING_TO_SAY" }
   /** The provider refused or could not be reached. This one is a problem. */
-  | { readonly status: "FAILED"; readonly reason: string };
+  | { readonly status: "FAILED"; readonly reason: string }
+  /** Operational alerts switched off by the owner (ALERT_EMAILS=off). */
+  | { readonly status: "MUTED" };
 
 /* THE STAGES ARE DAYS INTO A TRIAL OF TRIAL_DAYS, so they cannot outrun
    it. They were 1/7/30/45/55/60 for one day in August 2026, against a
@@ -106,6 +108,14 @@ interface MailConfig {
    * name somewhere nobody chose.
    */
   readonly platformNotice: string | undefined;
+  /**
+   * THE OWNER'S OFF SWITCH FOR OPERATIONAL ALERTS — the watchdog's outage
+   * and stale-build mail and the daily posture check. Set ALERT_EMAILS=off.
+   * The checks still run and still report in every response body; only
+   * the mail stops. Upgrade requests are commercial, not alerts, and still
+   * arrive. Optional so a config built by hand defaults to sending.
+   */
+  readonly alertsMuted?: boolean;
 }
 
 function senderAddress(config: MailConfig): string {
@@ -708,6 +718,7 @@ export async function sendWatchdogAlert(
   config: MailConfig,
   fetchImpl: typeof fetch = fetch,
 ): Promise<MailOutcome> {
+  if (config.alertsMuted) return { status: "MUTED" };
   if (!config.apiKey) return { status: "NOT_CONFIGURED" };
   if (!config.platformNotice) return { status: "NOT_CONFIGURED" };
 
@@ -760,6 +771,7 @@ export async function sendPostureAlert(
   config: MailConfig,
   fetchImpl: typeof fetch = fetch,
 ): Promise<MailOutcome> {
+  if (config.alertsMuted) return { status: "MUTED" };
   if (!config.apiKey) return { status: "NOT_CONFIGURED" };
   if (!config.platformNotice) return { status: "NOT_CONFIGURED" };
 
@@ -811,6 +823,7 @@ export async function sendStalenessAlert(
   config: MailConfig,
   fetchImpl: typeof fetch = fetch,
 ): Promise<MailOutcome> {
+  if (config.alertsMuted) return { status: "MUTED" };
   if (!config.apiKey) return { status: "NOT_CONFIGURED" };
   if (!config.platformNotice) return { status: "NOT_CONFIGURED" };
 
@@ -866,5 +879,6 @@ export function mailConfigFromEnv(env: NodeJS.ProcessEnv = process.env): MailCon
        variable created and never filled in stays absent. */
     replyTo: env.MAIL_REPLY_TO || undefined,
     platformNotice: env.PLATFORM_NOTICE_EMAIL || undefined,
+    alertsMuted: (env.ALERT_EMAILS ?? "").trim().toLowerCase() === "off",
   };
 }
