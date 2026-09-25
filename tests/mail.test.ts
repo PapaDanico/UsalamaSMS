@@ -310,3 +310,29 @@ describe("trial digests", () => {
     expect(text).toMatch(/fifth step is the maturity assessment/i);
   });
 });
+
+describe("ALERT_EMAILS=off mutes operational alerts, and only them", () => {
+  it("reads the switch from the environment", async () => {
+    const { mailConfigFromEnv } = await import("../apps/api/src/mail");
+    expect(mailConfigFromEnv({ ALERT_EMAILS: "off" } as NodeJS.ProcessEnv).alertsMuted).toBe(true);
+    expect(mailConfigFromEnv({ ALERT_EMAILS: " OFF " } as NodeJS.ProcessEnv).alertsMuted).toBe(true);
+    expect(mailConfigFromEnv({} as NodeJS.ProcessEnv).alertsMuted).toBe(false);
+  });
+
+  it("sends no watchdog, stale-build or posture mail when muted; upgrade requests still go", async () => {
+    const mail = await import("../apps/api/src/mail");
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls++;
+      return new Response(JSON.stringify({ id: "x" }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const config = { ...mail.mailConfigFromEnv({ RESEND_API_KEY: "k", PLATFORM_NOTICE_EMAIL: "o@x.test", ALERT_EMAILS: "off" } as NodeJS.ProcessEnv) };
+    const probe = { status: 0, detail: "fetch failed" };
+    expect((await mail.sendWatchdogAlert("https://x.test", probe, probe, config, fetchImpl)).status).toBe("MUTED");
+    expect((await mail.sendStalenessAlert("https://x.test", { served: "a", head: "b", behindMs: 3_600_000 }, config, fetchImpl)).status).toBe("MUTED");
+    expect(calls).toBe(0);
+    const unmuted = { ...config, alertsMuted: false };
+    expect((await mail.sendWatchdogAlert("https://x.test", probe, probe, unmuted, fetchImpl)).status).toBe("SENT");
+    expect(calls).toBe(1);
+  });
+});
