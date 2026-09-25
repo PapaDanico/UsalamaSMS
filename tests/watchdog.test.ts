@@ -211,3 +211,21 @@ describe("describeFailure", () => {
     expect(describeFailure("x")).toBe("request failed");
   });
 });
+
+describe("shouldMailStaleness — once per stale spell, then daily", () => {
+  it("mails on the first run past the debounce, not on the next, and again a day later", async () => {
+    const { shouldMailStaleness, STALE_AFTER_MS, WATCHDOG_EVERY_MS } = await import("../apps/api/src/watchdog");
+    const min = 60_000;
+    expect(shouldMailStaleness(STALE_AFTER_MS - min)).toBe(false);
+    expect(shouldMailStaleness(STALE_AFTER_MS + 3 * min)).toBe(true);
+    expect(shouldMailStaleness(STALE_AFTER_MS + WATCHDOG_EVERY_MS + 3 * min)).toBe(false);
+    expect(shouldMailStaleness(STALE_AFTER_MS + 7 * 60 * min)).toBe(false);
+    expect(shouldMailStaleness(STALE_AFTER_MS + 24 * 60 * min + 3 * min)).toBe(true);
+    // Every run of a seven-hour spell: exactly one mail, not forty.
+    let sent = 0;
+    for (let t = STALE_AFTER_MS; t < STALE_AFTER_MS + 7 * 60 * min; t += WATCHDOG_EVERY_MS) {
+      if (shouldMailStaleness(t + 2 * min)) sent++;
+    }
+    expect(sent).toBe(1);
+  });
+});
