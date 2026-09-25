@@ -139,6 +139,52 @@ describe.skipIf(!hasDatabase)("manual upload and parsing", () => {
     expect(theirs.results).toHaveLength(0);
   });
 
+  it("a new revision supersedes the old one in search, and the old one is found only when asked", async () => {
+    const { token } = await userWith("SAFETY_MANAGER");
+    const revisions: Array<[string, string]> = [["1", "Old wording about the refuelling bowser."], ["2", "New wording about the refuelling truck."]];
+    for (const [version, line] of revisions) {
+      const id = await upload(token, makePdf([["Refuelling", line]]), PDF_TYPE, `erp-${version}.pdf`);
+      const r = await call("POST", "/api/v1/sms/documents", token, {
+        title: "ERP", reference: "ERP-01", version, uploadId: id, kind: "ERP",
+      });
+      expect(r.statusCode, r.body).toBe(201);
+    }
+    const now = (await call("GET", "/api/v1/sms/documents/search?q=refuelling", token)).json();
+    expect(now.results.map((d: { version: string }) => d.version)).toEqual(["2"]);
+    const all = (await call("GET", "/api/v1/sms/documents/search?q=refuelling&all=1", token)).json();
+    expect(all.results.map((d: { version: string }) => d.version).sort()).toEqual(["1", "2"]);
+    expect(all.results.find((d: { version: string }) => d.version === "1").supersededOn).toBeTruthy();
+  });
+
+  it("a file with no readable text is held, marked unreadable in the list, and never matches", async () => {
+    const { token } = await userWith("SAFETY_MANAGER");
+    const id = await upload(token, makePdf([[]]), PDF_TYPE, "scan.pdf");
+    const r = await call("POST", "/api/v1/sms/documents", token, {
+      title: "Scanned SMS manual", reference: "SMS-SCAN", version: "1", uploadId: id, kind: "SMS_MANUAL",
+    });
+    expect(r.statusCode, r.body).toBe(201);
+    const list = (await call("GET", "/api/v1/sms/documents", token)).json().documents;
+    expect(list[0].parsed.noText).toBe(true);
+    expect(list[0].bytes).toBeGreaterThan(0);
+  });
+
+  it("the daily sweep removes expired uploads across operators and keeps live ones", async () => {
+    const { sweepExpiredUploads } = await import("../../apps/api/src/uploads");
+    const a = await userWith("SAFETY_MANAGER");
+    const b = await userWith("SAFETY_MANAGER", "Second Air");
+    for (const who of [a, b]) {
+      const start = await call("POST", "/api/v1/sms/documents/uploads", who.token, {
+        filename: "m.pdf", contentType: PDF_TYPE, totalBytes: 10,
+      });
+      expect(start.statusCode, start.body).toBe(201);
+    }
+    const [first] = await prisma().documentUpload.findMany({ where: { orgId: a.orgId } });
+    await prisma().documentUpload.update({ where: { id: first!.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    expect(await sweepExpiredUploads(prisma())).toBe(1);
+    expect(await prisma().documentUpload.count()).toBe(1);
+    expect((await prisma().documentUpload.findFirst())!.orgId).toBe(b.orgId);
+  });
+
   it("a Word ERP is read for contacts and for the parties it names", async () => {
     const { token } = await userWith("SAFETY_MANAGER");
     const docx = await makeDocx([
